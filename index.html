@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Motionstory: Pilgrimsvägen</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="styles.css">
+  <meta name="theme-color" content="#0a0a14">
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Pilgrimsvägen</h1>
+      <p class="subtitle">En 1 km vandring. Berättelsen utvecklas medan du går.</p>
+    </header>
+
+    <section id="start-screen">
+      <button id="start-btn">Börja vandringen</button>
+      <p class="hint">Sätt på lurarna. Telefonen i fickan. Börja gå när du är redo.</p>
+    </section>
+
+    <section id="walking" hidden>
+      <div class="display">
+        <div class="metric">
+          <span class="label">Distans</span>
+          <span id="distance" class="value">0 m</span>
+        </div>
+        <div class="metric">
+          <span class="label">Scen</span>
+          <span id="current-scene" class="value">väntar</span>
+        </div>
+      </div>
+      <div id="status" class="status"></div>
+    </section>
+  </main>
+  <script src="main.js"></script>
+</body>
+</html>

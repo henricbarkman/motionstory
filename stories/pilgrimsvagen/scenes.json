@@ -1,0 +1,35 @@
+{
+  "id": "pilgrimsvagen",
+  "title": "Pilgrimsvägen",
+  "totalDistanceMeters": 1000,
+  "scenes": [
+    {
+      "id": "scene-1",
+      "triggerAtMeters": 0,
+      "audioFile": "audio/pilgrimsvagen/scene-1.mp3",
+      "label": "Vägen börjar",
+      "text": "Du står vid Pilgrimsvägens början. Något kallade dig hit, men du minns inte vad. Bara att du måste gå. Vägen sträcker sig framför dig: en smal stig som följer skogsbrynet. Stenar och grus under fötterna. Morgonljuset faller snett genom björkarna.\n\nDet här är inte en träning. Det är inte en runda. Det är en vandring som har gjorts av andra före dig, och som kommer göras av andra efter. Du är en länk i en kedja som ingen håller reda på.\n\nTa första steget. Vägen tar emot dig."
+    },
+    {
+      "id": "scene-2",
+      "triggerAtMeters": 333,
+      "audioFile": "audio/pilgrimsvagen/scene-2.mp3",
+      "label": "Den första stenen",
+      "text": "Vid sidan av stigen står en sten. Inte hög. Knappt högre än din knä. Mossa täcker den, men i mitten av mossan finns ett avtryck, som om någon lagt sin hand där länge nog för att slipa in formen.\n\nLägg din hand på stenen. Stenen är kall. Mossan är fuktig. Avtrycket passar din hand. Det är förstås en tillfällighet.\n\nDe som gick här före dig vandrade samma stig. De stannade vid samma sten. Du är inte den första som tänker att avtrycket passar dig.\n\nFortsätt. Vägen vinner skogen."
+    },
+    {
+      "id": "scene-3",
+      "triggerAtMeters": 666,
+      "audioFile": "audio/pilgrimsvagen/scene-3.mp3",
+      "label": "Skogens röst",
+      "text": "Skogen blir tätare. Träden står tätare. Ljuset filtreras nu genom flera lager löv, det landar på stigen som rörliga fläckar.\n\nDu hör något. Inte ett ljud, mer som en närvaro. Som om någon går bredvid dig, men kliven hörs inte. Andetagen är dina egna men ekar för länge.\n\nTitta inte över axeln. Det vore fel. Det vore att kräva svar av något som ger sig själv.\n\nFortsätt. Stigen vet vart den går. Du behöver inte veta. Bara följa.\n\nDet är lätt att tänka att man är ensam i skogen. Det är svårare att tänka att man inte är det."
+    },
+    {
+      "id": "scene-4",
+      "triggerAtMeters": 1000,
+      "audioFile": "audio/pilgrimsvagen/scene-4.mp3",
+      "label": "Källan",
+      "text": "Vägen öppnar sig. Framför dig: en liten glänta. I mitten av gläntan en källa. Stenar runt om. Vattnet är stilla, så stilla att det reflekterar himlen perfekt.\n\nGå fram till källan. Böj dig ner. Vattenytan rör sig knappt. Du ser dig själv i den.\n\nSpegelbilden är nästan din. Men något är fel, eller rätt. Den ler. Du ler inte. Du blinkar. Spegelbilden blinkar inte tillbaka.\n\nDetta är inte ett mysterium att lösa. Det är ett möte. Du har gått till en plats där någon väntade på dig.\n\nPilgrimsvägen tystnar omkring dig. Du är hemma. För nu."
+    }
+  ]
+}
