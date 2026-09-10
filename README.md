@@ -42,9 +42,11 @@ python3 scripts/render_audio.py
 
 Skriptet är idempotent — bara saknade audiofiler renderas. För att tvinga om-rendering: `rm audio/pilgrimsvagen/scene-N.mp3`.
 
-Kräver `ELEVENLABS_API_KEY` i `~/generalassistant/.env`.
+Kräver `ELEVENLABS_API_KEY` i `~/generalassistant/.env`. Tvinga om-rendering av allt med `--force`.
 
-Default-röst: Charlotte (varm narrator-röst, multilingual_v2). Byt `VOICE_ID` i scriptet för att testa andra.
+Default-röst: Louise (lugn svensk berättarröst, Stockholm, modell `eleven_multilingual_v2`). Testa en annan röst med `--voice <voice_id>`; svenska alternativ i kontot är "Adam Composer Stockholm" och "Hans O. Karlsson".
+
+Toy v0 (maj 2026) renderades med OpenAI tts-1 eftersom ElevenLabs-krediterna var slut just då. Sedan 2026-09-10 är det ElevenLabs igen.
 
 ## Struktur
 
