@@ -10,6 +10,7 @@ let lastCoord = null;
 let totalDistance = 0;
 const triggered = new Set();
 let currentAudio = null;
+let wakeLock = null;
 
 function haversine(c1, c2) {
   const R = 6371000;
@@ -38,12 +39,30 @@ function playScene(scene, index) {
     `${index + 1}/${scenes.length} ${scene.label}`;
 }
 
+// Keeps the screen awake so Android does not throttle or pause the geolocation
+// watch while the phone is in a pocket. Released when the walk ends.
+async function acquireWakeLock() {
+  if (!('wakeLock' in navigator)) return;
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+    wakeLock.addEventListener('release', () => { wakeLock = null; });
+  } catch (err) {
+    console.warn('Wake lock failed:', err);
+  }
+}
+
+// A wake lock is dropped whenever the page is hidden, so it has to be taken
+// again on every return to the foreground.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && watchId !== null && !wakeLock) {
+    acquireWakeLock();
+  }
+});
+
 function onPosition(pos) {
   const coord = pos.coords;
   if (!lastCoord) {
     lastCoord = coord;
-    playScene(scenes[0], 0);
-    triggered.add(0);
     setStatus('');
     return;
   }
@@ -77,7 +96,16 @@ document.getElementById('start-btn').addEventListener('click', () => {
   }
   document.getElementById('start-screen').hidden = true;
   document.getElementById('walking').hidden = false;
+
+  // Scene 1 sits at 0 m, so it belongs to the button press, not to the first
+  // GPS fix. Waiting for a fix meant up to half a minute of silence after
+  // pressing start, and playing here also means playback begins inside the
+  // user gesture rather than in an async callback.
+  playScene(scenes[0], 0);
+  triggered.add(0);
+
   setStatus('Väntar på GPS-position...');
+  acquireWakeLock();
   watchId = navigator.geolocation.watchPosition(onPosition, onError, {
     enableHighAccuracy: true,
     maximumAge: 0,
@@ -85,8 +113,51 @@ document.getElementById('start-btn').addEventListener('click', () => {
   });
 });
 
+// Which build actually reached the phone. Read from the service worker cache
+// that installed, not from a constant in this file, so it cannot claim to be
+// newer than what is really running.
+let buildAnswered = false;
+
+function setBuild(text) {
+  const el = document.getElementById('build');
+  if (el) el.textContent = text;
+}
+
+// Ask the worker that is actually controlling this page. Listing cache names
+// instead reports a transient during an update, when the old and new caches
+// both exist for a moment.
+function askBuild() {
+  const ctrl = navigator.serviceWorker && navigator.serviceWorker.controller;
+  if (!ctrl) {
+    setBuild('ingen (körs direkt från nätet)');
+    return;
+  }
+  ctrl.postMessage('version');
+
+  // Builds before 2026-09-10 have no message handler and never answer. Say so
+  // rather than leaving the placeholder, which would read as a hung page.
+  setTimeout(() => {
+    if (!buildAnswered) setBuild('äldre version (svarar inte)');
+  }, 2000);
+}
+
 if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', e => {
+    if (e.data && e.data.version) {
+      buildAnswered = true;
+      setBuild(e.data.version);
+    }
+  });
+
   navigator.serviceWorker.register('service-worker.js').catch(err => {
     console.warn('SW registration failed:', err);
   });
+
+  // On an update `ready` resolves while the OLD worker still controls the page,
+  // so the answer here can be the previous build. controllerchange fires when
+  // the new worker claims the page and is the moment the reading becomes true.
+  navigator.serviceWorker.ready.then(askBuild).catch(() => {});
+  navigator.serviceWorker.addEventListener('controllerchange', askBuild);
+} else {
+  setBuild('service worker stöds inte');
 }

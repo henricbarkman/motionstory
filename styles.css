@@ -90,3 +90,10 @@ header .subtitle {
   font-size: 0.9rem;
   min-height: 1.2em;
 }
+
+.build {
+  margin-top: 3.5rem;
+  color: #45455e;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+}
