@@ -110,7 +110,9 @@ export function pick(list, random = Math.random) {
 // whenever scene 3 or 6 comes around. Returns when every lookup has settled.
 export async function chooseWorld(world, { lat, lon, date = new Date(), log = () => {} } = {}) {
   world.light = lightFromSun(date, lat, lon);
-  world.sources.light = `sol ${sunAltitude(date, lat, lon).toFixed(1)}°`;
+  // Degrees above the horizon, not a temperature: the log line was read as
+  // Celsius once.
+  world.sources.light = `solen ${sunAltitude(date, lat, lon).toFixed(1).replace('.', ',')}° över horisonten`;
   log(`ljus: ${world.light} (${world.sources.light})`);
 
   const rain = fetchRain(lat, lon).then(r => {
