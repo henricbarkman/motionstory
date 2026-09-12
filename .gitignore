@@ -3,3 +3,6 @@ __pycache__/
 *.pyc
 .venv/
 .DS_Store
+
+# Splice-loop, licensfraga oppen: hall utanfor det publika repot tills vidare
+audio/glimt/bed/

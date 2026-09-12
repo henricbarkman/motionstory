@@ -1,12 +1,14 @@
 # Glimt, kapitel 1: Det är när du går jag hör dig
 
-Utkast 1, 2026-09-12. Två varianter på samma motor: **A** där hon är bunden till vandrarens rörelser, **B** där hon rör sig fritt men glider ur räckhåll när vandraren står still. Scenerna 0, 3, 5 och 6 är gemensamma. "Vera" är ett platshållarnamn.
+Utkast 2, 2026-09-12. Två varianter på samma motor: **A** där hon är bunden till vandrarens rörelser, **B** där hon rör sig fritt men glider ur räckhåll när vandraren står still. Scenerna 0, 3, 5 och 6 är gemensamma. Hon heter **Vega**.
 
 Regler som manuset följer: hon beskriver aldrig vad vandraren ser, bara vad hon hör och anar. Hon är säker om ljus, väder och tempo, och famlar om hus, murar och vatten. Hon ber, hon befaller aldrig något fysiskt riskabelt. Varje scen slutar på något olöst.
 
-Riktlängd: 12 till 15 minuter. Hennes repliker är tillsammans ungefär fyra minuter tal.
+Riktlängd: **cirka tio minuter.** Hennes repliker är tillsammans ungefär fyra minuters tal, så tomrummet mellan scenerna är som mest en och en halv minut. Bädden ligger under hela tiden.
 
-Varianter i hakparentes: `[ljust]`, `[mörkt]`, `[regn]`, `[torrt]`. Bara scen 3 har varianter, för att hålla nere antalet renderingar.
+Varianter i hakparentes: `[ljust]`, `[mörkt]`, `[regn]`, `[torrt]` i scen 3, och `[vatten]`, `[vind]`, `[eld]`, `[jord]` i scen 6.
+
+"Tillbaka" i scen 7 läses ur kartan: avståndet till startpunkten krymper stadigt.
 
 ---
 
@@ -22,7 +24,7 @@ Varianter i hakparentes: `[ljust]`, `[mörkt]`, `[regn]`, `[torrt]`. Bara scen 3
 > Fortsätt gå. Snälla. Jag förklarar när jag hör dig ordentligt.
 
 ## 1. Kontakt
-*Trigger: kontakten stark första gången, efter ungefär 90 sekunder jämn rörelse.*
+*Trigger: kontakten stark första gången, efter ungefär en minut jämn rörelse.*
 
 **A**
 > Så. Nu är du tydlig.
@@ -31,7 +33,7 @@ Varianter i hakparentes: `[ljust]`, `[mörkt]`, `[regn]`, `[torrt]`. Bara scen 3
 >
 > Sedan dess har jag hört en sak. Steg. Ibland. Ikväll är de dina.
 >
-> Jag vet inte var jag är. Det ser ut som här. Men det är inte här.
+> Det ser ut som här. Men det är inte här.
 
 **B**
 > Så. Nu är du tydlig.
@@ -43,14 +45,14 @@ Varianter i hakparentes: `[ljust]`, `[mörkt]`, `[regn]`, `[torrt]`. Bara scen 3
 > Det ser ut som här. Men det är inte här.
 
 ## 2. Stillhet
-*Trigger: första gången vandraren står still mer än tio sekunder. Har det inte hänt vid minut fem ber hon om det, och då är det en hållscen: kontaktförlusten pausas medan hon talar.*
+*Trigger: första gången vandraren står still mer än tio sekunder. Har det inte hänt vid minut tre ber hon om det, och då är det en hållscen: kontaktförlusten pausas medan hon talar.*
 
 **A, när vandraren stannar av sig själv**
 > (rösten glider bort, blir avlägsen)
 >
 > ...nej. Nej nej nej. Du stannade.
 >
-> (långt borta) Jag kan inte röra mig. Har jag sagt det? När du stannar, stannar jag. Jag har försökt. Jag kan inte ens vända på huvudet.
+> (långt borta) Jag kan inte röra mig. Har jag sagt det? När du stannar, stannar jag. Jag kan inte ens vända på huvudet.
 >
 > (när vandraren går igen, rösten tillbaka)
 >
@@ -83,12 +85,12 @@ Varianter i hakparentes: `[ljust]`, `[mörkt]`, `[regn]`, `[torrt]`. Bara scen 3
 >
 > (när vandraren går igen)
 >
-> Långt. Du blev bara ett sus. Jag fick gå i cirklar tills jag hittade dig. Så gör inte det igen om jag inte ber om det.
+> Långt. Du blev bara ett sus. Jag fick gå i cirklar tills jag hittade dig. Gör inte det igen om jag inte ber om det.
 
 ## 3. Glimt
-*Trigger: kontakten stark, runt minut sex. Enda scenen med väder- och ljusvarianter.*
+*Trigger: kontakten stark, runt minut fyra. Varianter för ljus och väder väljs vid start.*
 
-> Jag ser något. Inte med ögonen. Det är svårt att förklara. Det kommer i glimtar, som när man blinkar mot solen.
+> Jag ser något. Inte med ögonen. Det kommer i glimtar, som när man blinkar mot solen.
 >
 > [ljust] Det är ljust hos dig. Det vet jag. Här är det aldrig riktigt ljust.
 > [mörkt] Det är mörkt hos dig. Det vet jag. Här är det aldrig riktigt mörkt.
@@ -99,14 +101,14 @@ Varianter i hakparentes: `[ljust]`, `[mörkt]`, `[regn]`, `[torrt]`. Bara scen 3
 > [torrt] Det är torrt hos dig. Här har det regnat i... jag vet inte. Länge.
 
 ## 4. Fortare
-*Trigger: vandrarens första tempoökning. Har ingen kommit vid minut åtta ber hon om den.*
+*Trigger: vandrarens första tempoökning. Har ingen kommit vid minut fem och en halv ber hon om den.*
 
 **A**
 > Något rör sig bakom mig.
 >
-> Jag kan inte vända mig om. Du vet det. Kan du gå fortare? Om du går fortare kommer jag längre ifrån det.
+> Jag kan inte vända mig om. Kan du gå fortare? Om du går fortare kommer jag längre ifrån det.
 >
-> (vid ökning) Tack. Tack. Det är längre bort nu. Tror jag. Jag hör det inte längre. Det betyder inte att det är borta.
+> (vid ökning) Tack. Det är längre bort nu. Tror jag. Jag hör det inte längre. Det betyder inte att det är borta.
 >
 > (ingen ökning på 60 sekunder) Det är okej. Det stannade. Jag tror att det stannade.
 
@@ -120,7 +122,7 @@ Varianter i hakparentes: `[ljust]`, `[mörkt]`, `[regn]`, `[torrt]`. Bara scen 3
 > (ingen ökning på 60 sekunder) Jag tappade dig nästan. Det är okej. Jag saktade in. Det stannade också.
 
 ## 5. Korsningen
-*Trigger: kontakten stark, runt minut nio. Kräver ingen svängdetektion. Hon kan inte veta.*
+*Trigger: kontakten stark, runt minut sju. Kräver ingen svängdetektion. Hon kan inte veta.*
 
 > Ser du en korsning? Inte nu kanske. Men snart.
 >
@@ -128,9 +130,10 @@ Varianter i hakparentes: `[ljust]`, `[mörkt]`, `[regn]`, `[torrt]`. Bara scen 3
 >
 > För dig spelar det ingen roll vilket du väljer. Där du är är det säkert vilket som. Här är det inte.
 
-## 6. Vattnet
-*Trigger: kontakten stark, runt minut elva. Hon påstår något hon inte kan veta. Det ska antingen stämma eller visa sig fel i ett senare kapitel.*
+## 6. Elementet
+*Trigger: kontakten stark, runt minut åtta och en halv. Hon påstår något hon inte kan veta. Det ska antingen stämma eller visa sig fel i ett senare kapitel. Elementet väljs vid start: av data där det går (vatten på kartan, vind i vädret), annars slumpat.*
 
+**[vatten]**
 > Hör du? Nej. Du kan inte höra det.
 >
 > Här låter det som vatten. Nära. Inte en älv. Något stillare.
@@ -139,28 +142,55 @@ Varianter i hakparentes: `[ljust]`, `[mörkt]`, `[regn]`, `[torrt]`. Bara scen 3
 >
 > Om du ser det, gå inte fram till det. Inte ikväll.
 
-## 7. Slutet
-*Trigger: minut tretton, eller vandraren står still mer än 30 sekunder efter minut tolv. Kontakten får tona bort på vandrarens eget stopp. Det är kapitlets sista ljud.*
+**[vind]**
+> Hör du? Nej. Du kan inte höra det.
+>
+> Här blåser det. Inte som vind blåser. I stötar, som om något stort andas.
+>
+> Det blåser hos dig också. Det måste det göra. Allt som finns här fanns hos dig först.
+>
+> Om det tar tag i dig, gå inte med det. Inte ikväll.
+
+**[eld]**
+> Hör du? Nej. Du kan inte höra det. Men du kanske känner det.
+>
+> Här luktar det rök. Någon har eldat. Nyss, eller för länge sedan, jag kan inte skilja dem åt längre.
+>
+> Någon har eldat nära dig också. Det måste de ha gjort. Allt som finns här fanns hos dig först.
+>
+> Om du känner röken, gå inte mot den. Inte ikväll.
+
+**[jord]**
+> Hör du? Nej. Du kan inte höra det.
+>
+> Här rör sig marken. Inte skalv. Långsamt, som när något stort vänder sig i sömnen.
+>
+> Marken under dig är samma mark. Det måste den vara. Allt som finns här fanns hos dig först.
+>
+> Om den ger efter, stå inte kvar. Inte ikväll.
+
+## 7. Tillbaka
+*Trigger: avståndet till startpunkten krymper stadigt och är under ungefär 300 meter, eller minut tio, eller ett stopp längre än 30 sekunder efter minut nio. Kontakten får tona bort på vandrarens eget stopp. Det är kapitlets sista ljud.*
 
 **A**
-> Du ska snart hem. Jag hör det på stegen. De blir... bestämda. Man går annorlunda när man vet vart man ska.
+> Du är på väg tillbaka. Jag hör det på stegen. De blir bestämda. Man går annorlunda när man vet vart man ska.
 >
-> Det är okej. Jag vill bara att du vet en sak innan du stannar.
+> Det är okej. Bara en sak innan du stannar.
 >
 > När du stannar, stannar jag. Det där bakom mig gör det inte.
 >
-> Jag heter Vera. Kom tillbaka och gå.
+> Jag heter Vega. Kom tillbaka och gå.
 >
 > (vandraren stannar, rösten tonar bort, tystnad, sedan mycket svagt, en annan röst från andra sidan:)
 >
 > ...hon är här.
 
 **B**
-> Du ska snart hem. Jag hör det på stegen. De blir... bestämda.
+> Du är på väg tillbaka. Jag hör det på stegen. De blir bestämda.
 >
-> Det är okej. Jag ska gå och titta på vattnet. Ensam. Nej, säg inget. Du kan inte ändå.
+> Det är okej. Jag ska gå och se efter vad det var. Ensam. Nej, säg inget. Du kan inte ändå.
 >
-> Jag heter Vera. Kom tillbaka och gå.
+> Jag heter Vega. Kom tillbaka och gå.
 >
 > (vandraren stannar, rösten tonar bort, tystnad, sedan mycket svagt, en annan röst från andra sidan:)
 >
@@ -178,5 +208,5 @@ Varianter i hakparentes: `[ljust]`, `[mörkt]`, `[regn]`, `[torrt]`. Bara scen 3
 | 3 | Ljus- och vädervarianter valda vid start |
 | 4 | Tempoförändring som händelse |
 | 5 | Osäkerheten som fiktion, utan svängdetektion |
-| 6 | Ett påstående som senare kapitel kan bekräfta eller fälla |
-| 7 | Slut på vandrarens eget stopp, och fröet till tjuvlyssnandet |
+| 6 | Elementvariant vald av data eller slump, ett påstående senare kapitel kan bekräfta eller fälla |
+| 7 | "Tillbaka" läst ur avståndet till startpunkten, slut på vandrarens eget stopp, fröet till tjuvlyssnandet |
