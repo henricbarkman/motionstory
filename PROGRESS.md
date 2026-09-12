@@ -1,5 +1,10 @@
 # PROGRESS — Motionstory
 
+## 2026-09-12
+- Henric: riktning vald för toy v1. **Semi-parallell dimension** (samma värld, fast inte; Upside Down som referens men magisk realism, inte fantasy). **Perspektiv: Glimt-rösten**, en person på andra sidan som inte syns men ser glimtar av vad vandraren ser, och som själv bara hamnat där. "Platsen själv" och "Tjuvlyssnandet" som sidoelement. Ton: mystik och äventyr med inslag av skräck, skräcken inte dominerande. Senare i storyn råkar hon ut för något och vandraren måste hjälpa henne.
+- Demi: designprincip som bär allt: **du ser den här världen, du hör den andra.** Berättelsen beskriver aldrig det vandraren ser, bara det hen hör. Osäker data (kartunderlag, dålig GPS) blir rösten som ser fel eller tappar kontakten, alltså karaktär i stället för bugg. Röstens säkerhet ska följa datans säkerhet.
+- → Nästa: spelmekaniken först, storyn efter. Se svaret 09-12 (kontakt som enda mätare, tre ljudlager, beats på villkor i stället för distans).
+
 ## 2026-09-11
 - Henric: fälttestade Pilgrimsvägen. Upplevelsen var **meditativ**, inte vad han var ute efter, men han ser att grundidén kan ge olika sorters upplevelser. Tre konkreta fynd:
   1. **Glesheten.** Ungefär 40 sekunder ljud var femte minut. Kändes som en meditativ ljudbok med långa hål.
