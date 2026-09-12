@@ -70,11 +70,26 @@ self.addEventListener('message', e => {
   }
 });
 
-// Cache first for our own files. Third-party calls (weather, map) go straight
-// to the network: caching a weather answer would make Vega describe an old day.
+// Audio is cache first: it is large, it does not change without a CACHE bump,
+// and it must work with no signal. App files are network first with the cache
+// as fallback, so an edit reaches the phone on the next load instead of
+// waiting for a bump (a cached app.js hid two fixes during local testing).
+// Third-party calls (weather, map) are left alone: caching a weather answer
+// would make Vega describe an old day.
 self.addEventListener('fetch', e => {
-  if (new URL(e.request.url).origin !== self.location.origin) return;
+  const url = new URL(e.request.url);
+  if (url.origin !== self.location.origin) return;
+  if (/\.(mp3|opus)$/.test(url.pathname)) {
+    e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
+    return;
+  }
   e.respondWith(
-    caches.match(e.request).then(r => r || fetch(e.request))
+    fetch(e.request).then(res => {
+      if (res.ok) {
+        const copy = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
+      }
+      return res;
+    }).catch(() => caches.match(e.request))
   );
 });
