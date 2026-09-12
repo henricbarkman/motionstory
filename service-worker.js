@@ -1,6 +1,6 @@
 // Bump CACHE whenever audio or app files change, otherwise an installed PWA
 // keeps serving the old files forever.
-const CACHE = 'motionstory-v3';
+const CACHE = 'motionstory-v4';
 
 // Relative to the service worker scope. Absolute paths ('/audio/...') broke on
 // GitHub Pages where the app lives under /motionstory/, so addAll failed and
@@ -24,8 +24,6 @@ const ASSETS = [
   './glimt/audio.js',
   './glimt/world.js',
   './stories/glimt/kapitel-1.json',
-  // Present only where the Splice files are hosted; a miss must not fail the
-  // rest of the precache, so assets are added one by one below.
   './audio/glimt/bed/steep-dm.opus',
   './audio/glimt/fx/riser-sunbeams.opus',
 ];
