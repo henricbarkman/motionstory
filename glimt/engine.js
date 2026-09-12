@@ -233,14 +233,18 @@ export class Walk {
 
 // Lets the chapter script be written as straight-line async code:
 //   await ctx.until(s => s.contact > 0.8, { timeout: 90 })
+//   await ctx.until(s => s.contact > 0.8, { by: 150 })
 // Predicates are checked on each tick; the promise resolves true when the
-// predicate holds and false when the timeout (seconds) runs out first.
+// predicate holds and false when the deadline passes first. `timeout` is
+// seconds from when the wait began, `by` is an absolute t in seconds. Use
+// `by` for clock fallbacks, otherwise the fallback fires relative to the end
+// of the previous line and can land before the condition's own earliest time.
 export class Waiter {
   constructor() { this.pending = []; }
 
-  until(pred, { timeout = Infinity } = {}) {
+  until(pred, { timeout = Infinity, by = null } = {}) {
     return new Promise(resolve => {
-      this.pending.push({ pred, resolve, deadline: null, timeout });
+      this.pending.push({ pred, resolve, deadline: by, timeout });
     });
   }
 

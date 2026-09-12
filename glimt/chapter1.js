@@ -1,16 +1,18 @@
 // Chapter 1 as straight-line code against the engine. Scene timing follows
 // stories/glimt/kapitel-1.md: each scene fires on a condition, with a clock
-// fallback so a walk with bad GPS still gets the whole chapter.
+// fallback (`by`, absolute seconds) so a walk with bad GPS still gets the
+// whole chapter.
 //
 // ctx contract (see app.js and scripts/test_glimt.mjs):
-//   play(lineId, {clear})  -> resolves when the line has finished
-//   until(pred, {timeout}) -> true if pred held, false on timeout (seconds)
-//   hold(bool)             pause contact decay during a hold scene
-//   variant                'a' (bound to the walker) or 'b' (free)
-//   world                  {light: 'light'|'dark', rain: bool, landmark: string}
+//   play(lineId, {clear})       -> resolves when the line has finished
+//   until(pred, {timeout|by})   -> true if pred held, false on deadline
+//   hold(bool)                  pause contact decay during a hold scene
+//   state()                     current engine state
+//   variant                     'a' (bound to the walker) or 'b' (free)
+//   world                       {light: 'light'|'dark', rain: bool, landmark: string}
 //   log(msg)
-//   fadeOut(seconds)       fade bed and voice to silence
-//   playQuiet(lineId)      the other voice, faint, after the fade
+//   fadeOut(seconds)            fade bed and voice to silence
+//   playQuiet(lineId)           the other voice, faint, after the fade
 
 const MIN = 60;
 
@@ -24,7 +26,7 @@ export async function runChapter1(ctx) {
 
   // 1. Contact. Strong contact after roughly a minute of steady walking. A
   // walker whose phone never gets a good fix still hears it by 2.5 min.
-  await ctx.until(s => s.contact >= 0.8 && s.t >= 0.75 * MIN, { timeout: 2.5 * MIN });
+  await ctx.until(s => s.contact >= 0.8 && s.t >= 0.75 * MIN, { by: 2.5 * MIN });
   ctx.log('scene 1');
   await ctx.play(v('s1'));
 
@@ -32,7 +34,7 @@ export async function runChapter1(ctx) {
   // or she asks for it (a hold scene: her stopping is part of the story).
   // stillFor lags the real stop by a few seconds of speed smoothing, so seven
   // here is roughly ten seconds on the ground.
-  const stopped = await ctx.until(s => s.stillFor >= 7, { timeout: 3 * MIN - ctx.state().t });
+  const stopped = await ctx.until(s => s.stillFor >= 7, { by: 3 * MIN });
   if (stopped) {
     ctx.log('scene 2: walker stopped');
     await ctx.play(v('s2', 'stop-1'));
@@ -56,7 +58,7 @@ export async function runChapter1(ctx) {
   }
 
   // 3. Glimpse. Light and weather chosen at start.
-  await ctx.until(s => s.contact >= 0.7 && s.t >= 3.5 * MIN, { timeout: 1.5 * MIN });
+  await ctx.until(s => s.contact >= 0.7 && s.t >= 3.5 * MIN, { by: 5 * MIN });
   ctx.log(`scene 3: ${ctx.world.light}, ${ctx.world.rain ? 'rain' : 'dry'}`);
   await ctx.play('s3-1');
   await ctx.play(ctx.world.light === 'dark' ? 's3-dark' : 's3-light');
@@ -64,7 +66,7 @@ export async function runChapter1(ctx) {
   await ctx.play(ctx.world.rain ? 's3-rain' : 's3-dry');
 
   // 4. Faster. She asks; the next 60 s decide which follow-up plays.
-  await ctx.until(s => s.contact >= 0.5 && s.t >= 4.75 * MIN, { timeout: 1 * MIN });
+  await ctx.until(s => s.contact >= 0.5 && s.t >= 4.75 * MIN, { by: 5.75 * MIN });
   ctx.log('scene 4');
   await ctx.play(v('s4', '1'));
   const asked = ctx.state().t;
@@ -73,12 +75,12 @@ export async function runChapter1(ctx) {
   await ctx.play(v('s4', up ? 'up' : 'noup'));
 
   // 5. The crossing. No turn detection; she cannot know.
-  await ctx.until(s => s.contact >= 0.6 && s.t >= 6.75 * MIN, { timeout: 1.25 * MIN });
+  await ctx.until(s => s.contact >= 0.6 && s.t >= 6.75 * MIN, { by: 8 * MIN });
   ctx.log('scene 5');
   await ctx.play('s5');
 
   // 6. The landmark, from map data when available, otherwise a guess.
-  await ctx.until(s => s.contact >= 0.6 && s.t >= 8.25 * MIN, { timeout: 1 * MIN });
+  await ctx.until(s => s.contact >= 0.6 && s.t >= 8.25 * MIN, { by: 9.25 * MIN });
   ctx.log(`scene 6: ${ctx.world.landmark}`);
   await ctx.play(`s6-${ctx.world.landmark}`);
 
@@ -87,7 +89,7 @@ export async function runChapter1(ctx) {
     (s.distToStart !== null && s.distToStart < 300 && s.approaching) ||
     s.t >= 10 * MIN ||
     (s.t >= 9 * MIN && s.stillFor >= 30),
-    { timeout: 2 * MIN });
+    { by: 12 * MIN });
   ctx.log('scene 7');
   await ctx.play(v('s7'));
 
