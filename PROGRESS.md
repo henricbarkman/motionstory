@@ -5,7 +5,9 @@
 - Demi: designprincip som bär allt: **du ser den här världen, du hör den andra.** Berättelsen beskriver aldrig det vandraren ser, bara det hen hör. Osäker data (kartunderlag, dålig GPS) blir rösten som ser fel eller tappar kontakten, alltså karaktär i stället för bugg. Röstens säkerhet ska följa datans säkerhet.
 - Henric, senare samma dag: beteckning **vandraren**. Mekanik-prio fastslagen: tempo-band, tempoförändring, mörker, väder, gång/löpning, historik (1-6) byggs först. Sväng, platstyp och landmärken (8-10) behålls, osäkerheten är fiktion ("ser du en korsning? ta vänster"). **Knack på telefonen (7) hoppas över.** Ingen hörlursknapp som krav. Två varianter av "den andra" testas: bunden till vandrarens rörelser (A) och fri (B). Splice-samples finns för Platsen-lagret, Henric vill göra ljudet själv. Kapitel 1 kortare (12-15 min), senare 20-25. Både gång och löpning i v1.
 - Demi: första utkast av kapitel 1 skrivet i båda varianterna: `stories/glimt/kapitel-1.md`. Åtta scener på villkor, "Vera" som platshållarnamn, ett medvetet opålitligt påstående (vattnet) i scen 6.
-- → Nästa: Henric river i utkastet. Parallellt: motorn för kontakt (rad 1-6) i en ny toy, `glimt`, vid sidan av `pilgrimsvagen`.
+- Henric, eftermiddag: manuset duger för v1. Namn: **Vega** (ersätter Vera). Kapitlet kortat till ~10 min så tomrummet krymper. Scen 6 fick elementvarianter (vatten, vind, eld, jord). "Hem" blev "tillbaka", läst ur avståndet till startpunkten. Skickade en Splice-loop (MA_SWM_95 Atmosphere Loop Steep Dm, 20 s, -18 LUFS, sömlös) som bädd.
+- Demi: utkast 2 committat. Loopen konverterad till `audio/glimt/bed/steep-dm.opus` men **gitignorad** tills licensfrågan (publikt repo) är avgjord. Fyra röstprov för Vega renderade på v3 med kvinnliga svenska röster utan stockholmska, sida: `rostprov/`.
+- → Nästa: Henric väljer Vegas röst. Demi bygger kontaktmotorn (toy `glimt`).
 
 ## 2026-09-11
 - Henric: fälttestade Pilgrimsvägen. Upplevelsen var **meditativ**, inte vad han var ute efter, men han ser att grundidén kan ge olika sorters upplevelser. Tre konkreta fynd:
