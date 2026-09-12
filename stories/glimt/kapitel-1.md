@@ -6,7 +6,7 @@ Regler som manuset följer: hon beskriver aldrig vad vandraren ser, bara vad hon
 
 Riktlängd: **cirka tio minuter.** Hennes repliker är tillsammans ungefär fyra minuters tal, så tomrummet mellan scenerna är som mest en och en halv minut. Bädden ligger under hela tiden.
 
-Varianter i hakparentes: `[ljust]`, `[mörkt]`, `[regn]`, `[torrt]` i scen 3, och `[vatten]`, `[vind]`, `[eld]`, `[jord]` i scen 6.
+Varianter i hakparentes: `[ljust]`, `[mörkt]`, `[regn]`, `[torrt]` i scen 3, och `[vatten]`, `[skog]`, `[berg]`, `[bro]`, `[kyrkogård]` i scen 6.
 
 "Tillbaka" i scen 7 läses ur kartan: avståndet till startpunkten krymper stadigt.
 
@@ -130,8 +130,8 @@ Varianter i hakparentes: `[ljust]`, `[mörkt]`, `[regn]`, `[torrt]` i scen 3, oc
 >
 > För dig spelar det ingen roll vilket du väljer. Där du är är det säkert vilket som. Här är det inte.
 
-## 6. Elementet
-*Trigger: kontakten stark, runt minut åtta och en halv. Hon påstår något hon inte kan veta. Det ska antingen stämma eller visa sig fel i ett senare kapitel. Elementet väljs vid start: av data där det går (vatten på kartan, vind i vädret), annars slumpat.*
+## 6. Landmärket
+*Trigger: kontakten stark, runt minut åtta och en halv. Hon påstår att ett landmärke finns nära vandraren. Med kartdata väljs det som faktiskt ligger inom några hundra meter, och då har hon kusligt rätt. Utan kartdata slumpas det, och då kan hon ha fel, vilket också är tillåtet. Ett senare kapitel får bekräfta eller fälla det. Landmärkena är sådana OpenStreetMap kartlägger pålitligt.*
 
 **[vatten]**
 > Hör du? Nej. Du kan inte höra det.
@@ -142,32 +142,41 @@ Varianter i hakparentes: `[ljust]`, `[mörkt]`, `[regn]`, `[torrt]` i scen 3, oc
 >
 > Om du ser det, gå inte fram till det. Inte ikväll.
 
-**[vind]**
+**[skog]**
 > Hör du? Nej. Du kan inte höra det.
 >
-> Här blåser det. Inte som vind blåser. I stötar, som om något stort andas.
+> Här är det träd. Tätt. De rör sig fast det inte blåser.
 >
-> Det blåser hos dig också. Det måste det göra. Allt som finns här fanns hos dig först.
+> Det finns skog nära dig också. Det måste det göra. Allt som finns här fanns hos dig först.
 >
-> Om det tar tag i dig, gå inte med det. Inte ikväll.
+> Om du går in i den, gå inte långt. Inte ikväll.
 
-**[eld]**
-> Hör du? Nej. Du kan inte höra det. Men du kanske känner det.
->
-> Här luktar det rök. Någon har eldat. Nyss, eller för länge sedan, jag kan inte skilja dem åt längre.
->
-> Någon har eldat nära dig också. Det måste de ha gjort. Allt som finns här fanns hos dig först.
->
-> Om du känner röken, gå inte mot den. Inte ikväll.
-
-**[jord]**
+**[berg]**
 > Hör du? Nej. Du kan inte höra det.
 >
-> Här rör sig marken. Inte skalv. Långsamt, som när något stort vänder sig i sömnen.
+> Här stiger marken. Det finns en höjd, och något på den. Jag hör det uppifrån.
 >
-> Marken under dig är samma mark. Det måste den vara. Allt som finns här fanns hos dig först.
+> Det finns en höjd nära dig också. Det måste det göra. Allt som finns här fanns hos dig först.
 >
-> Om den ger efter, stå inte kvar. Inte ikväll.
+> Om du går upp, stanna inte på toppen. Inte ikväll.
+
+**[bro]**
+> Hör du? Nej. Du kan inte höra det.
+>
+> Här finns en bro. Jag hör ekot under den. Det låter som om den går över ingenting.
+>
+> Det finns en bro nära dig också. Det måste det göra. Allt som finns här fanns hos dig först.
+>
+> Om du går över den, stanna inte mitt på. Inte ikväll.
+
+**[kyrkogård]**
+> Hör du? Nej. Du kan inte höra det.
+>
+> Här är det tyst på ett annat sätt. Som om marken lyssnar. Jag tror att det är en kyrkogård.
+>
+> Det finns en nära dig också. Det måste det göra. Allt som finns här fanns hos dig först.
+>
+> Om du går förbi den, gå inte in. Inte ikväll.
 
 ## 7. Tillbaka
 *Trigger: avståndet till startpunkten krymper stadigt och är under ungefär 300 meter, eller minut tio, eller ett stopp längre än 30 sekunder efter minut nio. Kontakten får tona bort på vandrarens eget stopp. Det är kapitlets sista ljud.*
@@ -208,5 +217,5 @@ Varianter i hakparentes: `[ljust]`, `[mörkt]`, `[regn]`, `[torrt]` i scen 3, oc
 | 3 | Ljus- och vädervarianter valda vid start |
 | 4 | Tempoförändring som händelse |
 | 5 | Osäkerheten som fiktion, utan svängdetektion |
-| 6 | Elementvariant vald av data eller slump, ett påstående senare kapitel kan bekräfta eller fälla |
+| 6 | Landmärke valt ur kartan där data finns, annars slumpat. Ett påstående senare kapitel kan bekräfta eller fälla |
 | 7 | "Tillbaka" läst ur avståndet till startpunkten, slut på vandrarens eget stopp, fröet till tjuvlyssnandet |
