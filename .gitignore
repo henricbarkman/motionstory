@@ -3,8 +3,3 @@ __pycache__/
 *.pyc
 .venv/
 .DS_Store
-
-# Splice-samples (badd och riser), licensfraga oppen: hall utanfor det publika
-# repot tills vidare. Vegas repliker (audio/glimt/vega/) ar vara egna och committas.
-audio/glimt/bed/
-audio/glimt/fx/

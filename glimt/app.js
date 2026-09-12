@@ -116,7 +116,9 @@ async function start() {
     variant,
     world,
     state: () => walk.state(),
-    log,
+    // After stop the aborted waits let the script run on to its end; its
+    // scene marks must not land in the log after "avslutat".
+    log: msg => { if (!finished) log(msg); },
     hold: on => { walk.contact.hold = on; },
     async play(id, { clear = false } = {}) {
       if (finished) return;
@@ -227,7 +229,11 @@ function finish() {
   $('final-log').textContent = logLines.join('\n');
 }
 
+let stopping = false;
 $('stop-btn').addEventListener('click', async () => {
+  if (stopping) return;
+  stopping = true;
+  $('stop-btn').disabled = true;
   log('avslutat av vandraren');
   await mixer.fadeOut(2);
   finish();
