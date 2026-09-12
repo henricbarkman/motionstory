@@ -1,5 +1,10 @@
 # PROGRESS — Motionstory
 
+## 2026-09-13
+- Henric: hur görs spelmusik, hur ska vi göra? Demi: adaptiv musik i tre tekniker (cues och stingers, lager som mixas mot ett tillstånd, segment som byts på taktgräns) plus ducking. Förslag för Glimt: bädden blir tre stems som crossfadas mot kontakten, en stinger per scen, byten kvantiserade till loopgränsen, Tjuvlyssnandet som ett lager under en kontakttröskel, ducking under Vega. Henric gör stems och stingers, Demi bygger cue-sheet i JSON per kapitel. Första beslut: tempo och tonart för kapitel 1 (loopen går i D-moll).
+- Henric: hur hittar vi en berättarstil? Demi: stilen bor i tre val (register, mängd, regeln bakom) och avgörs i lurarna. Tre varianter av scen 4 A renderade i Vegas röst: torr och exakt, nära och talspråklig, magisk realism. Sida: `rostprov/`. Demis lutning: två med inslag av tre.
+- → Nästa: Henric lyssnar på de tre stilarna och väljer, gärna efter en promenad. Utomhustest av kapitel 1 kvarstår.
+
 ## 2026-09-12
 - Henric: riktning vald för toy v1. **Semi-parallell dimension** (samma värld, fast inte; Upside Down som referens men magisk realism, inte fantasy). **Perspektiv: Glimt-rösten**, en person på andra sidan som inte syns men ser glimtar av vad vandraren ser, och som själv bara hamnat där. "Platsen själv" och "Tjuvlyssnandet" som sidoelement. Ton: mystik och äventyr med inslag av skräck, skräcken inte dominerande. Senare i storyn råkar hon ut för något och vandraren måste hjälpa henne.
 - Demi: designprincip som bär allt: **du ser den här världen, du hör den andra.** Berättelsen beskriver aldrig det vandraren ser, bara det hen hör. Osäker data (kartunderlag, dålig GPS) blir rösten som ser fel eller tappar kontakten, alltså karaktär i stället för bugg. Röstens säkerhet ska följa datans säkerhet.
