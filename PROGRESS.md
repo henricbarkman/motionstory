@@ -9,7 +9,10 @@
 - Demi: utkast 2 committat. Loopen konverterad till `audio/glimt/bed/steep-dm.opus` men **gitignorad** tills licensfrågan (publikt repo) är avgjord. Fyra röstprov för Vega renderade på v3 med kvinnliga svenska röster utan stockholmska, sida: `rostprov/`.
 - Henric: föreslog röst `87k5z55REKK0AXyOShss` (en av Demi-rösterna i kontot) för Vega, och skickade en noise-riser (Sunbeams, 11,3 s) att lägga före första repliken, rösten in vid ca 70 % av risern.
 - Demi: rösten renderad på v3 (`rostprov/demi2.mp3`), intro-demo komponerad (bädd in, riser, Vega vid 7,9 s: `rostprov/intro-demi2.mp3`). Risern konverterad till `audio/glimt/fx/`, hela `audio/glimt/` gitignorad tills licensfrågan är avgjord.
-- → Nästa: Henric bekräftar rösten efter att ha hört intron. Demi bygger kontaktmotorn (toy `glimt`).
+- Henric: "Låter jättebra! Wow." Rösten `87k5z55REKK0AXyOShss` går som förval för Vega.
+- Demi: **toy v1 byggt**, `glimt/`. Manus i JSON, alla 33 repliker renderade på v3 (4 851 tecken). Motorn i fyra moduler: `engine.js` (tempoband, tempoökning, kontakt, avstånd till start), `chapter1.js` (kapitlet som rak asynkron kod med villkor och klockreserv), `audio.js` (Web Audio: bädd, riser, röst genom lågpass och gain som följer kontakten), `world.js` (solhöjd, open-meteo, Overpass). Simulerad genomkörning i node med fyra vandrarprofiler (idealisk, envis, löpare, dimma) i båda varianterna: alla åtta går genom scen 0–7 i rätt ordning. Två fynd ur simuleringen fixade: kort stopp missades av fartutjämningen (fönster 8 s → 4 s), och dålig GPS nollade tempot i stället för att bara sänka kontakten. Browserkörning i simläge: scen 1 vid 0:45, open-meteo svarar, overpass-api.de gav 504 så en andra spegel lades till.
+- Kvar öppet: Splice-filerna (bädd, riser) är fortfarande gitignorade, så **Pages-versionen spelar bara rösten** tills Henric bestämt hosting. Vegas repliker committas (våra egna).
+- → Nästa: Henric fälttestar Glimt kapitel 1 i variant A och B, gång och löpning. Loggen på slutskärmen kan kopieras och klistras in här. Frågor testet ska svara på: känns kontakten i stället för att synas, fungerar hållscenen, lurar landmärket.
 
 ## 2026-09-11
 - Henric: fälttestade Pilgrimsvägen. Upplevelsen var **meditativ**, inte vad han var ute efter, men han ser att grundidén kan ge olika sorters upplevelser. Tre konkreta fynd:
