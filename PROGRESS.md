@@ -7,7 +7,9 @@
 - Demi: första utkast av kapitel 1 skrivet i båda varianterna: `stories/glimt/kapitel-1.md`. Åtta scener på villkor, "Vera" som platshållarnamn, ett medvetet opålitligt påstående (vattnet) i scen 6.
 - Henric, eftermiddag: manuset duger för v1. Namn: **Vega** (ersätter Vera). Kapitlet kortat till ~10 min så tomrummet krymper. Scen 6 fick elementvarianter (vatten, vind, eld, jord). "Hem" blev "tillbaka", läst ur avståndet till startpunkten. Skickade en Splice-loop (MA_SWM_95 Atmosphere Loop Steep Dm, 20 s, -18 LUFS, sömlös) som bädd.
 - Demi: utkast 2 committat. Loopen konverterad till `audio/glimt/bed/steep-dm.opus` men **gitignorad** tills licensfrågan (publikt repo) är avgjord. Fyra röstprov för Vega renderade på v3 med kvinnliga svenska röster utan stockholmska, sida: `rostprov/`.
-- → Nästa: Henric väljer Vegas röst. Demi bygger kontaktmotorn (toy `glimt`).
+- Henric: föreslog röst `87k5z55REKK0AXyOShss` (en av Demi-rösterna i kontot) för Vega, och skickade en noise-riser (Sunbeams, 11,3 s) att lägga före första repliken, rösten in vid ca 70 % av risern.
+- Demi: rösten renderad på v3 (`rostprov/demi2.mp3`), intro-demo komponerad (bädd in, riser, Vega vid 7,9 s: `rostprov/intro-demi2.mp3`). Risern konverterad till `audio/glimt/fx/`, hela `audio/glimt/` gitignorad tills licensfrågan är avgjord.
+- → Nästa: Henric bekräftar rösten efter att ha hört intron. Demi bygger kontaktmotorn (toy `glimt`).
 
 ## 2026-09-11
 - Henric: fälttestade Pilgrimsvägen. Upplevelsen var **meditativ**, inte vad han var ute efter, men han ser att grundidén kan ge olika sorters upplevelser. Tre konkreta fynd:
