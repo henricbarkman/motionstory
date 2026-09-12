@@ -78,19 +78,41 @@ export class Mixer {
 
   // Plays a voice line. Resolves when it ends. `clear` overrides contact for
   // the duration; `at` schedules the start (AudioContext time).
+  //
+  // A wall-clock watchdog resolves the promise even if the AudioContext is
+  // suspended (screen off without a wake lock) and onended never fires, so
+  // the chapter cannot stall on one line. It resolves 'timeout' in that case
+  // so the log shows what happened.
   playVoice(buffer, { clear = false, at = null } = {}) {
     return new Promise(resolve => {
       const src = this.ctx.createBufferSource();
       src.buffer = buffer;
       src.connect(this.voiceFilter);
       if (clear) { this.clear = true; this.applyContact(); }
-      src.onended = () => {
+      const startAt = at === null ? this.ctx.currentTime : at;
+      const lead = Math.max(0, startAt - this.ctx.currentTime);
+      let done = false;
+      const finish = why => {
+        if (done) return;
+        done = true;
+        clearTimeout(watchdog);
         if (clear) { this.clear = false; this.applyContact(); }
-        resolve();
+        if (this.currentVoice === src) this.currentVoice = null;
+        resolve(why);
       };
-      src.start(at === null ? this.ctx.currentTime : at);
+      const watchdog = setTimeout(() => finish('timeout'), (lead + buffer.duration + 10) * 1000);
+      src.onended = () => finish('ended');
+      src.start(startAt);
       this.currentVoice = src;
     });
+  }
+
+  // Cuts whatever line is playing. onended fires, so the pending play resolves.
+  stopVoice() {
+    if (this.currentVoice) {
+      try { this.currentVoice.stop(); } catch (_) {}
+      this.currentVoice = null;
+    }
   }
 
   setContact(value) {

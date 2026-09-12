@@ -33,7 +33,7 @@ const ASSETS = [
 // Vega's lines come from the chapter file so the list cannot drift from it.
 async function chapterAssets() {
   try {
-    const res = await fetch('./stories/glimt/kapitel-1.json');
+    const res = await fetch('./stories/glimt/kapitel-1.json', { cache: 'reload' });
     const chapter = await res.json();
     return Object.keys(chapter.lines).map(id => `./audio/glimt/vega/${chapter.id}/${id}.mp3`);
   } catch (err) {
@@ -46,7 +46,11 @@ self.addEventListener('install', e => {
   e.waitUntil((async () => {
     const cache = await caches.open(CACHE);
     const urls = ASSETS.concat(await chapterAssets());
-    await Promise.all(urls.map(u => cache.add(u).catch(err => console.warn('SW skip', u, err.message))));
+    // cache: 'reload' bypasses the HTTP cache so a new worker never precaches
+    // a file the browser still had from the previous build.
+    await Promise.all(urls.map(u =>
+      cache.add(new Request(u, { cache: 'reload' })).catch(err => console.warn('SW skip', u, err.message))
+    ));
   })());
   self.skipWaiting();
 });

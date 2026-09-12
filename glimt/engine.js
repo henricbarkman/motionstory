@@ -198,7 +198,9 @@ export class Walk {
   fix(t, coord) {
     this.gpsSeen = true;
     this.speed = this.gps.push(t, coord);
-    this.homing.push(t, coord);
+    // Distance to start only from decent fixes. A stationary phone with 200 m
+    // accuracy drifts hundreds of metres, which would read as walking home.
+    if (coord.accuracy == null || coord.accuracy <= 50) this.homing.push(t, coord);
   }
 
   // Called on a steady clock, e.g. every 250 ms.
@@ -259,5 +261,12 @@ export class Waiter {
       else keep.push(p);
     }
     this.pending = keep;
+  }
+
+  // Ends every wait with false, so a chapter script that is no longer being
+  // ticked (the walker pressed stop) runs to its end instead of dangling.
+  abort() {
+    for (const p of this.pending) p.resolve(false);
+    this.pending = [];
   }
 }

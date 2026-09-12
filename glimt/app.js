@@ -119,12 +119,18 @@ async function start() {
     log,
     hold: on => { walk.contact.hold = on; },
     async play(id, { clear = false } = {}) {
+      if (finished) return;
       const buf = await lib.buffer(id);
       if (!buf) { log(`replik saknas: ${id}`); return; }
+      if (mixer.ctx.state === 'suspended') {
+        try { await mixer.resume(); } catch (_) {}
+        log(`ljud: kontexten var pausad (${mixer.ctx.state})`);
+      }
       const at = pendingVoiceAt; pendingVoiceAt = null;
       $('scene').textContent = SCENE_NAMES[id.slice(0, 2)] || id;
       log(`▶ ${id}`);
-      await mixer.playVoice(buf, { clear, at });
+      const why = await mixer.playVoice(buf, { clear, at });
+      if (why === 'timeout') log(`ljud: ${id} nådde aldrig slutet, går vidare`);
     },
     until: (pred, opts) => waiter.until(pred, opts),
     fadeOut: s => mixer.fadeOut(s),
@@ -212,6 +218,8 @@ function finish() {
   finished = true;
   clearInterval(tickId);
   clearInterval(simId);
+  if (waiter) waiter.abort();
+  if (mixer) mixer.stopVoice();
   if (watchId !== null) navigator.geolocation.clearWatch(watchId);
   if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
   $('walking').hidden = true;
@@ -257,6 +265,7 @@ document.addEventListener('visibilitychange', () => {
   let variant = 'a';
   try { variant = localStorage.getItem('glimt-variant') || 'a'; } catch (_) {}
   if (params.get('variant') === 'a' || params.get('variant') === 'b') variant = params.get('variant');
+  if (variant !== 'a' && variant !== 'b') variant = 'a';
   document.querySelector(`input[name="variant"][value="${variant}"]`).checked = true;
 
   try {
