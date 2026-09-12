@@ -94,6 +94,24 @@ function simulate(name, variant) {
 
 const order = ['scene 1', 'scene 2', 'scene 3', 'scene 4', 'scene 5', 'scene 6', 'scene 7', 'end'];
 
+// Manuscript target times (seconds) for the scenes that have a fixed earliest
+// moment. With good GPS they must fire within a window after that moment,
+// never before it. The fog profile is exempt: there the clock fallback rules.
+const TARGETS = { 'scene 3': 210, 'scene 4': 285, 'scene 5': 405, 'scene 6': 495 };
+const WINDOW = 45;
+
+function timingErrors(log) {
+  const errors = [];
+  for (const [label, target] of Object.entries(TARGETS)) {
+    const line = log.find(l => l.includes(label) && !l.includes('▶'));
+    if (!line) { errors.push(`${label} missing`); continue; }
+    const [m, s] = line.trim().split(/\s+/)[0].split(':').map(Number);
+    const t = m * 60 + s;
+    if (t < target || t > target + WINDOW) errors.push(`${label} at ${line.trim().split(/\s+/)[0]}, wanted ${target}-${target + WINDOW} s`);
+  }
+  return errors;
+}
+
 async function main() {
   const only = process.argv[2];
   let failures = 0;
@@ -107,9 +125,11 @@ async function main() {
       for (const line of log) {
         if (pos < order.length && line.includes(order[pos])) pos++;
       }
-      const ok = ended && pos === order.length && !log.some(l => l.startsWith('ERROR'));
+      const timing = name === 'fog' ? [] : timingErrors(log);
+      const ok = ended && pos === order.length && !log.some(l => l.startsWith('ERROR')) && timing.length === 0;
       if (!ok) failures++;
-      console.log(ok ? 'OK: all scenes in order' : `FAIL: reached ${pos}/${order.length}`);
+      console.log(ok ? 'OK: all scenes in order and on time'
+        : `FAIL: reached ${pos}/${order.length}${timing.length ? '; ' + timing.join('; ') : ''}`);
     }
   }
   process.exit(failures ? 1 : 0);
