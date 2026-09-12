@@ -3,7 +3,9 @@
 ## 2026-09-12
 - Henric: riktning vald för toy v1. **Semi-parallell dimension** (samma värld, fast inte; Upside Down som referens men magisk realism, inte fantasy). **Perspektiv: Glimt-rösten**, en person på andra sidan som inte syns men ser glimtar av vad vandraren ser, och som själv bara hamnat där. "Platsen själv" och "Tjuvlyssnandet" som sidoelement. Ton: mystik och äventyr med inslag av skräck, skräcken inte dominerande. Senare i storyn råkar hon ut för något och vandraren måste hjälpa henne.
 - Demi: designprincip som bär allt: **du ser den här världen, du hör den andra.** Berättelsen beskriver aldrig det vandraren ser, bara det hen hör. Osäker data (kartunderlag, dålig GPS) blir rösten som ser fel eller tappar kontakten, alltså karaktär i stället för bugg. Röstens säkerhet ska följa datans säkerhet.
-- → Nästa: spelmekaniken först, storyn efter. Se svaret 09-12 (kontakt som enda mätare, tre ljudlager, beats på villkor i stället för distans).
+- Henric, senare samma dag: beteckning **vandraren**. Mekanik-prio fastslagen: tempo-band, tempoförändring, mörker, väder, gång/löpning, historik (1-6) byggs först. Sväng, platstyp och landmärken (8-10) behålls, osäkerheten är fiktion ("ser du en korsning? ta vänster"). **Knack på telefonen (7) hoppas över.** Ingen hörlursknapp som krav. Två varianter av "den andra" testas: bunden till vandrarens rörelser (A) och fri (B). Splice-samples finns för Platsen-lagret, Henric vill göra ljudet själv. Kapitel 1 kortare (12-15 min), senare 20-25. Både gång och löpning i v1.
+- Demi: första utkast av kapitel 1 skrivet i båda varianterna: `stories/glimt/kapitel-1.md`. Åtta scener på villkor, "Vera" som platshållarnamn, ett medvetet opålitligt påstående (vattnet) i scen 6.
+- → Nästa: Henric river i utkastet. Parallellt: motorn för kontakt (rad 1-6) i en ny toy, `glimt`, vid sidan av `pilgrimsvagen`.
 
 ## 2026-09-11
 - Henric: fälttestade Pilgrimsvägen. Upplevelsen var **meditativ**, inte vad han var ute efter, men han ser att grundidén kan ge olika sorters upplevelser. Tre konkreta fynd:
