@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Röstprov: Vega</title>
+  <link rel="stylesheet" href="../styles.css">
+  <meta name="theme-color" content="#0a0a14">
+  <style>
+    .voices { display: flex; flex-direction: column; gap: 2rem; margin-top: 2.5rem; text-align: left; }
+    .voice h2 { font-size: 1.3rem; font-weight: 300; margin: 0 0 0.25rem; letter-spacing: 0.02em; }
+    .voice p { color: #9090a8; font-size: 0.85rem; margin: 0 0 0.75rem; line-height: 1.4; }
+    .voice audio { width: 100%; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Vega</h1>
+      <p class="subtitle">Scen 0 och början av scen 1 i fyra röster. Samma text, samma modell, samma inställningar. Bara rösten skiljer.</p>
+    </header>
+
+    <section class="voices">
+      <div class="voice">
+        <h2>Elin</h2>
+        <p>Varm, känslomässigt nyanserad.</p>
+        <audio controls preload="none" src="elin.mp3"></audio>
+      </div>
+      <div class="voice">
+        <h2>Elin, självsäker</h2>
+        <p>Distinkt, stadig rytm.</p>
+        <audio controls preload="none" src="elin-assured.mp3"></audio>
+      </div>
+      <div class="voice">
+        <h2>Karin</h2>
+        <p>Lugn, jämn, mjuk.</p>
+        <audio controls preload="none" src="karin.mp3"></audio>
+      </div>
+      <div class="voice">
+        <h2>Maria</h2>
+        <p>Varm och trygg.</p>
+        <audio controls preload="none" src="maria.mp3"></audio>
+      </div>
+    </section>
+  </main>
+  <script>
+    // Only one sample plays at a time.
+    document.querySelectorAll('audio').forEach(a => a.addEventListener('play', () => {
+      document.querySelectorAll('audio').forEach(o => { if (o !== a) o.pause(); });
+    }));
+  </script>
+</body>
+</html>
