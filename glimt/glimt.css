@@ -1,0 +1,100 @@
+/* Glimt: adds to ../styles.css. One thing carries the screen, the contact line. */
+
+body { align-items: flex-start; }
+main { padding-top: 3rem; }
+header .subtitle { margin-bottom: 2rem; }
+
+.variant {
+  border: 0;
+  padding: 0;
+  margin: 0 0 2rem;
+  text-align: left;
+  color: #9090a8;
+  font-size: 0.9rem;
+}
+.variant legend { color: #707090; padding: 0; margin-bottom: 0.5rem; }
+.variant label { display: block; padding: 0.4rem 0; cursor: pointer; }
+.variant input { margin-right: 0.6rem; accent-color: #c8d2ff; }
+
+#start-btn:disabled { color: #707090; border-color: #2a2a40; cursor: default; }
+
+details { margin-top: 2.5rem; text-align: left; color: #707090; font-size: 0.8rem; }
+details summary { cursor: pointer; }
+pre { white-space: pre-wrap; font-size: 0.75rem; line-height: 1.5; color: #9090a8; }
+
+/* The contact line. Width and glow follow the meter; nothing else moves. */
+.contact { margin: 0.5rem 0 2.5rem; }
+.contact-line {
+  height: 2px;
+  background: #1c1c30;
+  border-radius: 1px;
+  overflow: visible;
+}
+.contact-fill {
+  height: 100%;
+  width: 35%;
+  background: #c8d2ff;
+  border-radius: 1px;
+  box-shadow: 0 0 6px rgba(200, 210, 255, 0.35);
+  transition: width 0.6s ease, opacity 0.6s ease, box-shadow 0.6s ease;
+}
+.contact-caption {
+  margin-top: 0.6rem;
+  color: #707090;
+  font-size: 0.8rem;
+}
+
+.readout {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+.readout > div { display: flex; flex-direction: column; gap: 0.25rem; }
+.readout .big { font-size: 1.4rem; font-weight: 300; }
+.readout .small { color: #707090; font-size: 0.75rem; }
+
+.sim {
+  margin: 0 0 1.5rem;
+  padding: 1rem;
+  border: 1px dashed #2a2a40;
+  border-radius: 0.5rem;
+  color: #9090a8;
+  font-size: 0.8rem;
+  text-align: left;
+}
+.sim label { display: block; }
+.sim input[type="range"] { width: 100%; margin-top: 0.4rem; accent-color: #c8d2ff; }
+.sim-row { display: flex; gap: 1.5rem; align-items: center; margin-top: 0.8rem; }
+.sim-row button { padding: 0.4rem 1rem; background: transparent; border: 1px solid #45455e; color: #e6e6f0; border-radius: 1rem; }
+
+.log {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 2rem;
+  text-align: left;
+  color: #707090;
+  font-size: 0.75rem;
+  line-height: 1.6;
+  max-height: 14rem;
+  overflow-y: auto;
+}
+.log li { display: flex; gap: 0.8rem; }
+.log li time { color: #45455e; flex: 0 0 3em; }
+
+button.quiet, #copy-btn {
+  padding: 0.6rem 1.6rem;
+  background: transparent;
+  border: 1px solid #45455e;
+  color: #9090a8;
+  font-size: 0.85rem;
+  border-radius: 2rem;
+  cursor: pointer;
+}
+
+.end-word { font-size: 1.4rem; font-weight: 300; margin: 2rem 0 2rem; }
+.final-log { text-align: left; margin-top: 2rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .contact-fill { transition: none; }
+}

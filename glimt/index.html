@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Glimt, kapitel 1</title>
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="glimt.css">
+  <meta name="theme-color" content="#0a0a14">
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Glimt</h1>
+      <p class="subtitle">Kapitel 1. Ungefär tio minuter. Gå eller spring, stanna när du vill.</p>
+    </header>
+
+    <section id="start-screen">
+      <fieldset class="variant">
+        <legend>Hon är</legend>
+        <label><input type="radio" name="variant" value="a"> bunden till dina steg</label>
+        <label><input type="radio" name="variant" value="b"> fri, men tappar dig när du står still</label>
+      </fieldset>
+      <button id="start-btn" disabled>Laddar…</button>
+      <p class="hint" id="load-note">Sätt på lurarna. Tryck när du står där du vill börja.</p>
+      <details id="last-log-box" hidden>
+        <summary>Förra promenadens logg</summary>
+        <pre id="last-log"></pre>
+      </details>
+    </section>
+
+    <section id="walking" hidden>
+      <div class="contact" aria-label="Kontakt">
+        <div class="contact-line"><div id="contact-fill" class="contact-fill"></div></div>
+        <div class="contact-caption"><span id="contact-word">söker</span></div>
+      </div>
+
+      <div class="readout">
+        <div><span id="band" class="big">stilla</span><span class="small" id="speed">0,0 km/h</span></div>
+        <div><span id="elapsed" class="big">0:00</span><span class="small" id="dist">start</span></div>
+        <div><span id="scene" class="big">–</span><span class="small" id="gps">väntar på gps</span></div>
+      </div>
+
+      <div id="sim" class="sim" hidden>
+        <label>Simulerad fart <output id="sim-out">0,0 km/h</output>
+          <input id="sim-speed" type="range" min="0" max="4" step="0.1" value="0">
+        </label>
+        <div class="sim-row">
+          <button id="sim-turn" type="button">Vänd</button>
+          <label><input id="sim-fog" type="checkbox"> dålig gps</label>
+        </div>
+      </div>
+
+      <ol id="log" class="log"></ol>
+      <button id="stop-btn" class="quiet">Avsluta</button>
+    </section>
+
+    <section id="done" hidden>
+      <p class="end-word">Kom tillbaka och gå.</p>
+      <button id="copy-btn">Kopiera loggen</button>
+      <pre id="final-log" class="final-log"></pre>
+    </section>
+
+    <p class="build">Version på telefonen: <span id="build">läser…</span></p>
+  </main>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

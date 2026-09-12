@@ -1,0 +1,55 @@
+{
+  "id": "glimt-1",
+  "title": "Det är när du går jag hör dig",
+  "source": "stories/glimt/kapitel-1.md",
+  "targetMinutes": 10,
+  "voices": {
+    "vega": "87k5z55REKK0AXyOShss",
+    "other": "nEJYXtiAMFuP7hh9yoi4"
+  },
+  "lines": {
+    "s0": "[nervously] ...där. Där är du. Nej, gå inte. Vänta. Gå. Gå! Det är när du går jag hör dig.\n\n[quietly] Jag vet inte vem du är. Jag hör bara steg. Dina steg. De är det enda som låter som något härifrån.\n\nFortsätt gå. Snälla. Jag förklarar när jag hör dig ordentligt.",
+
+    "s1a": "[calmly] Så. Nu är du tydlig.\n\nJag var ute och gick. Samma som du. En helt vanlig kväll. Och så tystnade allt. Inte mörkt. [whispers] Tyst. Som om någon dragit ur en sladd.\n\n[calmly] Sedan dess har jag hört en sak. Steg. Ibland. Ikväll är de dina.\n\nDet ser ut som här. Men det är inte här.",
+    "s1b": "[calmly] Så. Nu är du tydlig.\n\nJag var ute och gick. Samma som du. Och så tystnade allt, som om någon dragit ur en sladd. Jag har gått sedan dess. Dagar, tror jag. Jag hittar inga kanter på det här stället.\n\nIbland hör jag steg. Ikväll följde jag dem. Jag tror att de är dina.\n\nDet ser ut som här. Men det är inte här.",
+
+    "s2a-stop-1": "[nervously] ...nej. Nej nej nej. Du stannade.",
+    "s2a-stop-2": "[quietly] Jag kan inte röra mig. Har jag sagt det? När du stannar, stannar jag. Jag kan inte ens vända på huvudet.",
+    "s2a-resume": "[relieved] Där. Tack. Gör inte så igen om du inte måste.",
+    "s2a-ask-1": "Stanna. Bara en sekund. Jag vill veta om det stämmer.",
+    "s2a-ask-2": "[quietly] Det stämmer. Jag stod still. Jag kunde inte ens vända på huvudet. När du stannar, stannar jag.\n\nJag kanske ber dig stanna igen. Men gör det inte annars.",
+
+    "s2b-stop-1": "[nervously] Var är du? Var... Gå. Gå så jag hör dig. Det är som en radio som tappar stationen.",
+    "s2b-resume": "[relieved] Där. Gå inte ifrån mig så där. Jag vet inte om jag hittar dig igen.",
+    "s2b-ask-1": "Stanna. Bara en sekund. Jag vill veta hur långt bort du hamnar.",
+    "s2b-ask-2": "[quietly] Långt. Du blev bara ett sus. Jag fick gå i cirklar tills jag hittade dig. Gör inte det igen om jag inte ber om det.",
+
+    "s3-1": "[quietly] Jag ser något. Inte med ögonen. Det kommer i glimtar, som när man blinkar mot solen.",
+    "s3-light": "Det är ljust hos dig. Det vet jag. Här är det aldrig riktigt ljust.",
+    "s3-dark": "Det är mörkt hos dig. Det vet jag. Här är det aldrig riktigt mörkt.",
+    "s3-2": "Och något stort till vänster om dig. Ett hus? En mur? Jag ser bara att det är mörkare där.",
+    "s3-rain": "Regnar det? Det gör det här också. [quietly] Det är det första som stämmer sedan jag kom hit.",
+    "s3-dry": "Det är torrt hos dig. Här har det regnat i... jag vet inte. Länge.",
+
+    "s4a-1": "[whispers] Något rör sig bakom mig.\n\n[nervously] Jag kan inte vända mig om. Kan du gå fortare? Om du går fortare kommer jag längre ifrån det.",
+    "s4a-up": "[relieved] Tack. Det är längre bort nu. Tror jag. [quietly] Jag hör det inte längre. Det betyder inte att det är borta.",
+    "s4a-noup": "[quietly] Det är okej. Det stannade. Jag tror att det stannade.",
+    "s4b-1": "[whispers] Något rör sig bakom mig.\n\n[nervously] Jag springer. Kan du hålla jämna steg med mig? När vi går i takt hör jag dig som om du vore bredvid.",
+    "s4b-up": "[relieved] Bra. Bra. Jag ser dig nästan.",
+    "s4b-noup": "[quietly] Jag tappade dig nästan. Det är okej. Jag saktade in. Det stannade också.",
+
+    "s5": "Ser du en korsning? Inte nu kanske. Men snart.\n\nTa vänster när du kan. Jag vet inte varför. Hela den här sidan lutar åt vänster, som om något drar.\n\n[quietly] För dig spelar det ingen roll vilket du väljer. Där du är är det säkert vilket som. Här är det inte.",
+
+    "s6-vatten": "[quietly] Hör du? Nej. Du kan inte höra det.\n\nHär låter det som vatten. Nära. Inte en älv. Något stillare.\n\nDet finns vatten nära dig också. Det måste det göra. Allt som finns här fanns hos dig först.\n\n[whispers] Om du ser det, gå inte fram till det. Inte ikväll.",
+    "s6-skog": "[quietly] Hör du? Nej. Du kan inte höra det.\n\nHär är det träd. Tätt. De rör sig fast det inte blåser.\n\nDet finns skog nära dig också. Det måste det göra. Allt som finns här fanns hos dig först.\n\n[whispers] Om du går in i den, gå inte långt. Inte ikväll.",
+    "s6-berg": "[quietly] Hör du? Nej. Du kan inte höra det.\n\nHär stiger marken. Det finns en höjd, och något på den. Jag hör det uppifrån.\n\nDet finns en höjd nära dig också. Det måste det göra. Allt som finns här fanns hos dig först.\n\n[whispers] Om du går upp, stanna inte på toppen. Inte ikväll.",
+    "s6-bro": "[quietly] Hör du? Nej. Du kan inte höra det.\n\nHär finns en bro. Jag hör ekot under den. Det låter som om den går över ingenting.\n\nDet finns en bro nära dig också. Det måste det göra. Allt som finns här fanns hos dig först.\n\n[whispers] Om du går över den, stanna inte mitt på. Inte ikväll.",
+    "s6-kyrkogard": "[quietly] Hör du? Nej. Du kan inte höra det.\n\nHär är det tyst på ett annat sätt. Som om marken lyssnar. Jag tror att det är en kyrkogård.\n\nDet finns en nära dig också. Det måste det göra. Allt som finns här fanns hos dig först.\n\n[whispers] Om du går förbi den, gå inte in. Inte ikväll.",
+
+    "s7a": "Du är på väg tillbaka. Jag hör det på stegen. De blir bestämda. Man går annorlunda när man vet vart man ska.\n\nDet är okej. Bara en sak innan du stannar.\n\n[quietly] När du stannar, stannar jag. Det där bakom mig gör det inte.\n\nJag heter Vega. Kom tillbaka och gå.",
+    "s7b": "Du är på väg tillbaka. Jag hör det på stegen. De blir bestämda.\n\nDet är okej. Jag ska gå och se efter vad det var. Ensam. Nej, säg inget. Du kan inte ändå.\n\n[quietly] Jag heter Vega. Kom tillbaka och gå.",
+
+    "s7-other": "[whispers] ...hon är här."
+  },
+  "otherVoiceLines": ["s7-other"]
+}

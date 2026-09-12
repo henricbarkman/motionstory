@@ -1,6 +1,6 @@
 // Bump CACHE whenever audio or app files change, otherwise an installed PWA
 // keeps serving the old files forever.
-const CACHE = 'motionstory-v2';
+const CACHE = 'motionstory-v3';
 
 // Relative to the service worker scope. Absolute paths ('/audio/...') broke on
 // GitHub Pages where the app lives under /motionstory/, so addAll failed and
@@ -14,15 +14,44 @@ const ASSETS = [
   './audio/pilgrimsvagen/scene-1.mp3',
   './audio/pilgrimsvagen/scene-2.mp3',
   './audio/pilgrimsvagen/scene-3.mp3',
-  './audio/pilgrimsvagen/scene-4.mp3'
+  './audio/pilgrimsvagen/scene-4.mp3',
+  './glimt/',
+  './glimt/index.html',
+  './glimt/glimt.css',
+  './glimt/app.js',
+  './glimt/engine.js',
+  './glimt/chapter1.js',
+  './glimt/audio.js',
+  './glimt/world.js',
+  './stories/glimt/kapitel-1.json',
+  // Present only where the Splice files are hosted; a miss must not fail the
+  // rest of the precache, so assets are added one by one below.
+  './audio/glimt/bed/steep-dm.opus',
+  './audio/glimt/fx/riser-sunbeams.opus',
 ];
 
+// Vega's lines come from the chapter file so the list cannot drift from it.
+async function chapterAssets() {
+  try {
+    const res = await fetch('./stories/glimt/kapitel-1.json', { cache: 'reload' });
+    const chapter = await res.json();
+    return Object.keys(chapter.lines).map(id => `./audio/glimt/vega/${chapter.id}/${id}.mp3`);
+  } catch (err) {
+    console.warn('SW could not read chapter file:', err);
+    return [];
+  }
+}
+
 self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE)
-      .then(c => c.addAll(ASSETS))
-      .catch(err => console.warn('SW precache failed:', err))
-  );
+  e.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+    const urls = ASSETS.concat(await chapterAssets());
+    // cache: 'reload' bypasses the HTTP cache so a new worker never precaches
+    // a file the browser still had from the previous build.
+    await Promise.all(urls.map(u =>
+      cache.add(new Request(u, { cache: 'reload' })).catch(err => console.warn('SW skip', u, err.message))
+    ));
+  })());
   self.skipWaiting();
 });
 
@@ -45,8 +74,26 @@ self.addEventListener('message', e => {
   }
 });
 
+// Audio is cache first: it is large, it does not change without a CACHE bump,
+// and it must work with no signal. App files are network first with the cache
+// as fallback, so an edit reaches the phone on the next load instead of
+// waiting for a bump (a cached app.js hid two fixes during local testing).
+// Third-party calls (weather, map) are left alone: caching a weather answer
+// would make Vega describe an old day.
 self.addEventListener('fetch', e => {
+  const url = new URL(e.request.url);
+  if (url.origin !== self.location.origin) return;
+  if (/\.(mp3|opus)$/.test(url.pathname)) {
+    e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
+    return;
+  }
   e.respondWith(
-    caches.match(e.request).then(r => r || fetch(e.request))
+    fetch(e.request).then(res => {
+      if (res.ok) {
+        const copy = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
+      }
+      return res;
+    }).catch(() => caches.match(e.request))
   );
 });
