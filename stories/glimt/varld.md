@@ -6,7 +6,7 @@ Vad Glimt är i HELD:s universum. Skrivet 2026-09-13 ur kvällens samtal. HELD:s
 
 Vandraren går i sin egen värld, nu. Vega är i HELD:s värld, tjugo till trettio år fram, någonstans där ute. Hon hör vandraren bara när vandraren rör sig. Du ser den här världen, du hör den andra.
 
-**Beslut (Henric):** Glimt hör till HELD:s universum. Vega är i HELD:s tid. Ingen tidsresa. Det vandraren gör påverkar hennes värld, och där ligger den politiska ambitionen. Varningen är två saker: överkonsumtionen och maktkoncentrationen.
+**Beslut (Henric):** Glimt hör till HELD:s universum. Vega är i HELD:s tid. Ingen reser i tiden. Det vandraren gör påverkar hennes värld, och där ligger den politiska ambitionen. Varningen är två saker: överkonsumtionen och maktkoncentrationen.
 
 ## Var Vega är
 
@@ -35,7 +35,7 @@ Den dåliga linjen är ljusets fördröjning. Dagboken 17: orden blir ljumma, oc
 
 **Det enda oförklarade:** hur hon kan tala tillbaka. Röret är envägs. Något har öppnat returvägen. Kandidat ur HELD: den gamla ordboken, den avskrivna koden som fortfarande kör därunder, och följeslagaren som hittade den. Det förklaras aldrig i replik.
 
-**Den enda tystnaden:** när vandraren är. Vega säger "hos dig", aldrig vilket år. Spelaren är nu och hör hur sedan låter. Fiktionen avgör det inte.
+**Tiden:** vandraren är nu, Vega är om trettio år. Ingen reser. Det som går framåt i tiden är data, och det gör den redan: det som spåras i dag ligger i någons träningsdata om trettio år. Vandrarens steg i kväll är takten hon får då. Det enda som inte går att förklara är att hennes röst kommer tillbaka, och det är samma enda sak som returvägen ovan. Vega säger aldrig vilket år det är, bara "hos dig". (Alternativet, att hela berättelsen utspelar sig i HELD:s tid med en framtida vandrare, ger samma text men kräver att spelaren låtsas vara någon annan. Valt bort 2026-09-13.)
 
 ## Vad vandraren gör
 
