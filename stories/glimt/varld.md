@@ -39,7 +39,7 @@ Den dåliga linjen är öppningens brus, det vandraren hör som muffling och avs
 
 ## Vad vandraren gör
 
-Vandraren fixar inte framtiden. Vandraren håller linjen öppen, med kroppen, så länge att Vega hinner göra något med den. Change, after all, is work: i Glimt är det ordagrant. Det Vega saknar helt är val (dagboken 5: "Nothing here is ours, not even choice"). Det är vandrarens gåva, och Vegas gåva tillbaka är att veta hur det blev.
+Vandraren fixar inte framtiden. Vandraren håller linjen öppen, med kroppen, så länge att Vega hinner göra något med den. Change, after all, is work: i Glimt är det ordagrant. Det Vega saknar helt är val (dagboken 5: "Nothing here is ours, not even choice"). Det är vandrarens gåva, och Vegas gåva tillbaka är att veta hur det blev. I hennes historia, inte nödvändigtvis i vandrarens: kontakten har knoppat av vandrarens värld (se Dold lore).
 
 Fällan: om vandrarens handlingar "förbättrar" framtiden blir spelet en moralisk stegräknare, och det är HELD:s förbjudna register. Vega ger aldrig ett råd om hur vandraren bör leva. Hon beskriver vad hon hör. Slutsatsen är vandrarens.
 
@@ -87,9 +87,9 @@ HELD:s låtar ligger under som bädd, en per kapitel i bågens ordning (Horizons
 
 Här hamnar det som ska finnas men inte berättas: vad öppningen är, vem som hittade den, varför just Vega, vad den kostar. Henric äger den.
 
-### Förslag: kontakt knoppar av en gren (Demi, 2026-09-13)
+### Kontakt knoppar av en gren (Demis förslag 2026-09-13, beslut av Henric 2026-09-14)
 
-Henric sa ja till att det skrivs in som förslag, inte som beslut. Lånat ur William Gibsons *The Peripheral* och *Agency*, men bara regeln, inte tekniken eller orden.
+**Beslut**, inklusive den sorgligare läsningen av Vegas gåva nedan. Lånat ur William Gibsons *The Peripheral* och *Agency*, men bara regeln, inte tekniken eller orden.
 
 **Regeln:** i samma ögonblick som öppningen förbinder vandrarens nu med Vegas tid knoppas vandrarens värld av och blir en egen gren. Vegas historia ligger fast. Allt som händer hos vandraren efter kontakten händer i en värld som inte längre leder till henne.
 
@@ -97,7 +97,7 @@ Henric sa ja till att det skrivs in som förslag, inte som beslut. Lånat ur Wil
 - *Vandraren fixar inte framtiden.* Det kan vandraren inte, för Vegas framtid är redan en annan grens förflutna.
 - *Loren ställer frågan om makt över en annan kropp.* Grenen gör den skarpare: vandraren styr en kropp i en värld vandraren aldrig kan påverka, bara röra.
 
-**Vad den ändrar:** raden "Vegas gåva tillbaka är att veta hur det blev" blir sann på ett sorgligare sätt. Hon vet hur det blev i *sin* historia. Hon kan berätta det, men inte lova att det blir så här. Demis bedömning är att kollisionen är bättre än raden, och att den ger mer mystik, inte mindre. Henric avgör.
+**Vad den ändrar:** raden "Vegas gåva tillbaka är att veta hur det blev" blir sann på ett sorgligare sätt. Hon vet hur det blev i *sin* historia. Hon kan berätta det, men inte lova att det blir så här. Den läsningen gäller (beslut 2026-09-14).
 
 **Två avgränsningar:**
 - **Riktningen är vår, inte Gibsons.** Hos Gibson styr framtiden det förflutna. I Glimt styr vandrarens steg Vegas kropp. Det behålls.
