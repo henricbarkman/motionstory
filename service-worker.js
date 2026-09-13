@@ -1,6 +1,6 @@
 // Bump CACHE whenever audio or app files change, otherwise an installed PWA
 // keeps serving the old files forever.
-const CACHE = 'motionstory-v5';
+const CACHE = 'motionstory-v6';
 
 // Relative to the service worker scope. Absolute paths ('/audio/...') broke on
 // GitHub Pages where the app lives under /motionstory/, so addAll failed and
@@ -21,21 +21,24 @@ const ASSETS = [
   './glimt/app.js',
   './glimt/engine.js',
   './glimt/chapter1.js',
+  './glimt/chapter2.js',
   './glimt/audio.js',
   './glimt/world.js',
   './stories/glimt/kapitel-1.json',
+  './stories/glimt/kapitel-2.json',
   './audio/glimt/bed/steep-dm.opus',
   './audio/glimt/fx/riser-sunbeams.opus',
 ];
+const CHAPTER_FILES = ['./stories/glimt/kapitel-1.json', './stories/glimt/kapitel-2.json'];
 
-// Vega's lines come from the chapter file so the list cannot drift from it.
-async function chapterAssets() {
+// Vega's lines come from the chapter files so the list cannot drift from them.
+async function chapterAssets(file) {
   try {
-    const res = await fetch('./stories/glimt/kapitel-1.json', { cache: 'reload' });
+    const res = await fetch(file, { cache: 'reload' });
     const chapter = await res.json();
     return Object.keys(chapter.lines).map(id => `./audio/glimt/vega/${chapter.id}/${id}.mp3`);
   } catch (err) {
-    console.warn('SW could not read chapter file:', err);
+    console.warn('SW could not read chapter file:', file, err);
     return [];
   }
 }
@@ -43,7 +46,8 @@ async function chapterAssets() {
 self.addEventListener('install', e => {
   e.waitUntil((async () => {
     const cache = await caches.open(CACHE);
-    const urls = ASSETS.concat(await chapterAssets());
+    const voices = await Promise.all(CHAPTER_FILES.map(chapterAssets));
+    const urls = ASSETS.concat(...voices);
     // cache: 'reload' bypasses the HTTP cache so a new worker never precaches
     // a file the browser still had from the previous build.
     await Promise.all(urls.map(u =>

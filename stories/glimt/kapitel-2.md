@@ -6,7 +6,7 @@ Stil som kapitel 1: nära och talspråklig, en dålig telefonlinje. En regel fr�
 
 Riktlängd: **cirka tolv minuter.** Kapitlet vill ha en destination, så det är någon minut längre.
 
-**Kapitlets mekanik:** vandraren kan bara svara med kroppen. Vega inför en kod: *stanna en gång för ja, fortsätt gå för nej.* Varje fråga är en hållscen (kontaktförlusten pausas i femton sekunder medan svaret väntas in). Ett stopp inom fönstret är ja. Inget stopp är nej. Det är samma stoppdetektion som i kapitel 1, bara med en mening.
+**Kapitlets mekanik:** vandraren kan bara svara med kroppen. Vega inför en kod: *stanna en gång för ja, fortsätt gå för nej.* Varje fråga är en hållscen (kontaktförlusten pausas i tjugo sekunder medan svaret väntas in). Ett stopp inom fönstret är ja. Inget stopp är nej. Det är samma stoppdetektion som i kapitel 1, bara med en mening.
 
 **Landmärket** är det som valdes i kapitel 1 (vatten, skog, berg, bro, kyrkogård), sparat mellan kapitlen. Med kartdata vet appen var det ligger och kan mäta avståndet dit. Utan kartdata ber hon vandraren välja en plats själv och stanna där.
 

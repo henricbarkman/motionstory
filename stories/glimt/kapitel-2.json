@@ -1,0 +1,67 @@
+{
+  "id": "glimt-2",
+  "title": "Stanna för ja",
+  "source": "stories/glimt/kapitel-2.md",
+  "style": "Nära och talspråklig (stil 2), en regel från andra sidan i scen 4. Lättare än kapitel 1.",
+  "targetMinutes": 12,
+  "voices": {
+    "vega": "87k5z55REKK0AXyOShss",
+    "other": "nEJYXtiAMFuP7hh9yoi4"
+  },
+  "lines": {
+    "s0": "[relieved] ...ja. Ja, det är du. Jag känner igen... nej, det kan jag ju inte. Steg låter som steg.\n\nMen det är du. Jag bestämmer att det är du.\n\n[calmly] Gå på bara. Jag har haft en idé. Jag har tänkt på den hela tiden sen sist, och det är länge. Jag vet inte hur länge. Men länge.",
+
+    "s1-1": "[calmly] Så. Hör på nu.\n\nJag hör dina steg. Bara dem. Du kan inte prata med mig, och om du gör det så hör jag det inte. Men du kan stanna. Det hör jag. [quietly] Det hör jag så tydligt att det gör ont.\n\n[calmly] Så vi gör så här. Stanna en gång för ja. Fortsätt gå för nej. Kort stopp, inte längre. Jag vill inte tappa dig.\n\nOkej. Första frågan. Hör du mig?",
+    "s1-yes": "[relieved] Ja! Ja. Okej. Okej, jag... vänta. Gå igen, gå igen. [laughs] Det funkar. Det funkar!",
+    "s1-no": "[nervously] Nej? Eller så förstod du inte. Vi provar igen. Stanna nu om du hör mig. Bara ett steg.",
+    "s1-give": "[quietly] Jag tar det som ett ja. Jag måste.",
+
+    "s2-light": "Nu en fråga som jag redan vet svaret på. Bara för att se att koden håller.\n\nDet är ljust hos dig. Stanna om det stämmer.",
+    "s2-dark": "Nu en fråga som jag redan vet svaret på. Bara för att se att koden håller.\n\nDet är mörkt hos dig. Stanna om det stämmer.",
+    "s2-yes": "[relieved] Där. Då litar jag på det. [quietly] Då litar jag på dig.",
+    "s2-no": "Du stannade inte. Antingen ljuger ljuset för mig, eller så... nej. Det stämmer. Jag vet att det stämmer. Du kanske inte ville stanna just där. Vi går vidare.",
+
+    "s3-1": "En till. Sen slutar jag, jag lovar. Eller, jag slutar inte, men jag tar paus.\n\n[quietly] Är du ensam?",
+    "s3-yes": "[quietly] Jag också. Alltså, det visste du. Men jag ville höra dig säga det. Fast du sa ingenting. Du vet vad jag menar.",
+    "s3-no": "Någon är med dig. Okej. Säg... nej, du kan inte säga. Hälsa. [laughs] Nej, gör inte det, det låter galet. Gå bara.",
+
+    "s4-vatten": "Det jag sa förra gången. Om vattnet. Att du inte skulle gå dit.\n\nJag har ändrat mig. Gå dit. Om du kan, om det inte är för långt. Jag vill veta om det finns.\n\nHär finns det. Jag går förbi varje dag. Men jag tror inte att det är... jag tror att någon har ritat det. Att allt här är ritat efter något som finns hos dig.\n\n[quietly] Det som är ritat kan suddas. Det som finns kan inte det.\n\nSå gå dit. Jag följer med. Det är ju det enda jag kan.",
+    "s4-skog": "Det jag sa förra gången. Om skogen. Att du inte skulle gå långt in.\n\nJag har ändrat mig. Gå dit. Om du kan, om det inte är för långt. Jag vill veta om den finns.\n\nHär finns den. Jag går förbi varje dag. Men jag tror inte att den är... jag tror att någon har ritat den. Att allt här är ritat efter något som finns hos dig.\n\n[quietly] Det som är ritat kan suddas. Det som finns kan inte det.\n\nSå gå dit. Jag följer med. Det är ju det enda jag kan.",
+    "s4-berg": "Det jag sa förra gången. Om höjden. Att du inte skulle stanna på toppen.\n\nJag har ändrat mig. Gå dit. Om du kan, om det inte är för långt. Jag vill veta om den finns.\n\nHär finns den. Jag går förbi varje dag. Men jag tror inte att den är... jag tror att någon har ritat den. Att allt här är ritat efter något som finns hos dig.\n\n[quietly] Det som är ritat kan suddas. Det som finns kan inte det.\n\nSå gå dit. Jag följer med. Det är ju det enda jag kan.",
+    "s4-bro": "Det jag sa förra gången. Om bron. Att du inte skulle stanna mitt på.\n\nJag har ändrat mig. Gå dit. Om du kan, om det inte är för långt. Jag vill veta om den finns.\n\nHär finns den. Jag går över varje dag. Men jag tror inte att den är... jag tror att någon har ritat den. Att allt här är ritat efter något som finns hos dig.\n\n[quietly] Det som är ritat kan suddas. Det som finns kan inte det.\n\nSå gå dit. Jag följer med. Det är ju det enda jag kan.",
+    "s4-kyrkogard": "Det jag sa förra gången. Om kyrkogården. Att du inte skulle gå in.\n\nJag har ändrat mig. Gå dit. Om du kan, om det inte är för långt. Jag vill veta om den finns.\n\nHär finns den. Jag går förbi varje dag. Men jag tror inte att den är... jag tror att någon har ritat den. Att allt här är ritat efter något som finns hos dig.\n\n[quietly] Det som är ritat kan suddas. Det som finns kan inte det.\n\nSå gå dit. Jag följer med. Det är ju det enda jag kan.",
+    "s4-nomap": "Det jag sa förra gången. Att du inte skulle gå dit. Jag har ändrat mig.\n\nJag tror att någon har ritat allt här. Efter något som finns hos dig.\n\n[quietly] Det som är ritat kan suddas. Det som finns kan inte det.\n\nJag vet inte var det ligger hos dig. Välj något själv. Något som du tror finns här också. Gå dit och stanna när du är framme. Jag följer med. Det är ju det enda jag kan.",
+
+    "s5": "Du går åt ett håll nu. Bestämt. Jag hör det.\n\nJag går också. Samma håll, tror jag. Jag vet inte, jag ser bara det jag brukar se. [quietly] Men det låter annorlunda när du har ett mål.",
+
+    "s6-vatten-q": "Är du framme? Stanna om det är vatten framför dig. Riktigt vatten.",
+    "s6-vatten-yes": "[quietly] Då finns det. Här är det bara... blankt. Det rör sig inte. Jag har kastat en sten i det en gång och den försvann utan ljud. Men hos dig finns det. Då är det inte bara ritat.",
+    "s6-vatten-no": "Inte vatten. Okej. Så det jag ser här kanske är påhittat helt. Det är... jag vet inte om det är värre eller bättre.",
+    "s6-skog-q": "Är du framme? Stanna om det är träd runt dig. Riktiga.",
+    "s6-skog-yes": "[quietly] Då finns de. Här rör de sig på samma sätt varje gång. Jag har räknat. Men hos dig finns de. Då är det inte bara ritat.",
+    "s6-skog-no": "Inga träd. Så det här är... jag vet inte vad det här är då.",
+    "s6-berg-q": "Är du framme? Stanna om du står högre än du gjorde nyss.",
+    "s6-berg-yes": "[quietly] Då finns den. Här går man upp och kommer ingenstans, det blir inte högre, det bara känns så. Men hos dig finns den. Då är det inte bara ritat.",
+    "s6-berg-no": "Ingen höjd. Då är den här bara min. Det är okej. Jag tror det.",
+    "s6-bro-q": "Är du framme? Stanna om det är vatten under bron.",
+    "s6-bro-yes": "[relieved] Då finns det! Här går den över ingenting. Men hos dig går den över vatten. [quietly] Då är det inte bara ritat. Då är det riktigt någonstans.",
+    "s6-bro-no": "Inget vatten. Så det är ingenting där heller. Okej. Då är vi lika, du och jag. Lite i alla fall.",
+    "s6-kyrkogard-q": "Är du framme? Stanna om det finns namn där. På stenarna.",
+    "s6-kyrkogard-yes": "[quietly] Då finns de. Här är stenarna tomma. Jag har tittat på varenda en. Men hos dig står det namn. Då är det inte bara ritat. Då har någon funnits.",
+    "s6-kyrkogard-no": "Inga namn. Så det är... tomt hos dig också. Vi går. Vi går härifrån.",
+    "s6-nomap-q": "Är du framme? Stanna om det du valde finns där. På riktigt.",
+    "s6-nomap-yes": "[quietly] Då finns det. Jag vet inte vad det är, men det finns hos dig. Och då finns det kanske här också, under det ritade. Då är det inte bara ritat.",
+    "s6-nomap-no": "Inte där. Okej. Vi går vidare. Det var värt att fråga.",
+
+    "s7-1": "En sak till. Det är inte en fråga.\n\nKan du springa? Bara lite. Bara så att jag... när du sprang förra gången så sprang jag också, och det var första gången på jag vet inte hur länge som mina ben gjorde något som jag ville. [quietly] Fast det var ju du som ville. Men jag ville också.",
+    "s7-up": "[relieved] Ja! Ja, där. Det... det är som att någon lånar ut sig själv. Okej. Okej. Sakta ner när du vill, jag hänger med. [laughs] Alltså, jag har ju inget val, men jag hade hängt med ändå.",
+    "s7-noup": "[quietly] Det är okej. Det var mycket begärt. Vi går. Att gå är också något.",
+
+    "s8": "[quietly] Jag ska säga en sak, och sen pratar vi inte om den.\n\nEfter förra gången, när du sprang. Någon kom och tittade på mig. Inte sa något. Bara tittade. Jag tror att de märker när jag inte går som jag ska.\n\nSå jag kanske inte ber dig springa varje gång. Men ibland. Ibland är det värt det.\n\nOkej. Nu pratar vi inte om det.",
+
+    "s9-1": "Du är på väg tillbaka. Jag hör det. Det låter som förra gången, fast lugnare.\n\nSista frågan. Och den här gången får stoppet vara långt.\n\n[quietly] Kommer du tillbaka?",
+    "s9-yes": "[laughs] Ja. Jag hörde det.",
+    "s9-other": "[whispers] ...hon frågade."
+  },
+  "otherVoiceLines": ["s9-other"]
+}
