@@ -1,5 +1,10 @@
 # PROGRESS — Motionstory
 
+## 2026-09-14
+- Henric: **riktningen fastslagen.** Glimt i samma universum som HELD men annan ton och genre: mindre sci-fi, mer mystik och äventyr, en smula lättsammare, relationen vandraren och Vega i fokus. Vega i en replika av åtminstone delar av jorden. Företaget kontrollerar bokstavligen hennes rörelser (hjärnimplantat i Neuralink-stil, eller proteser). Kopplingen är crazy tech ändå (kvantmekanik, parallella universum, ytterligare dimensioner) och den loren ska finnas utan att komma fram i berättelsen.
+- Demi: `stories/glimt/varld.md` omskrivet efter beslutet. Länken i två lager (taktsignalen som syns, öppningen som inte syns), tonavsnitt, bågen omgjord till relationens fem steg (främling, förtroende, beroende, släppande, jämlikar) med HELD:s låtar som bädd under i stället för som handling. Sektion "Dold lore" reserverad åt Henric.
+- → Nästa: utomhustest av kapitel 1 i variant A och B, gång och löpning, med hela ljudbilden. Loggen klistras in här. Sedan kapitel 2: förtroendet, och vad hon ber om första gången.
+
 ## 2026-09-13
 - Henric: hur görs spelmusik, hur ska vi göra? Demi: adaptiv musik i tre tekniker (cues och stingers, lager som mixas mot ett tillstånd, segment som byts på taktgräns) plus ducking. Förslag för Glimt: bädden blir tre stems som crossfadas mot kontakten, en stinger per scen, byten kvantiserade till loopgränsen, Tjuvlyssnandet som ett lager under en kontakttröskel, ducking under Vega. Henric gör stems och stingers, Demi bygger cue-sheet i JSON per kapitel. Första beslut: tempo och tonart för kapitel 1 (loopen går i D-moll).
 - Henric: hur hittar vi en berättarstil? Demi: stilen bor i tre val (register, mängd, regeln bakom) och avgörs i lurarna. Tre varianter av scen 4 A renderade i Vegas röst: torr och exakt, nära och talspråklig, magisk realism. Sida: `rostprov/`. Demis lutning: två med inslag av tre.
