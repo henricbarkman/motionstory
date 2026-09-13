@@ -87,6 +87,24 @@ HELD:s låtar ligger under som bädd, en per kapitel i bågens ordning (Horizons
 
 Här hamnar det som ska finnas men inte berättas: vad öppningen är, vem som hittade den, varför just Vega, vad den kostar. Henric äger den.
 
+### Förslag: kontakt knoppar av en gren (Demi, 2026-09-13)
+
+Henric sa ja till att det skrivs in som förslag, inte som beslut. Lånat ur William Gibsons *The Peripheral* och *Agency*, men bara regeln, inte tekniken eller orden.
+
+**Regeln:** i samma ögonblick som öppningen förbinder vandrarens nu med Vegas tid knoppas vandrarens värld av och blir en egen gren. Vegas historia ligger fast. Allt som händer hos vandraren efter kontakten händer i en värld som inte längre leder till henne.
+
+**Vad den förklarar som redan står i filen:**
+- *Vandraren fixar inte framtiden.* Det kan vandraren inte, för Vegas framtid är redan en annan grens förflutna.
+- *Loren ställer frågan om makt över en annan kropp.* Grenen gör den skarpare: vandraren styr en kropp i en värld vandraren aldrig kan påverka, bara röra.
+
+**Vad den ändrar:** raden "Vegas gåva tillbaka är att veta hur det blev" blir sann på ett sorgligare sätt. Hon vet hur det blev i *sin* historia. Hon kan berätta det, men inte lova att det blir så här. Demis bedömning är att kollisionen är bättre än raden, och att den ger mer mystik, inte mindre. Henric avgör.
+
+**Två avgränsningar:**
+- **Riktningen är vår, inte Gibsons.** Hos Gibson styr framtiden det förflutna. I Glimt styr vandrarens steg Vegas kropp. Det behålls.
+- **Inget namn, ingen mekanik.** Ordet "stub", servrar och hela Gibsons tekniska apparat hålls ute. Ingen i berättelsen förstår öppningen, så regeln kan finnas utan att den heter något. Det skiljer lån från fanfiction.
+
+**Passar kandidaterna:** det är en form av parallella universum, en av de riktningar Henric redan valt, och säger ingenting om vad öppningen *är*. Den kan fortfarande vara kvantmekanik eller en extra dimension.
+
 ## Öppet
 
 - Var i bågen kapitel 2 börjar, och vad hon ber om första gången.
