@@ -2,6 +2,8 @@
 // nearby. Chosen once at the start of a walk. Every lookup has a fallback so
 // a phone without network still gets a chapter, just one where Vega guesses.
 
+import { haversine } from './engine.js';
+
 export const LANDMARKS = ['vatten', 'skog', 'berg', 'bro', 'kyrkogard'];
 
 // Solar altitude in degrees. USNO low-precision algorithm, good to ~0.01°.
@@ -60,20 +62,41 @@ node["natural"="peak"](around:${radius + 200},${lat.toFixed(5)},${lon.toFixed(5)
 way["bridge"="yes"]${a};
 nwr["landuse"="cemetery"]${a};
 nwr["amenity"="grave_yard"]${a};
-);out tags 60;`;
+);out center tags 60;`;
 }
 
+// One entry per matching element: {name, lat, lon}. Nodes carry lat/lon,
+// ways and relations a `center` (asked for with `out center`). Elements
+// without either still count, with null coordinates, so a landmark is never
+// lost just because the server left the geometry out.
 export function classifyElements(elements) {
-  const found = new Set();
+  const found = [];
   for (const el of elements) {
     const t = el.tags || {};
-    if (t.natural === 'water' || /^(river|stream|canal)$/.test(t.waterway || '')) found.add('vatten');
-    if (t.natural === 'wood' || t.landuse === 'forest') found.add('skog');
-    if (t.natural === 'peak') found.add('berg');
-    if (t.bridge === 'yes') found.add('bro');
-    if (t.landuse === 'cemetery' || t.amenity === 'grave_yard') found.add('kyrkogard');
+    const names = [];
+    if (t.natural === 'water' || /^(river|stream|canal)$/.test(t.waterway || '')) names.push('vatten');
+    if (t.natural === 'wood' || t.landuse === 'forest') names.push('skog');
+    if (t.natural === 'peak') names.push('berg');
+    if (t.bridge === 'yes') names.push('bro');
+    if (t.landuse === 'cemetery' || t.amenity === 'grave_yard') names.push('kyrkogard');
+    const lat = el.lat ?? (el.center && el.center.lat) ?? null;
+    const lon = el.lon ?? (el.center && el.center.lon) ?? null;
+    for (const name of names) found.push({ name, lat, lon });
   }
-  return [...found];
+  return found;
+}
+
+// The nearest element of each kind, keyed by name. Elements without
+// coordinates are kept only when nothing with coordinates has the same name.
+export function nearestByName(found, origin) {
+  const best = {};
+  const o = { latitude: origin.lat, longitude: origin.lon };
+  for (const f of found) {
+    const dist = f.lat === null ? Infinity : haversine(o, { latitude: f.lat, longitude: f.lon });
+    const cur = best[f.name];
+    if (!cur || dist < cur.dist) best[f.name] = { lat: f.lat, lon: f.lon, dist };
+  }
+  return best;
 }
 
 // Public Overpass servers time out under load, so try two in turn. The
@@ -108,7 +131,10 @@ export function pick(list, random = Math.random) {
 
 // Fills `world` in place as answers arrive, so the chapter script can read it
 // whenever scene 3 or 6 comes around. Returns when every lookup has settled.
-export async function chooseWorld(world, { lat, lon, date = new Date(), log = () => {} } = {}) {
+//
+// `landmark` (optional) is a saved {name, lat, lon} from an earlier chapter:
+// then the map is not asked and Vega talks about the same place as last time.
+export async function chooseWorld(world, { lat, lon, date = new Date(), log = () => {}, landmark: saved = null } = {}) {
   world.light = lightFromSun(date, lat, lon);
   // Degrees above the horizon, not a temperature: the log line was read as
   // Celsius once.
@@ -123,18 +149,33 @@ export async function chooseWorld(world, { lat, lon, date = new Date(), log = ()
     log(`väder: gissar torrt (${err.message})`);
   });
 
-  const landmark = fetchLandmarks(lat, lon).then(found => {
-    if (found.length) {
-      world.landmark = pick(found);
-      world.sources.landmark = `karta: ${found.join(', ')}`;
-    } else {
-      world.sources.landmark = 'karta: inget inom 400 m, slumpat';
-    }
+  let landmark;
+  if (saved && LANDMARKS.includes(saved.name)) {
+    world.landmark = saved.name;
+    world.landmarkCoord = typeof saved.lat === 'number' && typeof saved.lon === 'number'
+      ? { lat: saved.lat, lon: saved.lon } : null;
+    world.sources.landmark = `från förra kapitlet${world.landmarkCoord ? '' : ', utan position'}`;
     log(`landmärke: ${world.landmark} (${world.sources.landmark})`);
-  }).catch(err => {
-    world.sources.landmark = `slumpat (${err.message})`;
-    log(`landmärke: ${world.landmark} slumpat (${err.message})`);
-  });
+    landmark = Promise.resolve();
+  } else {
+    landmark = fetchLandmarks(lat, lon).then(found => {
+      const nearest = nearestByName(found, { lat, lon });
+      const names = Object.keys(nearest);
+      if (names.length) {
+        world.landmark = pick(names);
+        const c = nearest[world.landmark];
+        world.landmarkCoord = c.lat === null ? null : { lat: c.lat, lon: c.lon };
+        world.sources.landmark = `karta: ${names.join(', ')}` +
+          (world.landmarkCoord ? `, ${Math.round(c.dist)} m bort` : ', utan position');
+      } else {
+        world.sources.landmark = 'karta: inget inom 400 m, slumpat';
+      }
+      log(`landmärke: ${world.landmark} (${world.sources.landmark})`);
+    }).catch(err => {
+      world.sources.landmark = `slumpat (${err.message})`;
+      log(`landmärke: ${world.landmark} slumpat (${err.message})`);
+    });
+  }
 
   await Promise.all([rain, landmark]);
   return world;
@@ -145,6 +186,7 @@ export function defaultWorld(date = new Date()) {
     light: lightFromClock(date),
     rain: false,
     landmark: pick(LANDMARKS),
+    landmarkCoord: null,
     sources: { light: 'klocka', rain: 'gissning', landmark: 'slumpat' },
   };
 }

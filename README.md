@@ -23,30 +23,36 @@ Du startar appen, stoppar telefonen i fickan, börjar gå. GPS spårar din dista
 
 Live: https://henricbarkman.github.io/motionstory/glimt/
 
-En röst från andra sidan, Vega, som bara hör vandraren när vandraren rör sig. Kapitel 1 är ungefär tio minuter. Manus: `stories/glimt/kapitel-1.md`, maskinläsbart i `kapitel-1.json`. Två varianter väljs på startskärmen: **A** där hon är bunden till vandrarens steg, **B** där hon rör sig fritt men tappar vandraren vid stillhet.
+En röst från andra sidan, Vega, som bara hör vandraren när vandraren rör sig. Världen och kopplingen till HELD: `stories/glimt/varld.md`. Kapitel väljs på startskärmen (eller `?kapitel=2`):
+
+| Kapitel | Manus | Vad det gör |
+|---|---|---|
+| 1. Det är när du går jag hör dig | `stories/glimt/kapitel-1.md` + `.json` | Ungefär tio minuter. Två varianter: **A** där hon är bunden till vandrarens steg, **B** där hon rör sig fritt men tappar vandraren vid stillhet. |
+| 2. Stanna för ja | `stories/glimt/kapitel-2.md` + `.json` | Ungefär tolv minuter. Hon inför en kod: stanna kort för ja, gå vidare för nej. Ber vandraren gå till landmärket från kapitel 1, som telefonen minns (`localStorage`). |
 
 Motorn (`glimt/`):
 
 | Fil | Gör |
 |---|---|
-| `engine.js` | Tempoband (stilla, gång, löpning över 7 km/h), tempoökning, kontaktmätare, avstånd till start. Ren logik, körs i node. |
-| `chapter1.js` | Kapitlet som rak asynkron kod: varje scen väntar på ett villkor med klockan som reserv. |
+| `engine.js` | Tempoband (stilla, gång, löpning över 7 km/h), tempoökning, kontaktmätare, avstånd till start och till ett mål. Ren logik, körs i node. |
+| `chapter1.js`, `chapter2.js` | Kapitlen som rak asynkron kod: varje scen väntar på ett villkor med klockan som reserv. Kapitel 2 har frågor med hållscen och svarsfönster. |
 | `audio.js` | Web Audio: bädd i loop, riser, Vegas röst genom lågpassfilter och gain som följer kontakten. |
-| `world.js` | Ljus (solhöjd), regn (open-meteo), landmärke inom 400 m (Overpass/OSM), alla med fallback. |
-| `app.js` | GPS, klocka, wake lock, logg. `?sim` i adressen ersätter GPS med ett fartreglage. |
+| `world.js` | Ljus (solhöjd), regn (open-meteo), landmärke inom 400 m med position (Overpass/OSM), alla med fallback. |
+| `app.js` | GPS, klocka, wake lock, logg, kapitelval. `?sim` i adressen ersätter GPS med ett fartreglage. |
 
 **Kontakt** är den enda mätaren. Rörelse höjer den, stillhet sänker den (om inte en hållscen pågår), dålig GPS-noggrannhet tar den ner till hälften. Den hörs: vid full kontakt är rösten ren och nära, vid noll är den en dov, avlägsen mumling. Samma inspelning, olika filter.
 
-Simulerad genomkörning av hela kapitlet, fyra vandrarprofiler i båda varianterna:
+Simulerad genomkörning av båda kapitlen, fyra vandrarprofiler var:
 
 ```bash
-node scripts/test_glimt.mjs
+node scripts/test_glimt.mjs            # allt
+node scripts/test_glimt.mjs 2 stubborn # ett kapitel, en profil
 ```
 
 Rendera Vegas repliker (v3, en mp3 per replik, hoppar över befintliga):
 
 ```bash
-python3 scripts/render_glimt.py stories/glimt/kapitel-1.json [--force] [--only s3-1]
+python3 scripts/render_glimt.py stories/glimt/kapitel-2.json [--force] [--only s3-1]
 ```
 
 Bädd och riser är Splice-samples och ligger i `audio/glimt/bed/` och `audio/glimt/fx/`, som är gitignorade tills licensfrågan för det publika repot är avgjord. Appen fungerar utan dem, rösten spelas ändå.

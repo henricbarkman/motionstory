@@ -1,29 +1,49 @@
-// Glimt, chapter 1: wires GPS, clock, audio and the chapter script together.
+// Glimt: wires GPS, clock, audio and the chapter script together.
 // ?sim in the URL replaces GPS with a speed slider for testing at a desk.
+// ?kapitel=2 preselects a chapter; the start screen has the same choice.
 
 import { Walk, Waiter } from './engine.js';
 import { runChapter1 } from './chapter1.js';
+import { runChapter2 } from './chapter2.js';
 import { Mixer, Library } from './audio.js';
 import { chooseWorld, defaultWorld } from './world.js';
 
 const params = new URLSearchParams(location.search);
 const SIM = params.has('sim');
 
-const CHAPTER_URL = '../stories/glimt/kapitel-1.json';
-const VOICE_BASE = '../audio/glimt/vega/glimt-1';
+const CHAPTERS = {
+  1: {
+    url: '../stories/glimt/kapitel-1.json',
+    voices: '../audio/glimt/vega/glimt-1',
+    run: runChapter1,
+    subtitle: 'Kapitel 1. Ungefär tio minuter. Gå eller spring, stanna när du vill.',
+    scenes: {
+      s0: 'Start', s1: 'Kontakt', s2: 'Stillhet', s3: 'Glimt',
+      s4: 'Fortare', s5: 'Korsningen', s6: 'Landmärket', s7: 'Tillbaka',
+    },
+  },
+  2: {
+    url: '../stories/glimt/kapitel-2.json',
+    voices: '../audio/glimt/vega/glimt-2',
+    run: runChapter2,
+    subtitle: 'Kapitel 2. Ungefär tolv minuter. Hon ställer frågor. Stanna kort för ja, gå vidare för nej.',
+    scenes: {
+      s0: 'Start', s1: 'Koden', s2: 'Kontrollfrågan', s3: 'Ensam',
+      s4: 'Dit', s5: 'På väg', s6: 'Framme', s7: 'Spring', s8: 'Det hon inte sa', s9: 'Tillbaka',
+    },
+  },
+};
 const BED_URL = '../audio/glimt/bed/steep-dm.opus';
 const RISER_URL = '../audio/glimt/fx/riser-sunbeams.opus';
 const RISER_VOICE_AT = 0.7;   // Vega enters at 70 % of the riser
+const LANDMARK_KEY = 'glimt-landmark';
 
-const SCENE_NAMES = {
-  s0: 'Start', s1: 'Kontakt', s2: 'Stillhet', s3: 'Glimt',
-  s4: 'Fortare', s5: 'Korsningen', s6: 'Landmärket', s7: 'Tillbaka',
-};
 const BAND_WORDS = { still: 'stilla', walk: 'gång', run: 'löpning' };
 
 const $ = id => document.getElementById(id);
 
 // ---------- state ----------
+let chapterNo = 1;
 let mixer, lib, chapter;
 let bedBuf = null, riserBuf = null;
 let walk, waiter, world;
@@ -52,16 +72,36 @@ function log(msg) {
   try { localStorage.setItem('glimt-last-log', logLines.join('\n')); } catch (_) {}
 }
 
+// ---------- landmark memory between chapters ----------
+function savedLandmark() {
+  try {
+    const raw = localStorage.getItem(LANDMARK_KEY);
+    if (!raw) return null;
+    const v = JSON.parse(raw);
+    return typeof v.name === 'string' ? v : null;
+  } catch (_) { return null; }
+}
+
+function saveLandmark(w) {
+  if (!w.landmark) return;
+  const c = w.landmarkCoord;
+  const v = { name: w.landmark, lat: c ? c.lat : null, lon: c ? c.lon : null, at: Date.now() };
+  try { localStorage.setItem(LANDMARK_KEY, JSON.stringify(v)); } catch (_) {}
+}
+
 // ---------- preload ----------
 async function preload() {
+  const def = CHAPTERS[chapterNo];
+  $('start-btn').disabled = true;
+  $('start-btn').textContent = 'Laddar…';
   try {
-    mixer = new Mixer();
-    chapter = await (await fetch(CHAPTER_URL)).json();
-    lib = new Library(mixer, VOICE_BASE);
+    if (!mixer) mixer = new Mixer();
+    chapter = await (await fetch(def.url)).json();
+    lib = new Library(mixer, def.voices);
 
     const [bedRaw, riserRaw, s0Raw] = await Promise.all([
-      mixer.fetchBuffer(BED_URL).catch(() => null),
-      mixer.fetchBuffer(RISER_URL).catch(() => null),
+      bedBuf ? null : mixer.fetchBuffer(BED_URL).catch(() => null),
+      riserBuf ? null : mixer.fetchBuffer(RISER_URL).catch(() => null),
       lib.load('s0'),
     ]);
     if (!s0Raw) throw new Error('första repliken saknas (s0.mp3)');
@@ -74,9 +114,16 @@ async function preload() {
     const notes = [];
     if (!bedBuf) notes.push('ingen bädd');
     if (!riserBuf) notes.push('ingen riser');
-    $('load-note').textContent = notes.length
+    let note = notes.length
       ? `Ljudet saknar ${notes.join(' och ')} på den här adressen. Rösten fungerar ändå.`
       : 'Sätt på lurarna. Tryck när du står där du vill börja.';
+    if (chapterNo === 2) {
+      const lm = savedLandmark();
+      note += lm
+        ? ' Hon minns platsen från kapitel 1.'
+        : ' Inget landmärke sparat från kapitel 1 på den här telefonen, hon får be dig välja själv.';
+    }
+    $('load-note').textContent = note;
     $('start-btn').textContent = 'Börja gå';
     $('start-btn').disabled = false;
   } catch (err) {
@@ -86,6 +133,7 @@ async function preload() {
 
 // ---------- start ----------
 async function start() {
+  const def = CHAPTERS[chapterNo];
   const variant = document.querySelector('input[name="variant"]:checked').value;
   try { localStorage.setItem('glimt-variant', variant); } catch (_) {}
 
@@ -99,7 +147,7 @@ async function start() {
   waiter = new Waiter();
   world = defaultWorld();
 
-  log(`start, variant ${variant.toUpperCase()}${SIM ? ', simulerad' : ''}`);
+  log(`start, kapitel ${chapterNo}, variant ${variant.toUpperCase()}${SIM ? ', simulerad' : ''}`);
   window.glimt = { mixer, walk, world, lib };   // for debugging from the console
 
   if (bedBuf) mixer.startBed(bedBuf);
@@ -129,7 +177,7 @@ async function start() {
         log(`ljud: kontexten var pausad (${mixer.ctx.state})`);
       }
       const at = pendingVoiceAt; pendingVoiceAt = null;
-      $('scene').textContent = SCENE_NAMES[id.slice(0, 2)] || id;
+      $('scene').textContent = def.scenes[id.slice(0, 2)] || id;
       log(`▶ ${id}`);
       const why = await mixer.playVoice(buf, { clear, at });
       if (why === 'timeout') log(`ljud: ${id} nådde aldrig slutet, går vidare`);
@@ -143,11 +191,24 @@ async function start() {
   };
 
   try {
-    await runChapter1(ctx);
+    await def.run(ctx);
   } catch (err) {
     log('fel: ' + err.message);
   }
   finish();
+}
+
+// Runs once the first position is known. Chapter 1 asks the map and
+// remembers the landmark; chapter 2 reuses it and walks towards it.
+function onFirstPosition(lat, lon) {
+  const opts = { lat, lon, log };
+  if (chapterNo === 2) opts.landmark = savedLandmark();
+  chooseWorld(world, opts).then(() => {
+    if (chapterNo === 1) saveLandmark(world);
+    if (world.landmarkCoord) {
+      walk.setTarget({ latitude: world.landmarkCoord.lat, longitude: world.landmarkCoord.lon });
+    }
+  }).catch(err => log('omvärld: ' + err.message));
 }
 
 function tick() {
@@ -170,8 +231,10 @@ function render(s) {
   $('band').textContent = BAND_WORDS[s.band];
   $('speed').textContent = kmh(s.speed);
   $('elapsed').textContent = fmt(s.t);
-  $('dist').textContent = s.distToStart === null ? 'start' :
+  let dist = s.distToStart === null ? 'start' :
     `${Math.round(s.distToStart)} m från start${s.approaching ? ', på väg tillbaka' : ''}`;
+  if (s.distToTarget !== null) dist += `, ${Math.round(s.distToTarget)} m till ${world.landmark}`;
+  $('dist').textContent = dist;
   $('gps').textContent = !s.gpsSeen ? 'väntar på gps' :
     s.accuracy === null ? 'gps' : `gps ±${Math.round(s.accuracy)} m`;
 }
@@ -179,14 +242,14 @@ function render(s) {
 // ---------- GPS ----------
 function startGps() {
   if (!navigator.geolocation) { log('gps stöds inte'); return; }
-  let worldChosen = false;
+  let first = true;
   watchId = navigator.geolocation.watchPosition(pos => {
     const c = pos.coords;
     walk.fix(now(), c);
-    if (!worldChosen) {
-      worldChosen = true;
+    if (first) {
+      first = false;
       log(`gps: första fix ±${Math.round(c.accuracy)} m`);
-      chooseWorld(world, { lat: c.latitude, lon: c.longitude, log }).catch(err => log('omvärld: ' + err.message));
+      onFirstPosition(c.latitude, c.longitude);
     }
   }, err => {
     log('gps-fel: ' + err.message);
@@ -200,16 +263,16 @@ function startSim() {
   const out = $('sim-out');
   speedEl.addEventListener('input', () => { out.textContent = kmh(parseFloat(speedEl.value)); });
   $('sim-turn').addEventListener('click', () => { heading += Math.PI; log('sim: vänder'); });
-  let worldChosen = false;
+  let first = true;
   simId = setInterval(() => {
     const v = parseFloat(speedEl.value);
     const accuracy = $('sim-fog').checked ? 80 : 8;
     lat += (v * Math.cos(heading)) / 111320;
     lon += (v * Math.sin(heading)) / (111320 * Math.cos(lat * Math.PI / 180));
     walk.fix(now(), { latitude: lat, longitude: lon, accuracy, speed: v });
-    if (!worldChosen) {
-      worldChosen = true;
-      chooseWorld(world, { lat, lon, log }).catch(err => log('omvärld: ' + err.message));
+    if (first) {
+      first = false;
+      onFirstPosition(lat, lon);
     }
   }, 1000);
 }
@@ -267,6 +330,15 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // ---------- start screen ----------
+function selectChapter(n) {
+  chapterNo = CHAPTERS[n] ? n : 1;
+  try { localStorage.setItem('glimt-chapter', String(chapterNo)); } catch (_) {}
+  document.querySelector(`input[name="chapter"][value="${chapterNo}"]`).checked = true;
+  $('subtitle').textContent = CHAPTERS[chapterNo].subtitle;
+  document.title = `Glimt, kapitel ${chapterNo}`;
+  preload();
+}
+
 (function initStartScreen() {
   let variant = 'a';
   try { variant = localStorage.getItem('glimt-variant') || 'a'; } catch (_) {}
@@ -274,13 +346,20 @@ document.addEventListener('visibilitychange', () => {
   if (variant !== 'a' && variant !== 'b') variant = 'a';
   document.querySelector(`input[name="variant"][value="${variant}"]`).checked = true;
 
+  let ch = 1;
+  try { ch = parseInt(localStorage.getItem('glimt-chapter') || '1', 10); } catch (_) {}
+  if (params.has('kapitel')) ch = parseInt(params.get('kapitel'), 10);
+  document.querySelectorAll('input[name="chapter"]').forEach(el => {
+    el.addEventListener('change', () => selectChapter(parseInt(el.value, 10)));
+  });
+
   try {
     const last = localStorage.getItem('glimt-last-log');
     if (last) { $('last-log').textContent = last; $('last-log-box').hidden = false; }
   } catch (_) {}
 
   $('start-btn').addEventListener('click', start);
-  preload();
+  selectChapter(ch);
 })();
 
 // ---------- build stamp (same scheme as the root page) ----------

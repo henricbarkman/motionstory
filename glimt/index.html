@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Glimt, kapitel 1</title>
+  <title>Glimt</title>
   <link rel="stylesheet" href="../styles.css">
   <link rel="stylesheet" href="glimt.css">
   <meta name="theme-color" content="#0a0a14">
@@ -12,10 +12,15 @@
   <main>
     <header>
       <h1>Glimt</h1>
-      <p class="subtitle">Kapitel 1. Ungefär tio minuter. Gå eller spring, stanna när du vill.</p>
+      <p class="subtitle" id="subtitle">Kapitel 1. Ungefär tio minuter. Gå eller spring, stanna när du vill.</p>
     </header>
 
     <section id="start-screen">
+      <fieldset class="variant">
+        <legend>Kapitel</legend>
+        <label><input type="radio" name="chapter" value="1"> 1. Det är när du går jag hör dig</label>
+        <label><input type="radio" name="chapter" value="2"> 2. Stanna för ja</label>
+      </fieldset>
       <fieldset class="variant">
         <legend>Hon är</legend>
         <label><input type="radio" name="variant" value="a"> bunden till dina steg</label>

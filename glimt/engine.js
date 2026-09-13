@@ -114,9 +114,11 @@ export class Contact {
   }
 }
 
-// Distance to the start position, and whether it is shrinking.
+// Distance to an anchor, and whether it is shrinking. Without an anchor the
+// first fix becomes one (distance to start); with one it is a target such as
+// the landmark from the previous chapter.
 export class Homing {
-  constructor() { this.samples = []; this.start = null; }
+  constructor(anchor = null) { this.samples = []; this.start = anchor; }
 
   push(t, coord) {
     if (!this.start) this.start = coord;
@@ -187,11 +189,18 @@ export class Walk {
     this.tempo = new Tempo();
     this.contact = new Contact(opts.initialContact ?? 0.35);
     this.homing = new Homing();
+    this.target = null;
     this.gps = new GpsSpeed();
     this.t = 0;
     this.lastTick = 0;
     this.speed = 0;
     this.gpsSeen = false;
+  }
+
+  // A place the chapter wants the walker to reach. Can be set late (the map
+  // answer arrives seconds after start); distance is null until then.
+  setTarget(coord) {
+    this.target = coord ? new Homing({ latitude: coord.latitude, longitude: coord.longitude }) : null;
   }
 
   // Called for every GPS fix (or simulated one).
@@ -200,7 +209,10 @@ export class Walk {
     this.speed = this.gps.push(t, coord);
     // Distance to start only from decent fixes. A stationary phone with 200 m
     // accuracy drifts hundreds of metres, which would read as walking home.
-    if (coord.accuracy == null || coord.accuracy <= 50) this.homing.push(t, coord);
+    if (coord.accuracy == null || coord.accuracy <= 50) {
+      this.homing.push(t, coord);
+      if (this.target) this.target.push(t, coord);
+    }
   }
 
   // Called on a steady clock, e.g. every 250 ms.
@@ -228,6 +240,8 @@ export class Walk {
       accuracy: this.gps.accuracy,
       distToStart: this.homing.distance(),
       approaching: this.homing.approaching(t),
+      distToTarget: this.target ? this.target.distance() : null,
+      approachingTarget: this.target ? this.target.approaching(t) : false,
       gpsSeen: this.gpsSeen,
     };
   }
