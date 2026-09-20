@@ -1,5 +1,10 @@
 # PROGRESS — Motionstory
 
+## 2026-09-20
+- Henric: inte hunnit testa utomhus än. Vill spåna på själva storyn ihop, och frågade hur proffs skriver fram en story.
+- Demi: gick igenom hantverkets verktyg (en mening först, slutet tidigt, vill kontra behöver, "därför och men", plantera och skörda, stigande insats) och läste Glimt genom dem. Tre luckor: slutet, Vegas yttre mål, motståndet och priset. Plus åtta saker som planterats i kapitel 1 och 2 utan att vara bestämda. Allt inskrivet i `stories/glimt/varld.md` under Öppet. Bud på slutet lagt, inte beslutat: vandraren står still och hör henne ändå, för att hon gjort taktsignalen till sin egen linje ut.
+- → Nästa: Henrics svar på budet och på vad Vega vill ut ur och till. Därefter kapitel 3 till 5 baklänges från slutet. Utomhustestet av kapitel 1 och 2 kvarstår.
+
 ## 2026-09-14
 - Henric: **riktningen fastslagen.** Glimt i samma universum som HELD men annan ton och genre: mindre sci-fi, mer mystik och äventyr, en smula lättsammare, relationen vandraren och Vega i fokus. Vega i en replika av åtminstone delar av jorden. Företaget kontrollerar bokstavligen hennes rörelser (hjärnimplantat i Neuralink-stil, eller proteser). Kopplingen är crazy tech ändå (kvantmekanik, parallella universum, ytterligare dimensioner) och den loren ska finnas utan att komma fram i berättelsen.
 - Demi: `stories/glimt/varld.md` omskrivet efter beslutet. Länken i två lager (taktsignalen som syns, öppningen som inte syns), tonavsnitt, bågen omgjord till relationens fem steg (främling, förtroende, beroende, släppande, jämlikar) med HELD:s låtar som bädd under i stället för som handling. Sektion "Dold lore" reserverad åt Henric.

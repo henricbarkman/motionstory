@@ -107,5 +107,25 @@ Här hamnar det som ska finnas men inte berättas: vad öppningen är, vem som h
 
 ## Öppet
 
-- Var i bågen kapitel 2 börjar, och vad hon ber om första gången.
 - En tredje sak Henric glömde 2026-09-13.
+
+### Storyarbete (påbörjat 2026-09-20)
+
+Glimt läst med hantverkets vanliga frågor: slutet först, ett yttre mål bredvid det inre, motstånd som kostar mer för varje steg. Det här saknas:
+
+- **Slutet.** Bågens steg 5 är ett tillstånd, inget slut. Vad är "ett annat skäl än förut"? Demis bud, inte beslutat: slutet svarar på kapitel 1:s titel, omvänt. Vandraren står still och hör henne ändå, för att hon lärt sig skriva i röret själv och gjort taktsignalen till sin linje ut. Takt, lyra, sång.
+- **Vegas yttre mål.** Relationen är den inre storyn. Det saknas en yttre: något konkret hon försöker göra, som driver kapitel 3 till 5. Dagboken säger att hon vill gå ut. Ut ur vad, och till vad?
+- **Motståndet och priset.** Ägarna får aldrig ett ansikte, så de märks som följder. Vad kan hon förlora, och vad kostar varje steg mer än det förra?
+
+Planterat i kapitel 1 och 2 utan att vi bestämt vad det är:
+
+| Planterat | Var | Vad vi vet |
+|---|---|---|
+| Kvällen då "allt tystnade, som när någon drar ur sladden" | 1, scen 1 | Inget bestämt. |
+| Det bakom henne som "försöker låta som steg" och inte stannar när vandraren stannar | 1, scen 4 och 7 | Taktsignalens syntetiska fotsteg (tabellen under Var och när Vega är). Vad som händer när det hinner ifatt är öppet. |
+| "Hela den här sidan lutar åt vänster, som om något drar" | 1, scen 5 | Inget bestämt. Kandidat till det yttre målet. |
+| "Gå inte dit. Inte ikväll." om landmärket | 1, scen 6 | Hon ändrar sig i kapitel 2. Varför hon varnade är aldrig sagt. |
+| Den andra rösten: "hon är här", "hon frågade" | 1 och 2, sista repliken | Kan vara följeslagaren. Varför de väntade på att hon skulle fråga är öppet. |
+| "Det som är ritat kan suddas" | 2, scen 4 | Ett hot som ännu inte använts. |
+| "Någon kom och tittade på mig. De märker när jag inte går som jag ska." | 2, scen 8 | Priset för att springa. Fröet till kapitel 3. |
+| Namnet Vega, stjärnan i Lyran | 1, scen 7 | Se Vega ovan. Ska betyda något i ett senare kapitel. |
