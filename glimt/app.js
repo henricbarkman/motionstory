@@ -39,6 +39,7 @@ const RISER_VOICE_AT = 0.7;   // Vega enters at 70 % of the riser
 const LANDMARK_KEY = 'glimt-landmark';
 
 const BAND_WORDS = { still: 'stilla', walk: 'gång', run: 'löpning' };
+const SPEED_SOURCE = { doppler: 'satellitfart', distance: 'räknat ur avstånd' };
 
 const $ = id => document.getElementById(id);
 
@@ -53,6 +54,11 @@ let wakeLock = null;
 let pendingVoiceAt = null;
 const logLines = [];
 let finished = false;
+// Every GPS fix time, for the half-minute line in the log. The first field
+// test read a walker as still and the log could not say why.
+let fixTimes = [];
+let lastGpsLog = 0;
+const GPS_LOG_EVERY = 30;
 
 const now = () => (performance.now() - t0) / 1000;
 const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
@@ -216,6 +222,20 @@ function tick() {
   waiter.check(s);
   mixer.setContact(s.contact);
   render(s);
+  if (s.t - lastGpsLog >= GPS_LOG_EVERY) {
+    lastGpsLog = s.t;
+    logGps(s);
+  }
+}
+
+// One line per half minute: how often the phone reported, how well, and what
+// the engine made of it. Enough to tell sparse fixes from a walker who stood.
+function logGps(s) {
+  fixTimes = fixTimes.filter(x => x >= s.t - GPS_LOG_EVERY);
+  const n = fixTimes.length;
+  const acc = s.accuracy === null ? '' : `, ±${Math.round(s.accuracy)} m`;
+  const src = SPEED_SOURCE[walk.gps.source] ? ` (${SPEED_SOURCE[walk.gps.source]})` : '';
+  log(`gps: ${n} ${n === 1 ? 'position' : 'positioner'} på ${GPS_LOG_EVERY} s${acc}, ${kmh(s.speed)}${src}, ${BAND_WORDS[s.band]}`);
 }
 
 function render(s) {
@@ -245,6 +265,7 @@ function startGps() {
   let first = true;
   watchId = navigator.geolocation.watchPosition(pos => {
     const c = pos.coords;
+    fixTimes.push(now());
     walk.fix(now(), c);
     if (first) {
       first = false;
@@ -269,6 +290,7 @@ function startSim() {
     const accuracy = $('sim-fog').checked ? 80 : 8;
     lat += (v * Math.cos(heading)) / 111320;
     lon += (v * Math.sin(heading)) / (111320 * Math.cos(lat * Math.PI / 180));
+    fixTimes.push(now());
     walk.fix(now(), { latitude: lat, longitude: lon, accuracy, speed: v });
     if (first) {
       first = false;

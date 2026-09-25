@@ -143,10 +143,19 @@ export class Homing {
 }
 
 // Turns raw fixes into a smoothed speed. Uses coords.speed when the device
-// gives one, otherwise distance over the last ~8 s. Fixes with poor accuracy
-// still count as "seen" (for the contact cap) but do not move the estimate.
+// gives one, otherwise distance between the kept fixes. Fixes with poor
+// accuracy still count as "seen" (for the contact cap) but do not move the
+// estimate. `source` says which of the two the last value came from.
+//
+// Phones do not all report once a second. A coarse fix (±70 m, before the
+// satellites lock) can come every five or ten seconds, and the first field
+// test read a walker as standing still for its whole minute and a half
+// because the window then never held more than one fix.
+const MAX_GAP = 20;   // two fixes further apart say nothing about the pace now
+const JUMP_MS = 8;    // implied speed above this, beyond 60 m, is jitter
+
 export class GpsSpeed {
-  constructor() { this.fixes = []; this.accuracy = null; this.last = null; }
+  constructor() { this.fixes = []; this.accuracy = null; this.last = null; this.lastT = null; this.source = null; }
 
   push(t, coord) {
     this.accuracy = coord.accuracy ?? null;
@@ -154,26 +163,36 @@ export class GpsSpeed {
     // a Doppler speed from a 80 m fix is usually fine, and treating fog as
     // stillness would make Vega say the walker stopped while they walk on.
     if (this.accuracy !== null && this.accuracy > 150) return this.value();
-    if (this.last && haversine(this.last, coord) > 60) {
-      // A single jump this size at walking pace is jitter, not movement.
+    // A 60 m jump in one second is jitter; 60 m in twenty is a runner.
+    if (this.last && haversine(this.last, coord) > Math.max(60, JUMP_MS * (t - this.lastT))) {
       this.last = coord;
+      this.lastT = t;
       return this.value();
     }
     this.last = coord;
+    this.lastT = t;
     this.fixes.push({ t, coord, speed: coord.speed });
     // Four seconds: long enough to smooth one bad fix, short enough that a
-    // stop shows within a few seconds instead of ten.
-    while (this.fixes.length > 1 && this.fixes[0].t < t - 4) this.fixes.shift();
+    // stop shows within a few seconds instead of ten. Never fewer than two
+    // fixes, though, unless they are too far apart to mean anything.
+    while (this.fixes.length > 2 && this.fixes[0].t < t - 4) this.fixes.shift();
+    while (this.fixes.length > 1 && this.fixes[0].t < t - MAX_GAP) this.fixes.shift();
     return this.value();
   }
 
   value() {
-    if (this.fixes.length === 0) return 0;
-    const withSpeed = this.fixes.filter(f => typeof f.speed === 'number' && f.speed >= 0);
-    if (withSpeed.length >= 2) {
+    if (this.fixes.length === 0) { this.source = null; return 0; }
+    // Doppler speed is measured, not derived, so one fix is enough. Only the
+    // last four seconds count: with sparse fixes an older one would hold a
+    // stop back by a whole interval.
+    const newest = this.fixes[this.fixes.length - 1].t;
+    const withSpeed = this.fixes.filter(f => f.t >= newest - 4 && typeof f.speed === 'number' && f.speed >= 0);
+    if (withSpeed.length) {
+      this.source = 'doppler';
       return withSpeed.reduce((s, f) => s + f.speed, 0) / withSpeed.length;
     }
-    if (this.fixes.length < 2) return 0;
+    if (this.fixes.length < 2) { this.source = null; return 0; }
+    this.source = 'distance';
     const a = this.fixes[0], b = this.fixes[this.fixes.length - 1];
     const dt = b.t - a.t;
     if (dt <= 0) return 0;
