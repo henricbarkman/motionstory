@@ -503,6 +503,9 @@ $('stop-btn').addEventListener('click', async () => {
   stopping = true;
   $('stop-btn').disabled = true;
   log('avslutat av vandraren');
+  // The lab's sounds go past the faded buses, straight to master: stop them
+  // now, or a beat plays on at full level while Vega fades (seen in Chrome).
+  if (sfx) sfx.close();
   await mixer.fadeOut(2);
   finish();
 });
