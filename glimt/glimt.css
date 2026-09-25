@@ -65,7 +65,7 @@ pre { white-space: pre-wrap; font-size: 0.75rem; line-height: 1.5; color: #9090a
 }
 .sim label { display: block; }
 .sim input[type="range"] { width: 100%; margin-top: 0.4rem; accent-color: #c8d2ff; }
-.sim-row { display: flex; gap: 1.5rem; align-items: center; margin-top: 0.8rem; }
+.sim-row { display: flex; flex-wrap: wrap; gap: 0.8rem 1.2rem; align-items: center; margin-top: 0.8rem; }
 .sim-row button { padding: 0.4rem 1rem; background: transparent; border: 1px solid #45455e; color: #e6e6f0; border-radius: 1rem; }
 
 .log {
@@ -94,6 +94,27 @@ button.quiet, #copy-btn {
 
 .end-word { font-size: 1.4rem; font-weight: 300; margin: 2rem 0 2rem; }
 .final-log { text-align: left; margin-top: 2rem; }
+
+/* The lab's end screen: one row per station, the verdict is the walker's. */
+.lab-results { text-align: left; margin-bottom: 2rem; }
+.lab-list { list-style: none; padding: 0; margin: 0 0 1rem; }
+.lab-list li { padding: 1rem 0; border-bottom: 1px solid #1c1c30; }
+.lab-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
+.lab-head strong { font-weight: 400; font-size: 1.05rem; color: #e6e6f0; }
+.lab-outcome { font-size: 0.75rem; color: #707090; }
+.lab-outcome.lab-klarade { color: #c8d2ff; }
+.lab-detail { margin: 0.4rem 0 0.8rem; color: #707090; font-size: 0.75rem; line-height: 1.5; }
+.lab-rate { display: flex; gap: 0.6rem; }
+.lab-rate button {
+  padding: 0.45rem 1.3rem;
+  background: transparent;
+  border: 1px solid #45455e;
+  color: #9090a8;
+  font-size: 0.85rem;
+  border-radius: 2rem;
+  cursor: pointer;
+}
+.lab-rate button[aria-pressed="true"] { border-color: #c8d2ff; color: #0a0a14; background: #c8d2ff; }
 
 @media (prefers-reduced-motion: reduce) {
   .contact-fill { transition: none; }

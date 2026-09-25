@@ -20,8 +20,9 @@
         <legend>Kapitel</legend>
         <label><input type="radio" name="chapter" value="1"> 1. Det är när du går jag hör dig</label>
         <label><input type="radio" name="chapter" value="2"> 2. Stanna för ja</label>
+        <label><input type="radio" name="chapter" value="labb1"> Labb 1. Åtta banor, en mekanik i taget</label>
       </fieldset>
-      <fieldset class="variant">
+      <fieldset class="variant" id="variant-box">
         <legend>Hon är</legend>
         <label><input type="radio" name="variant" value="a"> bunden till dina steg</label>
         <label><input type="radio" name="variant" value="b"> fri, men tappar dig när du står still</label>
@@ -52,6 +53,9 @@
         </label>
         <div class="sim-row">
           <button id="sim-turn" type="button">Vänd</button>
+          <button id="sim-left" type="button">Vänster</button>
+          <button id="sim-right" type="button">Höger</button>
+          <button id="sim-knock" type="button">Knacka</button>
           <label><input id="sim-fog" type="checkbox"> dålig gps</label>
         </div>
       </div>
@@ -61,7 +65,11 @@
     </section>
 
     <section id="done" hidden>
-      <p class="end-word">Kom tillbaka och gå.</p>
+      <p class="end-word" id="end-word">Kom tillbaka och gå.</p>
+      <div id="lab-results" class="lab-results" hidden>
+        <ol id="lab-list" class="lab-list"></ol>
+        <p class="hint">Ditt svar hamnar i loggen. Kopiera den och skicka till Demi.</p>
+      </div>
       <button id="copy-btn">Kopiera loggen</button>
       <pre id="final-log" class="final-log"></pre>
     </section>
