@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Runs the mechanics lab (glimt/lab.js) against the engine with simulated
-// walkers and a fake clock. No audio, no DOM.
+// walkers and a fake clock. The sounds are the real glimt/synth.js on a
+// strict stand-in for Web Audio (scripts/fake_audio.mjs); no DOM.
 //
 // Every station must tell a walker who does what Vega asks from one who does
 // not: the `pass` walkers must clear each station and the `fail` walkers must
@@ -10,12 +11,15 @@
 //   node scripts/test_lab.mjs                 # both labs, every profile, 3 runs each
 //   node scripts/test_lab.mjs 1 pass          # lab 1, one profile
 //   RUNS=10 VERBOSE=1 node scripts/test_lab.mjs 2
+//   node scripts/test_lab.mjs 1 abort         # press stop inside every station
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { Walk, Waiter, cadencePace, bearing } from '../glimt/engine.js';
 import { runLab, labHelpers, LABS } from '../glimt/lab.js';
+import { Synth } from '../glimt/synth.js';
+import { makeClock, FakeAudioContext } from './fake_audio.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const RUNS = parseInt(process.env.RUNS || '3', 10);
@@ -43,6 +47,11 @@ const PROFILES = {
   'fail-field': { kind: 'fail', gps: FIELD_GPS, steps: true },
   // No accelerometer at all: the step-based stations must step aside.
   'gps-only': { kind: 'pass', gps: GOOD_GPS, steps: false },
+  // Presses stop 3, 20 and 45 seconds into each station in turn, one run
+  // each: in the intro line, early, and deep in. Nothing may sound on after
+  // it, and nothing new may start: a review found a chime created after the
+  // stop that pinged until the tab was closed (2026-09-25).
+  abort: { kind: 'pass', gps: GOOD_GPS, steps: true, abort: [3, 20, 45] },
 };
 
 // What each profile must get. `null` = reported, not asserted: on the field
@@ -54,6 +63,7 @@ const EXPECT = {
   'pass-field': id => ['vagval', 'kompass', 'vandom', 'tassa'].includes(id) ? null : 'klarade',
   'fail-field': id => ['vagval', 'kompass', 'vandom', 'tassa'].includes(id) ? null : 'missade',
   'gps-only': id => ['takten', 'tassa'].includes(id) ? 'hoppade' : null,
+  abort: () => null,
 };
 
 // Smallest whole cadence whose stride model reaches `speed`; the same
@@ -149,7 +159,7 @@ function makeWalker(kind, env) {
   return w;
 }
 
-function simulate(labNo, name, run) {
+function simulate(labNo, name, run, abortIn = null) {
   const profile = PROFILES[name];
   const walk = new Walk();
   const waiter = new Waiter();
@@ -158,7 +168,7 @@ function simulate(labNo, name, run) {
   let t = 0;
   let lat = 59.38, lon = 13.5;
   let ended = false;
-  let bpm = null, target = null, nextBump = 0, phase = 0;
+  let target = null, nextBump = 0, phase = 0;
   const fmt = s => `${String(Math.floor(s / 60)).padStart(2)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
   // Every other run has a landmark 250 m east, so Hitta tries both kinds.
@@ -168,14 +178,18 @@ function simulate(labNo, name, run) {
     world.landmarkCoord = { lat, lon: lon + 250 / (111320 * Math.cos(lat * Math.PI / 180)) };
   }
 
-  const walker = makeWalker(profile.kind, { bpm: () => bpm, target: () => target });
-  const handle = () => ({ set() {}, stop() {} });
-  const sfx = {
-    footsteps: handle, staticNoise: handle, pad: handle, chime: handle,
-    beat: o => { bpm = o.bpm; return { beats: [], set: x => { if (x.bpm) bpm = x.bpm; }, stop: () => { bpm = null; } }; },
-    passing: () => Promise.resolve(),
-    stopAll: () => { bpm = null; },
+  // The walker hears the beat: its tempo is read off the last two beats
+  // the real Synth scheduled, not off what the station asked for.
+  const clock = makeClock();
+  const audio = new FakeAudioContext(clock);
+  const sfx = new Synth({ ctx: audio, master: audio.createGain() }, clock);
+  const bpm = () => {
+    const h = [...sfx.live].find(x => Array.isArray(x.beats));
+    const b = h && h.beats;
+    return b && b.length >= 2 ? Math.round(60 / (b[b.length - 1] - b[b.length - 2])) : null;
   };
+  const walker = makeWalker(profile.kind, { bpm, target: () => target });
+  let station = null, stationAt = 0, aborted = null;
 
   const helpers = labHelpers(walk, {
     now: () => t,
@@ -193,7 +207,7 @@ function simulate(labNo, name, run) {
       log.push(`${fmt(t)}  ▶ ${id}`);
       return waiter.until(() => false, { timeout: dur }).then(() => walker.onLine(id, t));
     },
-    station(id, k, n) { if (id) log.push(`${fmt(t)}  == ${id} ${k}/${n}`); },
+    station(id, k, n) { station = id; stationAt = t; if (id) log.push(`${fmt(t)}  == ${id} ${k}/${n}`); },
     result(id, r) { results.push({ id, ...r }); log.push(`${fmt(t)}  => ${id}: ${r.outcome}. ${r.detail}`); },
     ...helpers,
     setTarget: c => { target = c; walk.setTarget(c); },
@@ -203,6 +217,11 @@ function simulate(labNo, name, run) {
 
   return (async () => {
     while (!ended && t < 45 * 60) {
+      clock.advance(t, () => audio.update());
+      if (abortIn !== null && station === abortIn.id && t >= stationAt + abortIn.after) {
+        aborted = await pressStop();
+        break;
+      }
       const pos = walk.position();
       const { speed, cadence, heading } = walker.step(t, pos || { latitude: lat, longitude: lon });
       // The accelerometer at 50 Hz: one wave per step at the walker's
@@ -251,8 +270,33 @@ function simulate(labNo, name, run) {
       t = Math.round((t + 0.25) * 4) / 4;
     }
     await Promise.race([done, Promise.resolve()]);
-    return { log, results, ended, t };
+    // However the walk ended, the app closes the Synth. Five seconds on,
+    // every fade must have run out and every loop stopped.
+    const liveAtEnd = aborted ? aborted.live : sfx.live.size;
+    if (!aborted) await drain();
+    const after = aborted || { live: liveAtEnd, playing: audio.playing.size, intervals: clock.intervals(), started: 0 };
+    return { log, results, ended, t, station, sound: { ...after, liveAtEnd } };
   })();
+
+  // What finish() in app.js does to the sound and the waits, then five
+  // seconds of audio clock with no ticks, as in a phone after Avsluta.
+  async function pressStop() {
+    log.push(`${fmt(t)}  ■ stop`);
+    const before = audio.started.length;
+    const live = sfx.live.size;
+    waiter.abort();
+    sfx.close();
+    await drain();
+    return { live, playing: audio.playing.size, intervals: clock.intervals(), started: audio.started.length - before };
+  }
+
+  async function drain() {
+    sfx.close();
+    for (let k = 0; k < 20; k++) {
+      for (let i = 0; i < 4; i++) await Promise.resolve();
+      clock.advance(clock.time + 0.25, () => audio.update());
+    }
+  }
 }
 
 async function main() {
@@ -267,9 +311,19 @@ async function main() {
       const tally = {};
       const problems = [];
       const firstDetail = {};
-      for (let run = 0; run < RUNS; run++) {
-        const { log, results, ended, t } = await simulate(labNo, name, run);
+      const runs = profile.abort ? LABS[labNo].flatMap(id => profile.abort.map(after => ({ id, after }))) : Array.from({ length: RUNS }, () => null);
+      for (let run = 0; run < runs.length; run++) {
+        const abortIn = runs[run];
+        const { log, results, ended, t, station, sound } = await simulate(labNo, name, run, abortIn);
         if (VERBOSE && run === 0) console.log(`\n--- lab ${labNo} / ${name} / run ${run}\n${log.join('\n')}`);
+        const where = abortIn ? `stop ${abortIn.after} s into ${abortIn.id}` : `run ${run}`;
+        if (sound.playing || sound.intervals || sound.started) problems.push(`${where}: sound on after the end: ${sound.playing} playing, ${sound.intervals} loops, ${sound.started} started after stop`);
+        if (!abortIn && sound.liveAtEnd) problems.push(`${where}: ${sound.liveAtEnd} sounds still live when the lab ended`);
+        if (abortIn) {
+          if (station !== abortIn.id) problems.push(`${where}: never got there (ended in ${station})`);
+          if (VERBOSE) console.log(`  ${where}: ${sound.live} live at stop, ${sound.started} started after`);
+          continue;
+        }
         if (!ended) problems.push(`run ${run}: did not end by ${Math.round(t / 60)} min`);
         const err = log.find(l => l.startsWith('ERROR'));
         if (err) problems.push(`run ${run}: ${err}`);
@@ -290,6 +344,12 @@ async function main() {
         const missing = LABS[labNo].filter(id => !results.some(r => r.id === id));
         if (missing.length) problems.push(`run ${run}: stations never finished: ${missing.join(', ')}`);
         if (run === 0) console.log(`\n=== lab ${labNo} / ${name}: ${ended ? `ended at ${(t / 60).toFixed(1)} min` : 'DID NOT END'}`);
+      }
+      if (profile.abort) {
+        console.log(`\n=== lab ${labNo} / ${name}: stop pressed inside each of ${runs.length} stations`);
+        console.log(problems.length ? `FAIL\n  ${problems.join('\n  ')}` : 'OK');
+        if (problems.length) failures++;
+        continue;
       }
       for (const id of LABS[labNo]) {
         const outs = tally[id] || [];

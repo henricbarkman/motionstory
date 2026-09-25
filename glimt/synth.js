@@ -13,15 +13,26 @@
 // mixer's master, beside the voice, so contact never muffles them: they are
 // in the walker's world, not on the line.
 
+// `timers` is for the simulation, which runs the real Synth on a fake clock.
 export class Synth {
-  constructor(mixer) {
+  constructor(mixer, timers = globalThis) {
     this.mixer = mixer;
     this.ctx = mixer.ctx;
+    this.timers = timers;
     this.out = this.ctx.createGain();
     this.out.gain.value = 0.9;
     this.out.connect(mixer.master);
     this.noise = this._noiseBuffer(2);
     this.live = new Set();
+    this.closed = false;
+  }
+
+  // The walk is over. Everything stops, and a station still running on (the
+  // stop button lets its waits end) can no longer start a sound: a review
+  // found a chime created after the stop that pinged until the tab closed.
+  close() {
+    this.closed = true;
+    this.stopAll();
   }
 
   _noiseBuffer(seconds) {
@@ -35,34 +46,47 @@ export class Synth {
   _track(handle) {
     this.live.add(handle);
     const stop = handle.stop;
-    handle.stop = (...a) => { this.live.delete(handle); stop(...a); };
+    let stopped = false;
+    handle.stop = (...a) => {
+      if (stopped) return;
+      stopped = true;
+      this.live.delete(handle);
+      stop(...a);
+    };
     return handle;
   }
 
   stopAll() { for (const h of [...this.live]) h.stop(); }
 
+  _later(fn, ms) { this.timers.setTimeout(fn, ms); }
+
   // A scheduler that calls `hit(time)` at a steady rate, looking a little
-  // ahead so the timing does not depend on setInterval's jitter.
+  // ahead so the timing does not depend on setInterval's jitter. After a
+  // gap (a backgrounded tab throttles intervals to once a second or less)
+  // it starts again from now instead of catching up a burst of beats.
   _loop(rateFn, hit) {
     const ctx = this.ctx;
     let next = ctx.currentTime + 0.1;
     let stopped = false;
-    const id = setInterval(() => {
+    const id = this.timers.setInterval(() => {
       if (stopped) return;
       const rate = rateFn();
       if (!(rate > 0)) { next = ctx.currentTime + 0.1; return; }
+      if (next < ctx.currentTime) next = ctx.currentTime + 0.05;
       while (next < ctx.currentTime + 0.25) {
         hit(next);
         next += 60 / rate;
       }
     }, 50);
-    return () => { stopped = true; clearInterval(id); };
+    return () => { stopped = true; this.timers.clearInterval(id); };
   }
 
   // Footsteps: a short thud of filtered noise per step. `distance` in metres
   // sets loudness and dullness; `rate` is steps a minute.
   footsteps({ rate = 110, distance = 30, pan = 0 } = {}) {
+    if (this.closed) return SILENT;
     const ctx = this.ctx;
+    const later = (fn, ms) => this._later(fn, ms);
     const state = { rate, distance, pan };
     const panner = ctx.createStereoPanner();
     panner.pan.value = pan;
@@ -96,13 +120,15 @@ export class Synth {
     });
     return this._track({
       set(o) { Object.assign(state, o); apply(); },
-      stop() { stopLoop(); gain.gain.setTargetAtTime(0, ctx.currentTime, 0.2); setTimeout(() => panner.disconnect(), 800); },
+      stop() { stopLoop(); gain.gain.setTargetAtTime(0, ctx.currentTime, 0.2); later(() => panner.disconnect(), 800); },
     });
   }
 
   // A soft kick on each beat.
   beat({ bpm = 110, gain = 0.5 } = {}) {
+    if (this.closed) return SILENT;
     const ctx = this.ctx;
+    const later = (fn, ms) => this._later(fn, ms);
     const state = { bpm };
     const g = ctx.createGain();
     g.gain.value = gain;
@@ -126,13 +152,15 @@ export class Synth {
     return this._track({
       beats,
       set(o) { Object.assign(state, o); },
-      stop() { stopLoop(); g.gain.setTargetAtTime(0, ctx.currentTime, 0.1); setTimeout(() => g.disconnect(), 600); },
+      stop() { stopLoop(); g.gain.setTargetAtTime(0, ctx.currentTime, 0.1); later(() => g.disconnect(), 600); },
     });
   }
 
   // Hiss over the line. level 0..1.
   staticNoise({ level = 0 } = {}) {
+    if (this.closed) return SILENT;
     const ctx = this.ctx;
+    const later = (fn, ms) => this._later(fn, ms);
     const src = ctx.createBufferSource();
     src.buffer = this.noise;
     src.loop = true;
@@ -150,13 +178,15 @@ export class Synth {
     apply(level);
     return this._track({
       set({ level }) { apply(level); },
-      stop() { g.gain.setTargetAtTime(0, ctx.currentTime, 0.2); setTimeout(() => { try { src.stop(); } catch (_) {} }, 800); },
+      stop() { g.gain.setTargetAtTime(0, ctx.currentTime, 0.2); later(() => { try { src.stop(); } catch (_) {} }, 800); },
     });
   }
 
   // D minor, the key of the bed loop. level 0..1.
   pad({ level = 0 } = {}) {
+    if (this.closed) return SILENT;
     const ctx = this.ctx;
+    const later = (fn, ms) => this._later(fn, ms);
     const g = ctx.createGain();
     g.gain.value = 0;
     const lp = ctx.createBiquadFilter();
@@ -177,13 +207,14 @@ export class Synth {
     apply(level);
     return this._track({
       set({ level }) { apply(level); },
-      stop() { g.gain.setTargetAtTime(0, ctx.currentTime, 0.5); setTimeout(() => oscs.forEach(o => { try { o.stop(); } catch (_) {} }), 2500); },
+      stop() { g.gain.setTargetAtTime(0, ctx.currentTime, 0.5); later(() => oscs.forEach(o => { try { o.stop(); } catch (_) {} }), 2500); },
     });
   }
 
   // Something large going by: a swell of low noise moving from left to right
   // over `seconds`. Resolves when it has passed.
   passing({ seconds = 14 } = {}) {
+    if (this.closed) return Promise.resolve();
     const ctx = this.ctx;
     const src = ctx.createBufferSource();
     src.buffer = this.noise;
@@ -208,14 +239,28 @@ export class Synth {
     panner.pan.linearRampToValueAtTime(0.9, now + seconds);
     src.start(now);
     src.stop(now + seconds + 0.1);
-    const handle = this._track({ set() {}, stop() { try { src.stop(); } catch (_) {} } });
+    // Stopped early (the station ended mid-swell): fade, do not click.
+    const handle = this._track({
+      set() {},
+      stop() {
+        const t = ctx.currentTime;
+        // Hold the swell where it is; a plain cancel drops it to the last
+        // set value and clicks.
+        if (g.gain.cancelAndHoldAtTime) g.gain.cancelAndHoldAtTime(t);
+        else { g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(g.gain.value, t); }
+        g.gain.setTargetAtTime(0, t, 0.15);
+        try { src.stop(t + 0.8); } catch (_) {}
+      },
+    });
     return new Promise(resolve => { src.onended = () => { this.live.delete(handle); resolve(); }; });
   }
 
   // A repeating short tone, placed by `pan` (-1 left .. 1 right). `behind`
   // dulls it, `distance` in metres slows the repeats as it gets further.
   chime({ pan = 0, behind = false, distance = 100 } = {}) {
+    if (this.closed) return SILENT;
     const ctx = this.ctx;
+    const later = (fn, ms) => this._later(fn, ms);
     const state = { pan, behind, distance };
     const panner = ctx.createStereoPanner();
     const lp = ctx.createBiquadFilter();
@@ -248,12 +293,14 @@ export class Synth {
     });
     return this._track({
       set(o) { Object.assign(state, o); apply(); },
-      stop() { stopLoop(); g.gain.setTargetAtTime(0, ctx.currentTime, 0.2); setTimeout(() => panner.disconnect(), 800); },
+      stop() { stopLoop(); g.gain.setTargetAtTime(0, ctx.currentTime, 0.2); later(() => panner.disconnect(), 800); },
     });
   }
 }
 
-// Stand-in for node and for a browser without Web Audio: same shape, silent.
+const SILENT = { beats: [], set() {}, stop() {} };
+
+// Stand-in for a browser without Web Audio: same shape, silent.
 export class SilentSynth {
   footsteps() { return { set() {}, stop() {} }; }
   beat() { return { beats: [], set() {}, stop() {} }; }
@@ -262,4 +309,5 @@ export class SilentSynth {
   passing() { return Promise.resolve(); }
   chime() { return { set() {}, stop() {} }; }
   stopAll() {}
+  close() {}
 }

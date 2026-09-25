@@ -322,11 +322,18 @@ export class Steps {
 // seventy knocks a minute, because a fast wave outruns any average.
 //
 // Heel strikes are sharp too, and a running one can stand out as much as a
-// knock. Two things keep them from reading as a double: knocks do not count
-// while running (the Walk mutes them), and a double must stand alone, with a
-// second of quiet before its first knock and KNOCK_SETTLE after its second.
-// Steps come in a rhythm, so they never do. With simulated heel strikes and
-// neither guard, one lab read 59 doubles nobody knocked.
+// knock. So knocks are read in groups: knocks less than KNOCK_PAIR apart
+// belong together, and a group closes when that much time passes without
+// one. A closed group of two or three, with a second of quiet before it, is
+// a double knock. Four or more is a rhythm, and steps are a rhythm. Knocks
+// do not count while running at all (the Walk mutes them). With simulated
+// heel strikes and neither guard, one lab read 59 doubles nobody knocked.
+//
+// Three counts as a double on purpose: someone asked to knock twice who is
+// not sure it registered knocks again. An earlier version cancelled a double
+// on any knock close after it, and a review found that three eager knocks
+// then gave nothing at all (2026-09-25). A retry after a pause is a group of
+// its own and counts again.
 //
 // Nothing here has met a real pocket yet (2026-09-25). Every spike, knock or
 // not, is kept in `spikes` so the lab can log what the sensor actually saw
@@ -334,16 +341,16 @@ export class Steps {
 const KNOCK_JUMP = 3.0;      // m/s² above the mean of the two neighbours
 const KNOCK_SEEN = 1.5;      // smaller spikes are logged, not counted
 const KNOCK_GAP = 0.12;      // s; spikes closer than this are the same knock
-const KNOCK_PAIR = 0.8;      // s; two knocks within this are a double knock
-const KNOCK_ALONE = 1.0;     // s of quiet before a double's first knock
-const KNOCK_SETTLE = 0.8;    // s of quiet after its second before it counts
+const KNOCK_PAIR = 0.8;      // s; knocks closer than this are one group
+const KNOCK_ALONE = 1.0;     // s of quiet before a group for it to count
+const KNOCK_MOST = 3;        // knocks in a group that can still be a double
 
 export class Knocks {
   constructor() {
     this.prev = null;          // {t, m}: the sample before the one being judged
     this.cur = null;           // {t, m}: the sample being judged
     this.times = [];           // knock times, last ten seconds
-    this.pending = null;       // second knock of a double not yet settled
+    this.group = null;         // {alone, n, last}: the knocks still coming in
     this.doubles = [];         // double-knock times, last minute
     this.spikes = [];          // {t, peak, knock}, last minute
     this.mutedUntil = -Infinity;
@@ -372,29 +379,30 @@ export class Knocks {
     this.spikes.push({ t, peak, knock });
     while (this.spikes.length && this.spikes[0].t < t - 60) this.spikes.shift();
     if (!knock) return;
-    const last = this.times[this.times.length - 1];
-    if (last !== undefined && t - last < KNOCK_GAP) return;
+    const prevKnock = this.times[this.times.length - 1];
+    if (prevKnock !== undefined && t - prevKnock < KNOCK_GAP) return;
     this.times.push(t);
     this.count++;
     while (this.times.length && this.times[0] < t - 10) this.times.shift();
-    // A knock right behind a pending double makes it three: a rhythm, or
-    // someone knocking on, and neither is the double that was asked for.
-    if (this.pending !== null && t - this.pending <= KNOCK_SETTLE) { this.pending = null; return; }
-    const n = this.times.length;
-    const prev = this.times[n - 2];
-    const before = this.times[n - 3];
-    if (prev !== undefined && t - prev <= KNOCK_PAIR && (before === undefined || prev - before > KNOCK_ALONE)) {
-      this.pending = t;
+    this.settle(t);
+    if (this.group && t - this.group.last <= KNOCK_PAIR) {
+      this.group.n++;
+      this.group.last = t;
+    } else {
+      this.group = { alone: prevKnock === undefined || t - prevKnock > KNOCK_ALONE, n: 1, last: t };
     }
   }
 
-  // A pending double counts once KNOCK_SETTLE has passed without a third.
+  // Closes the group once KNOCK_PAIR has passed since its last knock, and
+  // counts it if it was a double. Called on every tick and every knock.
   settle(t) {
-    if (this.pending === null || t - this.pending <= KNOCK_SETTLE) return;
-    this.doubles.push(this.pending);
+    const g = this.group;
+    if (!g || t - g.last <= KNOCK_PAIR) return;
+    this.group = null;
+    if (!g.alone || g.n < 2 || g.n > KNOCK_MOST) return;
+    this.doubles.push(g.last);
     while (this.doubles.length && this.doubles[0] < t - 60) this.doubles.shift();
-    if (this.history.length < 2000) this.history.push(this.pending);
-    this.pending = null;
+    if (this.history.length < 2000) this.history.push(g.last);
   }
 
   lastDoubleAt() { return this.doubles.length ? this.doubles[this.doubles.length - 1] : -Infinity; }

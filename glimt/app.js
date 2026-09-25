@@ -243,7 +243,7 @@ async function start() {
     labResults = [];
     Object.assign(ctx, labHelpers(walk, {
       now,
-      vibrateImpl: p => typeof navigator.vibrate === 'function' && navigator.vibrate(p),
+      vibrateImpl: p => !finished && typeof navigator.vibrate === 'function' && navigator.vibrate(p),
     }), {
       sfx,
       memo: {},
@@ -432,7 +432,7 @@ function finish() {
   window.removeEventListener('devicemotion', onMotion);
   if (waiter) waiter.abort();
   if (mixer) mixer.stopVoice();
-  if (sfx) sfx.stopAll();
+  if (sfx) sfx.close();
   if (watchId !== null) navigator.geolocation.clearWatch(watchId);
   if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
   $('walking').hidden = true;

@@ -168,6 +168,8 @@ async function linjen(ctx) {
   }
   stop();
   noise.stop();
+  // `||`, not `??`: a median of 0 (stood still through the station) is no
+  // pace to chase or flee at, so it falls back like an empty one.
   ctx.memo.basePace = median(paces) || ctx.memo.basePace;
   ctx.memo.baseCadence = median(ctx.memo.cadences) || ctx.memo.baseCadence;
   if (ghost.length > 20) ctx.memo.ghost = ghost;
