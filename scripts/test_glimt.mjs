@@ -47,7 +47,9 @@ const QUESTIONS_2 = new Set(['s1-1', 's1-no', 's2-light', 's2-dark', 's3-1',
   's6-vatten-q', 's6-skog-q', 's6-berg-q', 's6-bro-q', 's6-kyrkogard-q', 's6-nomap-q', 's9-1']);
 
 // Walker profiles: speed (m/s) as a function of t, plus a heading so the
-// distance to start is real. Each returns {speed, heading, accuracy?}.
+// distance to start is real. Each returns {speed, heading, accuracy?, every?,
+// doppler?}: `every` is seconds between fixes (default 1), `doppler: false`
+// means the phone reports no speed of its own.
 const PROFILES_1 = {
   // Walks, stops once at 2:00 for 15 s, speeds up at 5:10, turns back at 7:30.
   ideal: t => ({
@@ -63,6 +65,11 @@ const PROFILES_1 = {
   }),
   // Good walker, terrible GPS: accuracy 80 m the whole time.
   fog: t => ({ speed: t < 5 ? 0 : 1.4, heading: 0, accuracy: 80 }),
+  // The ideal walk on a phone that reports every six seconds with no speed of
+  // its own. The first field test (2026-09-25) read this as standing still.
+  sparse: t => ({ ...PROFILES_1.ideal(t), accuracy: 30, every: 6, doppler: false }),
+  // Same, every ten seconds, with the phone's own speed on each fix.
+  'sparse-doppler': t => ({ ...PROFILES_1.ideal(t), accuracy: 30, every: 10 }),
 };
 
 // Chapter 2 profiles carry `answers` (does the walker stop for a question),
@@ -152,13 +159,17 @@ function simulate(chapterNo, name, variant) {
   return (async () => {
     while (!ended && t < 20 * 60) {
       const p = chapterNo === 1 ? profile(t) : profile.walk(t, running);
-      let { speed, heading, accuracy = 8 } = p;
+      let { speed, heading, accuracy = 8, every = 1, doppler = true } = p;
       if (forcedStop && t >= forcedStop.from && t < forcedStop.to) speed = 0;
+      // The walker moves every second; the phone reports every `every` s.
       if (Number.isInteger(t)) {
         const dLat = (speed * Math.cos(heading)) / 111320;
         const dLon = (speed * Math.sin(heading)) / (111320 * Math.cos(lat * Math.PI / 180));
         lat += dLat; lon += dLon;
-        walk.fix(t, { latitude: lat, longitude: lon, accuracy, speed: speed + (speed ? (Math.random() - 0.5) * 0.2 : 0) });
+        if (t % every === 0) {
+          const v = doppler ? speed + (speed ? (Math.random() - 0.5) * 0.2 : 0) : null;
+          walk.fix(t, { latitude: lat, longitude: lon, accuracy, speed: v });
+        }
       }
       const s = walk.tick(t);
       waiter.check(s);
