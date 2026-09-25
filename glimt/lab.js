@@ -595,11 +595,14 @@ function steadyHeading(ctx, t) {
 // Vägvalet: left is shorter but that is where it sounds. The choice is read
 // once the steady heading has stayed at least 60 degrees off for 12 seconds
 // (55 for 8 read one straight walk in ten as a turn on the field phone).
+// The averaging makes it slow, a turn shows some thirty seconds after it,
+// and the next crossing can be a minute away: hence 150 seconds.
 async function vagval(ctx) {
   await ctx.until(s => steadyHeading(ctx, s.t) !== null, { timeout: 45 });
   await ctx.play('vagval-intro');
   await ctx.until(s => steadyHeading(ctx, s.t) !== null, { timeout: 20 });
-  const h0 = steadyHeading(ctx, ctx.state().t);
+  const t0 = ctx.state().t;
+  const h0 = steadyHeading(ctx, t0);
   if (h0 === null) {
     await ctx.play('vagval-rakt');
     return { outcome: 'hoppade', detail: 'ingen riktning från gps:en att utgå från' };
@@ -614,12 +617,12 @@ async function vagval(ctx) {
     if (Math.abs(d) > 60 && Math.sign(d) === sign) off += dt;
     else { off = Math.abs(d) > 60 ? dt : 0; sign = Math.sign(d); }
     return off >= 12;
-  }, { timeout: 90 });
+  }, { timeout: 150 });
   const side = !chose ? 'rakt' : sign > 0 ? 'hoger' : 'vanster';
   await ctx.play(`vagval-${side}`);
   return {
     outcome: chose ? 'klarade' : 'missade',
-    detail: chose ? `valde ${side === 'hoger' ? 'höger' : 'vänster'}` : 'ingen sväng läst på 90 s',
+    detail: chose ? `valde ${side === 'hoger' ? 'höger' : 'vänster'}, läst efter ${sec(ctx.state().t - t0)}` : 'ingen sväng läst på 150 s',
   };
 }
 

@@ -99,6 +99,9 @@ function makeWalker(kind, env) {
       if (id === 'linjen-stanna') w.uneven = false;
       if (id === 'frys-nu') { stopAt(t + 0.8); goAt(t + 7); }
       if (id === 'normalt-nu') speedAt(t + 20, w.base * 1.35);
+      // Stops instead of turning back: standing, the GPS wander alone can
+      // look like a step back.
+      if (id === 'vandom-igen') { stopAt(t + 1); goAt(t + 40); }
       if (id === 'normalt-marktes' || id === 'normalt-klarade') goAt(t + 0.5);
       return;
     }
