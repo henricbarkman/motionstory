@@ -555,6 +555,10 @@ async function turnBack(ctx, id) {
     const last = pts[pts.length - 1];
     if (!last || last.t === seen) return false;
     seen = last.t;
+    // Standing, the drift alone can come eight metres back: only fixes from
+    // walking count (a simulated walker who stopped at the word read as
+    // turned, 2026-09-25).
+    if (!s.moving) { inRow = 0; return false; }
     const here = meanPosition(ctx, s.t - 8, s.t) || last;
     // Metres along the old line; negative is back where you came from.
     const along = haversine(p0, here) * Math.cos(angleDiff(line, bearing(p0, here)) * Math.PI / 180);
@@ -593,36 +597,74 @@ function steadyHeading(ctx, t) {
 }
 
 // Vägvalet: left is shorter but that is where it sounds. The choice is read
-// once the steady heading has stayed at least 60 degrees off for 12 seconds
-// (55 for 8 read one straight walk in ten as a turn on the field phone).
-// The averaging makes it slow, a turn shows some thirty seconds after it,
-// and the next crossing can be a minute away: hence 150 seconds.
+// once the steady heading has stayed at least 60 degrees off the line, with
+// the walker forty metres to that side, for 12 seconds (55 for 8, heading
+// alone, read one straight walk in ten as a turn on the field phone). The
+// averaging and the forty metres make it slow, a turn shows some fifty
+// seconds after it, and the next crossing can be a minute away: hence 150.
+// The line walked when the question came: over a longer stretch than the
+// steady heading, where the walk allows, since everything after is measured
+// against it. A line a few tens of degrees off lets a walker going straight
+// drift away from it and read as a turn.
+// Only fixes from walking count: standing, the two means differ by the
+// GPS drift alone, and a walker who had stopped at a crossing got a line
+// in any direction (a simulated walker with drifting GPS read a turn in a
+// quarter of straight walks that way, 2026-09-25).
+function lineWalked(ctx, s) {
+  if (!s.moving || s.movingFor < 30) return null;
+  const then = s.movingFor >= 45 && meanPosition(ctx, s.t - 45, s.t - 30);
+  const now = meanPosition(ctx, s.t - 12, s.t);
+  if (then && now && haversine(then, now) >= 30) return bearing(then, now);
+  return steadyHeading(ctx, s.t);
+}
+
+// A turn needs the walker forty metres to the side of that line as well,
+// held twelve seconds: GPS drift is bounded, a walk down another street is
+// not. Measured on simulated drift (eight metres, half a minute): 60 of 60
+// turns read, 1 of 60 straight walks read as one; shorter holds or wider
+// sides did worse. With fifteen metres that drifts for a minute, a fifth of
+// straight walks still read a turn (2026-09-25).
+const VAGVAL_SIDE = 40;
+const VAGVAL_HOLD = 12;
 async function vagval(ctx) {
-  await ctx.until(s => steadyHeading(ctx, s.t) !== null, { timeout: 45 });
+  // Walking for 45 seconds before the question gives the long line; the
+  // short one (eighteen seconds apart) was off by 30 to 60 degrees in the
+  // straight walks that read a turn under drifting GPS.
+  await ctx.until(s => s.moving && s.movingFor >= 45, { timeout: 75 });
   await ctx.play('vagval-intro');
-  await ctx.until(s => steadyHeading(ctx, s.t) !== null, { timeout: 20 });
+  await ctx.until(s => lineWalked(ctx, s) !== null, { timeout: 30 });
   const t0 = ctx.state().t;
-  const h0 = steadyHeading(ctx, t0);
+  const h0 = lineWalked(ctx, ctx.state());
   if (h0 === null) {
     await ctx.play('vagval-rakt');
     return { outcome: 'hoppade', detail: 'ingen riktning från gps:en att utgå från' };
   }
-  let off = 0, sign = 0, lastT = null;
+  const p0 = meanPosition(ctx, t0 - 12, t0);
+  let off = 0, sign = 0, lastT = null, seen = null;
   const chose = await ctx.until(s => {
     const dt = lastT === null ? 0 : s.t - lastT;
     lastT = s.t;
-    const h = steadyHeading(ctx, s.t);
-    if (h === null) { off = 0; return false; }
+    // Standing still (at the crossing, deciding) holds the count: the
+    // positions then say nothing about a direction.
+    const h = s.moving && s.movingFor >= 12 ? steadyHeading(ctx, s.t) : null;
+    const here = meanPosition(ctx, s.t - 12, s.t);
+    if (h === null || !here) return false;
     const d = angleDiff(h0, h);
-    if (Math.abs(d) > 60 && Math.sign(d) === sign) off += dt;
-    else { off = Math.abs(d) > 60 ? dt : 0; sign = Math.sign(d); }
-    return off >= 12;
+    // Metres to the side of the line walked at the question, right positive.
+    const side = haversine(p0, here) * Math.sin(angleDiff(h0, bearing(p0, here)) * Math.PI / 180);
+    const turned = Math.abs(d) > 60 && Math.abs(side) >= VAGVAL_SIDE && Math.sign(side) === Math.sign(d);
+    seen = { d, side };
+    if (turned && Math.sign(d) === sign) off += dt;
+    else { off = turned ? dt : 0; sign = Math.sign(d); }
+    return off >= VAGVAL_HOLD;
   }, { timeout: 150 });
   const side = !chose ? 'rakt' : sign > 0 ? 'hoger' : 'vanster';
   await ctx.play(`vagval-${side}`);
   return {
     outcome: chose ? 'klarade' : 'missade',
-    detail: chose ? `valde ${side === 'hoger' ? 'höger' : 'vänster'}, läst efter ${sec(ctx.state().t - t0)}` : 'ingen sväng läst på 150 s',
+    detail: chose
+      ? `valde ${side === 'hoger' ? 'höger' : 'vänster'}, ${Math.round(Math.abs(seen.side))} m åt sidan, ${Math.round(Math.abs(seen.d))}° från linjen, läst efter ${sec(ctx.state().t - t0)}`
+      : 'ingen sväng läst på 150 s',
   };
 }
 

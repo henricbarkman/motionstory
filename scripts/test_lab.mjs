@@ -12,6 +12,7 @@
 //   node scripts/test_lab.mjs 1 pass          # lab 1, one profile
 //   RUNS=10 VERBOSE=1 node scripts/test_lab.mjs 2
 //   node scripts/test_lab.mjs 1 abort         # press stop inside every station
+//   DETAILS=vagval node scripts/test_lab.mjs 2 fail-drift   # every run's detail
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -40,12 +41,23 @@ const FIELD_GPS = {
   phone: v => v ? v * (0.8 + Math.random() * 1.4) : 0.3 + Math.random() * 0.5,
 };
 
+// GPS error does not jump about fix by fix, it drifts: the satellites in
+// view change as the walker passes a building or goes under trees, and the
+// position is off in the same direction for half a minute or more. Averaging
+// cancels jitter but not drift, so the direction stations are also run with
+// a bias that wanders (eight metres typical, half a minute to change) on
+// top of five metres of jitter. The size is a guess, like the rest of the
+// field phone; the point is that the error is correlated (review 2026-09-25).
+const DRIFT_GPS = { ...FIELD_GPS, jitter: 5, drift: { sigma: +(process.env.DRIFT_SIGMA || 8), tau: +(process.env.DRIFT_TAU || 30) } };
+
 const PROFILES = {
   pass: { kind: 'pass', gps: GOOD_GPS, steps: true },
   fail: { kind: 'fail', gps: GOOD_GPS, steps: true },
   'pass-field': { kind: 'pass', gps: FIELD_GPS, steps: true },
   'fail-field': { kind: 'fail', gps: FIELD_GPS, steps: true },
   // No accelerometer at all: the step-based stations must step aside.
+  'pass-drift': { kind: 'pass', gps: DRIFT_GPS, steps: true },
+  'fail-drift': { kind: 'fail', gps: DRIFT_GPS, steps: true },
   'gps-only': { kind: 'pass', gps: GOOD_GPS, steps: false },
   // Presses stop 3, 20 and 45 seconds into each station in turn, one run
   // each: in the intro line, early, and deep in. Nothing may sound on after
@@ -63,6 +75,8 @@ const EXPECT = {
   fail: () => 'missade',
   'pass-field': id => ['vandom', 'vagval', 'kompass'].includes(id) ? { want: 'klarade', rate: 0.85 } : 'klarade',
   'fail-field': id => ['vandom', 'vagval', 'kompass'].includes(id) ? { want: 'missade', rate: 0.85 } : 'missade',
+  'pass-drift': id => ['vandom', 'vagval', 'kompass'].includes(id) ? { want: 'klarade', rate: 0.85 } : null,
+  'fail-drift': id => ['vandom', 'vagval', 'kompass'].includes(id) ? { want: 'missade', rate: 0.85 } : null,
   'gps-only': id => ['takten', 'tassa'].includes(id) ? 'hoppade' : null,
   abort: () => null,
 };
@@ -101,7 +115,7 @@ function makeWalker(kind, env) {
       if (id === 'normalt-nu') speedAt(t + 20, w.base * 1.35);
       // Stops instead of turning back: standing, the GPS wander alone can
       // look like a step back.
-      if (id === 'vandom-igen') { stopAt(t + 1); goAt(t + 40); }
+      if (id === 'vandom-nu' || id === 'vandom-igen') { stopAt(t + 1); goAt(t + 40); }
       if (id === 'normalt-marktes' || id === 'normalt-klarade') goAt(t + 0.5);
       return;
     }
@@ -198,6 +212,10 @@ function simulate(labNo, name, run, abortIn = null) {
   let station = null, stationAt = 0, aborted = null;
   let pressedAt = null, startedBefore = 0, liveAtPress = 0;
   const trace = [];
+  // The drifting bias, north and east in metres, started from its spread.
+  const gauss = () => Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(2 * Math.PI * Math.random());
+  const drift = profile.gps.drift;
+  let biasN = drift ? drift.sigma * gauss() : 0, biasE = drift ? drift.sigma * gauss() : 0;
 
   const helpers = labHelpers(walk, {
     now: () => t,
@@ -277,11 +295,16 @@ function simulate(labNo, name, run, abortIn = null) {
         lat += (speed * Math.cos(heading)) / 111320;
         lon += (speed * Math.sin(heading)) / (111320 * Math.cos(lat * Math.PI / 180));
         const g = profile.gps;
+        if (drift) {
+          const k = Math.sqrt(2 / drift.tau) * drift.sigma;
+          biasN += -biasN / drift.tau + k * gauss();
+          biasE += -biasE / drift.tau + k * gauss();
+        }
         if (t % g.every === 0) {
           const j = () => (Math.random() - 0.5) * 2 * g.jitter;
           walk.fix(t, {
-            latitude: lat + j() / 111320,
-            longitude: lon + j() / (111320 * Math.cos(lat * Math.PI / 180)),
+            latitude: lat + (j() + biasN) / 111320,
+            longitude: lon + (j() + biasE) / (111320 * Math.cos(lat * Math.PI / 180)),
             accuracy: g.accuracy, speed: g.phone(speed),
           });
         }
@@ -367,6 +390,7 @@ async function main() {
           if (r.detail.startsWith('fel:')) problems.push(`run ${run}: ${r.id} threw: ${r.detail}`);
           (tally[r.id] = tally[r.id] || []).push(r.outcome);
           if (!(r.id in firstDetail)) firstDetail[r.id] = r.detail;
+          if (process.env.DETAILS === r.id) console.log(`    run ${run}: ${r.outcome}. ${r.detail}`);
           const want = EXPECT[name](r.id);
           if (typeof want === 'string' && r.outcome !== want) problems.push(`run ${run}: ${r.id} ${r.outcome}, wanted ${want} (${r.detail})`);
           // The hiss in Stämma linjen is the mechanic, and its outcome is

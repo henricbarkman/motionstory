@@ -264,10 +264,14 @@ export class Steps {
     const dt = this.lastT === null ? 0 : t - this.lastT;
     this.lastT = t;
     this.samples++;
-    // First sample, or the sensor was silent: start the averages afresh.
+    // First sample, or the sensor was silent: start the averages afresh,
+    // and drop a step still being measured. Kept, the first bump after the
+    // gap (the phone settling in the pocket) was written into that step's
+    // impact, and one inflated step can turn Tassa's verdict (2026-09-25).
     if (this.fast === null || dt > 1) {
       this.fast = this.slow = mag;
       this.armed = false;
+      this.peak = null;
       return;
     }
     if (dt <= 0) return;
