@@ -255,6 +255,8 @@ export class Steps {
     this.trusted = false;        // on a steady rhythm, off when GPS overrules
     this.trustedCadence = null;
     this.trustCount = 0;
+    this.impacts = [];           // {t, peak} per step, last minute
+    this.peak = null;            // the step being measured: {t, peak}
   }
 
   push(t, mag) {
@@ -274,10 +276,16 @@ export class Steps {
     const x = this.fast - this.slow;
     if (this.armed && x > STEP_PEAK) {
       const last = this.times[this.times.length - 1];
-      if (last === undefined || t - last >= STEP_MIN_GAP) this._step(t);
+      if (last === undefined || t - last >= STEP_MIN_GAP) {
+        this._step(t);
+        this.peak = { t, peak: x };
+      }
       this.armed = false;
     } else if (!this.armed && x < 0) {
       this.armed = true;
+      this._impact();
+    } else if (this.peak && x > this.peak.peak) {
+      this.peak.peak = x;
     }
   }
 
@@ -299,6 +307,17 @@ export class Steps {
       this.trustedCadence = c;
       this.trustCount++;
     }
+  }
+
+  // How hard a step landed: the highest the fast average rose over the slow
+  // one, from the step until the wave came back down. Tassa compares these
+  // before and after it asks for soft steps.
+  _impact() {
+    if (!this.peak) return;
+    this.impacts.push(this.peak);
+    this.peak = null;
+    const t = this.impacts[this.impacts.length - 1].t;
+    while (this.impacts.length && this.impacts[0].t < t - 60) this.impacts.shift();
   }
 
   // GPS overruled the feet: forget the rhythm, so trust needs a new one.

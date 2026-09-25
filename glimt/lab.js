@@ -13,6 +13,8 @@
 //   position()     the newest decent fix, positionAgo(s) an older one
 //   knocksBetween(a, b), knockTimes(a, b), spikesBetween(a, b), strayDoubles(w)
 //                  what the knock detector heard
+//   track()        decent fixes, last two minutes: [{t, latitude, longitude}]
+//   impactsBetween(a, b)  how hard each step landed: [{t, peak}]
 //   memo           an object that lives for the whole walk, for baselines
 //   station(id)    tells the screen which station is running
 //   result(id, r)  hands a station's outcome to the end screen
@@ -28,6 +30,8 @@ export function labHelpers(walk, { now, vibrateImpl }) {
   return {
     position: () => walk.position(),
     positionAgo: s => walk.positionAgo(now(), s),
+    track: () => walk.track,
+    impactsBetween: (a, b) => walk.steps.impacts.filter(x => x.t > a && x.t <= b),
     setTarget: c => walk.setTarget(c),
     knocksBetween: (a, b) => walk.knocks.countBetween(a, b),
     knockTimes: (a, b) => walk.knocks.times.filter(k => k > a && k <= b),
@@ -513,23 +517,49 @@ async function normalt(ctx) {
   };
 }
 
-// Vänd om: turn back on the word, twice. A turn is read as coming closer to
-// where the walker was fifteen seconds before the word, which needs no
-// compass and survives sparse fixes; a reversed heading counts too.
+// The mean of the fixes in (from, to], or null when there are none.
+function meanPosition(ctx, from, to) {
+  const q = ctx.track().filter(p => p.t > from && p.t <= to);
+  if (!q.length) return null;
+  return {
+    latitude: q.reduce((a, p) => a + p.latitude, 0) / q.length,
+    longitude: q.reduce((a, p) => a + p.longitude, 0) / q.length,
+  };
+}
+
+// Vänd om: turn back on the word, twice. A turn is read as coming eight
+// metres back along the line walked before the word, on two fixes in a row,
+// each the mean of the last eight seconds. The line comes from averaged
+// fixes too. On the field phone (a fix every six seconds, ten metres of
+// wander) single fixes and the GPS heading read turns nobody made, and a
+// first fix, distance to where the walker was fifteen seconds earlier,
+// missed real turns: walking back, you pass that point and it grows again.
+function travelBearing(ctx, t) {
+  // Two or three fixes in each mean on the field phone; one each missed a
+  // turn in four simulated walks of thirty (the line was too short to read).
+  const a = meanPosition(ctx, t - 24, t - 10);
+  const b = meanPosition(ctx, t - 8, t);
+  if (!a || !b || haversine(a, b) < 8) return null;
+  return bearing(a, b);
+}
+
 async function turnBack(ctx, id) {
   await ctx.play(id);
   const t0 = ctx.state().t;
-  const anchor = ctx.positionAgo(15) || ctx.position();
-  const h0 = ctx.state().heading;
-  if (!anchor) return { turned: false, after: null };
-  let far = 0;
+  const line = travelBearing(ctx, t0);
+  const p0 = meanPosition(ctx, t0 - 6, t0) || ctx.position();
+  if (line === null || !p0) return { turned: false, after: null, why: 'ingen riktning att vända från' };
+  let seen = null, inRow = 0;
   const turned = await ctx.until(s => {
-    const here = ctx.position();
-    if (!here) return false;
-    const d = haversine(here, anchor);
-    far = Math.max(far, d);
-    const reversed = h0 !== null && s.heading !== null && Math.abs(angleDiff(h0, s.heading)) > 135;
-    return far - d >= 10 || reversed;
+    const pts = ctx.track();
+    const last = pts[pts.length - 1];
+    if (!last || last.t === seen) return false;
+    seen = last.t;
+    const here = meanPosition(ctx, s.t - 8, s.t) || last;
+    // Metres along the old line; negative is back where you came from.
+    const along = haversine(p0, here) * Math.cos(angleDiff(line, bearing(p0, here)) * Math.PI / 180);
+    inRow = along <= -8 ? inRow + 1 : 0;
+    return inRow >= 2;
   }, { timeout: 45 });
   return { turned, after: ctx.state().t - t0 };
 }
@@ -543,19 +573,33 @@ async function vandom(ctx) {
   await wait(ctx, 10);
   const second = await turnBack(ctx, 'vandom-igen');
   await ctx.play(second.turned ? 'vandom-slut' : 'vandom-sen');
-  const fmtTurn = r => r.turned ? `läst efter ${sec(r.after)}` : 'inte läst';
+  const fmtTurn = r => r.turned ? `läst efter ${sec(r.after)}` : r.why || 'inte läst';
   return {
     outcome: first.turned && second.turned ? 'klarade' : 'missade',
     detail: `första vändningen ${fmtTurn(first)}, andra ${fmtTurn(second)}`,
   };
 }
 
+// Heading from averaged fixes: from the mean position 18 to 30 seconds ago
+// to the mean of the last 12. Slow (a turn shows some twenty seconds after
+// it), but on the field phone it is the only heading that holds still: the
+// fix-to-fix one read a turn in two of three simulated walks that went
+// straight. Null until the two means are fifteen metres apart.
+function steadyHeading(ctx, t) {
+  const then = meanPosition(ctx, t - 30, t - 18);
+  const now = meanPosition(ctx, t - 12, t);
+  if (!then || !now || haversine(then, now) < 15) return null;
+  return bearing(then, now);
+}
+
 // Vägvalet: left is shorter but that is where it sounds. The choice is read
-// from the heading once it has settled at least fifty degrees off.
+// once the steady heading has stayed at least 60 degrees off for 12 seconds
+// (55 for 8 read one straight walk in ten as a turn on the field phone).
 async function vagval(ctx) {
-  await ctx.until(s => s.heading !== null, { timeout: 30 });
+  await ctx.until(s => steadyHeading(ctx, s.t) !== null, { timeout: 45 });
   await ctx.play('vagval-intro');
-  const h0 = ctx.state().heading;
+  await ctx.until(s => steadyHeading(ctx, s.t) !== null, { timeout: 20 });
+  const h0 = steadyHeading(ctx, ctx.state().t);
   if (h0 === null) {
     await ctx.play('vagval-rakt');
     return { outcome: 'hoppade', detail: 'ingen riktning från gps:en att utgå från' };
@@ -564,11 +608,12 @@ async function vagval(ctx) {
   const chose = await ctx.until(s => {
     const dt = lastT === null ? 0 : s.t - lastT;
     lastT = s.t;
-    if (s.heading === null) { off = 0; return false; }
-    const d = angleDiff(h0, s.heading);
-    if (Math.abs(d) > 50 && Math.sign(d) === sign) off += dt;
-    else { off = Math.abs(d) > 50 ? dt : 0; sign = Math.sign(d); }
-    return off >= 6;
+    const h = steadyHeading(ctx, s.t);
+    if (h === null) { off = 0; return false; }
+    const d = angleDiff(h0, h);
+    if (Math.abs(d) > 60 && Math.sign(d) === sign) off += dt;
+    else { off = Math.abs(d) > 60 ? dt : 0; sign = Math.sign(d); }
+    return off >= 12;
   }, { timeout: 90 });
   const side = !chose ? 'rakt' : sign > 0 ? 'hoger' : 'vanster';
   await ctx.play(`vagval-${side}`);
@@ -691,9 +736,15 @@ async function vibration(ctx) {
   };
 }
 
-// Tassa: shorter, quicker steps at the same speed. Stride is GPS speed over
-// cadence, so this needs both, and the GPS speed is noisy: the log says what
-// was measured so the verdict can be checked.
+// Tassa: soft, quiet steps, as if you do not want to be heard. Measured as
+// how hard each step lands (Steps.impacts), before and after the word. A
+// first version asked for shorter, quicker steps and measured stride as GPS
+// speed over cadence; on the field phone the GPS speed was too noisy and the
+// sim failed two of three walkers who did it right. Whether soft steps show
+// in a real pocket is what this station is here to find out, so the log
+// gives both medians.
+const TASSA_SOFTER = 0.75;   // after/before; a guess until a walk says otherwise
+
 async function tassa(ctx) {
   if (!ctx.state().stepsTrusted) await ctx.until(s => s.stepsTrusted, { timeout: 20 });
   if (!ctx.state().stepsTrusted) {
@@ -701,13 +752,13 @@ async function tassa(ctx) {
     return { outcome: 'hoppade', detail: 'stegräkningen hittade ingen rytm' };
   }
   const sample = () => {
-    const rows = [];
-    const stop = every(ctx, s => { if (s.moving && s.cadence > 0) rows.push({ c: s.cadence, v: s.speed }); });
+    const from = ctx.state().t;
+    const speeds = [];
+    const stop = every(ctx, s => speeds.push(s.speed));
     return () => {
       stop();
-      const c = median(rows.map(r => r.c));
-      const v = median(rows.map(r => r.v));
-      return { c, v, stride: c && v ? v / (c / 60) : null };
+      const hits = ctx.impactsBetween(from, ctx.state().t).map(x => x.peak);
+      return { n: hits.length, peak: median(hits), gps: median(speeds) };
     };
   };
   await ctx.play('tassa-intro');
@@ -720,11 +771,18 @@ async function tassa(ctx) {
   end = sample();
   await wait(ctx, 25);
   const after = end();
-  const ok = before.c && after.c && before.stride && after.stride &&
-    after.c >= before.c * 1.08 && after.stride <= before.stride * 0.88;
+  // Steps so soft the detector lost them, while the GPS says you kept going,
+  // count as soft. Stopping does not.
+  const vanished = after.n < 8 && after.gps > 0.9;
+  const softer = before.n >= 8 && after.n >= 8 && after.peak <= before.peak * TASSA_SOFTER;
+  const ok = softer || (before.n >= 8 && vanished);
   await ctx.play(ok ? 'tassa-klarade' : 'tassa-inte');
-  const f = r => r.c ? `${Math.round(r.c)} steg/min, ${(r.v * 3.6).toFixed(1).replace('.', ',')} km/h, steg ${r.stride ? r.stride.toFixed(2).replace('.', ',') + ' m' : '?'}` : 'ingen mätning';
-  return { outcome: ok ? 'klarade' : 'missade', detail: `före: ${f(before)}; smygande: ${f(after)}` };
+  const f = r => r.n ? `${r.n} steg, styrka ${r.peak.toFixed(2).replace('.', ',')}, gps ${kmh(r.gps)}` : `inga steg, gps ${kmh(r.gps)}`;
+  const ratio = before.peak && after.peak ? `, kvot ${(after.peak / before.peak).toFixed(2).replace('.', ',')}` : '';
+  return {
+    outcome: ok ? 'klarade' : 'missade',
+    detail: `före: ${f(before)}; tassande: ${f(after)}${ratio}` + (vanished && ok ? ', stegen för tysta för stegräkningen' : ''),
+  };
 }
 
 const STATIONS = { linjen, ja, knack, takten, flykten, frys, spoket, hitta, normalt, vandom, vagval, kompass, morse, vibration, tassa };

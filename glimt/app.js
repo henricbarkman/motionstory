@@ -24,7 +24,7 @@ const CHAPTERS = {
   },
   labb2: {
     ...LAB_FILES, lab: 2, first: 'labb-intro-2',
-    subtitle: 'Labb 2. Sju banor om riktning, vändningar och att hitta med öronen. Ungefär tjugo minuter.',
+    subtitle: 'Labb 2. Sju korta banor om riktning, vändningar, knackningar och steg. Ungefär tjugo minuter. Efteråt säger du vilka du vill göra igen.',
   },
   1: {
     url: '../stories/glimt/kapitel-1.json',
