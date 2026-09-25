@@ -241,21 +241,23 @@ function tick() {
   }
 }
 
-// Three things worth one line each: the feet took over, the sensor never
-// answered, or it answered but no rhythm came out of it.
+// Worth one line each: the feet took over or GPS took it back, the sensor
+// never answered, or it answered but no rhythm came out of it.
 let stepsNoted = { trusted: false, silent: false, deaf: false };
 function logSteps(s) {
   const st = walk.steps;
-  if (st.trusted && !stepsNoted.trusted) {
-    stepsNoted.trusted = true;
-    log(`steg: rytm hittad, ${Math.round(st.trustedCadence)} per minut. Stegen avgör nu gång och stilla`);
+  if (st.trusted !== stepsNoted.trusted) {
+    stepsNoted.trusted = st.trusted;
+    log(st.trusted
+      ? `steg: rytm hittad, ${Math.round(st.trustedCadence)} per minut. Stegen avgör nu gång och stilla`
+      : 'steg: tysta medan gps säger rörelse, gps avgör igen');
   }
   if (SIM) return;
   if (s.t >= 5 && st.samples === 0 && !stepsNoted.silent) {
     stepsNoted.silent = true;
     log('rörelsesensor: inga värden, gps avgör gång och stilla');
   }
-  if (s.t >= 90 && st.samples > 0 && !st.trusted && !stepsNoted.deaf) {
+  if (s.t >= 90 && st.samples > 0 && st.trustCount === 0 && !stepsNoted.deaf) {
     stepsNoted.deaf = true;
     log('steg: ingen rytm efter 1,5 minut, gps avgör gång och stilla');
   }

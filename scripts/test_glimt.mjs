@@ -82,13 +82,17 @@ const PROFILES_1 = {
   sparse: t => ({ ...PROFILES_1.ideal(t), accuracy: 30, every: 6, doppler: false }),
   // Same, every ten seconds, with the phone's own speed on each fix.
   'sparse-doppler': t => ({ ...PROFILES_1.ideal(t), accuracy: 30, every: 10 }),
-  // The ideal walk on the phone from the second field test, with footsteps.
-  field: t => ({ ...PROFILES_1.ideal(t), ...FIELD_2 }),
+  // The ideal walk on the phone from the second field test, with footsteps,
+  // fiddling with the phone whenever standing.
+  field: t => ({ ...PROFILES_1.ideal(t), ...FIELD_2, handling: true }),
+  // Same, but from 2:30 the steps stop reaching the sensor while the walker
+  // walks on. GPS must take over, or the chapter reads them as standing.
+  'field-quiet': t => ({ ...PROFILES_1.ideal(t), ...FIELD_2, quietAfter: 150 }),
 };
 
 // Profiles that stop for ten seconds or more before 3:00, so scene 2 must see
 // the walker stop on their own instead of asking.
-const STOPS_1 = new Set(['ideal', 'runner', 'sparse', 'sparse-doppler', 'field']);
+const STOPS_1 = new Set(['ideal', 'runner', 'sparse', 'sparse-doppler', 'field', 'field-quiet']);
 
 // Chapter 2 profiles carry `answers` (does the walker stop for a question),
 // `map` (is the landmark's position known) and `runAt` (a tempo increase).
@@ -117,7 +121,7 @@ const PROFILES_2 = {
   // Every yes is a short stop, so this is the profile the feet exist for.
   field: {
     answers: () => true, map: true,
-    walk: (t, running) => ({ ...PROFILES_2.ideal.walk(t, running), ...FIELD_2 }),
+    walk: (t, running) => ({ ...PROFILES_2.ideal.walk(t, running), ...FIELD_2, handling: true }),
   },
 };
 
@@ -140,6 +144,7 @@ function simulate(chapterNo, name, variant) {
   let lat = 59.38, lon = 13.5;
   let ended = false;
   let forcedStop = null;      // {from, to}: the walker answering a question
+  let nextBump = 0;           // next handling bump, see `handling`
   let running = false;
 
   const fmt = s => `${String(Math.floor(s / 60)).padStart(2)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
@@ -183,11 +188,22 @@ function simulate(chapterNo, name, variant) {
   return (async () => {
     while (!ended && t < 20 * 60) {
       const p = chapterNo === 1 ? profile(t) : profile.walk(t, running);
-      let { speed, heading, accuracy = 8, every = 1, doppler = true, jitter = 0, phone = null, steps = false } = p;
+      let { speed, heading, accuracy = 8, every = 1, doppler = true, jitter = 0, phone = null,
+        steps = false, handling = false, quietAfter = null } = p;
       if (forcedStop && t >= forcedStop.from && t < forcedStop.to) speed = 0;
       // The accelerometer at 50 Hz over the quarter second up to this tick.
+      // `handling`: while standing, the phone is bumped every 0.8-1.6 s.
+      // `quietAfter`: from then on the steps barely reach the sensor.
       if (steps && !NO_STEPS) {
-        for (let u = t - 0.24; u <= t + 1e-9; u += 0.02) walk.motion(u, simulatedMagnitude(u, speed));
+        for (let u = t - 0.24; u <= t + 1e-9; u += 0.02) {
+          let m = simulatedMagnitude(u, speed);
+          if (quietAfter !== null && u >= quietAfter) m = 9.81 + (m - 9.81) * 0.2;
+          if (handling && speed === 0) {
+            if (u >= nextBump + 0.15) nextBump = u + 0.8 + Math.random() * 0.8;
+            if (u >= nextBump) m += 1.6;
+          }
+          walk.motion(u, m);
+        }
       }
       // The walker moves every second; the phone reports every `every` s.
       if (Number.isInteger(t)) {
