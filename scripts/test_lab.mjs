@@ -213,7 +213,17 @@ function simulate(labNo, name, run) {
           // Integrate the step phase so a cadence change does not jump it.
           phase += cadence / 60 * 0.02;
           let m = 9.81 + (Math.random() - 0.5) * 0.3;
-          if (cadence > 0) m += (speed > 2 ? 6 : 3) * Math.sin(2 * Math.PI * phase);
+          if (cadence > 0) {
+            m += (speed > 2 ? 6 : 3) * Math.sin(2 * Math.PI * phase);
+            // A heel strike on top of the wave: a narrow pulse at each step,
+            // sharper and harder when running. The width and height are a
+            // guess (no pocket recording yet); they are there so the knock
+            // detector meets something sharper than a sine.
+            const dp = ((phase % 1) + 1.25) % 1 - 0.5;
+            const dt = dp * 60 / cadence;
+            const [h, sigma] = speed > 2 ? [10, 0.02] : [4, 0.025];
+            m += h * Math.exp(-(dt * dt) / (2 * sigma * sigma));
+          }
           if (walker.knocks.some(k => u >= k - 0.01 && u < k + 0.01)) m += 8;
           if (profile.gps.handling && speed === 0) {
             if (u >= nextBump + 0.15) nextBump = u + 0.8 + Math.random() * 0.8;

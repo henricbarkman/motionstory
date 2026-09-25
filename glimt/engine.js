@@ -321,6 +321,13 @@ export class Steps {
 // average: a first version did the latter and read simulated running as
 // seventy knocks a minute, because a fast wave outruns any average.
 //
+// Heel strikes are sharp too, and a running one can stand out as much as a
+// knock. Two things keep them from reading as a double: knocks do not count
+// while running (the Walk mutes them), and a double must stand alone, with a
+// second of quiet before its first knock and KNOCK_SETTLE after its second.
+// Steps come in a rhythm, so they never do. With simulated heel strikes and
+// neither guard, one lab read 59 doubles nobody knocked.
+//
 // Nothing here has met a real pocket yet (2026-09-25). Every spike, knock or
 // not, is kept in `spikes` so the lab can log what the sensor actually saw
 // and the thresholds can be set from a walk instead of a guess.
@@ -328,12 +335,15 @@ const KNOCK_JUMP = 3.0;      // m/s² above the mean of the two neighbours
 const KNOCK_SEEN = 1.5;      // smaller spikes are logged, not counted
 const KNOCK_GAP = 0.12;      // s; spikes closer than this are the same knock
 const KNOCK_PAIR = 0.8;      // s; two knocks within this are a double knock
+const KNOCK_ALONE = 1.0;     // s of quiet before a double's first knock
+const KNOCK_SETTLE = 0.8;    // s of quiet after its second before it counts
 
 export class Knocks {
   constructor() {
     this.prev = null;          // {t, m}: the sample before the one being judged
     this.cur = null;           // {t, m}: the sample being judged
     this.times = [];           // knock times, last ten seconds
+    this.pending = null;       // second knock of a double not yet settled
     this.doubles = [];         // double-knock times, last minute
     this.spikes = [];          // {t, peak, knock}, last minute
     this.mutedUntil = -Infinity;
@@ -367,15 +377,24 @@ export class Knocks {
     this.times.push(t);
     this.count++;
     while (this.times.length && this.times[0] < t - 10) this.times.shift();
-    const prev = this.times[this.times.length - 2];
-    const lastDouble = this.doubles[this.doubles.length - 1];
-    // A double is two knocks close together, and a third right after does
-    // not make a second double out of knocks two and three.
-    if (prev !== undefined && t - prev <= KNOCK_PAIR && !(lastDouble !== undefined && lastDouble >= prev)) {
-      this.doubles.push(t);
-      while (this.doubles.length && this.doubles[0] < t - 60) this.doubles.shift();
-      if (this.history.length < 2000) this.history.push(t);
+    // A knock right behind a pending double makes it three: a rhythm, or
+    // someone knocking on, and neither is the double that was asked for.
+    if (this.pending !== null && t - this.pending <= KNOCK_SETTLE) { this.pending = null; return; }
+    const n = this.times.length;
+    const prev = this.times[n - 2];
+    const before = this.times[n - 3];
+    if (prev !== undefined && t - prev <= KNOCK_PAIR && (before === undefined || prev - before > KNOCK_ALONE)) {
+      this.pending = t;
     }
+  }
+
+  // A pending double counts once KNOCK_SETTLE has passed without a third.
+  settle(t) {
+    if (this.pending === null || t - this.pending <= KNOCK_SETTLE) return;
+    this.doubles.push(this.pending);
+    while (this.doubles.length && this.doubles[0] < t - 60) this.doubles.shift();
+    if (this.history.length < 2000) this.history.push(this.pending);
+    this.pending = null;
   }
 
   lastDoubleAt() { return this.doubles.length ? this.doubles[this.doubles.length - 1] : -Infinity; }
@@ -518,6 +537,10 @@ export class Walk {
     this.pace = this._pace(t);
     this.odo += this.pace * dt;
     this.tempo.push(t, this.pace);
+    // Running heel strikes are as sharp as knocks; nothing asks for a knock
+    // mid-run, so none counts until a second after it.
+    if (this.tempo.band === 'run') this.knocks.mute(t + 1);
+    this.knocks.settle(t);
     this.contact.step(dt, { moving: this.tempo.moving, accuracy: this.gps.accuracy });
     return this.state();
   }
