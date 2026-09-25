@@ -11,7 +11,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { Walk, Waiter } from '../glimt/engine.js';
+import { Walk, Waiter, simulatedMagnitude } from '../glimt/engine.js';
 import { runChapter1 } from '../glimt/chapter1.js';
 import { runChapter2 } from '../glimt/chapter2.js';
 
@@ -46,10 +46,22 @@ function estimatedSeconds(file) {
 const QUESTIONS_2 = new Set(['s1-1', 's1-no', 's2-light', 's2-dark', 's3-1',
   's6-vatten-q', 's6-skog-q', 's6-berg-q', 's6-bro-q', 's6-kyrkogard-q', 's6-nomap-q', 's9-1']);
 
+// The phone in the second field test (2026-09-25): a fix every six seconds,
+// its own speed reading 4-11 km/h walking and 1-3 km/h standing, positions
+// that wander. GPS alone cannot find a stop in this; `steps: true` adds the
+// accelerometer. GLIMT_NO_STEPS=1 turns the feet off to show that.
+const FIELD_2 = {
+  accuracy: 25, every: 6, jitter: 10, steps: true,
+  phone: v => v ? v * (0.8 + Math.random() * 1.4) : 0.3 + Math.random() * 0.5,
+};
+const NO_STEPS = !!process.env.GLIMT_NO_STEPS;
+
 // Walker profiles: speed (m/s) as a function of t, plus a heading so the
 // distance to start is real. Each returns {speed, heading, accuracy?, every?,
-// doppler?}: `every` is seconds between fixes (default 1), `doppler: false`
-// means the phone reports no speed of its own.
+// doppler?, jitter?, phone?, steps?}: `every` is seconds between fixes
+// (default 1), `doppler: false` means the phone reports no speed of its own,
+// `phone` maps the true speed to the one it reports, `jitter` is metres of
+// position noise, `steps` feeds the accelerometer.
 const PROFILES_1 = {
   // Walks, stops once at 2:00 for 15 s, speeds up at 5:10, turns back at 7:30.
   ideal: t => ({
@@ -70,7 +82,17 @@ const PROFILES_1 = {
   sparse: t => ({ ...PROFILES_1.ideal(t), accuracy: 30, every: 6, doppler: false }),
   // Same, every ten seconds, with the phone's own speed on each fix.
   'sparse-doppler': t => ({ ...PROFILES_1.ideal(t), accuracy: 30, every: 10 }),
+  // The ideal walk on the phone from the second field test, with footsteps,
+  // fiddling with the phone whenever standing.
+  field: t => ({ ...PROFILES_1.ideal(t), ...FIELD_2, handling: true }),
+  // Same, but from 2:30 the steps stop reaching the sensor while the walker
+  // walks on. GPS must take over, or the chapter reads them as standing.
+  'field-quiet': t => ({ ...PROFILES_1.ideal(t), ...FIELD_2, quietAfter: 150 }),
 };
+
+// Profiles that stop for ten seconds or more before 3:00, so scene 2 must see
+// the walker stop on their own instead of asking.
+const STOPS_1 = new Set(['ideal', 'runner', 'sparse', 'sparse-doppler', 'field', 'field-quiet']);
 
 // Chapter 2 profiles carry `answers` (does the walker stop for a question),
 // `map` (is the landmark's position known) and `runAt` (a tempo increase).
@@ -95,6 +117,12 @@ const PROFILES_2 = {
     answers: () => true, map: true,
     walk: (t, running) => ({ speed: t < 5 ? 0 : running ? 2.4 : 1.4, heading: 0, accuracy: 80 }),
   },
+  // The ideal walker on the phone from the second field test, with footsteps.
+  // Every yes is a short stop, so this is the profile the feet exist for.
+  field: {
+    answers: () => true, map: true,
+    walk: (t, running) => ({ ...PROFILES_2.ideal.walk(t, running), ...FIELD_2, handling: true }),
+  },
 };
 
 const CHAPTERS = {
@@ -116,6 +144,7 @@ function simulate(chapterNo, name, variant) {
   let lat = 59.38, lon = 13.5;
   let ended = false;
   let forcedStop = null;      // {from, to}: the walker answering a question
+  let nextBump = 0;           // next handling bump, see `handling`
   let running = false;
 
   const fmt = s => `${String(Math.floor(s / 60)).padStart(2)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
@@ -159,16 +188,36 @@ function simulate(chapterNo, name, variant) {
   return (async () => {
     while (!ended && t < 20 * 60) {
       const p = chapterNo === 1 ? profile(t) : profile.walk(t, running);
-      let { speed, heading, accuracy = 8, every = 1, doppler = true } = p;
+      let { speed, heading, accuracy = 8, every = 1, doppler = true, jitter = 0, phone = null,
+        steps = false, handling = false, quietAfter = null } = p;
       if (forcedStop && t >= forcedStop.from && t < forcedStop.to) speed = 0;
+      // The accelerometer at 50 Hz over the quarter second up to this tick.
+      // `handling`: while standing, the phone is bumped every 0.8-1.6 s.
+      // `quietAfter`: from then on the steps barely reach the sensor.
+      if (steps && !NO_STEPS) {
+        for (let u = t - 0.24; u <= t + 1e-9; u += 0.02) {
+          let m = simulatedMagnitude(u, speed);
+          if (quietAfter !== null && u >= quietAfter) m = 9.81 + (m - 9.81) * 0.2;
+          if (handling && speed === 0) {
+            if (u >= nextBump + 0.15) nextBump = u + 0.8 + Math.random() * 0.8;
+            if (u >= nextBump) m += 1.6;
+          }
+          walk.motion(u, m);
+        }
+      }
       // The walker moves every second; the phone reports every `every` s.
       if (Number.isInteger(t)) {
         const dLat = (speed * Math.cos(heading)) / 111320;
         const dLon = (speed * Math.sin(heading)) / (111320 * Math.cos(lat * Math.PI / 180));
         lat += dLat; lon += dLon;
         if (t % every === 0) {
-          const v = doppler ? speed + (speed ? (Math.random() - 0.5) * 0.2 : 0) : null;
-          walk.fix(t, { latitude: lat, longitude: lon, accuracy, speed: v });
+          const v = !doppler ? null : phone ? phone(speed) : speed + (speed ? (Math.random() - 0.5) * 0.2 : 0);
+          const j = () => (Math.random() - 0.5) * 2 * jitter;
+          walk.fix(t, {
+            latitude: lat + j() / 111320,
+            longitude: lon + j() / (111320 * Math.cos(lat * Math.PI / 180)),
+            accuracy, speed: v,
+          });
         }
       }
       const s = walk.tick(t);
@@ -228,6 +277,9 @@ async function main() {
         }
         const problems = name === 'fog' ? [] : timingErrors(log, ch.targets, ch.window);
         if (Number(no) === 2) problems.push(...answerErrors(log, ch.profiles[name]));
+        if (Number(no) === 1 && STOPS_1.has(name) && !log.some(l => l.includes('scene 2: walker stopped'))) {
+          problems.push('scene 2 never saw the walker stop');
+        }
         const ok = ended && pos === ch.order.length && !log.some(l => l.startsWith('ERROR')) && problems.length === 0;
         if (!ok) failures++;
         console.log(ok ? 'OK: all scenes in order and on time'

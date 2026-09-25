@@ -202,6 +202,129 @@ export class GpsSpeed {
   }
 }
 
+// Step detection from the accelerometer. The second field test showed why
+// GPS cannot decide moving or still: one fix every six seconds, and the
+// phone's own speed read 4-11 km/h walking and 1-3 km/h standing in a shop,
+// straddling the 1.4 km/h still threshold. Feet do not have that problem.
+//
+// Only the magnitude of the acceleration is used, so the phone may sit any
+// way in any pocket. Two averages with time constants (not per-sample
+// factors, so the sensor rate does not matter): a fast one follows the step
+// wave, a slow one follows gravity. A step is the wave rising STEP_PEAK above
+// gravity after it has dipped below it since the last step.
+const STEP_FAST = 0.05;      // s
+const STEP_SLOW = 1.5;       // s
+const STEP_PEAK = 1.0;       // m/s² above the slow average
+const STEP_MIN_GAP = 0.25;   // s; more than 240 steps a minute is not feet
+const STEP_WINDOW = 6;       // s of steps behind the cadence
+const STEP_GONE = 2;         // s without a step and the walker has stopped
+const STEP_FLOOR = 0.9;      // m/s; any rhythm of steps is at least a walk
+// Gait lies between these. Picking the phone up once a second is slower,
+// and a detector hearing two peaks per step would be faster.
+const STEP_MIN_CADENCE = 70;
+const STEP_MAX_CADENCE = 220;
+// Feet silent this long while every GPS fix says clearly moving: the pocket
+// has stopped passing steps through (or the phone is in a hand), so GPS takes
+// over again until a new rhythm appears. Standing, this phone read at most
+// 0.8 m/s, so 1.0 is not reached by a walker who has really stopped.
+const FEET_QUIET = 15;       // s
+const GPS_CLEARLY_MOVING = 1.0;  // m/s
+
+// Stride grows with cadence: about 5 km/h at 120 steps a minute, and past the
+// running threshold from about 145.
+export function cadencePace(c) {
+  const stride = Math.min(1.2, Math.max(0.5, 0.55 + (c - 100) * 0.0075));
+  return c / 60 * stride;
+}
+
+export class Steps {
+  constructor() {
+    this.fast = null;
+    this.slow = null;
+    this.armed = false;
+    this.times = [];             // step times, last ten seconds
+    this.lastStepAt = -Infinity;
+    this.lastT = null;
+    this.samples = 0;
+    this.trusted = false;        // on a steady rhythm, off when GPS overrules
+    this.trustedCadence = null;
+    this.trustCount = 0;
+  }
+
+  push(t, mag) {
+    if (!Number.isFinite(mag)) return;
+    const dt = this.lastT === null ? 0 : t - this.lastT;
+    this.lastT = t;
+    this.samples++;
+    // First sample, or the sensor was silent: start the averages afresh.
+    if (this.fast === null || dt > 1) {
+      this.fast = this.slow = mag;
+      this.armed = false;
+      return;
+    }
+    if (dt <= 0) return;
+    this.fast += (1 - Math.exp(-dt / STEP_FAST)) * (mag - this.fast);
+    this.slow += (1 - Math.exp(-dt / STEP_SLOW)) * (mag - this.slow);
+    const x = this.fast - this.slow;
+    if (this.armed && x > STEP_PEAK) {
+      const last = this.times[this.times.length - 1];
+      if (last === undefined || t - last >= STEP_MIN_GAP) this._step(t);
+      this.armed = false;
+    } else if (!this.armed && x < 0) {
+      this.armed = true;
+    }
+  }
+
+  _step(t) {
+    this.times.push(t);
+    this.lastStepAt = t;
+    while (this.times.length && this.times[0] < t - 10) this.times.shift();
+    // Trust the feet once they have shown a rhythm: six steps at a gait's
+    // cadence, evenly spaced (no gap more than twice another). Handling the
+    // phone makes bumps, not a rhythm. Until then (no sensor, or a detector
+    // that hears nothing in this pocket) GPS decides, as before.
+    if (this.trusted || this.times.length < 6) return;
+    const six = this.times.slice(-6);
+    const gaps = six.slice(1).map((s, i) => s - six[i]);
+    const c = 5 / (six[5] - six[0]) * 60;
+    const even = Math.max(...gaps) <= 2 * Math.min(...gaps);
+    if (c >= STEP_MIN_CADENCE && c <= STEP_MAX_CADENCE && even) {
+      this.trusted = true;
+      this.trustedCadence = c;
+      this.trustCount++;
+    }
+  }
+
+  // GPS overruled the feet: forget the rhythm, so trust needs a new one.
+  distrust() {
+    this.trusted = false;
+    this.times = [];
+  }
+
+  // Samples arriving. The sensor stops with the screen.
+  live(t) { return this.lastT !== null && t - this.lastT < 2; }
+
+  // Steps per minute over the last few seconds; 0 once the feet have stopped,
+  // and 0 for anything slower than a gait.
+  cadence(t) {
+    const recent = this.times.filter(s => s >= t - STEP_WINDOW);
+    if (recent.length < 3 || t - recent[recent.length - 1] > STEP_GONE) return 0;
+    const c = (recent.length - 1) / (recent[recent.length - 1] - recent[0]) * 60;
+    return c >= STEP_MIN_CADENCE ? c : 0;
+  }
+}
+
+// Acceleration magnitude for a simulated walker: one wave per step at the
+// cadence that matches the speed, plus sensor noise. For ?sim and the tests.
+export function simulatedMagnitude(t, speed) {
+  const noise = (Math.random() - 0.5) * 0.3;
+  if (speed < 0.3) return 9.81 + noise;
+  let c = 60;
+  while (c < 200 && cadencePace(c) < speed) c++;
+  const amp = speed > RUN_MS ? 6 : 3;
+  return 9.81 + amp * Math.sin(2 * Math.PI * c / 60 * t) + noise;
+}
+
 // Everything the chapter script can look at on a tick.
 export class Walk {
   constructor(opts = {}) {
@@ -210,10 +333,37 @@ export class Walk {
     this.homing = new Homing();
     this.target = null;
     this.gps = new GpsSpeed();
+    this.steps = new Steps();
     this.t = 0;
     this.lastTick = 0;
     this.speed = 0;
+    this.pace = 0;
+    this.paceSource = 'gps';
+    this.gpsSpeeds = [];        // [{t, v}] per fix, last 30 s
     this.gpsSeen = false;
+  }
+
+  // Called for every accelerometer sample: |acceleration including gravity|.
+  motion(t, magnitude) { this.steps.push(t, magnitude); }
+
+  // What the tempo bands see. Once the feet are trusted and the sensor is
+  // live they decide moving or still, and cadence decides how fast; otherwise
+  // the GPS speed does, as before.
+  _pace(t) {
+    if (this.steps.trusted && this._feetQuietWhileGpsMoves(t)) this.steps.distrust();
+    if (!this.steps.trusted || !this.steps.live(t)) {
+      this.paceSource = 'gps';
+      return this.speed;
+    }
+    this.paceSource = 'steps';
+    const c = this.steps.cadence(t);
+    return c ? Math.max(STEP_FLOOR, cadencePace(c)) : 0;
+  }
+
+  _feetQuietWhileGpsMoves(t) {
+    if (t - this.steps.lastStepAt < FEET_QUIET) return false;
+    const recent = this.gpsSpeeds.filter(f => f.t >= t - FEET_QUIET);
+    return recent.length >= 2 && recent.every(f => f.v >= GPS_CLEARLY_MOVING);
   }
 
   // A place the chapter wants the walker to reach. Can be set late (the map
@@ -226,6 +376,8 @@ export class Walk {
   fix(t, coord) {
     this.gpsSeen = true;
     this.speed = this.gps.push(t, coord);
+    this.gpsSpeeds.push({ t, v: this.speed });
+    while (this.gpsSpeeds.length && this.gpsSpeeds[0].t < t - 30) this.gpsSpeeds.shift();
     // Distance to start only from decent fixes. A stationary phone with 200 m
     // accuracy drifts hundreds of metres, which would read as walking home.
     if (coord.accuracy == null || coord.accuracy <= 50) {
@@ -239,7 +391,8 @@ export class Walk {
     const dt = Math.max(0, t - this.lastTick);
     this.lastTick = t;
     this.t = t;
-    this.tempo.push(t, this.speed);
+    this.pace = this._pace(t);
+    this.tempo.push(t, this.pace);
     this.contact.step(dt, { moving: this.tempo.moving, accuracy: this.gps.accuracy });
     return this.state();
   }
@@ -249,6 +402,9 @@ export class Walk {
     return {
       t,
       speed: this.speed,
+      pace: this.pace,
+      paceSource: this.paceSource,
+      cadence: this.steps.cadence(t),
       band: this.tempo.band,
       moving: this.tempo.moving,
       stillFor: this.tempo.stillFor(t),
