@@ -4,8 +4,10 @@
 // when it stops sounding. Plus a fake clock whose timers the Synth runs on.
 //
 // Only what synth.js uses is here. It makes no sound and mixes nothing; the
-// question it answers is "what is still playing, and did anything start that
-// should not have".
+// questions it answers are "what is still playing", "did anything start that
+// should not have", and, once `watching` is set, "did any gain go up after
+// that" (`raised`). `broken` makes every AudioParam call throw, as an
+// interrupted context can.
 
 export function makeClock() {
   const clock = { time: 0, seq: 0, queue: [] };
@@ -41,24 +43,31 @@ const finite = (x, what) => {
 };
 
 class Param {
-  constructor(v) { this._v = v; this.events = 0; }
+  constructor(v, audio = null, gain = false) { this._v = v; this.events = 0; this.audio = audio; this.gain = gain; }
   get value() { return this._v; }
-  set value(x) { finite(x, 'AudioParam.value'); this._v = x; }
-  setValueAtTime(v, t) { finite(v, 'setValueAtTime value'); finite(t, 'setValueAtTime time'); if (t < 0) throw new RangeError('negative time'); this._v = v; this.events++; return this; }
-  linearRampToValueAtTime(v, t) { finite(v, 'linearRamp value'); finite(t, 'linearRamp time'); if (t < 0) throw new RangeError('negative time'); this._v = v; this.events++; return this; }
+  set value(x) { this._check(); finite(x, 'AudioParam.value'); this._write(x); }
+  _check() { if (this.audio && this.audio.broken) throw new Error('InvalidStateError: context interrupted'); }
+  _write(v) {
+    this._v = v; this.events++;
+    if (this.gain && this.audio.watching && v > 1e-3) this.audio.raised++;
+  }
+  setValueAtTime(v, t) { this._check(); finite(v, 'setValueAtTime value'); finite(t, 'setValueAtTime time'); if (t < 0) throw new RangeError('negative time'); this._write(v); return this; }
+  linearRampToValueAtTime(v, t) { this._check(); finite(v, 'linearRamp value'); finite(t, 'linearRamp time'); if (t < 0) throw new RangeError('negative time'); this._write(v); return this; }
   exponentialRampToValueAtTime(v, t) {
+    this._check();
     finite(v, 'exponentialRamp value'); finite(t, 'exponentialRamp time');
     if (v === 0) throw new RangeError('exponentialRamp to 0');
     if (t < 0) throw new RangeError('negative time');
-    this._v = v; this.events++; return this;
+    this._write(v); return this;
   }
   setTargetAtTime(v, t, c) {
+    this._check();
     finite(v, 'setTarget value'); finite(t, 'setTarget time'); finite(c, 'setTarget constant');
     if (t < 0 || c < 0) throw new RangeError('negative time or constant');
-    this._v = v; this.events++; return this;
+    this._write(v); return this;
   }
-  cancelScheduledValues(t) { finite(t, 'cancel time'); return this; }
-  cancelAndHoldAtTime(t) { finite(t, 'cancelAndHold time'); return this; }
+  cancelScheduledValues(t) { this._check(); finite(t, 'cancel time'); return this; }
+  cancelAndHoldAtTime(t) { this._check(); finite(t, 'cancelAndHold time'); return this; }
 }
 
 class Node {
@@ -109,11 +118,14 @@ export class FakeAudioContext {
     this.playing = new Set();
     this.started = [];
     this.destination = new Node(this);
+    this.watching = false;
+    this.raised = 0;
+    this.broken = false;
   }
   get currentTime() { return this.clock.time; }
-  createGain() { const n = new Node(this); n.gain = new Param(1); return n; }
-  createStereoPanner() { const n = new Node(this); n.pan = new Param(0); return n; }
-  createBiquadFilter() { const n = new Node(this); n.type = 'lowpass'; n.frequency = new Param(350); n.Q = new Param(1); return n; }
+  createGain() { const n = new Node(this); n.gain = new Param(1, this, true); return n; }
+  createStereoPanner() { const n = new Node(this); n.pan = new Param(0, this); return n; }
+  createBiquadFilter() { const n = new Node(this); n.type = 'lowpass'; n.frequency = new Param(350, this); n.Q = new Param(1, this); return n; }
   createBufferSource() { return new BufferSource(this); }
   createOscillator() { return new Oscillator(this); }
   createBuffer(channels, length, rate) {

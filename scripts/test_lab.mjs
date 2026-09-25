@@ -190,6 +190,7 @@ function simulate(labNo, name, run, abortIn = null) {
   };
   const walker = makeWalker(profile.kind, { bpm, target: () => target });
   let station = null, stationAt = 0, aborted = null;
+  let pressedAt = null, startedBefore = 0, liveAtPress = 0;
   const trace = [];
 
   const helpers = labHelpers(walk, {
@@ -219,8 +220,19 @@ function simulate(labNo, name, run, abortIn = null) {
   return (async () => {
     while (!ended && t < 45 * 60) {
       clock.advance(t, () => audio.update());
-      if (abortIn !== null && station === abortIn.id && t >= stationAt + abortIn.after) {
-        aborted = await pressStop();
+      // The stop button, as app.js has it: the sounds close at once, the
+      // stations tick on through two seconds of fade, then finish() ends
+      // the waits.
+      if (abortIn !== null && pressedAt === null && station === abortIn.id && t >= stationAt + abortIn.after) {
+        log.push(`${fmt(t)}  ■ stop`);
+        pressedAt = t;
+        startedBefore = audio.started.length;
+        liveAtPress = sfx.live.size;
+        sfx.close();
+        audio.watching = true;
+      }
+      if (pressedAt !== null && t >= pressedAt + 2) {
+        aborted = await finishWalk();
         break;
       }
       const pos = walk.position();
@@ -279,7 +291,7 @@ function simulate(labNo, name, run, abortIn = null) {
     // every fade must have run out and every loop stopped.
     const liveAtEnd = aborted ? aborted.live : sfx.live.size;
     if (!aborted) await drain();
-    const after = aborted || { live: liveAtEnd, playing: audio.playing.size, intervals: clock.intervals(), started: 0 };
+    const after = aborted || { live: liveAtEnd, playing: audio.playing.size, intervals: clock.intervals(), started: 0, raised: 0 };
     // Where each double nobody asked for fell: band, speed, station.
     const windows = ctx.memo.knockWindows || [];
     const strays = walk.knocks.history.filter(k => !windows.some(([a, b]) => k >= a && k <= b)).map(k => {
@@ -292,14 +304,14 @@ function simulate(labNo, name, run, abortIn = null) {
 
   // What finish() in app.js does to the sound and the waits, then five
   // seconds of audio clock with no ticks, as in a phone after Avsluta.
-  async function pressStop() {
-    log.push(`${fmt(t)}  ■ stop`);
-    const before = audio.started.length;
-    const live = sfx.live.size;
+  async function finishWalk() {
     waiter.abort();
     sfx.close();
     await drain();
-    return { live, playing: audio.playing.size, intervals: clock.intervals(), started: audio.started.length - before };
+    return {
+      live: liveAtPress, playing: audio.playing.size, intervals: clock.intervals(),
+      started: audio.started.length - startedBefore, raised: audio.raised,
+    };
   }
 
   async function drain() {
@@ -330,7 +342,7 @@ async function main() {
         const { log, results, ended, t, station, strays, sound } = await simulate(labNo, name, run, abortIn);
         if (VERBOSE && run === 0) console.log(`\n--- lab ${labNo} / ${name} / run ${run}\n${log.join('\n')}`);
         const where = abortIn ? `stop ${abortIn.after} s into ${abortIn.id}` : `run ${run}`;
-        if (sound.playing || sound.intervals || sound.started) problems.push(`${where}: sound on after the end: ${sound.playing} playing, ${sound.intervals} loops, ${sound.started} started after stop`);
+        if (sound.playing || sound.intervals || sound.started || sound.raised) problems.push(`${where}: sound on after the end: ${sound.playing} playing, ${sound.intervals} loops, ${sound.started} started and ${sound.raised} turned up after stop`);
         if (!abortIn && sound.liveAtEnd) problems.push(`${where}: ${sound.liveAtEnd} sounds still live when the lab ended`);
         if (abortIn) {
           // A station shorter than the offset ends before the stop; the

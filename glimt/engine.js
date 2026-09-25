@@ -81,6 +81,12 @@ export class Tempo {
     this.increaseCount++;
   }
 
+  // The pace pushed at or just before `t`; 0 before the first.
+  speedAt(t) {
+    for (let i = this.samples.length - 1; i >= 0; i--) if (this.samples[i].t <= t) return this.samples[i].v;
+    return 0;
+  }
+
   get moving() { return this.band !== 'still'; }
 
   stillFor(t) { return this.moving ? 0 : t - this.stillSince; }
@@ -412,11 +418,13 @@ export class Knocks {
     if (this.history.length < 2000) this.history.push(g.last);
   }
 
-  // Forgets the doubles from `from` on and any group still open.
-  retract(from) {
+  // Forgets the doubles from `from` on that `which` picks, and any group
+  // still open.
+  retract(from, which = () => true) {
     this.group = null;
-    this.doubles = this.doubles.filter(d => d < from);
-    this.history = this.history.filter(d => d < from);
+    const keep = d => d < from || !which(d);
+    this.doubles = this.doubles.filter(keep);
+    this.history = this.history.filter(keep);
   }
 
   lastDoubleAt() { return this.doubles.length ? this.doubles[this.doubles.length - 1] : -Infinity; }
@@ -566,7 +574,9 @@ export class Walk {
     // heard in that window go too: in the simulation the first seconds of
     // Flykten left one in ten walks with a double nobody knocked.
     if (this.tempo.band === 'run') {
-      if (!ran) this.knocks.retract(t - STEP_WINDOW);
+      // Only doubles heard on the move: one knocked standing still stays,
+      // even if a run starts right after it (review, 2026-09-25).
+      if (!ran) this.knocks.retract(t - STEP_WINDOW, d => this.tempo.speedAt(d) > STILL_MS);
       this.knocks.mute(t + 1);
     }
     this.knocks.settle(t);

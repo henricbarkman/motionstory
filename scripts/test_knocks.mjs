@@ -6,7 +6,7 @@
 //
 //   node scripts/test_knocks.mjs
 
-import { Knocks } from '../glimt/engine.js';
+import { Knocks, Walk, simulatedMagnitude } from '../glimt/engine.js';
 
 let failures = 0;
 const check = (ok, what) => { console.log(`${ok ? 'ok  ' : 'FAIL'}  ${what}`); if (!ok) failures++; };
@@ -59,6 +59,26 @@ check(doubles(run([2, 2.3], { seconds: 2.9 })) === 0, 'no double before the wind
 const r = run([2, 2.3, 6, 6.3], { seconds: 8 });
 r.retract(5);
 check(r.history.length === 1 && r.lastDoubleAt() < 3, 'retract forgets the doubles after its time, keeps the earlier');
+
+check((() => { const q = run([2, 2.3, 6, 6.3], { seconds: 8 }); q.retract(1, d => d > 5); return q.history.length === 1 && q.history[0] < 3; })(),
+  'retract spares the doubles its test does not pick');
+
+// Through the Walk: a double knocked standing still survives a run that
+// starts four seconds later; the retraction is for doubles heard on the move.
+{
+  const walk = new Walk();
+  const speedAt = u => u < 20 ? 1.4 : u < 30 ? 0 : 3.2;
+  for (let i = 0; i <= 45 * 50; i++) {
+    const u = i / 50;
+    let m = simulatedMagnitude(u, speedAt(u));
+    if (Math.abs(u - 26) < 1e-9 || Math.abs(u - 26.3) < 1e-9) m += 8;
+    walk.motion(u, m);
+    if (i % 12 === 0 && i > 0) walk.tick(u);
+  }
+  const s = walk.state();
+  check(s.band === 'run', `the walker ended up running (${s.band})`);
+  check(walk.knocks.history.some(d => d > 25.9 && d < 26.5), `the standing double is kept (${walk.knocks.history.map(d => d.toFixed(1)).join(', ') || 'none'})`);
+}
 
 // A gap in the sensor (backgrounded tab) does not make a spike out of the jump.
 const gap = new Knocks();

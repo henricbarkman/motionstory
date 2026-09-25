@@ -43,10 +43,15 @@ export class Synth {
     return buf;
   }
 
+  // A stopped handle ignores set(): after Avsluta the stations tick on for
+  // the two seconds of fade, and a review found their per-tick set() turning
+  // a stopped pad back up while its oscillators were still fading out.
   _track(handle) {
     this.live.add(handle);
     const stop = handle.stop;
+    const set = handle.set;
     let stopped = false;
+    handle.set = (...a) => { if (!stopped) set(...a); };
     handle.stop = (...a) => {
       if (stopped) return;
       stopped = true;
@@ -56,7 +61,13 @@ export class Synth {
     return handle;
   }
 
-  stopAll() { for (const h of [...this.live]) h.stop(); }
+  // One sound that throws on stop (an interrupted context) must not leave
+  // the ones after it running.
+  stopAll() {
+    for (const h of [...this.live]) {
+      try { h.stop(); } catch (_) {}
+    }
+  }
 
   _later(fn, ms) { this.timers.setTimeout(fn, ms); }
 
