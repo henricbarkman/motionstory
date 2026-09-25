@@ -33,6 +33,10 @@ check(cellOf(59.38, 13.5) !== cellOf(59.38 + 100 / 111320, 13.5), 'a square nort
 const w = 0.0009 / Math.cos(59.38 * Math.PI / 180);
 check(cellOf(59.38, 13.5) !== cellOf(59.38, 13.5 + w), 'a square east is another square');
 
+// A walk straight north stays in one column (it slid sideways once).
+const column = new Set(Array.from({ length: 60 }, (_, k) => cellOf(59.38 + k * 0.0009, 13.5123).split(',')[1]));
+check(column.size === 1, `straight north stays in one column (${column.size} columns)`);
+
 // A storage stand-in.
 const store = () => { const m = new Map(); return { getItem: k => m.get(k) ?? null, setItem: (k, v) => m.set(k, String(v)) }; };
 const s = store();
@@ -59,6 +63,11 @@ const third = m.closing({ light: 'light', rain: true }, new Date(t0 + 30 * H));
 check(third.includes('nyckel-regn') && third.includes('varld-lite'), `rain and one new square (${third.join(', ')})`);
 m.endWalk(t0 + 31 * H, '1');
 check(m.summary().walks === 3 && m.summary().cells === 11, `summary counts walks and squares (${JSON.stringify(m.summary())})`);
+
+// The start screen lights the squares the last walk added.
+const last = new Memory(s).lastWalkCells();
+check(last.size === 1 && last.has(cellOf(59.38 + 20 * 100 / 111320, 13.5)), `last walk's squares are the ones it added (${[...last].join(' ')})`);
+check(new Memory(store()).lastWalkCells().size === 0, 'no walks, no last squares');
 
 // A broken entry starts over instead of throwing.
 const broken = store();

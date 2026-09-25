@@ -26,6 +26,7 @@ const ASSETS = [
   './glimt/world.js',
   './glimt/lab.js',
   './glimt/synth.js',
+  './glimt/memory.js',
   './stories/glimt/kapitel-1.json',
   './stories/glimt/kapitel-2.json',
   './stories/glimt/labb.json',

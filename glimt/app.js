@@ -10,6 +10,7 @@ import { runLab, labHelpers, LABS, TITLES } from './lab.js';
 import { Synth, SilentSynth } from './synth.js';
 import { Mixer, Library } from './audio.js';
 import { chooseWorld, defaultWorld } from './world.js';
+import { Memory, drawWorld, KEY_NAMES } from './memory.js';
 
 const params = new URLSearchParams(location.search);
 const SIM = params.has('sim');
@@ -69,6 +70,11 @@ let labResults = [];
 let lastDoubleSeen = -Infinity, doublesLogged = 0;
 let bedBuf = null, riserBuf = null;
 let walk, waiter, world;
+let memory = null;
+// A walk shorter than this is not remembered: opening the app and pressing
+// Avsluta should not make her say you were just here.
+const MEMORY_MIN_WALK = 60;     // s
+const MEMORY_MAX_ACCURACY = 30; // m; a vaguer fix does not say which square
 let t0 = 0;
 let watchId = null, tickId = null, simId = null, motionSimId = null;
 let wakeLock = null;
@@ -185,6 +191,8 @@ async function start() {
   walk = new Walk();
   waiter = new Waiter();
   world = defaultWorld();
+  // A simulated walk does not go into her world: its squares are made up.
+  memory = new Memory(SIM ? null : localStorage);
 
   const what = def.lab
     ? `labb ${def.lab}${ONLY_STATION ? `, bara ${TITLES[ONLY_STATION]}` : ''}`
@@ -256,7 +264,12 @@ async function start() {
   }
 
   try {
-    if (def.lab) await runLab(ctx, def.lab, { only: ONLY_STATION });
+    if (def.lab) {
+      // A single station is a try-out, not a walk with her: no memory lines.
+      const opening = ONLY_STATION ? [] : memory.opening(Date.now());
+      const closing = () => ONLY_STATION ? [] : memory.closing(world, new Date());
+      await runLab(ctx, def.lab, { only: ONLY_STATION, opening, closing });
+    }
     else await def.run(ctx);
   } catch (err) {
     log('fel: ' + err.message);
@@ -369,6 +382,7 @@ function startGps() {
     const c = pos.coords;
     fixTimes.push(now());
     walk.fix(now(), c);
+    if (c.accuracy <= MEMORY_MAX_ACCURACY) memory.visit(c.latitude, c.longitude);
     if (first) {
       first = false;
       log(`gps: första fix ±${Math.round(c.accuracy)} m`);
@@ -415,6 +429,7 @@ function startSim() {
     lon += (v * Math.sin(heading)) / (111320 * Math.cos(lat * Math.PI / 180));
     fixTimes.push(now());
     walk.fix(now(), { latitude: lat, longitude: lon, accuracy, speed: v });
+    if (accuracy <= MEMORY_MAX_ACCURACY) memory.visit(lat, lon);
     if (first) {
       first = false;
       onFirstPosition(lat, lon);
@@ -437,8 +452,43 @@ function finish() {
   if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
   $('walking').hidden = true;
   $('done').hidden = false;
+  if (memory) {
+    if (now() >= MEMORY_MIN_WALK) {
+      memory.endWalk(Date.now(), chapterNo);
+      log(`minne: ${memory.fresh.size} nya rutor, ${memory.known.size} totalt`);
+    }
+    showWorld('world-end', memory, memory.fresh, 'end');
+  }
   if (CHAPTERS[chapterNo].lab) showLabResults();
   $('final-log').textContent = logLines.join('\n');
+}
+
+// ---------- her world ----------
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+const andList = xs => xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} och ${xs[xs.length - 1]}`;
+
+function worldLine(m, when) {
+  const sum = m.summary();
+  if (!sum.cells) return 'Hennes värld är tom än. Den växer där du går.';
+  const keys = sum.keys.map(k => KEY_NAMES[k]);
+  const walked = keys.length ? ` Hon har gått med dig i ${andList(keys)}.` : '';
+  if (when === 'end') {
+    const fresh = m.fresh.size;
+    return (fresh ? `${plural(fresh, 'ny ruta', 'nya rutor')} den här gången.` : 'Inga nya rutor den här gången.') +
+      ` Hennes värld är ${plural(sum.cells, 'ruta', 'rutor')}.${walked}`;
+  }
+  return `${plural(sum.cells, 'ruta', 'rutor')} från ${plural(sum.walks, 'promenad', 'promenader')}.${walked}`;
+}
+
+// The squares as points of light, the newest brightest, and one sentence.
+function showWorld(id, m, recent, when) {
+  const box = $(id);
+  if (!box) return;
+  box.hidden = false;
+  const canvas = box.querySelector('canvas');
+  canvas.hidden = m.known.size === 0;
+  box.querySelector('.world-line').textContent = worldLine(m, when);
+  if (!canvas.hidden) requestAnimationFrame(() => drawWorld(canvas, m, recent));
 }
 
 // ---------- lab: the walker's verdict ----------
@@ -572,6 +622,11 @@ function selectChapter(n) {
   try {
     const last = localStorage.getItem('glimt-last-log');
     if (last) { $('last-log').textContent = last; $('last-log-box').hidden = false; }
+  } catch (_) {}
+
+  try {
+    const m = new Memory(localStorage);
+    showWorld('world-start', m, m.lastWalkCells(), 'start');
   } catch (_) {}
 
   $('start-btn').addEventListener('click', start);

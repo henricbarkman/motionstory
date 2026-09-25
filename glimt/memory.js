@@ -37,10 +37,12 @@ export function absenceLine(lastAt, now) {
 }
 
 // Squares of about 100 m: latitude in steps of 0.0009°, longitude in steps
-// that keep the width near 100 m at the square's own latitude band.
+// that keep the width near 100 m. The width is set per whole degree of
+// latitude, not per row: per row, the columns slid a fifth of a square each
+// row and a walk straight north was drawn as a staircase (2026-09-25).
 export function cellOf(lat, lon) {
   const i = Math.floor(lat / 0.0009);
-  const width = 0.0009 / Math.max(0.2, Math.cos((i + 0.5) * 0.0009 * Math.PI / 180));
+  const width = 0.0009 / Math.max(0.2, Math.cos(Math.round(lat) * Math.PI / 180));
   const j = Math.floor(lon / width);
   return `${i},${j}`;
 }
@@ -130,26 +132,52 @@ export class Memory {
   grid() {
     return [...this.known].map(c => c.split(',').map(Number));
   }
+
+  // The squares the last saved walk added. Cells are stored in the order
+  // they were first walked, so they are the last ones in the list.
+  lastWalkCells() {
+    const w = this.data.walks[this.data.walks.length - 1];
+    const n = w && Number.isFinite(w.fresh) ? w.fresh : 0;
+    return new Set(n > 0 ? this.data.cells.slice(-n) : []);
+  }
 }
 
 // Draws the known squares on a canvas: the world as far as she has heard
-// it, the newest walk brighter. Nothing but squares; no map underneath.
-export function drawWorld(canvas, memory) {
+// it, north up, no map underneath. `recent` (a set of cell keys) glows; the
+// rest is faint. Sized to the canvas's CSS box at the screen's pixel density.
+export function drawWorld(canvas, memory, recent = memory.fresh) {
   const ctx = canvas.getContext && canvas.getContext('2d');
   if (!ctx) return;
-  const cells = memory.grid();
-  const W = canvas.width, H = canvas.height;
+  const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+  const W = Math.max(1, Math.round((canvas.clientWidth || canvas.width) * dpr));
+  const H = Math.max(1, Math.round((canvas.clientHeight || canvas.height) * dpr));
+  if (canvas.width !== W) canvas.width = W;
+  if (canvas.height !== H) canvas.height = H;
   ctx.clearRect(0, 0, W, H);
+  const cells = memory.grid();
   if (!cells.length) return;
   const is = cells.map(c => c[0]), js = cells.map(c => c[1]);
   const minI = Math.min(...is), maxI = Math.max(...is), minJ = Math.min(...js), maxJ = Math.max(...js);
   const rows = maxI - minI + 1, cols = maxJ - minJ + 1;
-  const size = Math.max(2, Math.min(24, Math.floor(Math.min((W - 8) / cols, (H - 8) / rows))));
+  const pad = 12 * dpr;
+  const size = Math.max(2 * dpr, Math.min(18 * dpr, Math.floor(Math.min((W - pad * 2) / cols, (H - pad * 2) / rows))));
+  const gap = size >= 6 * dpr ? Math.round(size * 0.22) : 0;
   const offX = (W - cols * size) / 2, offY = (H - rows * size) / 2;
+  const at = (i, j) => [offX + (j - minJ) * size, offY + (maxI - i) * size];
+  // Faint squares first, then the glowing ones on top.
+  ctx.fillStyle = 'rgba(200, 210, 255, 0.32)';
   for (const [i, j] of cells) {
-    const fresh = memory.fresh.has(`${i},${j}`);
-    ctx.fillStyle = fresh ? 'rgba(200, 210, 255, 0.9)' : 'rgba(200, 210, 255, 0.35)';
-    // North up: larger i is further north, so it goes higher on the canvas.
-    ctx.fillRect(offX + (j - minJ) * size, offY + (maxI - i) * size, size - 1, size - 1);
+    if (recent.has(`${i},${j}`)) continue;
+    const [x, y] = at(i, j);
+    ctx.fillRect(x, y, size - gap, size - gap);
   }
+  ctx.fillStyle = '#c8d2ff';
+  ctx.shadowColor = 'rgba(200, 210, 255, 0.7)';
+  ctx.shadowBlur = Math.max(4, size * 0.8);
+  for (const [i, j] of cells) {
+    if (!recent.has(`${i},${j}`)) continue;
+    const [x, y] = at(i, j);
+    ctx.fillRect(x, y, size - gap, size - gap);
+  }
+  ctx.shadowBlur = 0;
 }

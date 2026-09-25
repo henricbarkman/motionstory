@@ -794,7 +794,8 @@ const STATIONS = { linjen, ja, knack, takten, flykten, frys, spoket, hitta, norm
 
 // `only` runs a single station (for trying one out); otherwise the lab's
 // stations in order. `opening` and `closing` are the line ids the walk's
-// memory chose (absence, keys, new ground), played around the stations.
+// memory chose (absence, keys, new ground), played around the stations;
+// `closing` may be a function, asked after the last station.
 export async function runLab(ctx, no, { only = null, opening = [], closing = [] } = {}) {
   ctx.memo.cadences = ctx.memo.cadences || [];
   ctx.memo.knockWindows = ctx.memo.knockWindows || [];
@@ -831,7 +832,11 @@ export async function runLab(ctx, no, { only = null, opening = [], closing = [] 
   ctx.log(`knack: ${stray} dubbelknack utan att någon bad om det`);
 
   ctx.station(null);
-  for (const id of closing) await ctx.play(id);
+  // A function is asked at the end: which squares were new is only known
+  // once the walk is over.
+  let tail = [];
+  try { tail = typeof closing === 'function' ? closing() : closing; } catch (err) { ctx.log(`minne: ${err.message}`); }
+  for (const id of tail) await ctx.play(id);
   await ctx.play('labb-slut');
   return results;
 }
