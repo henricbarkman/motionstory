@@ -39,10 +39,12 @@ export function absenceLine(lastAt, now) {
 // Squares of about 100 m: latitude in steps of 0.0009°, longitude in steps
 // that keep the width near 100 m. The width is set per whole degree of
 // latitude, not per row: per row, the columns slid a fifth of a square each
-// row and a walk straight north was drawn as a staircase (2026-09-25).
+// row and a walk straight north was drawn as a staircase (2026-09-25). The
+// degree is the row's, not the fix's: from the fix, two fixes a metre apart
+// in the same row, either side of a half degree, got different columns.
 export function cellOf(lat, lon) {
   const i = Math.floor(lat / 0.0009);
-  const width = 0.0009 / Math.max(0.2, Math.cos(Math.round(lat) * Math.PI / 180));
+  const width = 0.0009 / Math.max(0.2, Math.cos(Math.round((i + 0.5) * 0.0009) * Math.PI / 180));
   const j = Math.floor(lon / width);
   return `${i},${j}`;
 }
@@ -89,6 +91,7 @@ export class Memory {
 
   // Keys this walk earns for the first time. Recorded, so each is said once.
   unlock(world, date) {
+    this.newKeys = [];
     const earned = [];
     if (world.light === 'dark') earned.push('morker');
     if (world.rain) earned.push('regn');
@@ -112,11 +115,20 @@ export class Memory {
     return lines;
   }
 
-  // Called once when the walk ends, however it ends.
+  // Called once when the walk ends, however it ends. Builds on what is
+  // stored now, not on what was stored when the walk began: a walk in
+  // another tab that ended in between was overwritten otherwise.
   endWalk(now, kind) {
-    this.data.walks.push({ at: now, kind, fresh: this.fresh.size });
-    this.data.walks = this.data.walks.slice(-200);
-    this.data.cells = [...this.known].slice(-MAX_CELLS);
+    const stored = this.storage ? new Memory(this.storage).data : this.data;
+    const cells = new Set(stored.cells);
+    const added = [...this.fresh].filter(c => !cells.has(c));
+    for (const c of added) cells.add(c);
+    this.data = {
+      walks: [...stored.walks, { at: now, kind, fresh: added.length }].sort((a, b) => a.at - b.at).slice(-200),
+      keys: { ...this.data.keys, ...stored.keys },
+      cells: [...cells].slice(-MAX_CELLS),
+    };
+    this.known = new Set(this.data.cells);
     this.save();
   }
 

@@ -456,8 +456,11 @@ function finish() {
     if (now() >= MEMORY_MIN_WALK) {
       memory.endWalk(Date.now(), chapterNo);
       log(`minne: ${memory.fresh.size} nya rutor, ${memory.known.size} totalt`);
+      showWorld('world-end', memory, memory.fresh, 'end');
+    } else {
+      // Too short to count: her world as it was, no new squares claimed.
+      showWorld('world-end', new Memory(SIM ? null : localStorage), new Set(), 'short');
     }
-    showWorld('world-end', memory, memory.fresh, 'end');
   }
   if (CHAPTERS[chapterNo].lab) showLabResults();
   $('final-log').textContent = logLines.join('\n');
@@ -469,7 +472,8 @@ const andList = xs => xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', '
 
 function worldLine(m, when) {
   const sum = m.summary();
-  if (!sum.cells) return 'Hennes värld är tom än. Den växer där du går.';
+  const short = when === 'short' ? 'Promenaden var under en minut och räknas inte. ' : '';
+  if (!sum.cells) return `${short}Hennes värld är tom än. Den växer där du går.`;
   const keys = sum.keys.map(k => KEY_NAMES[k]);
   const walked = keys.length ? ` Hon har gått med dig i ${andList(keys)}.` : '';
   if (when === 'end') {
@@ -477,6 +481,7 @@ function worldLine(m, when) {
     return (fresh ? `${plural(fresh, 'ny ruta', 'nya rutor')} den här gången.` : 'Inga nya rutor den här gången.') +
       ` Hennes värld är ${plural(sum.cells, 'ruta', 'rutor')}.${walked}`;
   }
+  if (short) return `${short}Hennes värld är ${plural(sum.cells, 'ruta', 'rutor')}.${walked}`;
   return `${plural(sum.cells, 'ruta', 'rutor')} från ${plural(sum.walks, 'promenad', 'promenader')}.${walked}`;
 }
 
