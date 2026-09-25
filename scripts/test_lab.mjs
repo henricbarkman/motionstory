@@ -8,10 +8,11 @@
 // miss it. A station both kinds clear, or both miss, measures nothing, and
 // that is the bug this script exists to catch.
 //
-//   node scripts/test_lab.mjs                 # both labs, every profile, 3 runs each
+//   node scripts/test_lab.mjs                 # both labs, every profile, 10 runs each
 //   node scripts/test_lab.mjs 1 pass          # lab 1, one profile
 //   RUNS=10 VERBOSE=1 node scripts/test_lab.mjs 2
 //   node scripts/test_lab.mjs 1 abort         # press stop inside every station
+//   DETAILS=vagval node scripts/test_lab.mjs 2 fail-drift   # every run's detail
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -22,7 +23,7 @@ import { Synth } from '../glimt/synth.js';
 import { makeClock, FakeAudioContext } from './fake_audio.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const RUNS = parseInt(process.env.RUNS || '3', 10);
+const RUNS = parseInt(process.env.RUNS || '10', 10);
 const VERBOSE = !!process.env.VERBOSE;
 
 // About ten characters a second, measured on the rendered chapter 2 lines.
@@ -40,12 +41,23 @@ const FIELD_GPS = {
   phone: v => v ? v * (0.8 + Math.random() * 1.4) : 0.3 + Math.random() * 0.5,
 };
 
+// GPS error does not jump about fix by fix, it drifts: the satellites in
+// view change as the walker passes a building or goes under trees, and the
+// position is off in the same direction for half a minute or more. Averaging
+// cancels jitter but not drift, so the direction stations are also run with
+// a bias that wanders (eight metres typical, half a minute to change) on
+// top of five metres of jitter. The size is a guess, like the rest of the
+// field phone; the point is that the error is correlated (review 2026-09-25).
+const DRIFT_GPS = { ...FIELD_GPS, jitter: 5, drift: { sigma: +(process.env.DRIFT_SIGMA || 8), tau: +(process.env.DRIFT_TAU || 30) } };
+
 const PROFILES = {
   pass: { kind: 'pass', gps: GOOD_GPS, steps: true },
   fail: { kind: 'fail', gps: GOOD_GPS, steps: true },
   'pass-field': { kind: 'pass', gps: FIELD_GPS, steps: true },
   'fail-field': { kind: 'fail', gps: FIELD_GPS, steps: true },
   // No accelerometer at all: the step-based stations must step aside.
+  'pass-drift': { kind: 'pass', gps: DRIFT_GPS, steps: true },
+  'fail-drift': { kind: 'fail', gps: DRIFT_GPS, steps: true },
   'gps-only': { kind: 'pass', gps: GOOD_GPS, steps: false },
   // Presses stop 3, 20 and 45 seconds into each station in turn, one run
   // each: in the intro line, early, and deep in. Nothing may sound on after
@@ -54,14 +66,17 @@ const PROFILES = {
   abort: { kind: 'pass', gps: GOOD_GPS, steps: true, abort: [3, 20, 45] },
 };
 
-// What each profile must get. `null` = reported, not asserted: on the field
-// phone some stations are expected to be unreliable, and the point of the
-// report is to see how unreliable before a real walk shows it.
+// What each profile must get. A string is asserted on every run; `null` is
+// reported, not asserted. On the field phone the direction stations read
+// averaged fixes and still err now and then, so there the demand is a rate
+// over all runs ({ want, rate }): most walks right, not every one.
 const EXPECT = {
   pass: () => 'klarade',
   fail: () => 'missade',
-  'pass-field': id => ['vagval', 'kompass', 'vandom', 'tassa'].includes(id) ? null : 'klarade',
-  'fail-field': id => ['vagval', 'kompass', 'vandom', 'tassa'].includes(id) ? null : 'missade',
+  'pass-field': id => ['vandom', 'vagval', 'kompass'].includes(id) ? { want: 'klarade', rate: 0.85 } : 'klarade',
+  'fail-field': id => ['vandom', 'vagval', 'kompass'].includes(id) ? { want: 'missade', rate: 0.85 } : 'missade',
+  'pass-drift': id => ['vandom', 'vagval', 'kompass'].includes(id) ? { want: 'klarade', rate: 0.85 } : null,
+  'fail-drift': id => ['vandom', 'vagval', 'kompass'].includes(id) ? { want: 'missade', rate: 0.85 } : null,
   'gps-only': id => ['takten', 'tassa'].includes(id) ? 'hoppade' : null,
   abort: () => null,
 };
@@ -98,6 +113,9 @@ function makeWalker(kind, env) {
       if (id === 'linjen-stanna') w.uneven = false;
       if (id === 'frys-nu') { stopAt(t + 0.8); goAt(t + 7); }
       if (id === 'normalt-nu') speedAt(t + 20, w.base * 1.35);
+      // Stops instead of turning back: standing, the GPS wander alone can
+      // look like a step back.
+      if (id === 'vandom-nu' || id === 'vandom-igen') { stopAt(t + 1); goAt(t + 40); }
       if (id === 'normalt-marktes' || id === 'normalt-klarade') goAt(t + 0.5);
       return;
     }
@@ -124,8 +142,10 @@ function makeWalker(kind, env) {
         stopAt(t + 1); goAt(t + 7); stopAt(t + 13); goAt(t + 21); break;
       case 'vibra-intro': stopAt(t + 0.5); break;
       case 'vibra-slut': case 'vibra-kande-inte': case 'vibra-kan-inte': goAt(t + 0.5); break;
-      case 'tassa-nu': at(t + 1, () => { w.cadenceMul = 1.2; }); break;
-      case 'tassa-klarade': case 'tassa-inte': at(t + 0.5, () => { w.cadenceMul = 1; }); break;
+      // Soft steps: a smaller wave and half the heel strike, same pace.
+      // How much softer a real pocket reads is not known yet (2026-09-25).
+      case 'tassa-nu': at(t + 1, () => { w.soft = true; }); break;
+      case 'tassa-klarade': case 'tassa-inte': at(t + 0.5, () => { w.soft = false; }); break;
     }
   };
 
@@ -154,7 +174,7 @@ function makeWalker(kind, env) {
     let speed = w.speed === null ? w.base : w.speed;
     if (w.uneven && speed > 0) speed *= Math.floor(t / 5) % 2 ? 0.7 : 1.3;
     const cadence = speed > 0.3 ? cadenceFor(speed) * w.cadenceMul : 0;
-    return { speed, cadence, heading: w.heading };
+    return { speed, cadence, heading: w.heading, soft: !!w.soft };
   };
   return w;
 }
@@ -192,6 +212,10 @@ function simulate(labNo, name, run, abortIn = null) {
   let station = null, stationAt = 0, aborted = null;
   let pressedAt = null, startedBefore = 0, liveAtPress = 0;
   const trace = [];
+  // The drifting bias, north and east in metres, started from its spread.
+  const gauss = () => Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(2 * Math.PI * Math.random());
+  const drift = profile.gps.drift;
+  let biasN = drift ? drift.sigma * gauss() : 0, biasE = drift ? drift.sigma * gauss() : 0;
 
   const helpers = labHelpers(walk, {
     now: () => t,
@@ -236,7 +260,7 @@ function simulate(labNo, name, run, abortIn = null) {
         break;
       }
       const pos = walk.position();
-      const { speed, cadence, heading } = walker.step(t, pos || { latitude: lat, longitude: lon });
+      const { speed, cadence, heading, soft } = walker.step(t, pos || { latitude: lat, longitude: lon });
       // The accelerometer at 50 Hz: one wave per step at the walker's
       // cadence, noise, a sharp spike per knock, and while standing on the
       // field phone a bump every second or so from handling it.
@@ -246,7 +270,7 @@ function simulate(labNo, name, run, abortIn = null) {
           phase += cadence / 60 * 0.02;
           let m = 9.81 + (Math.random() - 0.5) * 0.3;
           if (cadence > 0) {
-            m += (speed > 2 ? 6 : 3) * Math.sin(2 * Math.PI * phase);
+            m += (speed > 2 ? 6 : 3) * (soft ? 0.55 : 1) * Math.sin(2 * Math.PI * phase);
             // A heel strike on top of the wave: a narrow pulse at each step,
             // sharper and harder when running. The width and height are a
             // guess (no pocket recording yet); they are there so the knock
@@ -257,7 +281,7 @@ function simulate(labNo, name, run, abortIn = null) {
             const dp = ((phase % 1) + 1.25) % 1 - 0.5;
             const dt = dp * 60 / cadence;
             const [h, sigma] = speed > 2 ? [10, 0.02] : [4, 0.025];
-            m += stepHard * h * Math.exp(-(dt * dt) / (2 * sigma * sigma));
+            m += stepHard * (soft ? 0.5 : 1) * h * Math.exp(-(dt * dt) / (2 * sigma * sigma));
           }
           if (walker.knocks.some(k => u >= k - 0.01 && u < k + 0.01)) m += 8;
           if (profile.gps.handling && speed === 0) {
@@ -271,11 +295,16 @@ function simulate(labNo, name, run, abortIn = null) {
         lat += (speed * Math.cos(heading)) / 111320;
         lon += (speed * Math.sin(heading)) / (111320 * Math.cos(lat * Math.PI / 180));
         const g = profile.gps;
+        if (drift) {
+          const k = Math.sqrt(2 / drift.tau) * drift.sigma;
+          biasN += -biasN / drift.tau + k * gauss();
+          biasE += -biasE / drift.tau + k * gauss();
+        }
         if (t % g.every === 0) {
           const j = () => (Math.random() - 0.5) * 2 * g.jitter;
           walk.fix(t, {
-            latitude: lat + j() / 111320,
-            longitude: lon + j() / (111320 * Math.cos(lat * Math.PI / 180)),
+            latitude: lat + (j() + biasN) / 111320,
+            longitude: lon + (j() + biasE) / (111320 * Math.cos(lat * Math.PI / 180)),
             accuracy: g.accuracy, speed: g.phone(speed),
           });
         }
@@ -361,8 +390,9 @@ async function main() {
           if (r.detail.startsWith('fel:')) problems.push(`run ${run}: ${r.id} threw: ${r.detail}`);
           (tally[r.id] = tally[r.id] || []).push(r.outcome);
           if (!(r.id in firstDetail)) firstDetail[r.id] = r.detail;
+          if (process.env.DETAILS === r.id) console.log(`    run ${run}: ${r.outcome}. ${r.detail}`);
           const want = EXPECT[name](r.id);
-          if (want && r.outcome !== want) problems.push(`run ${run}: ${r.id} ${r.outcome}, wanted ${want} (${r.detail})`);
+          if (typeof want === 'string' && r.outcome !== want) problems.push(`run ${run}: ${r.id} ${r.outcome}, wanted ${want} (${r.detail})`);
           // The hiss in Stämma linjen is the mechanic, and its outcome is
           // the stop test, so the evenness is checked from the detail.
           const even = r.id === 'linjen' && /jämn (\d+) %/.exec(r.detail);
@@ -383,7 +413,12 @@ async function main() {
         continue;
       }
       for (const id of LABS[labNo]) {
+        const want = EXPECT[name](id);
         const outs = tally[id] || [];
+        if (want && typeof want === 'object' && outs.length) {
+          const got = outs.filter(o => o === want.want).length / outs.length;
+          if (got < want.rate) problems.push(`${id}: ${want.want} in ${Math.round(got * 100)} % of runs, wanted at least ${Math.round(want.rate * 100)} %`);
+        }
         const counts = outs.reduce((a, o) => ({ ...a, [o]: (a[o] || 0) + 1 }), {});
         const summary = Object.entries(counts).map(([o, n]) => `${o} ${n}/${outs.length}`).join(', ');
         console.log(`  ${id.padEnd(10)} ${summary.padEnd(28)} ${firstDetail[id] || ''}`);

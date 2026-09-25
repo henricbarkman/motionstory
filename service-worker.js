@@ -1,6 +1,6 @@
 // Bump CACHE whenever audio or app files change, otherwise an installed PWA
 // keeps serving the old files forever.
-const CACHE = 'motionstory-v9';
+const CACHE = 'motionstory-v10';
 
 // Relative to the service worker scope. Absolute paths ('/audio/...') broke on
 // GitHub Pages where the app lives under /motionstory/, so addAll failed and
@@ -26,6 +26,7 @@ const ASSETS = [
   './glimt/world.js',
   './glimt/lab.js',
   './glimt/synth.js',
+  './glimt/memory.js',
   './stories/glimt/kapitel-1.json',
   './stories/glimt/kapitel-2.json',
   './stories/glimt/labb.json',
