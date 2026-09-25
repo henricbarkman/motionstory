@@ -1,5 +1,7 @@
 # Glimt: världen
 
+> **Fryst 2026-09-25.** Mekaniken går först, och det här är en uppslagsbok, inte en arbetsyta. Kopplingen mellan story och mekanik ska kännas rätt i stunden, men den behöver ingen förklaring. Nya lorefrågor väntar tills mekaniklabbet har valt de två eller tre mekaniker spelet bygger på. De öppna storyfrågorna under Öppet besvaras av de mekanikerna. Se PROGRESS.md.
+
 Vad Glimt är i HELD:s universum. Skrivet 2026-09-13 ur kvällens samtal, fastslaget av Henric 2026-09-14. HELD:s kanon står över det här: `projects/held/universe/LORE.md` (Henrics ord) vinner, sedan `WORLDBUILDING.md`, sedan den här filen. Det som är beslutat av Henric är markerat **beslut**. Resten är Demis förslag och får strykas.
 
 ## Premissen
