@@ -1,5 +1,10 @@
 # PROGRESS — Motionstory
 
+## 2026-09-25
+- Henric: första utomhustestet, kapitel 1 variant A. Logg: första fix ±73 m, ljus, torrt, landmärke skog (172 m, kartan gav bro och skog), `s0` spelades, avslutat 1:29. Skärmen sa "stilla" hela tiden fast han gick.
+- Demi: orsaken var fartberäkningen. Fönstret höll fyra sekunder och minst en position, så en telefon som rapporterar glesare än var fjärde sekund hade alltid en ensam position, och en ensam position blev fart noll, även med telefonens egen satellitfart. Kontakten sjönk till noll och scen 1 väntade på klockreserven 2:30. Hemma (±23 m, tät GPS) syntes det aldrig. Fix i PR #7: minst två positioner upp till 20 s isär, satellitfart godtas från en position, hoppfiltret skalar med tiden mellan positionerna. Två nya simulerade vandrare (var 6:e s utan fart, var 10:e s med) fälls av gamla motorn och klaras av nya; alla 16 körningar gröna. Loggen får en GPS-rad var 30:e s (antal positioner, noggrannhet, fart och varifrån, band). Service worker v7.
+- → Nästa: nytt utomhustest av kapitel 1, loggen med GPS-raderna klistras in här. Ligger noggrannheten kvar över 40 m håller Vega kontakten svag med flit, och scen 1 kommer först 2:30.
+
 ## 2026-09-20
 - Henric: inte hunnit testa utomhus än. Vill spåna på själva storyn ihop, och frågade hur proffs skriver fram en story.
 - Demi: gick igenom hantverkets verktyg (en mening först, slutet tidigt, vill kontra behöver, "därför och men", plantera och skörda, stigande insats) och läste Glimt genom dem. Tre luckor: slutet, Vegas yttre mål, motståndet och priset. Plus åtta saker som planterats i kapitel 1 och 2 utan att vara bestämda. Allt inskrivet i `stories/glimt/varld.md` under Öppet. Bud på slutet lagt, inte beslutat: vandraren står still och hör henne ändå, för att hon gjort taktsignalen till sin egen linje ut.
