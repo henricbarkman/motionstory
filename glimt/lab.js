@@ -83,6 +83,7 @@ function every(ctx, fn) {
 
 const pct = x => `${Math.round(x * 100)} %`;
 const sec = x => `${x.toFixed(1).replace('.', ',')} s`;
+const kmh = v => `${((v || 0) * 3.6).toFixed(1).replace('.', ',')} km/h`;
 const median = xs => {
   if (!xs.length) return null;
   const a = [...xs].sort((p, q) => p - q);
@@ -380,11 +381,14 @@ async function frys(ctx) {
   }
   const still = ctx.state().t;
   const moved = await ctx.until(s => s.moving, { timeout: Math.max(8, asked + 18 - still) });
-  const at = ctx.state().t - still;
+  const m = ctx.state();
+  const at = m.t - still;
+  // What read as movement, so a real walk's log can tell a step from a jump.
+  const why = m.paceSource === 'steps' ? `steg ${Math.round(m.cadence)}/min` : `gps ${kmh(m.pace)}`;
   await ctx.play(moved ? 'frys-rorde' : 'frys-klarade');
   return {
     outcome: moved ? 'missade' : 'klarade',
-    detail: `stopp läst efter ${sec(still - asked)}` + (moved ? `, rörelse efter ${sec(at)}` : ', stod still tills det passerat'),
+    detail: `stopp läst efter ${sec(still - asked)}` + (moved ? `, rörelse efter ${sec(at)} (${why})` : ', stod still tills det passerat'),
   };
 }
 

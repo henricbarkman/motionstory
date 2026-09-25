@@ -55,6 +55,11 @@ check(k.lastDoubleAt() > 2.2 && k.lastDoubleAt() < 2.4, `the tick closes the gro
 // Not before the pair window has passed.
 check(doubles(run([2, 2.3], { seconds: 2.9 })) === 0, 'no double before the window closes');
 
+// Running began: the doubles just before the band caught up are retracted.
+const r = run([2, 2.3, 6, 6.3], { seconds: 8 });
+r.retract(5);
+check(r.history.length === 1 && r.lastDoubleAt() < 3, 'retract forgets the doubles after its time, keeps the earlier');
+
 // A gap in the sensor (backgrounded tab) does not make a spike out of the jump.
 const gap = new Knocks();
 gap.push(0, 9.81); gap.push(0.02, 9.81); gap.push(5, 30); gap.push(5.02, 9.81); gap.push(5.04, 9.81);

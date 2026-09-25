@@ -307,7 +307,14 @@ export class Steps {
   // Steps per minute over the last few seconds; 0 once the feet have stopped,
   // and 0 for anything slower than a gait.
   cadence(t) {
-    const recent = this.times.filter(s => s >= t - STEP_WINDOW);
+    let recent = this.times.filter(s => s >= t - STEP_WINDOW);
+    // Only the steps since the last stop. Counted together with the walk
+    // before it, one bump from handling the phone right after stopping read
+    // as 75 steps a minute and Frys failed a walker who stood still (the
+    // lab simulation, 2026-09-25).
+    for (let i = recent.length - 1; i > 0; i--) {
+      if (recent[i] - recent[i - 1] > STEP_GONE) { recent = recent.slice(i); break; }
+    }
     if (recent.length < 3 || t - recent[recent.length - 1] > STEP_GONE) return 0;
     const c = (recent.length - 1) / (recent[recent.length - 1] - recent[0]) * 60;
     return c >= STEP_MIN_CADENCE ? c : 0;
@@ -403,6 +410,13 @@ export class Knocks {
     this.doubles.push(g.last);
     while (this.doubles.length && this.doubles[0] < t - 60) this.doubles.shift();
     if (this.history.length < 2000) this.history.push(g.last);
+  }
+
+  // Forgets the doubles from `from` on and any group still open.
+  retract(from) {
+    this.group = null;
+    this.doubles = this.doubles.filter(d => d < from);
+    this.history = this.history.filter(d => d < from);
   }
 
   lastDoubleAt() { return this.doubles.length ? this.doubles[this.doubles.length - 1] : -Infinity; }
@@ -544,10 +558,17 @@ export class Walk {
     this.t = t;
     this.pace = this._pace(t);
     this.odo += this.pace * dt;
+    const ran = this.tempo.band === 'run';
     this.tempo.push(t, this.pace);
     // Running heel strikes are as sharp as knocks; nothing asks for a knock
-    // mid-run, so none counts until a second after it.
-    if (this.tempo.band === 'run') this.knocks.mute(t + 1);
+    // mid-run, so none counts until a second after it. The band trails the
+    // feet by up to the cadence window, so when running begins the doubles
+    // heard in that window go too: in the simulation the first seconds of
+    // Flykten left one in ten walks with a double nobody knocked.
+    if (this.tempo.band === 'run') {
+      if (!ran) this.knocks.retract(t - STEP_WINDOW);
+      this.knocks.mute(t + 1);
+    }
     this.knocks.settle(t);
     this.contact.step(dt, { moving: this.tempo.moving, accuracy: this.gps.accuracy });
     return this.state();

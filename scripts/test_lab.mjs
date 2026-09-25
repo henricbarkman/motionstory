@@ -168,7 +168,7 @@ function simulate(labNo, name, run, abortIn = null) {
   let t = 0;
   let lat = 59.38, lon = 13.5;
   let ended = false;
-  let target = null, nextBump = 0, phase = 0;
+  let target = null, nextBump = 0, phase = 0, stepNo = -1, stepHard = 1;
   const fmt = s => `${String(Math.floor(s / 60)).padStart(2)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
   // Every other run has a landmark 250 m east, so Hitta tries both kinds.
@@ -190,6 +190,7 @@ function simulate(labNo, name, run, abortIn = null) {
   };
   const walker = makeWalker(profile.kind, { bpm, target: () => target });
   let station = null, stationAt = 0, aborted = null;
+  const trace = [];
 
   const helpers = labHelpers(walk, {
     now: () => t,
@@ -237,11 +238,14 @@ function simulate(labNo, name, run, abortIn = null) {
             // A heel strike on top of the wave: a narrow pulse at each step,
             // sharper and harder when running. The width and height are a
             // guess (no pocket recording yet); they are there so the knock
-            // detector meets something sharper than a sine.
+            // detector meets something sharper than a sine. No two strikes
+            // are equally hard, so some clear the knock threshold and some
+            // do not, which is how stray pairs happen in a real run.
+            if (Math.floor(phase) !== stepNo) { stepNo = Math.floor(phase); stepHard = 0.6 + Math.random() * 0.8; }
             const dp = ((phase % 1) + 1.25) % 1 - 0.5;
             const dt = dp * 60 / cadence;
             const [h, sigma] = speed > 2 ? [10, 0.02] : [4, 0.025];
-            m += h * Math.exp(-(dt * dt) / (2 * sigma * sigma));
+            m += stepHard * h * Math.exp(-(dt * dt) / (2 * sigma * sigma));
           }
           if (walker.knocks.some(k => u >= k - 0.01 && u < k + 0.01)) m += 8;
           if (profile.gps.handling && speed === 0) {
@@ -265,6 +269,7 @@ function simulate(labNo, name, run, abortIn = null) {
         }
       }
       const s = walk.tick(t);
+      trace.push({ t, band: s.band, speed, station });
       waiter.check(s);
       for (let i = 0; i < 4; i++) await Promise.resolve();
       t = Math.round((t + 0.25) * 4) / 4;
@@ -275,7 +280,14 @@ function simulate(labNo, name, run, abortIn = null) {
     const liveAtEnd = aborted ? aborted.live : sfx.live.size;
     if (!aborted) await drain();
     const after = aborted || { live: liveAtEnd, playing: audio.playing.size, intervals: clock.intervals(), started: 0 };
-    return { log, results, ended, t, station, sound: { ...after, liveAtEnd } };
+    // Where each double nobody asked for fell: band, speed, station.
+    const windows = ctx.memo.knockWindows || [];
+    const strays = walk.knocks.history.filter(k => !windows.some(([a, b]) => k >= a && k <= b)).map(k => {
+      const at = trace.findLast(x => x.t <= k) || {};
+      const before = trace.findLast(x => x.t <= k - 3) || {};
+      return `${fmt(k)} ${at.station} band ${at.band}, ${at.speed?.toFixed(1)} m/s (3 s before: ${before.band}, ${before.speed?.toFixed(1)} m/s)`;
+    });
+    return { log, results, ended, t, station, strays, sound: { ...after, liveAtEnd } };
   })();
 
   // What finish() in app.js does to the sound and the waits, then five
@@ -311,24 +323,28 @@ async function main() {
       const tally = {};
       const problems = [];
       const firstDetail = {};
+      const hits = {};
       const runs = profile.abort ? LABS[labNo].flatMap(id => profile.abort.map(after => ({ id, after }))) : Array.from({ length: RUNS }, () => null);
       for (let run = 0; run < runs.length; run++) {
         const abortIn = runs[run];
-        const { log, results, ended, t, station, sound } = await simulate(labNo, name, run, abortIn);
+        const { log, results, ended, t, station, strays, sound } = await simulate(labNo, name, run, abortIn);
         if (VERBOSE && run === 0) console.log(`\n--- lab ${labNo} / ${name} / run ${run}\n${log.join('\n')}`);
         const where = abortIn ? `stop ${abortIn.after} s into ${abortIn.id}` : `run ${run}`;
         if (sound.playing || sound.intervals || sound.started) problems.push(`${where}: sound on after the end: ${sound.playing} playing, ${sound.intervals} loops, ${sound.started} started after stop`);
         if (!abortIn && sound.liveAtEnd) problems.push(`${where}: ${sound.liveAtEnd} sounds still live when the lab ended`);
         if (abortIn) {
-          if (station !== abortIn.id) problems.push(`${where}: never got there (ended in ${station})`);
-          if (VERBOSE) console.log(`  ${where}: ${sound.live} live at stop, ${sound.started} started after`);
+          // A station shorter than the offset ends before the stop; the
+          // others still press it inside, and one of them must.
+          const hit = station === abortIn.id;
+          if (hit) (hits[abortIn.id] = (hits[abortIn.id] || 0) + 1);
+          if (VERBOSE) console.log(`  ${where}: ${hit ? `${sound.live} live at stop, ${sound.started} started after` : `station over first (ended in ${station})`}`);
           continue;
         }
         if (!ended) problems.push(`run ${run}: did not end by ${Math.round(t / 60)} min`);
         const err = log.find(l => l.startsWith('ERROR'));
         if (err) problems.push(`run ${run}: ${err}`);
         const stray = log.find(l => l.includes('dubbelknack utan'));
-        if (stray && !/ 0 dubbelknack/.test(stray)) problems.push(`run ${run}: ${stray.trim()}`);
+        if (stray && !/ 0 dubbelknack/.test(stray)) problems.push(`run ${run}: ${stray.trim()}\n    ${strays.join('\n    ')}`);
         for (const r of results) {
           if (r.detail.startsWith('fel:')) problems.push(`run ${run}: ${r.id} threw: ${r.detail}`);
           (tally[r.id] = tally[r.id] || []).push(r.outcome);
@@ -346,7 +362,10 @@ async function main() {
         if (run === 0) console.log(`\n=== lab ${labNo} / ${name}: ${ended ? `ended at ${(t / 60).toFixed(1)} min` : 'DID NOT END'}`);
       }
       if (profile.abort) {
-        console.log(`\n=== lab ${labNo} / ${name}: stop pressed inside each of ${runs.length} stations`);
+        const never = LABS[labNo].filter(id => !hits[id]);
+        if (never.length) problems.push(`stop never pressed inside: ${never.join(', ')}`);
+        const n = Object.values(hits).reduce((a, b) => a + b, 0);
+        console.log(`\n=== lab ${labNo} / ${name}: stop pressed ${n} times inside ${LABS[labNo].length - never.length} stations`);
         console.log(problems.length ? `FAIL\n  ${problems.join('\n  ')}` : 'OK');
         if (problems.length) failures++;
         continue;
