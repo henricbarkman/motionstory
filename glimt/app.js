@@ -2,7 +2,7 @@
 // ?sim in the URL replaces GPS with a speed slider for testing at a desk.
 // ?kapitel=2 preselects a chapter; the start screen has the same choice.
 
-import { Walk, Waiter } from './engine.js';
+import { Walk, Waiter, simulatedMagnitude } from './engine.js';
 import { runChapter1 } from './chapter1.js';
 import { runChapter2 } from './chapter2.js';
 import { Mixer, Library } from './audio.js';
@@ -39,7 +39,9 @@ const RISER_VOICE_AT = 0.7;   // Vega enters at 70 % of the riser
 const LANDMARK_KEY = 'glimt-landmark';
 
 const BAND_WORDS = { still: 'stilla', walk: 'gång', run: 'löpning' };
-const SPEED_SOURCE = { doppler: 'satellitfart', distance: 'räknat ur avstånd' };
+// 'doppler' is whatever the phone reports as speed. On a six-second fix it is
+// not necessarily satellite Doppler, so the log does not claim it is.
+const SPEED_SOURCE = { doppler: 'telefonens fart', distance: 'räknat ur avstånd' };
 
 const $ = id => document.getElementById(id);
 
@@ -49,7 +51,7 @@ let mixer, lib, chapter;
 let bedBuf = null, riserBuf = null;
 let walk, waiter, world;
 let t0 = 0;
-let watchId = null, tickId = null, simId = null;
+let watchId = null, tickId = null, simId = null, motionSimId = null;
 let wakeLock = null;
 let pendingVoiceAt = null;
 const logLines = [];
@@ -147,6 +149,12 @@ async function start() {
   $('walking').hidden = false;
   if (SIM) $('sim').hidden = false;
 
+  // iOS asks before it hands out the accelerometer, and only inside the tap.
+  // Android does not ask. Either way GPS carries on if the answer is no.
+  const motionAsk = !SIM && typeof DeviceMotionEvent !== 'undefined' &&
+    typeof DeviceMotionEvent.requestPermission === 'function'
+    ? DeviceMotionEvent.requestPermission().catch(() => 'denied') : Promise.resolve('granted');
+
   await mixer.resume();
   t0 = performance.now();
   walk = new Walk();
@@ -164,6 +172,10 @@ async function start() {
 
   acquireWakeLock();
   if (SIM) startSim(); else startGps();
+  if (!SIM) motionAsk.then(answer => {
+    if (answer === 'granted') startMotion();
+    else log('rörelsesensor: nekad, gps avgör gång och stilla');
+  });
   tickId = setInterval(tick, 250);
 
   const ctx = {
@@ -222,9 +234,30 @@ function tick() {
   waiter.check(s);
   mixer.setContact(s.contact);
   render(s);
+  logSteps(s);
   if (s.t - lastGpsLog >= GPS_LOG_EVERY) {
     lastGpsLog = s.t;
     logGps(s);
+  }
+}
+
+// Three things worth one line each: the feet took over, the sensor never
+// answered, or it answered but no rhythm came out of it.
+let stepsNoted = { trusted: false, silent: false, deaf: false };
+function logSteps(s) {
+  const st = walk.steps;
+  if (st.trusted && !stepsNoted.trusted) {
+    stepsNoted.trusted = true;
+    log(`steg: rytm hittad, ${Math.round(st.trustedCadence)} per minut. Stegen avgör nu gång och stilla`);
+  }
+  if (SIM) return;
+  if (s.t >= 5 && st.samples === 0 && !stepsNoted.silent) {
+    stepsNoted.silent = true;
+    log('rörelsesensor: inga värden, gps avgör gång och stilla');
+  }
+  if (s.t >= 90 && st.samples > 0 && !st.trusted && !stepsNoted.deaf) {
+    stepsNoted.deaf = true;
+    log('steg: ingen rytm efter 1,5 minut, gps avgör gång och stilla');
   }
 }
 
@@ -235,7 +268,8 @@ function logGps(s) {
   const n = fixTimes.length;
   const acc = s.accuracy === null ? '' : `, ±${Math.round(s.accuracy)} m`;
   const src = SPEED_SOURCE[walk.gps.source] ? ` (${SPEED_SOURCE[walk.gps.source]})` : '';
-  log(`gps: ${n} ${n === 1 ? 'position' : 'positioner'} på ${GPS_LOG_EVERY} s${acc}, ${kmh(s.speed)}${src}, ${BAND_WORDS[s.band]}`);
+  const steps = s.paceSource === 'steps' ? `, ${Math.round(s.cadence)} steg/min` : '';
+  log(`gps: ${n} ${n === 1 ? 'position' : 'positioner'} på ${GPS_LOG_EVERY} s${acc}, ${kmh(s.speed)}${src}${steps}, ${BAND_WORDS[s.band]}`);
 }
 
 function render(s) {
@@ -248,7 +282,8 @@ function render(s) {
     s.contact > 0.8 ? 'nära' :
     s.contact > 0.5 ? 'hör dig' :
     s.contact > 0.2 ? 'svagt' : 'borta';
-  $('band').textContent = BAND_WORDS[s.band];
+  $('band').textContent = BAND_WORDS[s.band] +
+    (s.paceSource === 'steps' ? ` · ${Math.round(s.cadence)} steg/min` : '');
   $('speed').textContent = kmh(s.speed);
   $('elapsed').textContent = fmt(s.t);
   let dist = s.distToStart === null ? 'start' :
@@ -277,8 +312,25 @@ function startGps() {
   }, { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
 }
 
+// ---------- accelerometer ----------
+function onMotion(e) {
+  const a = e.accelerationIncludingGravity;
+  if (!a || a.x == null || a.y == null || a.z == null) return;
+  walk.motion(now(), Math.hypot(a.x, a.y, a.z));
+}
+
+function startMotion() {
+  if (typeof DeviceMotionEvent === 'undefined') { log('rörelsesensor: stöds inte, gps avgör gång och stilla'); return; }
+  window.addEventListener('devicemotion', onMotion);
+}
+
 // ---------- simulator ----------
 function startSim() {
+  // The slider's speed as footsteps too, so ?sim exercises the step path.
+  motionSimId = setInterval(() => {
+    const t = now();
+    walk.motion(t, simulatedMagnitude(t, parseFloat($('sim-speed').value)));
+  }, 20);
   let lat = 59.38, lon = 13.5, heading = 0;
   const speedEl = $('sim-speed');
   const out = $('sim-out');
@@ -305,6 +357,8 @@ function finish() {
   finished = true;
   clearInterval(tickId);
   clearInterval(simId);
+  clearInterval(motionSimId);
+  window.removeEventListener('devicemotion', onMotion);
   if (waiter) waiter.abort();
   if (mixer) mixer.stopVoice();
   if (watchId !== null) navigator.geolocation.clearWatch(watchId);
