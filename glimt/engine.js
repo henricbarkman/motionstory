@@ -314,6 +314,111 @@ export class Steps {
   }
 }
 
+// Knocks on the phone through a pocket (the lab's "Knacket"). A knock is a
+// spike one or two samples wide; a step, even a running one, is a wave over
+// many. So the detector asks how far a sample stands out from the two
+// samples either side of it (the curvature), not how far it rises above an
+// average: a first version did the latter and read simulated running as
+// seventy knocks a minute, because a fast wave outruns any average.
+//
+// Nothing here has met a real pocket yet (2026-09-25). Every spike, knock or
+// not, is kept in `spikes` so the lab can log what the sensor actually saw
+// and the thresholds can be set from a walk instead of a guess.
+const KNOCK_JUMP = 3.0;      // m/s² above the mean of the two neighbours
+const KNOCK_SEEN = 1.5;      // smaller spikes are logged, not counted
+const KNOCK_GAP = 0.12;      // s; spikes closer than this are the same knock
+const KNOCK_PAIR = 0.8;      // s; two knocks within this are a double knock
+
+export class Knocks {
+  constructor() {
+    this.prev = null;          // {t, m}: the sample before the one being judged
+    this.cur = null;           // {t, m}: the sample being judged
+    this.times = [];           // knock times, last ten seconds
+    this.doubles = [];         // double-knock times, last minute
+    this.spikes = [];          // {t, peak, knock}, last minute
+    this.mutedUntil = -Infinity;
+    this.count = 0;
+    this.history = [];         // every double-knock time this walk (capped)
+  }
+
+  // The phone's own vibration shakes the sensor; nothing counts meanwhile.
+  mute(until) { this.mutedUntil = Math.max(this.mutedUntil, until); }
+
+  // Judges the previous sample once its successor has arrived.
+  push(t, mag) {
+    if (!Number.isFinite(mag)) return;
+    const next = { t, m: mag };
+    if (this.cur && t - this.cur.t > 1) { this.prev = null; this.cur = next; return; }
+    if (this.prev && this.cur) {
+      const peak = this.cur.m - (this.prev.m + next.m) / 2;
+      if (peak > KNOCK_SEEN) this._spike(this.cur.t, peak);
+    }
+    this.prev = this.cur;
+    this.cur = next;
+  }
+
+  _spike(t, peak) {
+    const knock = peak > KNOCK_JUMP && t >= this.mutedUntil;
+    this.spikes.push({ t, peak, knock });
+    while (this.spikes.length && this.spikes[0].t < t - 60) this.spikes.shift();
+    if (!knock) return;
+    const last = this.times[this.times.length - 1];
+    if (last !== undefined && t - last < KNOCK_GAP) return;
+    this.times.push(t);
+    this.count++;
+    while (this.times.length && this.times[0] < t - 10) this.times.shift();
+    const prev = this.times[this.times.length - 2];
+    const lastDouble = this.doubles[this.doubles.length - 1];
+    // A double is two knocks close together, and a third right after does
+    // not make a second double out of knocks two and three.
+    if (prev !== undefined && t - prev <= KNOCK_PAIR && !(lastDouble !== undefined && lastDouble >= prev)) {
+      this.doubles.push(t);
+      while (this.doubles.length && this.doubles[0] < t - 60) this.doubles.shift();
+      if (this.history.length < 2000) this.history.push(t);
+    }
+  }
+
+  lastDoubleAt() { return this.doubles.length ? this.doubles[this.doubles.length - 1] : -Infinity; }
+
+  // Knocks in (from, to]. For "knock as many times as I did".
+  countBetween(from, to) { return this.times.filter(k => k > from && k <= to).length; }
+}
+
+// Heading from GPS: the bearing from the newest fix back to the last one at
+// least HEADING_SPAN metres away, within HEADING_AGE seconds. Null when the
+// walker has not moved far enough to tell. Sparse fixes (one per six seconds
+// on Henric's phone) make it slow, never fast: it says where the walker went,
+// not where they are turning right now.
+const HEADING_SPAN = 12;
+const HEADING_AGE = 25;
+
+export function bearing(a, b) {
+  const toRad = d => d * Math.PI / 180;
+  const y = Math.sin(toRad(b.longitude - a.longitude)) * Math.cos(toRad(b.latitude));
+  const x = Math.cos(toRad(a.latitude)) * Math.sin(toRad(b.latitude)) -
+    Math.sin(toRad(a.latitude)) * Math.cos(toRad(b.latitude)) * Math.cos(toRad(b.longitude - a.longitude));
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+
+// Signed difference b - a in degrees, in (-180, 180]. Positive is clockwise,
+// a right turn.
+export function angleDiff(a, b) {
+  let d = ((b - a) % 360 + 360) % 360;
+  if (d > 180) d -= 360;
+  return d;
+}
+
+export function headingOf(track, t) {
+  if (track.length < 2) return null;
+  const newest = track[track.length - 1];
+  for (let i = track.length - 2; i >= 0; i--) {
+    const f = track[i];
+    if (f.t < t - HEADING_AGE) break;
+    if (haversine(f, newest) >= HEADING_SPAN) return bearing(f, newest);
+  }
+  return null;
+}
+
 // Acceleration magnitude for a simulated walker: one wave per step at the
 // cadence that matches the speed, plus sensor noise. For ?sim and the tests.
 export function simulatedMagnitude(t, speed) {
@@ -334,6 +439,9 @@ export class Walk {
     this.target = null;
     this.gps = new GpsSpeed();
     this.steps = new Steps();
+    this.knocks = new Knocks();
+    this.track = [];            // decent fixes, last two minutes: {t, latitude, longitude}
+    this.odo = 0;               // metres, the pace integrated over time
     this.t = 0;
     this.lastTick = 0;
     this.speed = 0;
@@ -344,7 +452,10 @@ export class Walk {
   }
 
   // Called for every accelerometer sample: |acceleration including gravity|.
-  motion(t, magnitude) { this.steps.push(t, magnitude); }
+  motion(t, magnitude) {
+    this.steps.push(t, magnitude);
+    this.knocks.push(t, magnitude);
+  }
 
   // What the tempo bands see. Once the feet are trusted and the sensor is
   // live they decide moving or still, and cadence decides how fast; otherwise
@@ -383,8 +494,21 @@ export class Walk {
     if (coord.accuracy == null || coord.accuracy <= 50) {
       this.homing.push(t, coord);
       if (this.target) this.target.push(t, coord);
+      this.track.push({ t, latitude: coord.latitude, longitude: coord.longitude });
+      while (this.track.length && this.track[0].t < t - 120) this.track.shift();
     }
   }
+
+  // Where the walker was `ago` seconds back: the newest decent fix at or
+  // before then. Null without one.
+  positionAgo(t, ago) {
+    let best = null;
+    for (const f of this.track) { if (f.t <= t - ago) best = f; }
+    return best;
+  }
+
+  // The newest decent fix, or null.
+  position() { return this.track.length ? this.track[this.track.length - 1] : null; }
 
   // Called on a steady clock, e.g. every 250 ms.
   tick(t) {
@@ -392,6 +516,7 @@ export class Walk {
     this.lastTick = t;
     this.t = t;
     this.pace = this._pace(t);
+    this.odo += this.pace * dt;
     this.tempo.push(t, this.pace);
     this.contact.step(dt, { moving: this.tempo.moving, accuracy: this.gps.accuracy });
     return this.state();
@@ -418,6 +543,12 @@ export class Walk {
       distToTarget: this.target ? this.target.distance() : null,
       approachingTarget: this.target ? this.target.approaching(t) : false,
       gpsSeen: this.gpsSeen,
+      odo: this.odo,
+      heading: headingOf(this.track, t),
+      lastStepAt: this.steps.lastStepAt,
+      stepsTrusted: this.steps.trusted,
+      knocks: this.knocks.count,
+      lastDoubleKnockAt: this.knocks.lastDoubleAt(),
     };
   }
 }

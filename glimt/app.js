@@ -1,20 +1,35 @@
 // Glimt: wires GPS, clock, audio and the chapter script together.
 // ?sim in the URL replaces GPS with a speed slider for testing at a desk.
-// ?kapitel=2 preselects a chapter; the start screen has the same choice.
+// ?kapitel=2 preselects a chapter, ?kapitel=labb1 the lab; the start screen
+// has the same choice. ?bana=<id> runs a single lab station (ids in lab.js).
 
 import { Walk, Waiter, simulatedMagnitude } from './engine.js';
 import { runChapter1 } from './chapter1.js';
 import { runChapter2 } from './chapter2.js';
+import { runLab, labHelpers, LABS, TITLES } from './lab.js';
+import { Synth, SilentSynth } from './synth.js';
 import { Mixer, Library } from './audio.js';
 import { chooseWorld, defaultWorld } from './world.js';
 
 const params = new URLSearchParams(location.search);
 const SIM = params.has('sim');
+const ONLY_STATION = TITLES[params.get('bana')] ? params.get('bana') : null;
+
+const LAB_FILES = { url: '../stories/glimt/labb.json', voices: '../audio/glimt/vega/glimt-labb' };
 
 const CHAPTERS = {
+  labb1: {
+    ...LAB_FILES, lab: 1, first: 'labb-intro-1',
+    subtitle: 'Labb 1. Åtta korta banor, en sak i taget, ungefär tjugo minuter. Efteråt säger du vilka du vill göra igen.',
+  },
+  labb2: {
+    ...LAB_FILES, lab: 2, first: 'labb-intro-2',
+    subtitle: 'Labb 2. Sju banor om riktning, vändningar och att hitta med öronen. Ungefär tjugo minuter.',
+  },
   1: {
     url: '../stories/glimt/kapitel-1.json',
     voices: '../audio/glimt/vega/glimt-1',
+    first: 's0',
     run: runChapter1,
     subtitle: 'Kapitel 1. Ungefär tio minuter. Gå eller spring, stanna när du vill.',
     scenes: {
@@ -25,6 +40,7 @@ const CHAPTERS = {
   2: {
     url: '../stories/glimt/kapitel-2.json',
     voices: '../audio/glimt/vega/glimt-2',
+    first: 's0',
     run: runChapter2,
     subtitle: 'Kapitel 2. Ungefär tolv minuter. Hon ställer frågor. Stanna kort för ja, gå vidare för nej.',
     scenes: {
@@ -46,8 +62,11 @@ const SPEED_SOURCE = { doppler: 'telefonens fart', distance: 'räknat ur avstån
 const $ = id => document.getElementById(id);
 
 // ---------- state ----------
-let chapterNo = 1;
+let chapterNo = '1';          // a key of CHAPTERS
 let mixer, lib, chapter;
+let sfx = null;
+let labResults = [];
+let lastDoubleSeen = -Infinity, doublesLogged = 0;
 let bedBuf = null, riserBuf = null;
 let walk, waiter, world;
 let t0 = 0;
@@ -107,12 +126,13 @@ async function preload() {
     chapter = await (await fetch(def.url)).json();
     lib = new Library(mixer, def.voices);
 
-    const [bedRaw, riserRaw, s0Raw] = await Promise.all([
+    const first = def.lab && ONLY_STATION ? 'labb-intro-en' : def.first;
+    const [bedRaw, riserRaw, firstRaw] = await Promise.all([
       bedBuf ? null : mixer.fetchBuffer(BED_URL).catch(() => null),
       riserBuf ? null : mixer.fetchBuffer(RISER_URL).catch(() => null),
-      lib.load('s0'),
+      lib.load(first),
     ]);
-    if (!s0Raw) throw new Error('första repliken saknas (s0.mp3)');
+    if (!firstRaw) throw new Error(`första repliken saknas (${first}.mp3)`);
     if (bedRaw) bedBuf = await mixer.decode(bedRaw);
     if (riserRaw) riserBuf = await mixer.decode(riserRaw);
 
@@ -125,7 +145,12 @@ async function preload() {
     let note = notes.length
       ? `Ljudet saknar ${notes.join(' och ')} på den här adressen. Rösten fungerar ändå.`
       : 'Sätt på lurarna. Tryck när du står där du vill börja.';
-    if (chapterNo === 2) {
+    if (def.lab) {
+      note += ONLY_STATION
+        ? ` Bara banan ${TITLES[ONLY_STATION]} den här gången.`
+        : ' Telefonen i fickan, skärmen olåst. Knacka på fickan när hon ber om det.';
+    }
+    if (chapterNo === '2') {
       const lm = savedLandmark();
       note += lm
         ? ' Hon minns platsen från kapitel 1.'
@@ -161,7 +186,10 @@ async function start() {
   waiter = new Waiter();
   world = defaultWorld();
 
-  log(`start, kapitel ${chapterNo}, variant ${variant.toUpperCase()}${SIM ? ', simulerad' : ''}`);
+  const what = def.lab
+    ? `labb ${def.lab}${ONLY_STATION ? `, bara ${TITLES[ONLY_STATION]}` : ''}`
+    : `kapitel ${chapterNo}, variant ${variant.toUpperCase()}`;
+  log(`start, ${what}${SIM ? ', simulerad' : ''}`);
   window.glimt = { mixer, walk, world, lib };   // for debugging from the console
 
   if (bedBuf) mixer.startBed(bedBuf);
@@ -195,9 +223,11 @@ async function start() {
         log(`ljud: kontexten var pausad (${mixer.ctx.state})`);
       }
       const at = pendingVoiceAt; pendingVoiceAt = null;
-      $('scene').textContent = def.scenes[id.slice(0, 2)] || id;
+      // The lab shows the station instead, and Vega is always clear there:
+      // contact is not what is being tried.
+      if (!def.lab) $('scene').textContent = def.scenes[id.slice(0, 2)] || id;
       log(`▶ ${id}`);
-      const why = await mixer.playVoice(buf, { clear, at });
+      const why = await mixer.playVoice(buf, { clear: clear || !!def.lab, at });
       if (why === 'timeout') log(`ljud: ${id} nådde aldrig slutet, går vidare`);
     },
     until: (pred, opts) => waiter.until(pred, opts),
@@ -208,8 +238,26 @@ async function start() {
     },
   };
 
+  if (def.lab) {
+    try { sfx = new Synth(mixer); } catch (err) { sfx = new SilentSynth(); log('ljudeffekter: ' + err.message); }
+    labResults = [];
+    Object.assign(ctx, labHelpers(walk, {
+      now,
+      vibrateImpl: p => typeof navigator.vibrate === 'function' && navigator.vibrate(p),
+    }), {
+      sfx,
+      memo: {},
+      station(id, k, n) { $('scene').textContent = id ? `${TITLES[id]} ${k}/${n}` : 'Slut'; },
+      result(id, r) {
+        labResults.push({ id, ...r });
+        if (!finished) log(`${TITLES[id]}: ${r.outcome}. ${r.detail}`);
+      },
+    });
+  }
+
   try {
-    await def.run(ctx);
+    if (def.lab) await runLab(ctx, def.lab, { only: ONLY_STATION });
+    else await def.run(ctx);
   } catch (err) {
     log('fel: ' + err.message);
   }
@@ -218,12 +266,15 @@ async function start() {
 
 // Runs once the first position is known. Chapter 1 asks the map and
 // remembers the landmark; chapter 2 reuses it and walks towards it.
+// The lab looks up a landmark near where it starts, for Hitta, and leaves
+// the chapters' saved one alone.
 function onFirstPosition(lat, lon) {
+  const lab = !!CHAPTERS[chapterNo].lab;
   const opts = { lat, lon, log };
-  if (chapterNo === 2) opts.landmark = savedLandmark();
+  if (chapterNo === '2') opts.landmark = savedLandmark();
   chooseWorld(world, opts).then(() => {
-    if (chapterNo === 1) saveLandmark(world);
-    if (world.landmarkCoord) {
+    if (chapterNo === '1') saveLandmark(world);
+    if (world.landmarkCoord && !lab) {
       walk.setTarget({ latitude: world.landmarkCoord.lat, longitude: world.landmarkCoord.lon });
     }
   }).catch(err => log('omvärld: ' + err.message));
@@ -235,6 +286,7 @@ function tick() {
   mixer.setContact(s.contact);
   render(s);
   logSteps(s);
+  if (CHAPTERS[chapterNo].lab) logKnocks();
   if (s.t - lastGpsLog >= GPS_LOG_EVERY) {
     lastGpsLog = s.t;
     logGps(s);
@@ -261,6 +313,17 @@ function logSteps(s) {
     stepsNoted.deaf = true;
     log('steg: ingen rytm efter 1,5 minut, gps avgör gång och stilla');
   }
+}
+
+// Every double knock the detector hears, asked for or not, so a walk shows
+// what the thresholds make of a real pocket. Capped in case it hears plenty.
+function logKnocks() {
+  const d = walk.knocks.lastDoubleAt();
+  if (d <= lastDoubleSeen) return;
+  lastDoubleSeen = d;
+  doublesLogged++;
+  if (doublesLogged <= 40) log('knack: dubbelknack hörd');
+  else if (doublesLogged === 41) log('knack: fler än 40 dubbelknack, slutar skriva ut dem');
 }
 
 // One line per half minute: how often the phone reported, how well, and what
@@ -290,7 +353,9 @@ function render(s) {
   $('elapsed').textContent = fmt(s.t);
   let dist = s.distToStart === null ? 'start' :
     `${Math.round(s.distToStart)} m från start${s.approaching ? ', på väg tillbaka' : ''}`;
-  if (s.distToTarget !== null) dist += `, ${Math.round(s.distToTarget)} m till ${world.landmark}`;
+  if (s.distToTarget !== null) {
+    dist += `, ${Math.round(s.distToTarget)} m till ${CHAPTERS[chapterNo].lab ? 'målet' : world.landmark}`;
+  }
   $('dist').textContent = dist;
   $('gps').textContent = !s.gpsSeen ? 'väntar på gps' :
     s.accuracy === null ? 'gps' : `gps ±${Math.round(s.accuracy)} m`;
@@ -338,6 +403,10 @@ function startSim() {
   const out = $('sim-out');
   speedEl.addEventListener('input', () => { out.textContent = kmh(parseFloat(speedEl.value)); });
   $('sim-turn').addEventListener('click', () => { heading += Math.PI; log('sim: vänder'); });
+  $('sim-left').addEventListener('click', () => { heading -= Math.PI / 2; log('sim: vänster'); });
+  $('sim-right').addEventListener('click', () => { heading += Math.PI / 2; log('sim: höger'); });
+  // One sharp sample between the simulated steps. Click twice for a double.
+  $('sim-knock').addEventListener('click', () => { walk.motion(now(), 9.81 + 9); });
   let first = true;
   simId = setInterval(() => {
     const v = parseFloat(speedEl.value);
@@ -363,11 +432,69 @@ function finish() {
   window.removeEventListener('devicemotion', onMotion);
   if (waiter) waiter.abort();
   if (mixer) mixer.stopVoice();
+  if (sfx) sfx.stopAll();
   if (watchId !== null) navigator.geolocation.clearWatch(watchId);
   if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
   $('walking').hidden = true;
   $('done').hidden = false;
+  if (CHAPTERS[chapterNo].lab) showLabResults();
   $('final-log').textContent = logLines.join('\n');
+}
+
+// ---------- lab: the walker's verdict ----------
+const RATINGS_KEY = 'glimt-lab-ratings';
+const OUTCOME_WORDS = { klarade: 'klarade', missade: 'missade', hoppade: 'hoppades över' };
+
+function saveRating(entry) {
+  try {
+    const all = JSON.parse(localStorage.getItem(RATINGS_KEY) || '[]');
+    all.push(entry);
+    localStorage.setItem(RATINGS_KEY, JSON.stringify(all.slice(-500)));
+  } catch (_) {}
+}
+
+function showLabResults() {
+  const box = $('lab-results');
+  const list = $('lab-list');
+  list.textContent = '';
+  if (!labResults.length) { box.hidden = true; return; }
+  box.hidden = false;
+  $('end-word').textContent = 'Vilka banor vill du göra igen?';
+  for (const r of labResults) {
+    const li = document.createElement('li');
+    const head = document.createElement('div');
+    head.className = 'lab-head';
+    const name = document.createElement('strong');
+    name.textContent = TITLES[r.id];
+    const outcome = document.createElement('span');
+    outcome.className = `lab-outcome lab-${r.outcome}`;
+    outcome.textContent = OUTCOME_WORDS[r.outcome] || r.outcome;
+    head.append(name, outcome);
+    const detail = document.createElement('p');
+    detail.className = 'lab-detail';
+    detail.textContent = r.detail;
+    const rate = document.createElement('div');
+    rate.className = 'lab-rate';
+    let chosen = null;
+    for (const [value, label] of [['igen', 'Igen!'], ['nej', 'Nej']]) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = label;
+      b.setAttribute('aria-pressed', 'false');
+      b.addEventListener('click', () => {
+        if (chosen === value) return;
+        const changed = chosen !== null;
+        chosen = value;
+        rate.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+        log(`betyg: ${TITLES[r.id]} ${value}${changed ? ' (ändrat)' : ''}`);
+        saveRating({ at: new Date().toISOString(), station: r.id, rating: value, outcome: r.outcome });
+        $('final-log').textContent = logLines.join('\n');
+      });
+      rate.appendChild(b);
+    }
+    li.append(head, detail, rate);
+    list.appendChild(li);
+  }
 }
 
 let stopping = false;
@@ -409,11 +536,17 @@ document.addEventListener('visibilitychange', () => {
 
 // ---------- start screen ----------
 function selectChapter(n) {
-  chapterNo = CHAPTERS[n] ? n : 1;
-  try { localStorage.setItem('glimt-chapter', String(chapterNo)); } catch (_) {}
-  document.querySelector(`input[name="chapter"][value="${chapterNo}"]`).checked = true;
-  $('subtitle').textContent = CHAPTERS[chapterNo].subtitle;
-  document.title = `Glimt, kapitel ${chapterNo}`;
+  chapterNo = CHAPTERS[n] ? String(n) : '1';
+  // A hidden choice (?kapitel=labb2 before its radio exists) still runs,
+  // it just has no radio to tick.
+  const radio = document.querySelector(`input[name="chapter"][value="${chapterNo}"]`);
+  if (radio) radio.checked = true;
+  else document.querySelectorAll('input[name="chapter"]').forEach(el => { el.checked = false; });
+  try { if (radio) localStorage.setItem('glimt-chapter', chapterNo); } catch (_) {}
+  const def = CHAPTERS[chapterNo];
+  $('subtitle').textContent = def.subtitle;
+  $('variant-box').hidden = !!def.lab;
+  document.title = def.lab ? `Glimt, labb ${def.lab}` : `Glimt, kapitel ${chapterNo}`;
   preload();
 }
 
@@ -424,11 +557,13 @@ function selectChapter(n) {
   if (variant !== 'a' && variant !== 'b') variant = 'a';
   document.querySelector(`input[name="variant"][value="${variant}"]`).checked = true;
 
-  let ch = 1;
-  try { ch = parseInt(localStorage.getItem('glimt-chapter') || '1', 10); } catch (_) {}
-  if (params.has('kapitel')) ch = parseInt(params.get('kapitel'), 10);
+  let ch = '1';
+  try { ch = localStorage.getItem('glimt-chapter') || '1'; } catch (_) {}
+  if (params.has('kapitel')) ch = params.get('kapitel');
+  // A single station belongs to whichever lab has it.
+  if (ONLY_STATION) ch = LABS[2].includes(ONLY_STATION) ? 'labb2' : 'labb1';
   document.querySelectorAll('input[name="chapter"]').forEach(el => {
-    el.addEventListener('change', () => selectChapter(parseInt(el.value, 10)));
+    el.addEventListener('change', () => selectChapter(el.value));
   });
 
   try {

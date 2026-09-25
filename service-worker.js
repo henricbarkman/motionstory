@@ -1,6 +1,6 @@
 // Bump CACHE whenever audio or app files change, otherwise an installed PWA
 // keeps serving the old files forever.
-const CACHE = 'motionstory-v8';
+const CACHE = 'motionstory-v9';
 
 // Relative to the service worker scope. Absolute paths ('/audio/...') broke on
 // GitHub Pages where the app lives under /motionstory/, so addAll failed and
@@ -24,12 +24,15 @@ const ASSETS = [
   './glimt/chapter2.js',
   './glimt/audio.js',
   './glimt/world.js',
+  './glimt/lab.js',
+  './glimt/synth.js',
   './stories/glimt/kapitel-1.json',
   './stories/glimt/kapitel-2.json',
+  './stories/glimt/labb.json',
   './audio/glimt/bed/steep-dm.opus',
   './audio/glimt/fx/riser-sunbeams.opus',
 ];
-const CHAPTER_FILES = ['./stories/glimt/kapitel-1.json', './stories/glimt/kapitel-2.json'];
+const CHAPTER_FILES = ['./stories/glimt/kapitel-1.json', './stories/glimt/kapitel-2.json', './stories/glimt/labb.json'];
 
 // Vega's lines come from the chapter files so the list cannot drift from them.
 async function chapterAssets(file) {
