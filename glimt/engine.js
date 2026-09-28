@@ -325,9 +325,13 @@ export class Steps {
   }
 
   // GPS overruled the feet: forget the rhythm, so trust needs a new one.
-  distrust() {
+  // `reason` is for the log: 'gps' when the feet went quiet while samples
+  // kept coming, 'silent' when the sensor itself had stopped. The first field
+  // lab (2026-09-28) logged the second as the first and hid a dead sensor.
+  distrust(reason = 'gps') {
     this.trusted = false;
     this.times = [];
+    this.distrustReason = reason;
   }
 
   // Samples arriving. The sensor stops with the screen.
@@ -521,19 +525,33 @@ export class Walk {
     this.paceSource = 'gps';
     this.gpsSpeeds = [];        // [{t, v}] per fix, last 30 s
     this.gpsSeen = false;
+    this.sensorSecs = [];       // whole seconds with a sensor sample, last five minutes
   }
 
   // Called for every accelerometer sample: |acceleration including gravity|.
   motion(t, magnitude) {
     this.steps.push(t, magnitude);
     this.knocks.push(t, magnitude);
+    const sec = Math.floor(t);
+    if (this.sensorSecs[this.sensorSecs.length - 1] !== sec) {
+      this.sensorSecs.push(sec);
+      while (this.sensorSecs.length && this.sensorSecs[0] < sec - 300) this.sensorSecs.shift();
+    }
+  }
+
+  // Share of the whole seconds in [a, b) the sensor delivered in. "No
+  // spikes" from a sensor that was not running is no answer about knocks,
+  // and the first field lab could not tell the two apart (2026-09-28).
+  sensorShare(a, b) {
+    const from = Math.floor(a), to = Math.max(from + 1, Math.ceil(b));
+    return this.sensorSecs.filter(s => s >= from && s < to).length / (to - from);
   }
 
   // What the tempo bands see. Once the feet are trusted and the sensor is
   // live they decide moving or still, and cadence decides how fast; otherwise
   // the GPS speed does, as before.
   _pace(t) {
-    if (this.steps.trusted && this._feetQuietWhileGpsMoves(t)) this.steps.distrust();
+    if (this.steps.trusted && this._feetQuietWhileGpsMoves(t)) this.steps.distrust(this.steps.live(t) ? 'gps' : 'silent');
     if (!this.steps.trusted || !this.steps.live(t)) {
       this.paceSource = 'gps';
       return this.speed;
@@ -632,6 +650,10 @@ export class Walk {
       heading: headingOf(this.track, t),
       lastStepAt: this.steps.lastStepAt,
       stepsTrusted: this.steps.trusted,
+      // The sensor has answered at some point this walk, and is answering
+      // now. The phone stops it when the screen goes dark.
+      sensorSeen: this.steps.samples > 0,
+      sensorLive: this.steps.live(t),
       knocks: this.knocks.count,
       lastDoubleKnockAt: this.knocks.lastDoubleAt(),
     };

@@ -13,6 +13,7 @@
 //   position()     the newest decent fix, positionAgo(s) an older one
 //   knocksBetween(a, b), knockTimes(a, b), spikesBetween(a, b), strayDoubles(w)
 //                  what the knock detector heard
+//   sensorShare(a, b)  share of the seconds in [a, b) the motion sensor answered
 //   track()        decent fixes, last two minutes: [{t, latitude, longitude}]
 //   impactsBetween(a, b)  how hard each step landed: [{t, peak}]
 //   memo           an object that lives for the whole walk, for baselines
@@ -36,6 +37,7 @@ export function labHelpers(walk, { now, vibrateImpl }) {
     knocksBetween: (a, b) => walk.knocks.countBetween(a, b),
     knockTimes: (a, b) => walk.knocks.times.filter(k => k > a && k <= b),
     spikesBetween: (a, b) => walk.knocks.spikes.filter(x => x.t > a && x.t <= b),
+    sensorShare: (a, b) => walk.sensorShare(a, b),
     strayDoubles: windows => walk.knocks.history.filter(t => !windows.some(([a, b]) => t >= a && t <= b)).length,
     // Seconds the pattern lasts, or 0 when the phone would not vibrate. The
     // motor shakes the sensor, so knocks do not count until it has stopped.
@@ -101,7 +103,59 @@ async function askStop(ctx, id, { window = 20 } = {}) {
   await ctx.play(id);
   const t0 = ctx.state().t;
   const yes = await ctx.until(s => s.stillFor >= 3, { timeout: window });
-  return { yes, after: ctx.state().t - t0 };
+  // Which of the two read the stop: steps take about three seconds, GPS on
+  // the field phone took twelve (2026-09-28), so the log has to say.
+  return { yes, after: ctx.state().t - t0, src: ctx.state().paceSource };
+}
+
+const via = src => src === 'steps' ? 'steg' : 'gps';
+
+// The phone stops the motion sensor when the screen goes dark or another app
+// takes the front, and says nothing about it. In the first field lab
+// (2026-09-28) it went quiet at 2:30 and came back at 8:56: Knacket listened
+// to a sensor that was not there and logged "no spikes", Takten was skipped,
+// and nobody knew until the log was read. So she says it, six seconds into
+// a silence, again every two minutes it lasts, and once more when it is back.
+// A phone whose sensor never answered has nothing to lose: GPS decides there
+// from the start, and she stays quiet.
+const SENSOR_WARN = 6;
+const SENSOR_REMIND = 120;
+function watchSensor(ctx) {
+  let silentSince = null, warnedAt = null;
+  return every(ctx, s => {
+    if (!s.sensorSeen) return;
+    if (s.sensorLive) {
+      if (warnedAt !== null) ctx.play('sensor-tillbaka');
+      silentSince = warnedAt = null;
+      return;
+    }
+    if (silentSince === null) silentSince = s.t;
+    const due = warnedAt === null ? s.t - silentSince >= SENSOR_WARN : s.t - warnedAt >= SENSOR_REMIND;
+    if (due) {
+      warnedAt = s.t;
+      ctx.play('sensor-tyst');
+    }
+  });
+}
+
+// For a station that listens to the sensor: true once it answers. While it
+// is silent the watcher has already asked the walker to look at the phone,
+// so this waits for that, up to 25 seconds. False at once on a phone that
+// never had one.
+async function sensorReady(ctx) {
+  const s = ctx.state();
+  if (s.sensorLive) return true;
+  if (!s.sensorSeen) return false;
+  return ctx.until(x => x.sensorLive, { timeout: 25 });
+}
+
+// A station that could not listen: skipped, not missed, and the log says why.
+async function deaf(ctx) {
+  await ctx.play('takten-dov');
+  return {
+    outcome: 'hoppade',
+    detail: ctx.state().sensorSeen ? 'rörelsesensorn tyst (skärmen släckt?)' : 'ingen rörelsesensor i telefonen',
+  };
 }
 
 // After a yes: the walker walks on before the next thing starts.
@@ -215,7 +269,7 @@ async function ja(ctx) {
   for (const q of qs) {
     const a = await askStop(ctx, q);
     answers.push(a);
-    ctx.log(`${q}: ${a.yes ? `ja efter ${sec(a.after)}` : 'nej'}`);
+    ctx.log(`${q}: ${a.yes ? `ja efter ${sec(a.after)} (${via(a.src)})` : 'nej'}`);
     await ctx.play(a.yes ? 'ja-svar-ja' : 'ja-svar-nej');
     if (a.yes) await walkOn(ctx);
     await wait(ctx, 4);
@@ -223,7 +277,7 @@ async function ja(ctx) {
   await ctx.play('ja-slut');
   const yes = answers.filter(a => a.yes);
   const detail = `${answers.map(a => a.yes ? 'ja' : 'nej').join('/')}` +
-    (yes.length ? `, svar efter ${yes.map(a => sec(a.after)).join(' / ')}` : '');
+    (yes.length ? `, svar efter ${yes.map(a => `${sec(a.after)} (${via(a.src)})`).join(' / ')}` : '');
   // The first two have a known yes. Missing them is the phone, not the walker.
   return { outcome: answers[0].yes && answers[1].yes ? 'klarade' : 'missade', detail };
 }
@@ -231,7 +285,9 @@ async function ja(ctx) {
 // Knacket: a double knock through the pocket, standing, then walking, then
 // as the answer to a question.
 async function knack(ctx) {
+  if (!await sensorReady(ctx)) return deaf(ctx);
   const spikeNote = (from, to) => {
+    if (ctx.sensorShare(from, to) < 0.5) return 'sensorn tyst';
     const sp = ctx.spikesBetween(from, to);
     if (!sp.length) return 'inga utslag';
     const max = Math.max(...sp.map(x => x.peak));
@@ -271,12 +327,17 @@ async function knack(ctx) {
 
   const detail = `stående ${standing ? 'hört' : 'missat'}, gående ${walking ? 'hört' : 'missat'}, ` +
     `föredrar ${prefers ? 'knack' : 'stopp (eller hördes inte)'}`;
+  // A sensor that died after the start heard nothing either way.
+  if (!standing && ctx.sensorShare(windowFrom, ctx.state().t) < 0.5) {
+    return { outcome: 'hoppade', detail: `rörelsesensorn tyst under banan; ${detail}` };
+  }
   return { outcome: standing ? 'klarade' : 'missade', detail };
 }
 
 // Takten: a beat at the walker's own cadence, then faster, then slower.
 // In step, a chord fades in under it.
 async function takten(ctx) {
+  if (!await sensorReady(ctx)) return deaf(ctx);
   if (!ctx.state().stepsTrusted) {
     await ctx.until(s => s.stepsTrusted, { timeout: 20 });
   }
@@ -384,6 +445,7 @@ async function frys(ctx) {
     return { outcome: 'missade', detail: `inget stopp inom 9 s (${src === 'steps' ? 'steg' : 'gps'})` };
   }
   const still = ctx.state().t;
+  const stillSrc = ctx.state().paceSource;
   const moved = await ctx.until(s => s.moving, { timeout: Math.max(8, asked + 18 - still) });
   const m = ctx.state();
   const at = m.t - still;
@@ -392,7 +454,7 @@ async function frys(ctx) {
   await ctx.play(moved ? 'frys-rorde' : 'frys-klarade');
   return {
     outcome: moved ? 'missade' : 'klarade',
-    detail: `stopp läst efter ${sec(still - asked)}` + (moved ? `, rörelse efter ${sec(at)} (${why})` : ', stod still tills det passerat'),
+    detail: `stopp läst efter ${sec(still - asked)} (${via(stillSrc)})` + (moved ? `, rörelse efter ${sec(at)} (${why})` : ', stod still tills det passerat'),
   };
 }
 
@@ -742,8 +804,10 @@ async function morse(ctx) {
 
 // Hon knackar: she vibrates the phone n times, the walker knocks back n.
 async function vibration(ctx) {
+  if (!await sensorReady(ctx)) return deaf(ctx);
   await ctx.play('vibra-intro');
   await ctx.until(s => !s.moving, { timeout: 15 });
+  const listenFrom = ctx.state().t;
   const rounds = [];
   for (const n of [2, 3]) {
     await wait(ctx, 1.5);
@@ -770,6 +834,10 @@ async function vibration(ctx) {
     else await ctx.play('vibra-fel');
   }
   const right = rounds.filter(r => r.got === r.n).length;
+  if (rounds.every(r => r.got === 0) && ctx.sensorShare(listenFrom, ctx.state().t) < 0.5) {
+    await ctx.play('takten-dov');
+    return { outcome: 'hoppade', detail: 'rörelsesensorn tyst under banan' };
+  }
   if (rounds.every(r => r.got === 0)) {
     await ctx.play('vibra-kande-inte');
     return { outcome: 'missade', detail: 'inga knack tillbaka, kändes vibrationen?' };
@@ -791,6 +859,7 @@ async function vibration(ctx) {
 const TASSA_SOFTER = 0.75;   // after/before; a guess until a walk says otherwise
 
 async function tassa(ctx) {
+  if (!await sensorReady(ctx)) return deaf(ctx);
   if (!ctx.state().stepsTrusted) await ctx.until(s => s.stepsTrusted, { timeout: 20 });
   if (!ctx.state().stepsTrusted) {
     await ctx.play('takten-dov');
@@ -845,6 +914,7 @@ export async function runLab(ctx, no, { only = null, opening = [], closing = [] 
   const ids = only ? [only] : LABS[no];
   await ctx.play(only ? 'labb-intro-en' : `labb-intro-${no}`);
   for (const id of opening) await ctx.play(id);
+  const stopWatch = watchSensor(ctx);
   await ctx.until(s => s.moving && s.movingFor >= 8, { timeout: 30 });
 
   const results = [];
@@ -867,6 +937,7 @@ export async function runLab(ctx, no, { only = null, opening = [], closing = [] 
       await ctx.until(s => s.moving && s.movingFor >= 10, { timeout: 25 });
     }
   }
+  stopWatch();
 
   // Double knocks outside every window where one was asked for: what the
   // detector made of plain walking.

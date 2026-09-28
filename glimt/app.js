@@ -67,7 +67,12 @@ let chapterNo = '1';          // a key of CHAPTERS
 let mixer, lib, chapter;
 let sfx = null;
 let labResults = [];
+let labMemo = null;
+let currentStation = null;      // the lab station running, so a stop mid-station can still be rated
 let lastDoubleSeen = -Infinity, doublesLogged = 0;
+// One voice at a time. The lab's sensor watcher can ask for a line while a
+// station's line is playing; it waits its turn instead of talking over it.
+let voiceChain = Promise.resolve();
 let bedBuf = null, riserBuf = null;
 let walk, waiter, world;
 let memory = null;
@@ -90,6 +95,8 @@ const GPS_LOG_EVERY = 30;
 const now = () => (performance.now() - t0) / 1000;
 const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 const kmh = v => (v * 3.6).toFixed(1).replace('.', ',') + ' km/h';
+const dec = x => x.toFixed(1).replace('.', ',');
+const walking = () => tickId !== null && !finished;
 
 function log(msg) {
   const line = `${fmt(Math.max(0, now()))}  ${msg}`;
@@ -214,6 +221,23 @@ async function start() {
   });
   tickId = setInterval(tick, 250);
 
+  async function speak(id, { clear = false } = {}) {
+    if (finished) return;
+    const buf = await lib.buffer(id);
+    if (!buf) { log(`replik saknas: ${id}`); return; }
+    if (mixer.ctx.state === 'suspended') {
+      try { await mixer.resume(); } catch (_) {}
+      log(`ljud: kontexten var pausad (${mixer.ctx.state})`);
+    }
+    const at = pendingVoiceAt; pendingVoiceAt = null;
+    // The lab shows the station instead, and Vega is always clear there:
+    // contact is not what is being tried.
+    if (!def.lab) $('scene').textContent = def.scenes[id.slice(0, 2)] || id;
+    log(`▶ ${id}`);
+    const why = await mixer.playVoice(buf, { clear: clear || !!def.lab, at });
+    if (why === 'timeout') log(`ljud: ${id} nådde aldrig slutet, går vidare`);
+  }
+
   const ctx = {
     variant,
     world,
@@ -222,21 +246,10 @@ async function start() {
     // scene marks must not land in the log after "avslutat".
     log: msg => { if (!finished) log(msg); },
     hold: on => { walk.contact.hold = on; },
-    async play(id, { clear = false } = {}) {
-      if (finished) return;
-      const buf = await lib.buffer(id);
-      if (!buf) { log(`replik saknas: ${id}`); return; }
-      if (mixer.ctx.state === 'suspended') {
-        try { await mixer.resume(); } catch (_) {}
-        log(`ljud: kontexten var pausad (${mixer.ctx.state})`);
-      }
-      const at = pendingVoiceAt; pendingVoiceAt = null;
-      // The lab shows the station instead, and Vega is always clear there:
-      // contact is not what is being tried.
-      if (!def.lab) $('scene').textContent = def.scenes[id.slice(0, 2)] || id;
-      log(`▶ ${id}`);
-      const why = await mixer.playVoice(buf, { clear: clear || !!def.lab, at });
-      if (why === 'timeout') log(`ljud: ${id} nådde aldrig slutet, går vidare`);
+    play(id, opts = {}) {
+      const turn = voiceChain.then(() => speak(id, opts));
+      voiceChain = turn.catch(() => {});
+      return turn;
     },
     until: (pred, opts) => waiter.until(pred, opts),
     fadeOut: s => mixer.fadeOut(s),
@@ -249,14 +262,19 @@ async function start() {
   if (def.lab) {
     try { sfx = new Synth(mixer); } catch (err) { sfx = new SilentSynth(); log('ljudeffekter: ' + err.message); }
     labResults = [];
+    labMemo = {};
     Object.assign(ctx, labHelpers(walk, {
       now,
       vibrateImpl: p => !finished && typeof navigator.vibrate === 'function' && navigator.vibrate(p),
     }), {
       sfx,
-      memo: {},
-      station(id, k, n) { $('scene').textContent = id ? `${TITLES[id]} ${k}/${n}` : 'Slut'; },
+      memo: labMemo,
+      station(id, k, n) {
+        currentStation = id;
+        $('scene').textContent = id ? `${TITLES[id]} ${k}/${n}` : 'Slut';
+      },
       result(id, r) {
+        currentStation = null;
         labResults.push({ id, ...r });
         if (!finished) log(`${TITLES[id]}: ${r.outcome}. ${r.detail}`);
       },
@@ -299,23 +317,28 @@ function tick() {
   mixer.setContact(s.contact);
   render(s);
   logSteps(s);
-  if (CHAPTERS[chapterNo].lab) logKnocks();
+  if (CHAPTERS[chapterNo].lab) logKnocks(s);
   if (s.t - lastGpsLog >= GPS_LOG_EVERY) {
     lastGpsLog = s.t;
     logGps(s);
+    if (CHAPTERS[chapterNo].lab) logSpikes(s);
   }
 }
 
 // Worth one line each: the feet took over or GPS took it back, the sensor
-// never answered, or it answered but no rhythm came out of it.
+// never answered, or it answered but no rhythm came out of it, or it went
+// quiet and came back.
 let stepsNoted = { trusted: false, silent: false, deaf: false };
+let sensorQuietFrom = null;
 function logSteps(s) {
   const st = walk.steps;
   if (st.trusted !== stepsNoted.trusted) {
     stepsNoted.trusted = st.trusted;
     log(st.trusted
       ? `steg: rytm hittad, ${Math.round(st.trustedCadence)} per minut. Stegen avgör nu gång och stilla`
-      : 'steg: tysta medan gps säger rörelse, gps avgör igen');
+      : st.distrustReason === 'silent'
+        ? 'steg: sensorn tyst, gps avgör tills stegen hittar en rytm igen'
+        : 'steg: tysta medan gps säger rörelse, gps avgör igen');
   }
   if (SIM) return;
   if (s.t >= 5 && st.samples === 0 && !stepsNoted.silent) {
@@ -326,17 +349,47 @@ function logSteps(s) {
     stepsNoted.deaf = true;
     log('steg: ingen rytm efter 1,5 minut, gps avgör gång och stilla');
   }
+  // The phone stops the sensor with the screen, silently. The first field
+  // lab lost it for six minutes and the log never said (2026-09-28).
+  if (st.samples > 0) {
+    if (!s.sensorLive && sensorQuietFrom === null) {
+      sensorQuietFrom = st.lastT;
+      log(`rörelsesensor: tyst sedan ${fmt(st.lastT)}, skärmen ${document.visibilityState === 'visible' ? 'synlig' : 'dold'}`);
+    } else if (s.sensorLive && sensorQuietFrom !== null) {
+      log(`rörelsesensor: tillbaka efter ${Math.round(s.t - sensorQuietFrom)} s`);
+      sensorQuietFrom = null;
+    }
+  }
 }
 
 // Every double knock the detector hears, asked for or not, so a walk shows
-// what the thresholds make of a real pocket. Capped in case it hears plenty.
-function logKnocks() {
+// what the thresholds make of a real pocket: how hard each knock was, and
+// what the feet were doing. The first field lab heard nine doubles nobody
+// asked for while walking, and the log could not say how far above the
+// threshold they were (2026-09-28). Capped in case it hears plenty.
+function logKnocks(s) {
   const d = walk.knocks.lastDoubleAt();
   if (d <= lastDoubleSeen) return;
   lastDoubleSeen = d;
   doublesLogged++;
-  if (doublesLogged <= 40) log('knack: dubbelknack hörd');
-  else if (doublesLogged === 41) log('knack: fler än 40 dubbelknack, slutar skriva ut dem');
+  if (doublesLogged > 41) return;
+  if (doublesLogged === 41) { log('knack: fler än 40 dubbelknack, slutar skriva ut dem'); return; }
+  // A group is at most three knocks under a second apart, ending at d.
+  const peaks = walk.knocks.spikes.filter(x => x.knock && x.t > d - 2 && x.t <= d).map(x => dec(x.peak));
+  const feet = s.paceSource === 'steps' ? `${BAND_WORDS[s.band]}, ${Math.round(s.cadence)} steg/min` : BAND_WORDS[s.band];
+  log(`knack: dubbelknack hörd (styrka ${peaks.join(' / ')}; ${feet})`);
+}
+
+// Half a minute of the knock detector's view in the lab: how many sharp
+// spikes the pocket gave and how hard, so the knock threshold can be set
+// from a walk instead of a guess. Only while the sensor answered.
+function logSpikes(s) {
+  if (walk.sensorShare(s.t - GPS_LOG_EVERY, s.t) < 0.5) return;
+  const peaks = walk.knocks.spikes.filter(x => x.t > s.t - GPS_LOG_EVERY).map(x => x.peak).sort((a, b) => a - b);
+  if (!peaks.length) { log(`utslag: inga på ${GPS_LOG_EVERY} s, ${BAND_WORDS[s.band]}`); return; }
+  const q = p => peaks[Math.min(peaks.length - 1, Math.floor(p * peaks.length))];
+  const over = walk.knocks.spikes.filter(x => x.t > s.t - GPS_LOG_EVERY && x.knock).length;
+  log(`utslag: ${peaks.length} på ${GPS_LOG_EVERY} s, median ${dec(q(0.5))}, 9 av 10 under ${dec(q(0.9))}, högst ${dec(peaks[peaks.length - 1])}, ${over} över knackgränsen, ${BAND_WORDS[s.band]}`);
 }
 
 // One line per half minute: how often the phone reported, how well, and what
@@ -346,7 +399,9 @@ function logGps(s) {
   const n = fixTimes.length;
   const acc = s.accuracy === null ? '' : `, ±${Math.round(s.accuracy)} m`;
   const src = SPEED_SOURCE[walk.gps.source] ? ` (${SPEED_SOURCE[walk.gps.source]})` : '';
-  const steps = s.paceSource === 'steps' ? `, ${Math.round(s.cadence)} steg/min` : '';
+  // Why GPS decides, when it does and the phone has a sensor at all.
+  const steps = s.paceSource === 'steps' ? `, ${Math.round(s.cadence)} steg/min`
+    : !s.sensorSeen ? '' : !s.sensorLive ? ', sensorn tyst' : ', ingen stegrytm';
   log(`gps: ${n} ${n === 1 ? 'position' : 'positioner'} på ${GPS_LOG_EVERY} s${acc}, ${kmh(s.speed)}${src}${steps}, ${BAND_WORDS[s.band]}`);
 }
 
@@ -462,7 +517,20 @@ function finish() {
       showWorld('world-end', new Memory(SIM ? null : localStorage), new Set(), 'short');
     }
   }
-  if (CHAPTERS[chapterNo].lab) showLabResults();
+  if (CHAPTERS[chapterNo].lab) {
+    // Stopped mid-station: it still goes on the list, so it can be rated.
+    // The first field lab ended inside Hitta, and Hitta got no verdict.
+    if (currentStation && !labResults.some(r => r.id === currentStation)) {
+      labResults.push({ id: currentStation, outcome: 'avbruten', detail: 'du avslutade mitt i banan' });
+    }
+    // runLab says this at its end, which a walk stopped early never reaches.
+    if (labMemo && !logLines.some(l => l.includes('dubbelknack utan'))) {
+      const windows = labMemo.knockWindows || [];
+      const stray = walk.knocks.history.filter(t => !windows.some(([a, b]) => t >= a && t <= b)).length;
+      log(`knack: ${stray} dubbelknack utan att någon bad om det`);
+    }
+    showLabResults();
+  }
   $('final-log').textContent = logLines.join('\n');
 }
 
@@ -498,7 +566,7 @@ function showWorld(id, m, recent, when) {
 
 // ---------- lab: the walker's verdict ----------
 const RATINGS_KEY = 'glimt-lab-ratings';
-const OUTCOME_WORDS = { klarade: 'klarade', missade: 'missade', hoppade: 'hoppades över' };
+const OUTCOME_WORDS = { klarade: 'klarade', missade: 'missade', hoppade: 'hoppades över', avbruten: 'avbröts' };
 
 function saveRating(entry) {
   try {
@@ -579,16 +647,25 @@ async function acquireWakeLock() {
   if (!('wakeLock' in navigator)) return;
   try {
     wakeLock = await navigator.wakeLock.request('screen');
-    wakeLock.addEventListener('release', () => { wakeLock = null; });
+    wakeLock.addEventListener('release', () => {
+      wakeLock = null;
+      if (walking()) log('wake lock: släppt, skärmen kan slockna');
+    });
   } catch (err) {
     log('wake lock: ' + err.message);
   }
 }
 
+// Said in the log both ways: the sensor stops with a hidden page, and the
+// first field lab could only guess at why it went quiet (2026-09-28).
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && tickId !== null && !finished) {
+  if (!walking()) return;
+  if (document.visibilityState === 'visible') {
+    log('sidan: synlig igen');
     if (!wakeLock) acquireWakeLock();
     if (mixer && mixer.ctx.state === 'suspended') mixer.resume();
+  } else {
+    log('sidan: dold (skärmen låst eller en annan app framme)');
   }
 });
 
