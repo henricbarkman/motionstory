@@ -85,4 +85,56 @@ const gap = new Knocks();
 gap.push(0, 9.81); gap.push(0.02, 9.81); gap.push(5, 30); gap.push(5.02, 9.81); gap.push(5.04, 9.81);
 check(gap.spikes.length === 0, 'the first sample after a gap is not judged against the old one');
 
+// A pocket like the first recorded one (2026-09-28): 118 steps a minute, a
+// sharp heel strike of 4-12 on every step. Through the Walk, so the sway
+// decides which bar applies.
+function pocket({ knocks = [], stillFrom = Infinity, seconds = 40, seed = 7, bigEvery = 0 } = {}) {
+  let r = seed; const rand = () => (r = (r * 16807) % 2147483647) / 2147483647;
+  const walk = new Walk();
+  const HZ = 60, cad = 118;
+  let phase = 0, stepNo = -1;
+  for (let i = 0; i <= seconds * HZ; i++) {
+    const u = i / HZ;
+    let m = 9.81 + (rand() - 0.5) * 0.3;
+    if (u < stillFrom) {
+      phase += cad / 60 / HZ;
+      m += 3 * Math.sin(2 * Math.PI * phase);
+      if (Math.floor(phase) !== stepNo) {
+        stepNo = Math.floor(phase);
+        m += bigEvery && stepNo % bigEvery === 0 ? 17 + rand() * 28 : 4 + rand() * 8;
+      }
+    }
+    for (const k of knocks) if (Math.round(k.t * HZ) === i) m += k.height;
+    walk.motion(u, m);
+    if (i % 15 === 0 && i > 0) walk.tick(u);
+  }
+  return walk;
+}
+{
+  const w = pocket();
+  check(w.knocks.history.length === 0, `heel strikes of 4-12 walking make no double (${w.knocks.history.length})`);
+  check(w.knocks.count === 0, `nor a single knock (${w.knocks.count})`);
+}
+// Brisk, as in Takten "fortare": now and then one strike of 17-45, over the
+// walking bar. Single hard strikes are single knocks, never a double: the
+// next step is further off than a double's 0.4 s.
+{
+  const w = pocket({ bigEvery: 5, seconds: 60 });
+  check(w.knocks.history.length === 0, `a hard strike every fifth step makes no double (${w.knocks.history.length}, ${w.knocks.count} single knocks)`);
+}
+{
+  const w = pocket({ knocks: [{ t: 20, height: 25 }, { t: 20.2, height: 25 }] });
+  check(w.knocks.history.length === 1, `a hard double walking is heard (${w.knocks.history.length})`);
+}
+{
+  const w = pocket({ knocks: [{ t: 20, height: 8 }, { t: 20.2, height: 8 }] });
+  check(w.knocks.history.length === 0, 'a light double walking is not, the heel strikes are as hard');
+}
+// Hon knackar: standing, three light knocks back at a gait's spacing. Read
+// as steps they once looked like walking and the third was lost.
+{
+  const w = pocket({ stillFrom: 10, seconds: 25, knocks: [15, 15.45, 15.9].map(t => ({ t, height: 8 })) });
+  check(w.knocks.countBetween(14, 17) === 3, `three light knocks standing all count (${w.knocks.countBetween(14, 17)})`);
+}
+
 process.exit(failures ? 1 : 0);

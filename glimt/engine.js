@@ -222,6 +222,17 @@ const STEP_FAST = 0.05;      // s
 const STEP_SLOW = 1.5;       // s
 const STEP_PEAK = 1.0;       // m/s² above the slow average
 const STEP_MIN_GAP = 0.25;   // s; more than 240 steps a minute is not feet
+// A step sooner than this share of the walker's own recent interval is a
+// bump inside a step, not a new one. The first recorded pocket (Henric's,
+// 2026-09-28) gave a second peak about 0.28 s into many 0.5 s steps: the
+// cadence read 150-170 at 4.8 km/h, the band said running, and running mutes
+// knocks. With the guard the same walk reads 110-119 throughout. Capped at
+// 0.3 s: a rejected step never becomes part of the rhythm the guard compares
+// with, so at a higher cap an amble straight into a sprint was locked at half
+// the sprint's cadence for as long as it lasted (review, 2026-09-28). Up to
+// 200 steps a minute is always accepted; the pocket's bumps came at 0.28.
+const STEP_RHYTHM = 0.6;
+const STEP_RHYTHM_CAP = 0.3; // s
 const STEP_WINDOW = 6;       // s of steps behind the cadence
 const STEP_GONE = 2;         // s without a step and the walker has stopped
 const STEP_FLOOR = 0.9;      // m/s; any rhythm of steps is at least a walk
@@ -280,7 +291,7 @@ export class Steps {
     const x = this.fast - this.slow;
     if (this.armed && x > STEP_PEAK) {
       const last = this.times[this.times.length - 1];
-      if (last === undefined || t - last >= STEP_MIN_GAP) {
+      if (last === undefined || t - last >= this._minGap()) {
         this._step(t);
         this.peak = { t, peak: x };
       }
@@ -311,6 +322,18 @@ export class Steps {
       this.trustedCadence = c;
       this.trustCount++;
     }
+  }
+
+  // The shortest gap a new step may follow the last one with: a share of the
+  // median of the recent gaps within a walk, once there are three of them.
+  _minGap() {
+    const recent = this.times.slice(-7);
+    const gaps = recent.slice(1).map((s, i) => s - recent[i]).filter(g => g < STEP_GONE);
+    if (gaps.length < 3) return STEP_MIN_GAP;
+    gaps.sort((a, b) => a - b);
+    const n = gaps.length;
+    const median = n % 2 ? gaps[(n - 1) / 2] : (gaps[n / 2 - 1] + gaps[n / 2]) / 2;
+    return Math.min(STEP_RHYTHM_CAP, Math.max(STEP_MIN_GAP, STEP_RHYTHM * median));
   }
 
   // How hard a step landed: the highest the fast average rose over the slow
@@ -354,6 +377,51 @@ export class Steps {
   }
 }
 
+// Whether the phone is swaying with a gait, for the knock detector's two
+// bars. Steps cannot say it: a knock is read as a step too, so three knocks
+// standing still (Hon knackar's answer) look like three steps, and the knock
+// simulation lost them that way (2026-09-28). The sway between knocks can:
+// the spread of the signal over the last second, after a five-sample median
+// has taken out anything as short as a knock. Henric's recorded pocket gave
+// 2.6-5 walking and 0.0-0.5 standing.
+//
+// Two limits a review found (2026-09-28), left until a pocket shows them:
+// the window trails by about a second, so a walker who stops and knocks
+// slower than KNOCK_PAIR_WALKING within that second is judged walking and
+// the knocks fall apart (Vega's retry line asks for two knocks close
+// together); and a soft enough gait (Tassa) may sway under the threshold,
+// so its heel strikes meet the standing bar. Labb 2's recording has Tassa.
+const SWAY_WALKING = 1.0;    // m/s², standard deviation
+const SWAY_WINDOW = 1.0;     // s, ending SWAY_SKIP before the moment asked about
+const SWAY_SKIP = 0.1;
+const SWAY_MIN_SAMPLES = 20;
+
+export class Sway {
+  constructor() {
+    this.raw = [];               // the last five samples: {t, m}
+    this.smooth = [];            // median of five, at the middle sample's time: {t, m}
+  }
+
+  push(t, mag) {
+    if (!Number.isFinite(mag)) return;
+    this.raw.push({ t, m: mag });
+    if (this.raw.length > 5) this.raw.shift();
+    if (this.raw.length < 5) return;
+    const mid = this.raw[2];
+    const sorted = this.raw.map(s => s.m).sort((a, b) => a - b);
+    this.smooth.push({ t: mid.t, m: sorted[2] });
+    while (this.smooth.length && this.smooth[0].t < t - SWAY_WINDOW - 1) this.smooth.shift();
+  }
+
+  walkingAt(t) {
+    const xs = this.smooth.filter(s => s.t >= t - SWAY_WINDOW - SWAY_SKIP && s.t < t - SWAY_SKIP).map(s => s.m);
+    if (xs.length < SWAY_MIN_SAMPLES) return false;
+    const mean = xs.reduce((a, b) => a + b, 0) / xs.length;
+    const sd = Math.sqrt(xs.reduce((a, b) => a + (b - mean) ** 2, 0) / xs.length);
+    return sd > SWAY_WALKING;
+  }
+}
+
 // Knocks on the phone through a pocket (the lab's "Knacket"). A knock is a
 // spike one or two samples wide; a step, even a running one, is a wave over
 // many. So the detector asks how far a sample stands out from the two
@@ -375,18 +443,32 @@ export class Steps {
 // then gave nothing at all (2026-09-25). A retry after a pause is a group of
 // its own and counts again.
 //
-// Nothing here has met a real pocket yet (2026-09-25). Every spike, knock or
-// not, is kept in `spikes` so the lab can log what the sensor actually saw
-// and the thresholds can be set from a walk instead of a guess.
+// Every spike, knock or not, is kept in `spikes` so the lab can log what the
+// sensor actually saw.
+//
+// Walking needs its own bar. The first recorded pocket (Henric's, 2026-09-28,
+// a front trouser pocket) put a heel strike over KNOCK_JUMP at nearly every
+// step, peaks up to 13, and his knocks walking at 18-60. At the standing bar
+// the strikes broke every double (no second of quiet, or a strike swallowing
+// the knock inside KNOCK_GAP) and made false ones (two in a one-minute
+// Takten). So while the feet are going, a knock must clear KNOCK_JUMP_WALKING,
+// and the two knocks of a double must come closer than the next step would:
+// his came 0.15-0.27 s apart, his steps 0.5 s. Standing keeps the low bar;
+// his standing knocks in the first walk were 3-16.
 const KNOCK_JUMP = 3.0;      // m/s² above the mean of the two neighbours
+const KNOCK_JUMP_WALKING = 15;
 const KNOCK_SEEN = 1.5;      // smaller spikes are logged, not counted
 const KNOCK_GAP = 0.12;      // s; spikes closer than this are the same knock
 const KNOCK_PAIR = 0.8;      // s; knocks closer than this are one group
+const KNOCK_PAIR_WALKING = 0.4;
 const KNOCK_ALONE = 1.0;     // s of quiet before a group for it to count
 const KNOCK_MOST = 3;        // knocks in a group that can still be a double
 
 export class Knocks {
-  constructor() {
+  // `walking(t)` says whether the feet were going at t; without it every
+  // knock is judged as standing.
+  constructor({ walking = () => false } = {}) {
+    this.walking = walking;
     this.prev = null;          // {t, m}: the sample before the one being judged
     this.cur = null;           // {t, m}: the sample being judged
     this.times = [];           // knock times, last ten seconds
@@ -415,8 +497,9 @@ export class Knocks {
   }
 
   _spike(t, peak) {
-    const knock = peak > KNOCK_JUMP && t >= this.mutedUntil;
-    this.spikes.push({ t, peak, knock });
+    const walking = this.walking(t);
+    const knock = peak > (walking ? KNOCK_JUMP_WALKING : KNOCK_JUMP) && t >= this.mutedUntil;
+    this.spikes.push({ t, peak, knock, walking });
     while (this.spikes.length && this.spikes[0].t < t - 60) this.spikes.shift();
     if (!knock) return;
     const prevKnock = this.times[this.times.length - 1];
@@ -425,19 +508,22 @@ export class Knocks {
     this.count++;
     while (this.times.length && this.times[0] < t - 10) this.times.shift();
     this.settle(t);
-    if (this.group && t - this.group.last <= KNOCK_PAIR) {
+    if (this.group && t - this.group.last <= this.group.pair) {
       this.group.n++;
       this.group.last = t;
     } else {
-      this.group = { alone: prevKnock === undefined || t - prevKnock > KNOCK_ALONE, n: 1, last: t };
+      this.group = {
+        alone: prevKnock === undefined || t - prevKnock > KNOCK_ALONE, n: 1, last: t,
+        pair: walking ? KNOCK_PAIR_WALKING : KNOCK_PAIR,
+      };
     }
   }
 
-  // Closes the group once KNOCK_PAIR has passed since its last knock, and
+  // Closes the group once its pair gap has passed since its last knock, and
   // counts it if it was a double. Called on every tick and every knock.
   settle(t) {
     const g = this.group;
-    if (!g || t - g.last <= KNOCK_PAIR) return;
+    if (!g || t - g.last <= g.pair) return;
     this.group = null;
     if (!g.alone || g.n < 2 || g.n > KNOCK_MOST) return;
     this.doubles.push(g.last);
@@ -515,7 +601,8 @@ export class Walk {
     this.target = null;
     this.gps = new GpsSpeed();
     this.steps = new Steps();
-    this.knocks = new Knocks();
+    this.sway = new Sway();
+    this.knocks = new Knocks({ walking: t => this.sway.walkingAt(t) });
     this.track = [];            // decent fixes, last two minutes: {t, latitude, longitude}
     this.odo = 0;               // metres, the pace integrated over time
     this.t = 0;
@@ -531,6 +618,7 @@ export class Walk {
   // Called for every accelerometer sample: |acceleration including gravity|.
   motion(t, magnitude) {
     this.steps.push(t, magnitude);
+    this.sway.push(t, magnitude);
     this.knocks.push(t, magnitude);
     const sec = Math.floor(t);
     if (this.sensorSecs[this.sensorSecs.length - 1] !== sec) {
