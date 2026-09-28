@@ -422,6 +422,9 @@ async function main() {
           if (process.env.DETAILS === r.id) console.log(`    run ${run}: ${r.outcome}. ${r.detail}`);
           const want = EXPECT[name](r.id);
           if (typeof want === 'string' && r.outcome !== want) problems.push(`run ${run}: ${r.id} ${r.outcome}, wanted ${want} (${r.detail})`);
+          // A skip must say why. 'No rhythm' for a sensor that was not running
+          // is the misreading the first field lab made (2026-09-28).
+          if (profile.sensorOff && r.outcome === 'hoppade' && !/sensorn tyst/.test(r.detail)) problems.push(`run ${run}: ${r.id} skipped without saying the sensor was quiet (${r.detail})`);
           // The hiss in Stämma linjen is the mechanic, and its outcome is
           // the stop test, so the evenness is checked from the detail.
           const even = r.id === 'linjen' && /jämn (\d+) %/.exec(r.detail);
