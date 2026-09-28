@@ -340,6 +340,18 @@ function logSteps(s) {
         ? 'steg: sensorn tyst, gps avgör tills stegen hittar en rytm igen'
         : 'steg: tysta medan gps säger rörelse, gps avgör igen');
   }
+  // The phone stops the sensor with the screen, silently. The first field
+  // lab lost it for six minutes and the log never said (2026-09-28). Before
+  // the SIM return, so a silence faked in ?sim shows too.
+  if (st.samples > 0) {
+    if (!s.sensorLive && sensorQuietFrom === null) {
+      sensorQuietFrom = st.lastT;
+      log(`rörelsesensor: tyst sedan ${fmt(st.lastT)}, sidan ${document.visibilityState === 'visible' ? 'synlig' : 'dold'}`);
+    } else if (s.sensorLive && sensorQuietFrom !== null) {
+      log(`rörelsesensor: tillbaka efter ${Math.round(s.t - sensorQuietFrom)} s`);
+      sensorQuietFrom = null;
+    }
+  }
   if (SIM) return;
   if (s.t >= 5 && st.samples === 0 && !stepsNoted.silent) {
     stepsNoted.silent = true;
@@ -348,17 +360,6 @@ function logSteps(s) {
   if (s.t >= 90 && st.samples > 0 && st.trustCount === 0 && !stepsNoted.deaf) {
     stepsNoted.deaf = true;
     log('steg: ingen rytm efter 1,5 minut, gps avgör gång och stilla');
-  }
-  // The phone stops the sensor with the screen, silently. The first field
-  // lab lost it for six minutes and the log never said (2026-09-28).
-  if (st.samples > 0) {
-    if (!s.sensorLive && sensorQuietFrom === null) {
-      sensorQuietFrom = st.lastT;
-      log(`rörelsesensor: tyst sedan ${fmt(st.lastT)}, skärmen ${document.visibilityState === 'visible' ? 'synlig' : 'dold'}`);
-    } else if (s.sensorLive && sensorQuietFrom !== null) {
-      log(`rörelsesensor: tillbaka efter ${Math.round(s.t - sensorQuietFrom)} s`);
-      sensorQuietFrom = null;
-    }
   }
 }
 
