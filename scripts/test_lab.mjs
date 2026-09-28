@@ -404,13 +404,13 @@ async function main() {
         const err = log.find(l => l.startsWith('ERROR'));
         if (err) problems.push(`run ${run}: ${err}`);
         // She must say it when the sensor goes quiet and when it is back, and
-        // never while it answers: a false alarm on a good walk would send the
-        // walker digging for the phone for nothing.
+        // never while it answers, nor on a phone that never had one: a false
+        // alarm sends the walker digging for the phone for nothing.
         const said = line => log.some(l => l.endsWith(`▶ ${line}`));
         if (profile.sensorOff && profile.sensorOff[labNo]) {
           if (!said('sensor-tyst')) problems.push(`run ${run}: sensor went quiet and she never said so`);
           if (!said('sensor-tillbaka')) problems.push(`run ${run}: sensor came back and she never said so`);
-        } else if (profile.steps && said('sensor-tyst')) {
+        } else if (said('sensor-tyst')) {
           problems.push(`run ${run}: she said the sensor went quiet while it answered\n    ${log.filter(l => l.includes('sensor-')).join('\n    ')}`);
         }
         const stray = log.find(l => l.includes('dubbelknack utan'));
