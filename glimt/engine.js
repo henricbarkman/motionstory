@@ -226,11 +226,13 @@ const STEP_MIN_GAP = 0.25;   // s; more than 240 steps a minute is not feet
 // bump inside a step, not a new one. The first recorded pocket (Henric's,
 // 2026-09-28) gave a second peak about 0.28 s into many 0.5 s steps: the
 // cadence read 150-170 at 4.8 km/h, the band said running, and running mutes
-// knocks. With the guard the same walk reads 110-119 throughout. Capped so a
-// detector that has only been hearing one foot (1 s apart) still takes both
-// feet once it hears them.
+// knocks. With the guard the same walk reads 110-119 throughout. Capped at
+// 0.3 s: a rejected step never becomes part of the rhythm the guard compares
+// with, so at a higher cap an amble straight into a sprint was locked at half
+// the sprint's cadence for as long as it lasted (review, 2026-09-28). Up to
+// 200 steps a minute is always accepted; the pocket's bumps came at 0.28.
 const STEP_RHYTHM = 0.6;
-const STEP_RHYTHM_CAP = 0.4; // s
+const STEP_RHYTHM_CAP = 0.3; // s
 const STEP_WINDOW = 6;       // s of steps behind the cadence
 const STEP_GONE = 2;         // s without a step and the walker has stopped
 const STEP_FLOOR = 0.9;      // m/s; any rhythm of steps is at least a walk
@@ -382,6 +384,13 @@ export class Steps {
 // the spread of the signal over the last second, after a five-sample median
 // has taken out anything as short as a knock. Henric's recorded pocket gave
 // 2.6-5 walking and 0.0-0.5 standing.
+//
+// Two limits a review found (2026-09-28), left until a pocket shows them:
+// the window trails by about a second, so a walker who stops and knocks
+// slower than KNOCK_PAIR_WALKING within that second is judged walking and
+// the knocks fall apart (Vega's retry line asks for two knocks close
+// together); and a soft enough gait (Tassa) may sway under the threshold,
+// so its heel strikes meet the standing bar. Labb 2's recording has Tassa.
 const SWAY_WALKING = 1.0;    // m/s², standard deviation
 const SWAY_WINDOW = 1.0;     // s, ending SWAY_SKIP before the moment asked about
 const SWAY_SKIP = 0.1;

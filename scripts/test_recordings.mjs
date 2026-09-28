@@ -50,6 +50,7 @@ function replay(file) {
   const fmt = xs => xs.map(x => x.toFixed(2)).join(', ') || 'none';
   const within = (a, b) => doubles.some(d => d >= a && d <= b);
   check(!bands.some(b => b.band === 'run'), `a walker never reads as running (${bands.filter(b => b.band === 'run').length} ticks did)`);
+  check(cadences.length > 100, `steps decided the pace while walking (${cadences.length} ticks), so the next check measures something`);
   const maxCad = Math.max(...cadences);
   check(maxCad <= 130, `walking cadence stays a walk's, 4.8 km/h is about 118 (highest ${Math.round(maxCad)})`);
   check(within(25.2, 25.7), `the standing double is heard (${fmt(doubles)})`);
