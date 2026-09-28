@@ -226,7 +226,11 @@ async function start() {
     const buf = await lib.buffer(id);
     if (!buf) { log(`replik saknas: ${id}`); return; }
     if (mixer.ctx.state === 'suspended') {
-      try { await mixer.resume(); } catch (_) {}
+      // Bounded: every line queues behind this one, so a resume that never
+      // settles (a hidden page may not be allowed to start audio) would
+      // silence the rest of the walk, her sensor warning included. After two
+      // seconds the line goes ahead; playVoice's watchdog carries it from there.
+      try { await Promise.race([mixer.resume(), new Promise(r => setTimeout(r, 2000))]); } catch (_) {}
       log(`ljud: kontexten var pausad (${mixer.ctx.state})`);
     }
     const at = pendingVoiceAt; pendingVoiceAt = null;

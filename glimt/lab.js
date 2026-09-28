@@ -807,7 +807,6 @@ async function vibration(ctx) {
   if (!await sensorReady(ctx)) return deaf(ctx);
   await ctx.play('vibra-intro');
   await ctx.until(s => !s.moving, { timeout: 15 });
-  const listenFrom = ctx.state().t;
   const rounds = [];
   for (const n of [2, 3]) {
     await wait(ctx, 1.5);
@@ -827,16 +826,19 @@ async function vibration(ctx) {
       return ks.length > 0 && s.t - ks[ks.length - 1] > 2.5;
     }, { timeout: 10 });
     const got = ctx.knocksBetween(from, ctx.state().t);
-    rounds.push({ n, got });
+    rounds.push({ n, got, deaf: ctx.sensorShare(from, ctx.state().t) < 0.5 });
     ctx.log(`hon knackade ${n}, du ${got}`);
     if (got === n) await ctx.play('vibra-ratt');
     else if (got === 0) await ctx.play('vibra-inget');
     else await ctx.play('vibra-fel');
   }
   const right = rounds.filter(r => r.got === r.n).length;
-  if (rounds.every(r => r.got === 0) && ctx.sensorShare(listenFrom, ctx.state().t) < 0.5) {
+  const counts = rounds.map(r => `${r.n} → ${r.got}`).join(', ');
+  // A round the sensor did not hear says nothing about the walker, even if
+  // the round before it was heard (review, 2026-09-28).
+  if (rounds.some(r => r.got !== r.n && r.deaf)) {
     await ctx.play('takten-dov');
-    return { outcome: 'hoppade', detail: 'rörelsesensorn tyst under banan' };
+    return { outcome: 'hoppade', detail: `rörelsesensorn tyst under banan; ${counts}` };
   }
   if (rounds.every(r => r.got === 0)) {
     await ctx.play('vibra-kande-inte');
@@ -845,7 +847,7 @@ async function vibration(ctx) {
   await ctx.play('vibra-slut');
   return {
     outcome: right === rounds.length ? 'klarade' : 'missade',
-    detail: rounds.map(r => `${r.n} → ${r.got}`).join(', '),
+    detail: counts,
   };
 }
 

@@ -77,6 +77,13 @@ const PROFILES = {
     kind: 'pass', gps: GOOD_GPS, steps: true,
     sensorOff: { 1: { from: 'ja-intro', until: 'sensor-tyst', after: 8 }, 2: { from: 'morse-intro', until: 'sensor-tyst', after: 8 } },
   },
+  // The sensor dies inside a knock station, after its start check passed:
+  // Knacket as she asks for the first knock, Hon knackar after a round it
+  // heard (review, 2026-09-28).
+  'screen-mid': {
+    kind: 'pass', gps: GOOD_GPS, steps: true,
+    sensorOff: { 1: { from: 'knack-intro', until: 'knack-nej', after: 2 }, 2: { from: 'vibra-ratt', until: 'takten-dov', after: 2 } },
+  },
 };
 
 // What each profile must get. A string is asserted on every run; `null` is
@@ -95,6 +102,7 @@ const EXPECT = {
   // Listening to a silent sensor is a skip, not a miss; the rest runs on GPS.
   'screen-off': id => ['knack', 'takten', 'vibration'].includes(id) ? 'hoppade' : 'klarade',
   'screen-wake': () => 'klarade',
+  'screen-mid': id => ['knack', 'vibration'].includes(id) ? 'hoppade' : 'klarade',
 };
 
 // Smallest whole cadence whose stride model reaches `speed`; the same
@@ -160,7 +168,8 @@ function makeWalker(kind, env) {
       case 'morse-intro': case 'morse-igen':
         stopAt(t + 1); goAt(t + 7); stopAt(t + 13); goAt(t + 21); break;
       case 'vibra-intro': stopAt(t + 0.5); break;
-      case 'vibra-slut': case 'vibra-kande-inte': case 'vibra-kan-inte': goAt(t + 0.5); break;
+      // A skipped station ('takten-dov') means walk on, like the end of one.
+      case 'vibra-slut': case 'vibra-kande-inte': case 'vibra-kan-inte': case 'takten-dov': goAt(t + 0.5); break;
       // Soft steps: a smaller wave and half the heel strike, same pace.
       // How much softer a real pocket reads is not known yet (2026-09-25).
       case 'tassa-nu': at(t + 1, () => { w.soft = true; }); break;
@@ -236,6 +245,7 @@ function simulate(labNo, name, run, abortIn = null) {
   const drift = profile.gps.drift;
   let biasN = drift ? drift.sigma * gauss() : 0, biasE = drift ? drift.sigma * gauss() : 0;
 
+  let voiceChain = Promise.resolve();
   const helpers = labHelpers(walk, {
     now: () => t,
     vibrateImpl: p => { walker.onVibrate(p, t); return true; },
@@ -246,11 +256,18 @@ function simulate(labNo, name, run, abortIn = null) {
     log: msg => log.push(`${fmt(t)}  ${msg}`),
     hold: on => { walk.contact.hold = on; },
     until: (pred, opts) => waiter.until(pred, opts),
+    // One line at a time, as app.js plays them: a line asked for while
+    // another plays (the sensor watcher's) waits its turn, and the log
+    // stamps it when it starts, not when it was asked for.
     play(id) {
       const dur = SECONDS[id];
       if (dur === undefined) throw new Error(`unknown line ${id}`);
-      log.push(`${fmt(t)}  ▶ ${id}`);
-      return waiter.until(() => false, { timeout: dur }).then(() => walker.onLine(id, t));
+      const turn = voiceChain.then(() => {
+        log.push(`${fmt(t)}  ▶ ${id}`);
+        return waiter.until(() => false, { timeout: dur }).then(() => walker.onLine(id, t));
+      });
+      voiceChain = turn.catch(() => {});
+      return turn;
     },
     station(id, k, n) { station = id; stationAt = t; if (id) log.push(`${fmt(t)}  == ${id} ${k}/${n}`); },
     result(id, r) { results.push({ id, ...r }); log.push(`${fmt(t)}  => ${id}: ${r.outcome}. ${r.detail}`); },
