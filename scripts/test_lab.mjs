@@ -122,7 +122,10 @@ function makeWalker(kind, env) {
   const stopAt = time => at(time, () => { w.speed = 0; });
   const goAt = time => at(time, () => { w.speed = null; });
   const speedAt = (time, v) => at(time, () => { w.speed = v; });
-  const knock = time => w.knocks.push(time);
+  // Knocks standing are light on purpose (the low bar must hear them).
+  // Walking ones are as hard as Henric's recorded pocket gave, 18-60: they
+  // must clear the walking bar over the heel strikes (2026-09-28).
+  const knock = (time, height = 8) => w.knocks.push({ t: time, height });
   const pass = kind === 'pass';
 
   w.onLine = (id, t) => {
@@ -153,8 +156,8 @@ function makeWalker(kind, env) {
       case 'knack-intro': stopAt(t + 0.5); knock(t + 2); knock(t + 2.3); break;
       case 'knack-igen': knock(t + 1.5); knock(t + 1.8); break;
       case 'knack-hord': case 'knack-inget': goAt(t + 0.5); break;
-      case 'knack-ga': knock(t + 8); knock(t + 8.3); break;
-      case 'knack-fraga': knock(t + 3); knock(t + 3.3); break;
+      case 'knack-ga': knock(t + 8, 25); knock(t + 8.3, 25); break;
+      case 'knack-fraga': knock(t + 3, 25); knock(t + 3.3, 25); break;
       case 'takten-intro': w.matchBeat = true; break;
       case 'takten-slut': w.matchBeat = false; goAt(t); break;
       case 'flykten-intro': speedAt(t + 1, 2.8); break;
@@ -319,7 +322,7 @@ function simulate(labNo, name, run, abortIn = null) {
             const [h, sigma] = speed > 2 ? [10, 0.02] : [4, 0.025];
             m += stepHard * (soft ? 0.5 : 1) * h * Math.exp(-(dt * dt) / (2 * sigma * sigma));
           }
-          if (walker.knocks.some(k => u >= k - 0.01 && u < k + 0.01)) m += 8;
+          for (const k of walker.knocks) if (u >= k.t - 0.01 && u < k.t + 0.01) m += k.height;
           if (profile.gps.handling && speed === 0) {
             if (u >= nextBump + 0.15) nextBump = u + 0.8 + Math.random() * 0.8;
             if (u >= nextBump) m += 1.6;
