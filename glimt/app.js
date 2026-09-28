@@ -92,6 +92,16 @@ let fixTimes = [];
 let lastGpsLog = 0;
 const GPS_LOG_EVERY = 30;
 
+// The raw walk, for tuning the detectors against a real pocket: every
+// accelerometer sample, every fix (as metres from the first, so no place
+// leaves the phone) and every log line, each at its exact time. Knacket's
+// first two field walks showed heel strikes as sharp as knocks, and a log of
+// half-minute summaries cannot say what would tell them apart (2026-09-28).
+// Kept in memory only; the walker saves it from the end screen.
+const REC_MAX = 200000;       // samples, about 55 minutes at 60 Hz
+const rec = { t: [], m: [], fixes: [], log: [], origin: null };
+const ms = s => Math.round(s * 1000);
+
 const now = () => (performance.now() - t0) / 1000;
 const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 const kmh = v => (v * 3.6).toFixed(1).replace('.', ',') + ' km/h';
@@ -101,6 +111,7 @@ const walking = () => tickId !== null && !finished;
 function log(msg) {
   const line = `${fmt(Math.max(0, now()))}  ${msg}`;
   logLines.push(line);
+  rec.log.push([ms(now()), msg]);
   const li = document.createElement('li');
   const time = document.createElement('time');
   time.textContent = line.slice(0, line.indexOf('  '));
@@ -441,6 +452,7 @@ function startGps() {
   watchId = navigator.geolocation.watchPosition(pos => {
     const c = pos.coords;
     fixTimes.push(now());
+    recordFix(now(), c);
     walk.fix(now(), c);
     if (c.accuracy <= MEMORY_MAX_ACCURACY) memory.visit(c.latitude, c.longitude);
     if (first) {
@@ -457,7 +469,43 @@ function startGps() {
 function onMotion(e) {
   const a = e.accelerationIncludingGravity;
   if (!a || a.x == null || a.y == null || a.z == null) return;
-  walk.motion(now(), Math.hypot(a.x, a.y, a.z));
+  const t = now(), m = Math.hypot(a.x, a.y, a.z);
+  record(t, m);
+  walk.motion(t, m);
+}
+
+function record(t, m) {
+  if (rec.t.length >= REC_MAX) return;
+  rec.t.push(ms(t));
+  rec.m.push(Math.round(m * 100));
+}
+
+function recordFix(t, c) {
+  if (!rec.origin) rec.origin = { latitude: c.latitude, longitude: c.longitude };
+  const north = (c.latitude - rec.origin.latitude) * 111320;
+  const east = (c.longitude - rec.origin.longitude) * 111320 * Math.cos(rec.origin.latitude * Math.PI / 180);
+  rec.fixes.push([ms(t), Math.round(north * 10) / 10, Math.round(east * 10) / 10,
+    c.accuracy == null ? null : Math.round(c.accuracy), c.speed == null ? null : Math.round(c.speed * 100) / 100]);
+}
+
+// A file, not the clipboard: an hour of samples is a megabyte, and it goes
+// to Demi as an attachment rather than pasted text.
+function saveRecording() {
+  const stamp = new Date().toISOString().slice(0, 16).replace('T', '-').replace(':', '');
+  const body = JSON.stringify({
+    kind: 'glimt-sensor', version: 1, build: $('build').textContent,
+    chapter: chapterNo, station: ONLY_STATION, saved: new Date().toISOString(),
+    units: { t: 'ms since start', m: 'centi m/s², |acceleration including gravity|', fixes: '[t, north m, east m, accuracy m, speed m/s]' },
+    t: rec.t, m: rec.m, fixes: rec.fixes, log: rec.log,
+  });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([body], { type: 'application/json' }));
+  a.download = `glimt-sensor-${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  $('save-btn').textContent = 'Sparad i Nedladdningar';
 }
 
 function startMotion() {
@@ -470,7 +518,9 @@ function startSim() {
   // The slider's speed as footsteps too, so ?sim exercises the step path.
   motionSimId = setInterval(() => {
     const t = now();
-    walk.motion(t, simulatedMagnitude(t, parseFloat($('sim-speed').value)));
+    const m = simulatedMagnitude(t, parseFloat($('sim-speed').value));
+    record(t, m);
+    walk.motion(t, m);
   }, 20);
   let lat = 59.38, lon = 13.5, heading = 0;
   const speedEl = $('sim-speed');
@@ -480,7 +530,7 @@ function startSim() {
   $('sim-left').addEventListener('click', () => { heading -= Math.PI / 2; log('sim: vänster'); });
   $('sim-right').addEventListener('click', () => { heading += Math.PI / 2; log('sim: höger'); });
   // One sharp sample between the simulated steps. Click twice for a double.
-  $('sim-knock').addEventListener('click', () => { walk.motion(now(), 9.81 + 9); });
+  $('sim-knock').addEventListener('click', () => { record(now(), 9.81 + 9); walk.motion(now(), 9.81 + 9); });
   let first = true;
   simId = setInterval(() => {
     const v = parseFloat(speedEl.value);
@@ -488,7 +538,9 @@ function startSim() {
     lat += (v * Math.cos(heading)) / 111320;
     lon += (v * Math.sin(heading)) / (111320 * Math.cos(lat * Math.PI / 180));
     fixTimes.push(now());
-    walk.fix(now(), { latitude: lat, longitude: lon, accuracy, speed: v });
+    const fix = { latitude: lat, longitude: lon, accuracy, speed: v };
+    recordFix(now(), fix);
+    walk.fix(now(), fix);
     if (accuracy <= MEMORY_MAX_ACCURACY) memory.visit(lat, lon);
     if (first) {
       first = false;
@@ -537,6 +589,7 @@ function finish() {
     showLabResults();
   }
   $('final-log').textContent = logLines.join('\n');
+  $('save-btn').hidden = rec.t.length === 0;
 }
 
 // ---------- her world ----------
@@ -637,6 +690,8 @@ $('stop-btn').addEventListener('click', async () => {
   await mixer.fadeOut(2);
   finish();
 });
+
+$('save-btn').addEventListener('click', saveRecording);
 
 $('copy-btn').addEventListener('click', async () => {
   try {
