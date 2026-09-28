@@ -64,6 +64,26 @@ const PROFILES = {
   // it, and nothing new may start: a review found a chime created after the
   // stop that pinged until the tab was closed (2026-09-25).
   abort: { kind: 'pass', gps: GOOD_GPS, steps: true, abort: [3, 20, 45] },
+  // The first field lab (2026-09-28): the screen went dark as the walker
+  // stopped for the first question, and the sensor with it, for six minutes.
+  // `screen-off` is that walk, a walker who never looks at the phone until
+  // the named line; `screen-wake` looks when Vega asks. Per lab: the line the
+  // sensor stops at, and the line (plus seconds) it comes back after.
+  'screen-off': {
+    kind: 'pass', gps: GOOD_GPS, steps: true,
+    sensorOff: { 1: { from: 'ja-intro', until: 'frys-klarade' }, 2: { from: 'morse-intro', until: 'takten-dov', after: 3 } },
+  },
+  'screen-wake': {
+    kind: 'pass', gps: GOOD_GPS, steps: true,
+    sensorOff: { 1: { from: 'ja-intro', until: 'sensor-tyst', after: 8 }, 2: { from: 'morse-intro', until: 'sensor-tyst', after: 8 } },
+  },
+  // The sensor dies inside a knock station, after its start check passed:
+  // Knacket as she asks for the first knock, Hon knackar after a round it
+  // heard (review, 2026-09-28).
+  'screen-mid': {
+    kind: 'pass', gps: GOOD_GPS, steps: true,
+    sensorOff: { 1: { from: 'knack-intro', until: 'knack-nej', after: 2 }, 2: { from: 'vibra-ratt', until: 'takten-dov', after: 2 } },
+  },
 };
 
 // What each profile must get. A string is asserted on every run; `null` is
@@ -77,8 +97,12 @@ const EXPECT = {
   'fail-field': id => ['vandom', 'vagval', 'kompass'].includes(id) ? { want: 'missade', rate: 0.85 } : 'missade',
   'pass-drift': id => ['vandom', 'vagval', 'kompass'].includes(id) ? { want: 'klarade', rate: 0.85 } : null,
   'fail-drift': id => ['vandom', 'vagval', 'kompass'].includes(id) ? { want: 'missade', rate: 0.85 } : null,
-  'gps-only': id => ['takten', 'tassa'].includes(id) ? 'hoppade' : null,
+  'gps-only': id => ['takten', 'tassa', 'knack', 'vibration'].includes(id) ? 'hoppade' : null,
   abort: () => null,
+  // Listening to a silent sensor is a skip, not a miss; the rest runs on GPS.
+  'screen-off': id => ['knack', 'takten', 'vibration'].includes(id) ? 'hoppade' : 'klarade',
+  'screen-wake': () => 'klarade',
+  'screen-mid': id => ['knack', 'vibration'].includes(id) ? 'hoppade' : 'klarade',
 };
 
 // Smallest whole cadence whose stride model reaches `speed`; the same
@@ -102,6 +126,9 @@ function makeWalker(kind, env) {
   const pass = kind === 'pass';
 
   w.onLine = (id, t) => {
+    const off = env.sensorOff;
+    if (off && id === off.from) w.sensorOff = true;
+    if (off && id === off.until && w.sensorOff) at(t + (off.after || 0), () => { w.sensorOff = false; });
     if (id.startsWith('hitta-intro') || id === 'kompass-intro') w.steer = pass ? 1 : -1;
     if (['hitta-framme', 'hitta-tid', 'kompass-framme', 'kompass-tid'].includes(id)) w.steer = 0;
     if (!pass) {
@@ -141,7 +168,8 @@ function makeWalker(kind, env) {
       case 'morse-intro': case 'morse-igen':
         stopAt(t + 1); goAt(t + 7); stopAt(t + 13); goAt(t + 21); break;
       case 'vibra-intro': stopAt(t + 0.5); break;
-      case 'vibra-slut': case 'vibra-kande-inte': case 'vibra-kan-inte': goAt(t + 0.5); break;
+      // A skipped station ('takten-dov') means walk on, like the end of one.
+      case 'vibra-slut': case 'vibra-kande-inte': case 'vibra-kan-inte': case 'takten-dov': goAt(t + 0.5); break;
       // Soft steps: a smaller wave and half the heel strike, same pace.
       // How much softer a real pocket reads is not known yet (2026-09-25).
       case 'tassa-nu': at(t + 1, () => { w.soft = true; }); break;
@@ -208,7 +236,7 @@ function simulate(labNo, name, run, abortIn = null) {
     const b = h && h.beats;
     return b && b.length >= 2 ? Math.round(60 / (b[b.length - 1] - b[b.length - 2])) : null;
   };
-  const walker = makeWalker(profile.kind, { bpm, target: () => target });
+  const walker = makeWalker(profile.kind, { bpm, target: () => target, sensorOff: profile.sensorOff && profile.sensorOff[labNo] });
   let station = null, stationAt = 0, aborted = null;
   let pressedAt = null, startedBefore = 0, liveAtPress = 0;
   const trace = [];
@@ -217,6 +245,7 @@ function simulate(labNo, name, run, abortIn = null) {
   const drift = profile.gps.drift;
   let biasN = drift ? drift.sigma * gauss() : 0, biasE = drift ? drift.sigma * gauss() : 0;
 
+  let voiceChain = Promise.resolve();
   const helpers = labHelpers(walk, {
     now: () => t,
     vibrateImpl: p => { walker.onVibrate(p, t); return true; },
@@ -227,11 +256,18 @@ function simulate(labNo, name, run, abortIn = null) {
     log: msg => log.push(`${fmt(t)}  ${msg}`),
     hold: on => { walk.contact.hold = on; },
     until: (pred, opts) => waiter.until(pred, opts),
+    // One line at a time, as app.js plays them: a line asked for while
+    // another plays (the sensor watcher's) waits its turn, and the log
+    // stamps it when it starts, not when it was asked for.
     play(id) {
       const dur = SECONDS[id];
       if (dur === undefined) throw new Error(`unknown line ${id}`);
-      log.push(`${fmt(t)}  ▶ ${id}`);
-      return waiter.until(() => false, { timeout: dur }).then(() => walker.onLine(id, t));
+      const turn = voiceChain.then(() => {
+        log.push(`${fmt(t)}  ▶ ${id}`);
+        return waiter.until(() => false, { timeout: dur }).then(() => walker.onLine(id, t));
+      });
+      voiceChain = turn.catch(() => {});
+      return turn;
     },
     station(id, k, n) { station = id; stationAt = t; if (id) log.push(`${fmt(t)}  == ${id} ${k}/${n}`); },
     result(id, r) { results.push({ id, ...r }); log.push(`${fmt(t)}  => ${id}: ${r.outcome}. ${r.detail}`); },
@@ -264,7 +300,7 @@ function simulate(labNo, name, run, abortIn = null) {
       // The accelerometer at 50 Hz: one wave per step at the walker's
       // cadence, noise, a sharp spike per knock, and while standing on the
       // field phone a bump every second or so from handling it.
-      if (profile.steps) {
+      if (profile.steps && !walker.sensorOff) {
         for (let u = t - 0.24; u <= t + 1e-9; u += 0.02) {
           // Integrate the step phase so a cadence change does not jump it.
           phase += cadence / 60 * 0.02;
@@ -384,6 +420,16 @@ async function main() {
         if (!ended) problems.push(`run ${run}: did not end by ${Math.round(t / 60)} min`);
         const err = log.find(l => l.startsWith('ERROR'));
         if (err) problems.push(`run ${run}: ${err}`);
+        // She must say it when the sensor goes quiet and when it is back, and
+        // never while it answers, nor on a phone that never had one: a false
+        // alarm sends the walker digging for the phone for nothing.
+        const said = line => log.some(l => l.endsWith(`▶ ${line}`));
+        if (profile.sensorOff && profile.sensorOff[labNo]) {
+          if (!said('sensor-tyst')) problems.push(`run ${run}: sensor went quiet and she never said so`);
+          if (!said('sensor-tillbaka')) problems.push(`run ${run}: sensor came back and she never said so`);
+        } else if (said('sensor-tyst')) {
+          problems.push(`run ${run}: she said the sensor went quiet while it answered\n    ${log.filter(l => l.includes('sensor-')).join('\n    ')}`);
+        }
         const stray = log.find(l => l.includes('dubbelknack utan'));
         if (stray && !/ 0 dubbelknack/.test(stray)) problems.push(`run ${run}: ${stray.trim()}\n    ${strays.join('\n    ')}`);
         for (const r of results) {
@@ -393,6 +439,9 @@ async function main() {
           if (process.env.DETAILS === r.id) console.log(`    run ${run}: ${r.outcome}. ${r.detail}`);
           const want = EXPECT[name](r.id);
           if (typeof want === 'string' && r.outcome !== want) problems.push(`run ${run}: ${r.id} ${r.outcome}, wanted ${want} (${r.detail})`);
+          // A skip must say why. 'No rhythm' for a sensor that was not running
+          // is the misreading the first field lab made (2026-09-28).
+          if (profile.sensorOff && r.outcome === 'hoppade' && !/sensorn tyst/.test(r.detail)) problems.push(`run ${run}: ${r.id} skipped without saying the sensor was quiet (${r.detail})`);
           // The hiss in Stämma linjen is the mechanic, and its outcome is
           // the stop test, so the evenness is checked from the detail.
           const even = r.id === 'linjen' && /jämn (\d+) %/.exec(r.detail);
