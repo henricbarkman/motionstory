@@ -911,7 +911,10 @@ const STATIONS = { linjen, ja, knack, takten, flykten, frys, spoket, hitta, norm
 // short goes on from the first unrated station next time (Henric, labb 2,
 // 2026-10-01: two stations done, then he had to stop). Not done, rated or
 // not: a station stopped inside or skipped (never walked to its end), and a
-// station tried alone with ?bana= (`only`), which is not a walk of the lab.
+// station tried alone with ?bana= (`only`), which is not a walk of the lab,
+// and stations walked from a ?banor= link (`picked`): the link stands in for
+// a round kept in another browser, and counting it here would offer the rest
+// of that round again in this one (review, 2026-10-01).
 // A rating changed on the done screen is saved again under the same `walk`;
 // it is that station once more, not the next round's first (review).
 const UNFINISHED = ['avbruten', 'hoppade'];
@@ -927,7 +930,7 @@ export function ratedThisRound(ratings, no) {
   let round = new Set();
   const seen = new Set();
   for (const r of Array.isArray(ratings) ? ratings : []) {
-    if (!r || !ids.includes(r.station) || r.only || UNFINISHED.includes(r.outcome)) continue;
+    if (!r || !ids.includes(r.station) || r.only || r.picked || UNFINISHED.includes(r.outcome)) continue;
     if (r.walk) {
       const key = `${r.walk}|${r.station}`;
       if (seen.has(key)) continue;
@@ -937,6 +940,22 @@ export function ratedThisRound(ratings, no) {
     if (round.size === ids.length) round = new Set();
   }
   return ids.filter(id => round.has(id));
+}
+
+// ?banor=vagval,kompass,vibration: some stations of one lab, walked in the
+// lab's order. The saved ratings live in one browser, so a walk moved to
+// another (Firefox does not vibrate, 2026-10-01) cannot go on where the
+// walker left off; a link can. Only the labs that can be walked in part
+// (RESUMABLE, for the same reason). Null unless every id is a station of the
+// same such lab; the start screen then says the link was not understood.
+export function chosenStations(text) {
+  const ids = String(text || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  if (!ids.length) return null;
+  for (const no of RESUMABLE) {
+    const all = LABS[no];
+    if (ids.every(id => all.includes(id))) return { lab: no, stations: all.filter(id => ids.includes(id)) };
+  }
+  return null;
 }
 
 // `only` runs a single station (for trying one out); `stations` a part of

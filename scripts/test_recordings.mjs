@@ -79,5 +79,24 @@ function replay(file) {
   check(maxCad <= 135, `walking cadence stays a walk's, 104-123 in the log (highest ${Math.round(maxCad)})`);
 }
 
+// Labb 2 again the same evening, from Vägvalet, in Firefox: no position all
+// walk, so only steps say walking or still. Kroppsmorse is stop, walk, stop;
+// he stood for Hon knackar. Knocked nothing. A heel strike of 38.6 at 2:02,
+// walking, is the hardest yet: the detector counts it as a knock, but alone,
+// so it is no double. No two strikes here come close enough to try the hard-
+// knock rule; the morning's turning round does that.
+{
+  const { bands, doubles, cadences } = replay('labb2-2026-10-01-kvall.json');
+  const fmt = xs => xs.map(x => x.toFixed(2)).join(', ') || 'none';
+  check(doubles.length === 0, `nothing he did is a double knock (${fmt(doubles)})`);
+  const ran = bands.filter(b => b.band === 'run');
+  check(ran.length === 0, `a walker with no GPS never reads as running (${ran.length} ticks did)`);
+  check(cadences.length > 600, `steps decided the pace while walking (${cadences.length} ticks)`);
+  const maxCad = Math.max(...cadences);
+  // 81-117 in the log's half-minute lines; 136 for a moment as he set off
+  // between Kroppsmorse's stops. A run starts about 145.
+  check(maxCad <= 140, `walking cadence stays under a run's (highest ${Math.round(maxCad)})`);
+}
+
 if (failures) { console.log(`\n${failures} failed`); process.exit(1); }
 console.log('\nall recordings ok');
