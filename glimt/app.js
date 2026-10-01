@@ -1,12 +1,13 @@
 // Glimt: wires GPS, clock, audio and the chapter script together.
 // ?sim in the URL replaces GPS with a speed slider for testing at a desk.
 // ?kapitel=2 preselects a chapter, ?kapitel=labb1 the lab; the start screen
-// has the same choice. ?bana=<id> runs a single lab station (ids in lab.js).
+// has the same choice. ?bana=<id> runs a single lab station (ids in lab.js),
+// ?banor=<id>,<id> some of one lab's stations as a walk of the lab.
 
 import { Walk, Waiter, simulatedMagnitude } from './engine.js';
 import { runChapter1 } from './chapter1.js';
 import { runChapter2 } from './chapter2.js';
-import { runLab, labHelpers, LABS, TITLES, ratedThisRound, RESUMABLE } from './lab.js';
+import { runLab, labHelpers, LABS, TITLES, ratedThisRound, RESUMABLE, chosenStations } from './lab.js';
 import { Synth, SilentSynth } from './synth.js';
 import { Mixer, Library } from './audio.js';
 import { chooseWorld, defaultWorld } from './world.js';
@@ -15,6 +16,25 @@ import { Memory, drawWorld, KEY_NAMES } from './memory.js';
 const params = new URLSearchParams(location.search);
 const SIM = params.has('sim');
 const ONLY_STATION = TITLES[params.get('bana')] ? params.get('bana') : null;
+const CHOSEN = ONLY_STATION ? null : chosenStations(params.get('banor'));
+// The stations the link chose, when the chapter on screen is their lab.
+const chosenFor = def => def.lab && CHOSEN && CHOSEN.lab === def.lab ? CHOSEN.stations : null;
+
+// Which browser ran the walk, for the log. Labb 2 on 2026-10-01 ran in
+// Firefox, and only Firefox's own wording of the GPS error said so. Firefox
+// on Android has vibration turned off: navigator.vibrate may say yes and
+// nothing moves (MDN), so Hon knackar would wait for knocks to a buzz the
+// walker never felt.
+const UA = navigator.userAgent;
+const BROWSER = (() => {
+  const known = [['Firefox', /Firefox\/(\d+)/], ['Samsung Internet', /SamsungBrowser\/(\d+)/],
+    ['Edge', /EdgA?\/(\d+)/], ['Opera', /OPR\/(\d+)/], ['Chrome', /Chrome\/(\d+)/], ['Safari', /Version\/(\d+).*Safari/]];
+  const hit = known.find(([, re]) => re.test(UA));
+  const name = hit ? `${hit[0]} ${UA.match(hit[1])[1]}` : 'okänd webbläsare';
+  return `${name}, ${/Android/.test(UA) ? 'Android' : /iPhone|iPad/.test(UA) ? 'iOS' : 'dator'}`;
+})();
+const FIREFOX_ANDROID = /Android/.test(UA) && /Firefox\//.test(UA);
+const CAN_VIBRATE = typeof navigator.vibrate === 'function' && !FIREFOX_ANDROID;
 
 const LAB_FILES = { url: '../stories/glimt/labb.json', voices: '../audio/glimt/vega/glimt-labb' };
 
@@ -172,9 +192,18 @@ async function preload() {
       ? `Ljudet saknar ${notes.join(' och ')} på den här adressen. Rösten fungerar ändå.`
       : 'Sätt på lurarna. Tryck när du står där du vill börja.';
     if (def.lab) {
+      const chosen = chosenFor(def);
       note += ONLY_STATION
         ? ` Bara banan ${TITLES[ONLY_STATION]} den här gången.`
-        : ' Telefonen i fickan, skärmen olåst. Knacka på fickan när hon ber om det.';
+        : chosen
+          ? ` Bara ${andList(chosen.map(id => TITLES[id]))} den här gången. Telefonen i fickan, skärmen olåst.`
+          : ' Telefonen i fickan, skärmen olåst. Knacka på fickan när hon ber om det.';
+      const stations = ONLY_STATION ? [ONLY_STATION] : chosen || LABS[def.lab];
+      if (!CAN_VIBRATE && stations.includes('vibration')) {
+        note += FIREFOX_ANDROID
+          ? ' Firefox vibrerar inte, så Hon knackar hoppas över. Öppna Glimt i Chrome.'
+          : ' Den här webbläsaren vibrerar inte, så Hon knackar hoppas över.';
+      }
     }
     if (chapterNo === '2') {
       const lm = savedLandmark();
@@ -216,13 +245,16 @@ async function start() {
   memory = new Memory(SIM ? null : localStorage);
 
   // A lab with stations already rated goes on from the first unrated one,
-  // unless the walker chose all of them.
-  const resume = def.lab && !ONLY_STATION && resumeStations &&
+  // unless the walker chose all of them. A link that names stations wins.
+  const chosen = ONLY_STATION ? null : chosenFor(def);
+  const resume = def.lab && !ONLY_STATION && !chosen && resumeStations &&
     document.querySelector('input[name="resume"]:checked')?.value === 'rest' ? resumeStations : null;
   const what = def.lab
-    ? `labb ${def.lab}${ONLY_STATION ? `, bara ${TITLES[ONLY_STATION]}` : ''}${resume ? `, från ${TITLES[resume[0]]}` : ''}`
+    ? `labb ${def.lab}${ONLY_STATION ? `, bara ${TITLES[ONLY_STATION]}` : ''}` +
+      `${chosen ? `, bara ${andList(chosen.map(id => TITLES[id]))}` : ''}${resume ? `, från ${TITLES[resume[0]]}` : ''}`
     : `kapitel ${chapterNo}, variant ${variant.toUpperCase()}`;
   log(`start, ${what}${SIM ? ', simulerad' : ''}`);
+  log(`webbläsare: ${BROWSER}`);
   window.glimt = { mixer, walk, world, lib };   // for debugging from the console
 
   if (bedBuf) mixer.startBed(bedBuf);
@@ -287,7 +319,7 @@ async function start() {
     labMemo = {};
     Object.assign(ctx, labHelpers(walk, {
       now,
-      vibrateImpl: p => !finished && typeof navigator.vibrate === 'function' && navigator.vibrate(p),
+      vibrateImpl: p => !finished && CAN_VIBRATE && navigator.vibrate(p),
     }), {
       sfx,
       memo: labMemo,
@@ -308,7 +340,7 @@ async function start() {
       // A single station is a try-out, not a walk with her: no memory lines.
       const opening = ONLY_STATION ? [] : memory.opening(Date.now());
       const closing = () => ONLY_STATION ? [] : memory.closing(world, new Date());
-      await runLab(ctx, def.lab, { only: ONLY_STATION, stations: resume, opening, closing });
+      await runLab(ctx, def.lab, { only: ONLY_STATION, stations: chosen || resume, opening, closing });
     }
     else await def.run(ctx);
   } catch (err) {
@@ -500,7 +532,7 @@ function recordFix(t, c) {
 function saveRecording() {
   const stamp = new Date().toISOString().slice(0, 16).replace('T', '-').replace(':', '');
   const body = JSON.stringify({
-    kind: 'glimt-sensor', version: 1, build: $('build').textContent,
+    kind: 'glimt-sensor', version: 1, build: $('build').textContent, browser: BROWSER,
     chapter: chapterNo, station: ONLY_STATION, saved: new Date().toISOString(),
     units: { t: 'ms since start', m: 'centi m/s², |acceleration including gravity|', fixes: '[t, north m, east m, accuracy m, speed m/s]' },
     t: rec.t, m: rec.m, fixes: rec.fixes, log: rec.log,
@@ -761,10 +793,10 @@ function selectChapter(n) {
 }
 
 // The rated stations of the lab's round under way, and where it goes on.
-// Nothing to choose when none are rated, or when the URL picked one station.
+// Nothing to choose when none are rated, or when the URL picked the stations.
 const NUMBER_WORDS = { 7: 'sju', 8: 'åtta' };
 function showResume(def) {
-  const done = def.lab && !ONLY_STATION && RESUMABLE.includes(def.lab) ? ratedThisRound(loadRatings(), def.lab) : [];
+  const done = def.lab && !ONLY_STATION && !chosenFor(def) && RESUMABLE.includes(def.lab) ? ratedThisRound(loadRatings(), def.lab) : [];
   resumeStations = done.length ? LABS[def.lab].filter(id => !done.includes(id)) : null;
   $('resume-box').hidden = !resumeStations;
   if (!resumeStations) return;
@@ -786,6 +818,7 @@ function showResume(def) {
   if (params.has('kapitel')) ch = params.get('kapitel');
   // A single station belongs to whichever lab has it.
   if (ONLY_STATION) ch = LABS[2].includes(ONLY_STATION) ? 'labb2' : 'labb1';
+  if (CHOSEN) ch = `labb${CHOSEN.lab}`;
   document.querySelectorAll('input[name="chapter"]').forEach(el => {
     el.addEventListener('change', () => selectChapter(el.value));
   });

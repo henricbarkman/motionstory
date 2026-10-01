@@ -939,6 +939,20 @@ export function ratedThisRound(ratings, no) {
   return ids.filter(id => round.has(id));
 }
 
+// ?banor=vagval,kompass,vibration: some stations of one lab, walked in the
+// lab's order. The saved ratings live in one browser, so a walk moved to
+// another (Firefox does not vibrate, 2026-10-01) cannot go on where the
+// walker left off; a link can. Null unless every id is a station of the same
+// lab: a mistyped link walks nothing it did not name.
+export function chosenStations(text) {
+  const ids = String(text || '').split(',').map(s => s.trim()).filter(Boolean);
+  if (!ids.length) return null;
+  for (const [no, all] of Object.entries(LABS)) {
+    if (ids.every(id => all.includes(id))) return { lab: Number(no), stations: all.filter(id => ids.includes(id)) };
+  }
+  return null;
+}
+
 // `only` runs a single station (for trying one out); `stations` a part of
 // the lab, in its order, numbered as in the whole lab; otherwise every
 // station. `opening` and `closing` are the line ids the walk's memory chose

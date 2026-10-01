@@ -18,7 +18,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { Walk, Waiter, cadencePace, bearing } from '../glimt/engine.js';
-import { runLab, labHelpers, LABS, ratedThisRound } from '../glimt/lab.js';
+import { runLab, labHelpers, LABS, ratedThisRound, chosenStations } from '../glimt/lab.js';
 import { Synth } from '../glimt/synth.js';
 import { makeClock, FakeAudioContext } from './fake_audio.mjs';
 
@@ -439,6 +439,19 @@ async function resumeChecks() {
   check(same(ratedThisRound([...walked('w1', ...LABS[2]), ...walked('w2', 'normalt')], 2), ['normalt']),
     'the next walk of the lab does');
   for (const junk of [{}, 5, true, 'x', null]) check(same(ratedThisRound(junk, 2), []), `a stored ${JSON.stringify(junk)} is no ratings`);
+
+  // ?banor=: the three stations Firefox skipped, walked in Chrome, where the
+  // saved ratings are not (2026-10-01).
+  const picked = x => JSON.stringify(chosenStations(x));
+  check(picked('vagval,kompass,vibration') === JSON.stringify({ lab: 2, stations: ['vagval', 'kompass', 'vibration'] }), 'a link names three stations of labb 2');
+  check(picked('vibration, vagval') === JSON.stringify({ lab: 2, stations: ['vagval', 'vibration'] }), "they are walked in the lab's order, spaces or not");
+  check(picked('knack,takten') === JSON.stringify({ lab: 1, stations: ['knack', 'takten'] }), 'and labb 1 has its own');
+  for (const bad of ['vagval,knack', 'vagval,vagvalet', '', ',', null, undefined]) {
+    check(chosenStations(bad) === null, `${JSON.stringify(bad)} chooses nothing`);
+  }
+  const three = ['vagval', 'kompass', 'vibration'];
+  const chosenWalk = await simulate(2, 'pass', 0, null, { stations: three });
+  check(same(chosenWalk.results.map(x => x.id), three), `the link walks just those (${chosenWalk.results.map(x => x.id).join(', ')})`);
 
   const rest = LABS[2].filter(id => !['normalt', 'vandom'].includes(id));
   const { log, results, ended } = await simulate(2, 'pass', 0, null, { stations: rest });
