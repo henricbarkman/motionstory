@@ -261,6 +261,9 @@ async function start() {
     : `kapitel ${chapterNo}, variant ${variant.toUpperCase()}`;
   log(`start, ${what}${SIM ? ', simulerad' : ''}`);
   log(`webbläsare: ${BROWSER}`);
+  clearTimeout(gpsCheckTimer);
+  gpsTrouble = null;
+  if (!SIM) log(`gps före start: ${gpsBefore}`);
   if (BAD_CHOICE !== null) log(`länkens banor gick inte att läsa: ${BAD_CHOICE}`);
   window.glimt = { mixer, walk, world, lib };   // for debugging from the console
 
@@ -487,11 +490,49 @@ function render(s) {
     dist += `, ${Math.round(s.distToTarget)} m till ${CHAPTERS[chapterNo].lab ? 'målet' : world.landmark}`;
   }
   $('dist').textContent = dist;
-  $('gps').textContent = !s.gpsSeen ? 'väntar på gps' :
+  $('gps').textContent = !s.gpsSeen ? GPS_TROUBLE_WORD[gpsTrouble] || 'väntar på gps' :
     s.accuracy === null ? 'gps' : `gps ±${Math.round(s.accuracy)} m`;
 }
 
 // ---------- GPS ----------
+// Asked on the start screen, while the phone is still in hand. On the evening
+// of 2026-10-01 the phone's location was switched off: the only sign was a
+// line in the log, and the walker heard it at Vägvalet, minutes in. Pulling
+// down the quick settings does not hide the page, so a check that failed asks
+// again every few seconds until it gets a position or the walk starts.
+const GPS_RECHECK = 5;          // s
+const GPS_ADVICE = {
+  1: 'Glimt får inte veta var du är. Tillåt plats för sidan i webbläsaren (låset vid adressen) innan du börjar.',
+  2: 'Telefonen hittar ingen plats. Slå på Plats i snabbinställningarna innan du börjar.',
+  3: 'Gps:en har inte hittat dig än. Inomhus är det vanligt.',
+};
+const GPS_TROUBLE_WORD = { 1: 'gps nekad', 2: 'gps avstängd' };
+let gpsBefore = 'inte kollad';  // the start screen's last answer, for the log
+let gpsCheckId = 0, gpsCheckTimer = null;
+let gpsTrouble = null;          // the walk's last GPS error code before a first fix
+
+function checkGps() {
+  clearTimeout(gpsCheckTimer);
+  if (SIM || !navigator.geolocation || $('start-screen').hidden ||
+      document.visibilityState !== 'visible') return;
+  // A newer check wins; an older answer that turns up late is dropped.
+  const id = ++gpsCheckId;
+  const answer = (text, status, again) => {
+    if (id !== gpsCheckId || $('start-screen').hidden) return;
+    gpsBefore = status;
+    $('gps-note').textContent = text;
+    $('gps-note').hidden = false;
+    if (again) gpsCheckTimer = setTimeout(checkGps, GPS_RECHECK * 1000);
+  };
+  if ($('gps-note').hidden) { $('gps-note').textContent = 'Letar efter gps…'; $('gps-note').hidden = false; }
+  navigator.geolocation.getCurrentPosition(
+    pos => answer(`Gps:en hittar dig, ±${Math.round(pos.coords.accuracy)} m.`,
+      `position ±${Math.round(pos.coords.accuracy)} m`, false),
+    err => answer(GPS_ADVICE[err.code] || `Gps:en svarar inte: ${err.message}`,
+      `fel ${err.code}, ${err.message}`, true),
+    { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
+}
+
 function startGps() {
   if (!navigator.geolocation) { log('gps stöds inte'); return; }
   let first = true;
@@ -507,6 +548,7 @@ function startGps() {
       onFirstPosition(c.latitude, c.longitude);
     }
   }, err => {
+    if (first) gpsTrouble = err.code;
     log('gps-fel: ' + err.message);
   }, { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
 }
@@ -772,7 +814,8 @@ async function acquireWakeLock() {
 // Said in the log both ways: the sensor stops with a hidden page, and the
 // first field lab could only guess at why it went quiet (2026-09-28).
 document.addEventListener('visibilitychange', () => {
-  if (!walking()) return;
+  // Back from the phone's settings: ask again, the answer may have changed.
+  if (!walking()) { checkGps(); return; }
   if (document.visibilityState === 'visible') {
     log('sidan: synlig igen');
     if (!wakeLock) acquireWakeLock();
@@ -845,6 +888,7 @@ function showResume(def) {
 
   $('start-btn').addEventListener('click', start);
   selectChapter(ch);
+  checkGps();
 })();
 
 // ---------- build stamp (same scheme as the root page) ----------
