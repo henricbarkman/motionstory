@@ -18,13 +18,31 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { Walk, Waiter, cadencePace, bearing } from '../glimt/engine.js';
-import { runLab, labHelpers, LABS } from '../glimt/lab.js';
+import { runLab, labHelpers, LABS, ratedThisRound } from '../glimt/lab.js';
 import { Synth } from '../glimt/synth.js';
 import { makeClock, FakeAudioContext } from './fake_audio.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const RUNS = parseInt(process.env.RUNS || '10', 10);
+// A profile whose stations are judged by a rate walks this many times: ten
+// walks against an 85 % bar is a coin toss for a station that clears 94 %.
+const RATE_RUNS = parseInt(process.env.RATE_RUNS || '100', 10);
 const VERBOSE = !!process.env.VERBOSE;
+
+// Seeded, so a red run means the code changed and not the dice. Unseeded,
+// the field profiles' 85 % bars over ten random walks failed three runs in
+// six with nothing changed (2026-10-01). Each walk has its own seed from
+// lab, profile and run, so a walk is the same whatever ran before it and
+// `node scripts/test_lab.mjs 2 pass-field` replays the full run's walks.
+// SEED=<n> tries other walks.
+const BASE_SEED = parseInt(process.env.SEED || '1', 10) >>> 0;
+let seed = 1;
+function reseed(...parts) {
+  let h = BASE_SEED ^ 2166136261;
+  for (const c of parts.join('/')) h = Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0;
+  seed = h % 2147483646 + 1;
+}
+Math.random = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
 
 // About ten characters a second, measured on the rendered chapter 2 lines.
 const LINES = JSON.parse(readFileSync(join(ROOT, 'stories/glimt/labb.json'), 'utf8')).lines;
@@ -156,8 +174,10 @@ function makeWalker(kind, env) {
       case 'knack-intro': stopAt(t + 0.5); knock(t + 2); knock(t + 2.3); break;
       case 'knack-igen': knock(t + 1.5); knock(t + 1.8); break;
       case 'knack-hord': case 'knack-inget': goAt(t + 0.5); break;
-      case 'knack-ga': knock(t + 8, 25); knock(t + 8.3, 25); break;
-      case 'knack-fraga': knock(t + 3, 25); knock(t + 3.3, 25); break;
+      // Walking, one blow soft and one hard, the shape of his recorded
+      // doubles (19/39, 43/19, 32/61).
+      case 'knack-ga': knock(t + 8, 20); knock(t + 8.3, 40); break;
+      case 'knack-fraga': knock(t + 3, 40); knock(t + 3.3, 20); break;
       case 'takten-intro': w.matchBeat = true; break;
       case 'takten-slut': w.matchBeat = false; goAt(t); break;
       case 'flykten-intro': speedAt(t + 1, 2.8); break;
@@ -210,7 +230,8 @@ function makeWalker(kind, env) {
   return w;
 }
 
-function simulate(labNo, name, run, abortIn = null) {
+function simulate(labNo, name, run, abortIn = null, { stations = null } = {}) {
+  reseed(labNo, name, run, abortIn ? `${abortIn.id}@${abortIn.after}` : '', stations ? stations.join(',') : '');
   const profile = PROFILES[name];
   const walk = new Walk();
   const waiter = new Waiter();
@@ -278,7 +299,7 @@ function simulate(labNo, name, run, abortIn = null) {
     setTarget: c => { target = c; walk.setTarget(c); },
   };
 
-  const done = runLab(ctx, labNo).then(() => { ended = true; }, err => { log.push(`ERROR ${err.stack}`); ended = true; });
+  const done = runLab(ctx, labNo, { stations }).then(() => { ended = true; }, err => { log.push(`ERROR ${err.stack}`); ended = true; });
 
   return (async () => {
     while (!ended && t < 45 * 60) {
@@ -391,10 +412,48 @@ function simulate(labNo, name, run, abortIn = null) {
   }
 }
 
+// Going on where the walker left off: which stations a round has rated, and
+// a lab run from the first unrated one. Henric walked two stations of labb 2
+// on 2026-10-01 and had to stop; the next walk starts at Vägvalet.
+async function resumeChecks() {
+  let failed = 0;
+  const check = (ok, what) => { console.log(`${ok ? 'ok  ' : 'FAIL'}  ${what}`); if (!ok) failed++; };
+  const r = (...ids) => ids.map(station => ({ station, rating: 'igen' }));
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  check(same(ratedThisRound([], 2), []), 'nothing rated, nothing to skip');
+  check(same(ratedThisRound(r('normalt', 'vandom'), 2), ['normalt', 'vandom']), 'two rated in labb 2 are skipped');
+  check(same(ratedThisRound(r('knack', 'takten', 'normalt'), 2), ['normalt']), "labb 1's ratings do not count in labb 2");
+  check(same(ratedThisRound(r('vandom', 'normalt', 'vandom'), 2), ['normalt', 'vandom']), 'a changed rating counts once, in the lab\'s order');
+  check(same(ratedThisRound(r(...LABS[2], 'normalt'), 2), ['normalt']), 'a round with every station rated is over; the next starts empty');
+  check(same(ratedThisRound(r(...LABS[2]), 2), []), 'all seven rated: the whole lab again');
+  check(same(ratedThisRound([null, { rating: 'nej' }, ...r('tassa')], 2), ['tassa']), 'a broken entry is skipped');
+  const stopped = [{ station: 'vagval', rating: 'igen', outcome: 'avbruten' }, { station: 'kompass', rating: 'nej', outcome: 'hoppade' }];
+  check(same(ratedThisRound([...r('normalt'), ...stopped], 2), ['normalt']), 'a station stopped inside or skipped is not done, rated or not');
+  // Review, 2026-10-01: a try-out with ?bana= is not a walk of the lab, and a
+  // rating changed after the last station is not the next round's first.
+  check(same(ratedThisRound([...r('normalt'), { station: 'vagval', rating: 'igen', outcome: 'klarade', only: true }], 2), ['normalt']),
+    'a station tried alone does not count as done in the lab');
+  const walked = (walk, ...ids) => ids.map(station => ({ station, rating: 'igen', outcome: 'klarade', walk }));
+  check(same(ratedThisRound([...walked('w1', ...LABS[2]), ...walked('w1', 'tassa')], 2), []),
+    'changing a rating on the done screen does not open a new round');
+  check(same(ratedThisRound([...walked('w1', ...LABS[2]), ...walked('w2', 'normalt')], 2), ['normalt']),
+    'the next walk of the lab does');
+  for (const junk of [{}, 5, true, 'x', null]) check(same(ratedThisRound(junk, 2), []), `a stored ${JSON.stringify(junk)} is no ratings`);
+
+  const rest = LABS[2].filter(id => !['normalt', 'vandom'].includes(id));
+  const { log, results, ended } = await simulate(2, 'pass', 0, null, { stations: rest });
+  check(ended, 'the resumed lab ends');
+  check(same(results.map(x => x.id), rest), `it walks the five left, in order (${results.map(x => x.id).join(', ')})`);
+  const first = log.find(l => l.includes('== '));
+  check(/== vagval 3\/7$/.test(first || ''), `numbered as in the whole lab (${first && first.trim()})`);
+  check(results.every(x => x.outcome === 'klarade'), `and a walker who does as asked clears them (${results.map(x => x.outcome).join(', ')})`);
+  return failed;
+}
+
 async function main() {
   const onlyLab = process.argv[2] ? parseInt(process.argv[2], 10) : null;
   const onlyProfile = process.argv[3];
-  let failures = 0;
+  let failures = onlyLab || onlyProfile ? 0 : await resumeChecks();
   for (const labNo of [1, 2]) {
     if (onlyLab && onlyLab !== labNo) continue;
     for (const name of Object.keys(PROFILES)) {
@@ -404,7 +463,8 @@ async function main() {
       const problems = [];
       const firstDetail = {};
       const hits = {};
-      const runs = profile.abort ? LABS[labNo].flatMap(id => profile.abort.map(after => ({ id, after }))) : Array.from({ length: RUNS }, () => null);
+      const byRate = LABS[labNo].some(id => typeof EXPECT[name](id) === 'object');
+      const runs = profile.abort ? LABS[labNo].flatMap(id => profile.abort.map(after => ({ id, after }))) : Array.from({ length: byRate ? Math.max(RUNS, RATE_RUNS) : RUNS }, () => null);
       for (let run = 0; run < runs.length; run++) {
         const abortIn = runs[run];
         const { log, results, ended, t, station, strays, sound } = await simulate(labNo, name, run, abortIn);

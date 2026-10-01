@@ -123,12 +123,30 @@ function pocket({ knocks = [], stillFrom = Infinity, seconds = 40, seed = 7, big
   check(w.knocks.history.length === 0, `a hard strike every fifth step makes no double (${w.knocks.history.length}, ${w.knocks.count} single knocks)`);
 }
 {
-  const w = pocket({ knocks: [{ t: 20, height: 25 }, { t: 20.2, height: 25 }] });
-  check(w.knocks.history.length === 1, `a hard double walking is heard (${w.knocks.history.length})`);
+  const w = pocket({ knocks: [{ t: 20, height: 20 }, { t: 20.2, height: 40 }] });
+  check(w.knocks.history.length === 1, `a double walking with one hard blow is heard (${w.knocks.history.length})`);
 }
 {
   const w = pocket({ knocks: [{ t: 20, height: 8 }, { t: 20.2, height: 8 }] });
   check(w.knocks.history.length === 0, 'a light double walking is not, the heel strikes are as hard');
+}
+// Turning round in labb 2 (2026-10-01): two heel strikes of 16.6 and 15.9,
+// 0.14 s apart, over the walking bar both. Neither is hard.
+{
+  const w = pocket({ knocks: [{ t: 20, height: 17 }, { t: 20.14, height: 16 }] });
+  check(w.knocks.history.length === 0, `two firm strikes close together are not a double (${w.knocks.history.length})`);
+  check(w.knocks.countBetween(19.9, 20.3) === 2, `but both were knocks, so the walking bar did not decide it (${w.knocks.countBetween(19.9, 20.3)})`);
+}
+// The hard blow a sample or two after a softer one is the same knock
+// (inside KNOCK_GAP); its height still counts for the double (review).
+{
+  const w = pocket({ knocks: [{ t: 20, height: 17 }, { t: 20.07, height: 40 }, { t: 20.3, height: 17 }] });
+  check(w.knocks.history.length === 1, `a hard blow just after a soft one makes the double hard (${w.knocks.history.length})`);
+}
+// Standing, nothing changes: soft doubles count, as the bar there is low.
+{
+  const w = pocket({ stillFrom: 10, seconds: 25, knocks: [{ t: 15, height: 8 }, { t: 15.3, height: 8 }] });
+  check(w.knocks.history.length === 1, `a soft double standing is still heard (${w.knocks.history.length})`);
 }
 // Hon knackar: standing, three light knocks back at a gait's spacing. Read
 // as steps they once looked like walking and the third was lost.

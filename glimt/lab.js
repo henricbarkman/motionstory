@@ -905,15 +905,51 @@ const STATIONS = { linjen, ja, knack, takten, flykten, frys, spoket, hitta, norm
 
 // ---------- the run ----------
 
-// `only` runs a single station (for trying one out); otherwise the lab's
-// stations in order. `opening` and `closing` are the line ids the walk's
-// memory chose (absence, keys, new ground), played around the stations;
-// `closing` may be a function, asked after the last station.
-export async function runLab(ctx, no, { only = null, opening = [], closing = [] } = {}) {
+// The stations of lab `no` the walker has rated in the round under way, in
+// the lab's order. A round ends when every station has a rating, and the
+// next starts empty. `ratings` is the saved list, oldest first. A walk cut
+// short goes on from the first unrated station next time (Henric, labb 2,
+// 2026-10-01: two stations done, then he had to stop). Not done, rated or
+// not: a station stopped inside or skipped (never walked to its end), and a
+// station tried alone with ?bana= (`only`), which is not a walk of the lab.
+// A rating changed on the done screen is saved again under the same `walk`;
+// it is that station once more, not the next round's first (review).
+const UNFINISHED = ['avbruten', 'hoppade'];
+// Labs that go on where the walker left off. Not labb 1: Stämma linjen
+// measures the pace and cadence Takten, Flykten and Spöket read, so a walk
+// that skips it sets them up on defaults, and Vega's intro counts eight
+// stations (review, 2026-10-01). Labb 2's Gå normalt measures its own, and
+// its intro counts nothing.
+export const RESUMABLE = [2];
+
+export function ratedThisRound(ratings, no) {
+  const ids = LABS[no] || [];
+  let round = new Set();
+  const seen = new Set();
+  for (const r of Array.isArray(ratings) ? ratings : []) {
+    if (!r || !ids.includes(r.station) || r.only || UNFINISHED.includes(r.outcome)) continue;
+    if (r.walk) {
+      const key = `${r.walk}|${r.station}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+    }
+    round.add(r.station);
+    if (round.size === ids.length) round = new Set();
+  }
+  return ids.filter(id => round.has(id));
+}
+
+// `only` runs a single station (for trying one out); `stations` a part of
+// the lab, in its order, numbered as in the whole lab; otherwise every
+// station. `opening` and `closing` are the line ids the walk's memory chose
+// (absence, keys, new ground), played around the stations; `closing` may be
+// a function, asked after the last station.
+export async function runLab(ctx, no, { only = null, stations = null, opening = [], closing = [] } = {}) {
   ctx.memo.cadences = ctx.memo.cadences || [];
   ctx.memo.knockWindows = ctx.memo.knockWindows || [];
   ctx.hold(true);
-  const ids = only ? [only] : LABS[no];
+  const all = LABS[no];
+  const ids = only ? [only] : stations && stations.length ? all.filter(id => stations.includes(id)) : all;
   await ctx.play(only ? 'labb-intro-en' : `labb-intro-${no}`);
   for (const id of opening) await ctx.play(id);
   const stopWatch = watchSensor(ctx);
@@ -922,8 +958,9 @@ export async function runLab(ctx, no, { only = null, opening = [], closing = [] 
   const results = [];
   for (let i = 0; i < ids.length; i++) {
     const id = ids[i];
-    ctx.station(id, i + 1, ids.length);
-    ctx.log(`bana ${i + 1}/${ids.length}: ${TITLES[id]}`);
+    const [k, n] = only ? [1, 1] : [all.indexOf(id) + 1, all.length];
+    ctx.station(id, k, n);
+    ctx.log(`bana ${k}/${n}: ${TITLES[id]}`);
     let r;
     try {
       r = await STATIONS[id](ctx);
