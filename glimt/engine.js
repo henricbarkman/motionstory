@@ -464,6 +464,9 @@ export class Sway {
 // and the softest real hard knock, 38.9, a little under their geometric mean
 // (25.4). Single heel strikes reach 36 brisk, but a double needs two blows
 // inside 0.4 s, and in the five recorded minutes only that one pair came.
+// Walking or not is judged at the group's first knock, and the sway trails
+// a second: a double knocked right after stopping, its first knock 15-25,
+// is held to this bar and can be lost (Sway's first limit, a little wider).
 const KNOCK_JUMP = 3.0;      // m/s² above the mean of the two neighbours
 const KNOCK_JUMP_WALKING = 15;
 const KNOCK_TOP_WALKING = 25;
