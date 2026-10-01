@@ -909,12 +909,15 @@ const STATIONS = { linjen, ja, knack, takten, flykten, frys, spoket, hitta, norm
 // the lab's order. A round ends when every station has a rating, and the
 // next starts empty. `ratings` is the saved list, oldest first. A walk cut
 // short goes on from the first unrated station next time (Henric, labb 2,
-// 2026-10-01: two stations done, then he had to stop).
+// 2026-10-01: two stations done, then he had to stop). A station stopped
+// inside or skipped was never walked to its end, so its rating does not
+// count it as done.
+const UNFINISHED = ['avbruten', 'hoppade'];
 export function ratedThisRound(ratings, no) {
   const ids = LABS[no] || [];
   let round = new Set();
   for (const r of ratings || []) {
-    if (!r || !ids.includes(r.station)) continue;
+    if (!r || !ids.includes(r.station) || UNFINISHED.includes(r.outcome)) continue;
     round.add(r.station);
     if (round.size === ids.length) round = new Set();
   }

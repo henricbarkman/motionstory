@@ -424,6 +424,8 @@ async function resumeChecks() {
   check(same(ratedThisRound(r(...LABS[2], 'normalt'), 2), ['normalt']), 'a round with every station rated is over; the next starts empty');
   check(same(ratedThisRound(r(...LABS[2]), 2), []), 'all seven rated: the whole lab again');
   check(same(ratedThisRound([null, { rating: 'nej' }, ...r('tassa')], 2), ['tassa']), 'a broken entry is skipped');
+  const stopped = [{ station: 'vagval', rating: 'igen', outcome: 'avbruten' }, { station: 'kompass', rating: 'nej', outcome: 'hoppade' }];
+  check(same(ratedThisRound([...r('normalt'), ...stopped], 2), ['normalt']), 'a station stopped inside or skipped is not done, rated or not');
 
   const rest = LABS[2].filter(id => !['normalt', 'vandom'].includes(id));
   const { log, results, ended } = await simulate(2, 'pass', 0, null, { stations: rest });
