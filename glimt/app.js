@@ -6,7 +6,7 @@
 import { Walk, Waiter, simulatedMagnitude } from './engine.js';
 import { runChapter1 } from './chapter1.js';
 import { runChapter2 } from './chapter2.js';
-import { runLab, labHelpers, LABS, TITLES, ratedThisRound } from './lab.js';
+import { runLab, labHelpers, LABS, TITLES, ratedThisRound, RESUMABLE } from './lab.js';
 import { Synth, SilentSynth } from './synth.js';
 import { Mixer, Library } from './audio.js';
 import { chooseWorld, defaultWorld } from './world.js';
@@ -70,6 +70,7 @@ let labResults = [];
 let labMemo = null;
 let currentStation = null;      // the lab station running, so a stop mid-station can still be rated
 let resumeStations = null;      // the lab's unrated stations, when some are rated (start screen)
+let walkId = null;              // this walk's start, on its ratings, so a changed rating is the same one
 let lastDoubleSeen = -Infinity, doublesLogged = 0;
 // One voice at a time. The lab's sensor watcher can ask for a line while a
 // station's line is playing; it waits its turn instead of talking over it.
@@ -207,6 +208,7 @@ async function start() {
 
   await mixer.resume();
   t0 = performance.now();
+  walkId = new Date().toISOString();
   walk = new Walk();
   waiter = new Waiter();
   world = defaultWorld();
@@ -632,12 +634,15 @@ const RATINGS_KEY = 'glimt-lab-ratings';
 const OUTCOME_WORDS = { klarade: 'klarade', missade: 'missade', hoppade: 'hoppades över', avbruten: 'avbröts' };
 
 function loadRatings() {
-  try { return JSON.parse(localStorage.getItem(RATINGS_KEY) || '[]'); } catch (_) { return []; }
+  try {
+    const all = JSON.parse(localStorage.getItem(RATINGS_KEY) || '[]');
+    return Array.isArray(all) ? all : [];
+  } catch (_) { return []; }
 }
 
 function saveRating(entry) {
   try {
-    const all = JSON.parse(localStorage.getItem(RATINGS_KEY) || '[]');
+    const all = loadRatings();
     all.push(entry);
     localStorage.setItem(RATINGS_KEY, JSON.stringify(all.slice(-500)));
   } catch (_) {}
@@ -677,7 +682,7 @@ function showLabResults() {
         chosen = value;
         rate.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
         log(`betyg: ${TITLES[r.id]} ${value}${changed ? ' (ändrat)' : ''}`);
-        saveRating({ at: new Date().toISOString(), station: r.id, rating: value, outcome: r.outcome });
+        saveRating({ at: new Date().toISOString(), station: r.id, rating: value, outcome: r.outcome, walk: walkId, only: !!ONLY_STATION });
         $('final-log').textContent = logLines.join('\n');
       });
       rate.appendChild(b);
@@ -759,7 +764,7 @@ function selectChapter(n) {
 // Nothing to choose when none are rated, or when the URL picked one station.
 const NUMBER_WORDS = { 7: 'sju', 8: 'åtta' };
 function showResume(def) {
-  const done = def.lab && !ONLY_STATION ? ratedThisRound(loadRatings(), def.lab) : [];
+  const done = def.lab && !ONLY_STATION && RESUMABLE.includes(def.lab) ? ratedThisRound(loadRatings(), def.lab) : [];
   resumeStations = done.length ? LABS[def.lab].filter(id => !done.includes(id)) : null;
   $('resume-box').hidden = !resumeStations;
   if (!resumeStations) return;

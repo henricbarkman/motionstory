@@ -909,15 +909,30 @@ const STATIONS = { linjen, ja, knack, takten, flykten, frys, spoket, hitta, norm
 // the lab's order. A round ends when every station has a rating, and the
 // next starts empty. `ratings` is the saved list, oldest first. A walk cut
 // short goes on from the first unrated station next time (Henric, labb 2,
-// 2026-10-01: two stations done, then he had to stop). A station stopped
-// inside or skipped was never walked to its end, so its rating does not
-// count it as done.
+// 2026-10-01: two stations done, then he had to stop). Not done, rated or
+// not: a station stopped inside or skipped (never walked to its end), and a
+// station tried alone with ?bana= (`only`), which is not a walk of the lab.
+// A rating changed on the done screen is saved again under the same `walk`;
+// it is that station once more, not the next round's first (review).
 const UNFINISHED = ['avbruten', 'hoppade'];
+// Labs that go on where the walker left off. Not labb 1: Stämma linjen
+// measures the pace and cadence Takten, Flykten and Spöket read, so a walk
+// that skips it sets them up on defaults, and Vega's intro counts eight
+// stations (review, 2026-10-01). Labb 2's Gå normalt measures its own, and
+// its intro counts nothing.
+export const RESUMABLE = [2];
+
 export function ratedThisRound(ratings, no) {
   const ids = LABS[no] || [];
   let round = new Set();
-  for (const r of ratings || []) {
-    if (!r || !ids.includes(r.station) || UNFINISHED.includes(r.outcome)) continue;
+  const seen = new Set();
+  for (const r of Array.isArray(ratings) ? ratings : []) {
+    if (!r || !ids.includes(r.station) || r.only || UNFINISHED.includes(r.outcome)) continue;
+    if (r.walk) {
+      const key = `${r.walk}|${r.station}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+    }
     round.add(r.station);
     if (round.size === ids.length) round = new Set();
   }

@@ -24,6 +24,9 @@ import { makeClock, FakeAudioContext } from './fake_audio.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const RUNS = parseInt(process.env.RUNS || '10', 10);
+// A profile whose stations are judged by a rate walks this many times: ten
+// walks against an 85 % bar is a coin toss for a station that clears 94 %.
+const RATE_RUNS = parseInt(process.env.RATE_RUNS || '100', 10);
 const VERBOSE = !!process.env.VERBOSE;
 
 // Seeded, so a red run means the code changed and not the dice. Unseeded,
@@ -426,6 +429,16 @@ async function resumeChecks() {
   check(same(ratedThisRound([null, { rating: 'nej' }, ...r('tassa')], 2), ['tassa']), 'a broken entry is skipped');
   const stopped = [{ station: 'vagval', rating: 'igen', outcome: 'avbruten' }, { station: 'kompass', rating: 'nej', outcome: 'hoppade' }];
   check(same(ratedThisRound([...r('normalt'), ...stopped], 2), ['normalt']), 'a station stopped inside or skipped is not done, rated or not');
+  // Review, 2026-10-01: a try-out with ?bana= is not a walk of the lab, and a
+  // rating changed after the last station is not the next round's first.
+  check(same(ratedThisRound([...r('normalt'), { station: 'vagval', rating: 'igen', outcome: 'klarade', only: true }], 2), ['normalt']),
+    'a station tried alone does not count as done in the lab');
+  const walked = (walk, ...ids) => ids.map(station => ({ station, rating: 'igen', outcome: 'klarade', walk }));
+  check(same(ratedThisRound([...walked('w1', ...LABS[2]), ...walked('w1', 'tassa')], 2), []),
+    'changing a rating on the done screen does not open a new round');
+  check(same(ratedThisRound([...walked('w1', ...LABS[2]), ...walked('w2', 'normalt')], 2), ['normalt']),
+    'the next walk of the lab does');
+  for (const junk of [{}, 5, true, 'x', null]) check(same(ratedThisRound(junk, 2), []), `a stored ${JSON.stringify(junk)} is no ratings`);
 
   const rest = LABS[2].filter(id => !['normalt', 'vandom'].includes(id));
   const { log, results, ended } = await simulate(2, 'pass', 0, null, { stations: rest });
@@ -450,7 +463,8 @@ async function main() {
       const problems = [];
       const firstDetail = {};
       const hits = {};
-      const runs = profile.abort ? LABS[labNo].flatMap(id => profile.abort.map(after => ({ id, after }))) : Array.from({ length: RUNS }, () => null);
+      const byRate = LABS[labNo].some(id => typeof EXPECT[name](id) === 'object');
+      const runs = profile.abort ? LABS[labNo].flatMap(id => profile.abort.map(after => ({ id, after }))) : Array.from({ length: byRate ? Math.max(RUNS, RATE_RUNS) : RUNS }, () => null);
       for (let run = 0; run < runs.length; run++) {
         const abortIn = runs[run];
         const { log, results, ended, t, station, strays, sound } = await simulate(labNo, name, run, abortIn);

@@ -513,7 +513,11 @@ export class Knocks {
     while (this.spikes.length && this.spikes[0].t < t - 60) this.spikes.shift();
     if (!knock) return;
     const prevKnock = this.times[this.times.length - 1];
-    if (prevKnock !== undefined && t - prevKnock < KNOCK_GAP) return;
+    if (prevKnock !== undefined && t - prevKnock < KNOCK_GAP) {
+      // The same knock a sample or two on; its height is still the knock's.
+      if (this.group) this.group.top = Math.max(this.group.top, peak);
+      return;
+    }
     this.times.push(t);
     this.count++;
     while (this.times.length && this.times[0] < t - 10) this.times.shift();
