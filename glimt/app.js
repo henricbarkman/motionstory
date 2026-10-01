@@ -17,6 +17,8 @@ const params = new URLSearchParams(location.search);
 const SIM = params.has('sim');
 const ONLY_STATION = TITLES[params.get('bana')] ? params.get('bana') : null;
 const CHOSEN = ONLY_STATION ? null : chosenStations(params.get('banor'));
+// A ?banor= the app could not read says so, instead of walking everything.
+const BAD_CHOICE = !ONLY_STATION && !CHOSEN && params.has('banor') ? params.get('banor') : null;
 // The stations the link chose, when the chapter on screen is their lab.
 const chosenFor = def => def.lab && CHOSEN && CHOSEN.lab === def.lab ? CHOSEN.stations : null;
 
@@ -24,17 +26,19 @@ const chosenFor = def => def.lab && CHOSEN && CHOSEN.lab === def.lab ? CHOSEN.st
 // Firefox, and only Firefox's own wording of the GPS error said so. Firefox
 // on Android has vibration turned off: navigator.vibrate may say yes and
 // nothing moves (MDN), so Hon knackar would wait for knocks to a buzz the
-// walker never felt.
+// walker never felt. Any Firefox, not only one that says Android: its
+// "desktop site" mode sends a Linux desktop agent, and no Firefox vibrates.
 const UA = navigator.userAgent;
 const BROWSER = (() => {
-  const known = [['Firefox', /Firefox\/(\d+)/], ['Samsung Internet', /SamsungBrowser\/(\d+)/],
-    ['Edge', /EdgA?\/(\d+)/], ['Opera', /OPR\/(\d+)/], ['Chrome', /Chrome\/(\d+)/], ['Safari', /Version\/(\d+).*Safari/]];
+  const known = [['Firefox', /(?:Firefox|FxiOS)\/(\d+)/], ['Samsung Internet', /SamsungBrowser\/(\d+)/],
+    ['Edge', /Edg(?:A|iOS)?\/(\d+)/], ['Opera', /OPR\/(\d+)/], ['Chrome', /(?:Chrome|CriOS)\/(\d+)/],
+    ['Safari', /Version\/(\d+).*Safari/]];
   const hit = known.find(([, re]) => re.test(UA));
   const name = hit ? `${hit[0]} ${UA.match(hit[1])[1]}` : 'okänd webbläsare';
   return `${name}, ${/Android/.test(UA) ? 'Android' : /iPhone|iPad/.test(UA) ? 'iOS' : 'dator'}`;
 })();
-const FIREFOX_ANDROID = /Android/.test(UA) && /Firefox\//.test(UA);
-const CAN_VIBRATE = typeof navigator.vibrate === 'function' && !FIREFOX_ANDROID;
+const FIREFOX = /(?:Firefox|FxiOS)\//.test(UA);
+const CAN_VIBRATE = typeof navigator.vibrate === 'function' && !FIREFOX;
 
 const LAB_FILES = { url: '../stories/glimt/labb.json', voices: '../audio/glimt/vega/glimt-labb' };
 
@@ -91,6 +95,7 @@ let labMemo = null;
 let currentStation = null;      // the lab station running, so a stop mid-station can still be rated
 let resumeStations = null;      // the lab's unrated stations, when some are rated (start screen)
 let walkId = null;              // this walk's start, on its ratings, so a changed rating is the same one
+let pickedWalk = false;         // the walk ran the stations a ?banor= link chose
 let lastDoubleSeen = -Infinity, doublesLogged = 0;
 // One voice at a time. The lab's sensor watcher can ask for a line while a
 // station's line is playing; it waits its turn instead of talking over it.
@@ -195,12 +200,12 @@ async function preload() {
       const chosen = chosenFor(def);
       note += ONLY_STATION
         ? ` Bara banan ${TITLES[ONLY_STATION]} den här gången.`
-        : chosen
-          ? ` Bara ${andList(chosen.map(id => TITLES[id]))} den här gången. Telefonen i fickan, skärmen olåst.`
-          : ' Telefonen i fickan, skärmen olåst. Knacka på fickan när hon ber om det.';
+        : `${chosen ? ` Bara ${andList(chosen.map(id => TITLES[id]))} den här gången.` : ''}` +
+          ' Telefonen i fickan, skärmen olåst. Knacka på fickan när hon ber om det.';
+      if (BAD_CHOICE !== null) note += ` Länkens banor (${BAD_CHOICE}) gick inte att läsa, så det blir labbet som vanligt.`;
       const stations = ONLY_STATION ? [ONLY_STATION] : chosen || LABS[def.lab];
       if (!CAN_VIBRATE && stations.includes('vibration')) {
-        note += FIREFOX_ANDROID
+        note += FIREFOX
           ? ' Firefox vibrerar inte, så Hon knackar hoppas över. Öppna Glimt i Chrome.'
           : ' Den här webbläsaren vibrerar inte, så Hon knackar hoppas över.';
       }
@@ -247,6 +252,7 @@ async function start() {
   // A lab with stations already rated goes on from the first unrated one,
   // unless the walker chose all of them. A link that names stations wins.
   const chosen = ONLY_STATION ? null : chosenFor(def);
+  pickedWalk = !!chosen;
   const resume = def.lab && !ONLY_STATION && !chosen && resumeStations &&
     document.querySelector('input[name="resume"]:checked')?.value === 'rest' ? resumeStations : null;
   const what = def.lab
@@ -255,6 +261,7 @@ async function start() {
     : `kapitel ${chapterNo}, variant ${variant.toUpperCase()}`;
   log(`start, ${what}${SIM ? ', simulerad' : ''}`);
   log(`webbläsare: ${BROWSER}`);
+  if (BAD_CHOICE !== null) log(`länkens banor gick inte att läsa: ${BAD_CHOICE}`);
   window.glimt = { mixer, walk, world, lib };   // for debugging from the console
 
   if (bedBuf) mixer.startBed(bedBuf);
@@ -714,7 +721,7 @@ function showLabResults() {
         chosen = value;
         rate.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
         log(`betyg: ${TITLES[r.id]} ${value}${changed ? ' (ändrat)' : ''}`);
-        saveRating({ at: new Date().toISOString(), station: r.id, rating: value, outcome: r.outcome, walk: walkId, only: !!ONLY_STATION });
+        saveRating({ at: new Date().toISOString(), station: r.id, rating: value, outcome: r.outcome, walk: walkId, only: !!ONLY_STATION, picked: !!pickedWalk });
         $('final-log').textContent = logLines.join('\n');
       });
       rate.appendChild(b);
@@ -819,6 +826,9 @@ function showResume(def) {
   // A single station belongs to whichever lab has it.
   if (ONLY_STATION) ch = LABS[2].includes(ONLY_STATION) ? 'labb2' : 'labb1';
   if (CHOSEN) ch = `labb${CHOSEN.lab}`;
+  // An unreadable ?banor= still meant a lab, and only a lab's start screen
+  // has room to say the link was not understood.
+  else if (BAD_CHOICE !== null) ch = `labb${RESUMABLE[0]}`;
   document.querySelectorAll('input[name="chapter"]').forEach(el => {
     el.addEventListener('change', () => selectChapter(el.value));
   });

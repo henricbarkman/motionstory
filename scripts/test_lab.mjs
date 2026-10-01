@@ -445,10 +445,14 @@ async function resumeChecks() {
   const picked = x => JSON.stringify(chosenStations(x));
   check(picked('vagval,kompass,vibration') === JSON.stringify({ lab: 2, stations: ['vagval', 'kompass', 'vibration'] }), 'a link names three stations of labb 2');
   check(picked('vibration, vagval') === JSON.stringify({ lab: 2, stations: ['vagval', 'vibration'] }), "they are walked in the lab's order, spaces or not");
-  check(picked('knack,takten') === JSON.stringify({ lab: 1, stations: ['knack', 'takten'] }), 'and labb 1 has its own');
-  for (const bad of ['vagval,knack', 'vagval,vagvalet', '', ',', null, undefined]) {
+  check(picked('VAGVAL,Kompass,vagval') === JSON.stringify({ lab: 2, stations: ['vagval', 'kompass'] }), 'in any case, each once');
+  // Review: labb 1 is never walked in part; Takten, Flykten and Spöket read
+  // the pace Stämma linjen measures.
+  for (const bad of ['knack,takten', 'vagval,knack', 'vagval,vagvalet', '', ',', null, undefined]) {
     check(chosenStations(bad) === null, `${JSON.stringify(bad)} chooses nothing`);
   }
+  check(same(ratedThisRound([...r('normalt'), { station: 'vagval', rating: 'igen', outcome: 'klarade', picked: true }], 2), ['normalt']),
+    "a station walked from a link stands for another browser's round, not this one's");
   const three = ['vagval', 'kompass', 'vibration'];
   const chosenWalk = await simulate(2, 'pass', 0, null, { stations: three });
   check(same(chosenWalk.results.map(x => x.id), three), `the link walks just those (${chosenWalk.results.map(x => x.id).join(', ')})`);
