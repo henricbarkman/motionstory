@@ -59,5 +59,25 @@ function replay(file) {
   check(doubles.length === 3, `and nothing else is a double (${doubles.length})`);
 }
 
+// Labb 2 from the start, 2026-10-01: Gå normalt, Vänd om, into Vägvalet,
+// standing from about 5:00. No station asked for a knock and he knocked
+// nothing. Turning round the first time, two heel strikes of 16.6 and 15.9
+// came 0.14 s apart and the phone heard a double.
+//
+// From 5:26 the phone most likely came out of the pocket for the stop
+// button: three shaky seconds, then five calm ones in the hand. Its bumps,
+// right after standing, read as two seconds of running at 5:28. Not counted
+// here; it would mute knocks for those seconds, nothing more.
+{
+  const { bands, doubles, cadences } = replay('labb2-2026-10-01.json');
+  const fmt = xs => xs.map(x => x.toFixed(2)).join(', ') || 'none';
+  check(doubles.length === 0, `turning round is not a double knock (${fmt(doubles)})`);
+  const ran = bands.filter(b => b.band === 'run' && b.t < 326);
+  check(ran.length === 0, `a walker never reads as running before the phone comes out (${ran.length} ticks did)`);
+  check(cadences.length > 400, `steps decided the pace while walking (${cadences.length} ticks)`);
+  const maxCad = Math.max(...cadences);
+  check(maxCad <= 135, `walking cadence stays a walk's, 104-123 in the log (highest ${Math.round(maxCad)})`);
+}
+
 if (failures) { console.log(`\n${failures} failed`); process.exit(1); }
 console.log('\nall recordings ok');

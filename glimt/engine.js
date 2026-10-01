@@ -455,8 +455,18 @@ export class Sway {
 // and the two knocks of a double must come closer than the next step would:
 // his came 0.15-0.27 s apart, his steps 0.5 s. Standing keeps the low bar;
 // his standing knocks in the first walk were 3-16.
+//
+// And one knock of a walking double must be hard. Turning round in labb 2
+// (2026-10-01) put two heel strikes of 16.6 and 15.9 0.14 s apart, a double
+// nobody knocked. In each of his three real doubles one knock was 39-61
+// (19/39, 43/19, 32/61); a knuckle on a pocket lands one blow hard even when
+// the other is soft. KNOCK_TOP_WALKING sits between the strike pair's 16.6
+// and the softest real hard knock, 38.9, a little under their geometric mean
+// (25.4). Single heel strikes reach 36 brisk, but a double needs two blows
+// inside 0.4 s, and in the five recorded minutes only that one pair came.
 const KNOCK_JUMP = 3.0;      // m/s² above the mean of the two neighbours
 const KNOCK_JUMP_WALKING = 15;
+const KNOCK_TOP_WALKING = 25;
 const KNOCK_SEEN = 1.5;      // smaller spikes are logged, not counted
 const KNOCK_GAP = 0.12;      // s; spikes closer than this are the same knock
 const KNOCK_PAIR = 0.8;      // s; knocks closer than this are one group
@@ -511,10 +521,11 @@ export class Knocks {
     if (this.group && t - this.group.last <= this.group.pair) {
       this.group.n++;
       this.group.last = t;
+      this.group.top = Math.max(this.group.top, peak);
     } else {
       this.group = {
         alone: prevKnock === undefined || t - prevKnock > KNOCK_ALONE, n: 1, last: t,
-        pair: walking ? KNOCK_PAIR_WALKING : KNOCK_PAIR,
+        walking, top: peak, pair: walking ? KNOCK_PAIR_WALKING : KNOCK_PAIR,
       };
     }
   }
@@ -526,6 +537,7 @@ export class Knocks {
     if (!g || t - g.last <= g.pair) return;
     this.group = null;
     if (!g.alone || g.n < 2 || g.n > KNOCK_MOST) return;
+    if (g.walking && g.top < KNOCK_TOP_WALKING) return;
     this.doubles.push(g.last);
     while (this.doubles.length && this.doubles[0] < t - 60) this.doubles.shift();
     if (this.history.length < 2000) this.history.push(g.last);

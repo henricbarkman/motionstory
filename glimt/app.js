@@ -6,7 +6,7 @@
 import { Walk, Waiter, simulatedMagnitude } from './engine.js';
 import { runChapter1 } from './chapter1.js';
 import { runChapter2 } from './chapter2.js';
-import { runLab, labHelpers, LABS, TITLES } from './lab.js';
+import { runLab, labHelpers, LABS, TITLES, ratedThisRound } from './lab.js';
 import { Synth, SilentSynth } from './synth.js';
 import { Mixer, Library } from './audio.js';
 import { chooseWorld, defaultWorld } from './world.js';
@@ -69,6 +69,7 @@ let sfx = null;
 let labResults = [];
 let labMemo = null;
 let currentStation = null;      // the lab station running, so a stop mid-station can still be rated
+let resumeStations = null;      // the lab's unrated stations, when some are rated (start screen)
 let lastDoubleSeen = -Infinity, doublesLogged = 0;
 // One voice at a time. The lab's sensor watcher can ask for a line while a
 // station's line is playing; it waits its turn instead of talking over it.
@@ -212,8 +213,12 @@ async function start() {
   // A simulated walk does not go into her world: its squares are made up.
   memory = new Memory(SIM ? null : localStorage);
 
+  // A lab with stations already rated goes on from the first unrated one,
+  // unless the walker chose all of them.
+  const resume = def.lab && !ONLY_STATION && resumeStations &&
+    document.querySelector('input[name="resume"]:checked')?.value === 'rest' ? resumeStations : null;
   const what = def.lab
-    ? `labb ${def.lab}${ONLY_STATION ? `, bara ${TITLES[ONLY_STATION]}` : ''}`
+    ? `labb ${def.lab}${ONLY_STATION ? `, bara ${TITLES[ONLY_STATION]}` : ''}${resume ? `, från ${TITLES[resume[0]]}` : ''}`
     : `kapitel ${chapterNo}, variant ${variant.toUpperCase()}`;
   log(`start, ${what}${SIM ? ', simulerad' : ''}`);
   window.glimt = { mixer, walk, world, lib };   // for debugging from the console
@@ -301,7 +306,7 @@ async function start() {
       // A single station is a try-out, not a walk with her: no memory lines.
       const opening = ONLY_STATION ? [] : memory.opening(Date.now());
       const closing = () => ONLY_STATION ? [] : memory.closing(world, new Date());
-      await runLab(ctx, def.lab, { only: ONLY_STATION, opening, closing });
+      await runLab(ctx, def.lab, { only: ONLY_STATION, stations: resume, opening, closing });
     }
     else await def.run(ctx);
   } catch (err) {
@@ -626,6 +631,10 @@ function showWorld(id, m, recent, when) {
 const RATINGS_KEY = 'glimt-lab-ratings';
 const OUTCOME_WORDS = { klarade: 'klarade', missade: 'missade', hoppade: 'hoppades över', avbruten: 'avbröts' };
 
+function loadRatings() {
+  try { return JSON.parse(localStorage.getItem(RATINGS_KEY) || '[]'); } catch (_) { return []; }
+}
+
 function saveRating(entry) {
   try {
     const all = JSON.parse(localStorage.getItem(RATINGS_KEY) || '[]');
@@ -741,8 +750,23 @@ function selectChapter(n) {
   const def = CHAPTERS[chapterNo];
   $('subtitle').textContent = def.subtitle;
   $('variant-box').hidden = !!def.lab;
+  showResume(def);
   document.title = def.lab ? `Glimt, labb ${def.lab}` : `Glimt, kapitel ${chapterNo}`;
   preload();
+}
+
+// The rated stations of the lab's round under way, and where it goes on.
+// Nothing to choose when none are rated, or when the URL picked one station.
+const NUMBER_WORDS = { 7: 'sju', 8: 'åtta' };
+function showResume(def) {
+  const done = def.lab && !ONLY_STATION ? ratedThisRound(loadRatings(), def.lab) : [];
+  resumeStations = done.length ? LABS[def.lab].filter(id => !done.includes(id)) : null;
+  $('resume-box').hidden = !resumeStations;
+  if (!resumeStations) return;
+  const n = LABS[def.lab].length;
+  $('resume-rest').textContent = `Fortsätt vid ${TITLES[resumeStations[0]]}. ${andList(done.map(id => TITLES[id]))} har du gjort.`;
+  $('resume-all').textContent = `Alla ${NUMBER_WORDS[n] || n} från början`;
+  document.querySelector('input[name="resume"][value="rest"]').checked = true;
 }
 
 (function initStartScreen() {

@@ -28,6 +28,11 @@
         <label><input type="radio" name="variant" value="a"> bunden till dina steg</label>
         <label><input type="radio" name="variant" value="b"> fri, men tappar dig när du står still</label>
       </fieldset>
+      <fieldset class="variant" id="resume-box" hidden>
+        <legend>Banor</legend>
+        <label><input type="radio" name="resume" value="rest" checked> <span id="resume-rest">Fortsätt där du slutade</span></label>
+        <label><input type="radio" name="resume" value="all"> <span id="resume-all">Alla från början</span></label>
+      </fieldset>
       <button id="start-btn" disabled>Laddar…</button>
       <p class="hint" id="load-note">Sätt på lurarna. Tryck när du står där du vill börja.</p>
       <section class="world" id="world-start" hidden>
