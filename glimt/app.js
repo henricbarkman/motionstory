@@ -263,7 +263,7 @@ async function start() {
   log(`webbläsare: ${BROWSER}`);
   clearTimeout(gpsCheckTimer);
   gpsTrouble = null;
-  if (!SIM) log(`gps före start: ${gpsBefore}`);
+  if (!SIM) log(`gps före start: ${gpsStatus()}`);
   if (BAD_CHOICE !== null) log(`länkens banor gick inte att läsa: ${BAD_CHOICE}`);
   window.glimt = { mixer, walk, world, lib };   // for debugging from the console
 
@@ -498,38 +498,52 @@ function render(s) {
 // Asked on the start screen, while the phone is still in hand. On the evening
 // of 2026-10-01 the phone's location was switched off: the only sign was a
 // line in the log, and the walker heard it at Vägvalet, minutes in. Pulling
-// down the quick settings does not hide the page, so a check that failed asks
-// again every few seconds until it gets a position or the walk starts.
-const GPS_RECHECK = 5;          // s
+// down the quick settings does not hide the page, so a failed check asks
+// again by itself: soon when the phone said no at once (location off costs
+// nothing to ask), later after a timeout (the GPS chip was on all along), and
+// at most GPS_TRIES times before it waits for a tap on the note. A refusal is
+// never asked again by itself: a prompt shown over and over can end with the
+// browser blocking the site, and the walk's own GPS with it.
+const GPS_RECHECK = { 2: 5, 3: 30 };  // s until the next try, per error code
+const GPS_TRIES = 12;
 const GPS_ADVICE = {
   1: 'Glimt får inte veta var du är. Tillåt plats för sidan i webbläsaren (låset vid adressen) innan du börjar.',
-  2: 'Telefonen hittar ingen plats. Slå på Plats i snabbinställningarna innan du börjar.',
+  2: 'Telefonen hittar ingen plats. Kolla att Plats är på i snabbinställningarna innan du börjar.',
   3: 'Gps:en har inte hittat dig än. Inomhus är det vanligt.',
 };
-const GPS_TROUBLE_WORD = { 1: 'gps nekad', 2: 'gps avstängd' };
-let gpsBefore = 'inte kollad';  // the start screen's last answer, for the log
-let gpsCheckId = 0, gpsCheckTimer = null;
-let gpsTrouble = null;          // the walk's last GPS error code before a first fix
+const GPS_TROUBLE_WORD = { 1: 'gps nekad', 2: 'ingen gps' };
+let gpsLast = null, gpsPending = false;  // the start screen's answer, for the log
+let gpsCheckId = 0, gpsCheckTimer = null, gpsTries = 0;
+let gpsTrouble = null;          // the walk's refusal (1) or no-position (2) before a first fix
 
-function checkGps() {
+const gpsStatus = () => !gpsPending ? gpsLast || 'inte kollad'
+  : gpsLast ? `${gpsLast}, ny koll pågår` : 'väntar på svar';
+
+// fresh: asked for by the walker, the page or the permission, not the timer.
+function checkGps(fresh = true) {
   clearTimeout(gpsCheckTimer);
   if (SIM || !navigator.geolocation || $('start-screen').hidden ||
       document.visibilityState !== 'visible') return;
+  if (fresh) gpsTries = 0;
+  gpsTries++;
+  gpsPending = true;
   // A newer check wins; an older answer that turns up late is dropped.
   const id = ++gpsCheckId;
-  const answer = (text, status, again) => {
+  const note = $('gps-note');
+  const answer = (text, status, wait) => {
     if (id !== gpsCheckId || $('start-screen').hidden) return;
-    gpsBefore = status;
-    $('gps-note').textContent = text;
-    $('gps-note').hidden = false;
-    if (again) gpsCheckTimer = setTimeout(checkGps, GPS_RECHECK * 1000);
+    gpsPending = false;
+    gpsLast = status;
+    const again = wait && gpsTries < GPS_TRIES;
+    note.textContent = text + (wait === null || again ? '' : ' Tryck här för att kolla igen.');
+    if (again) gpsCheckTimer = setTimeout(() => checkGps(false), wait * 1000);
   };
-  if ($('gps-note').hidden) { $('gps-note').textContent = 'Letar efter gps…'; $('gps-note').hidden = false; }
+  if (fresh) { note.textContent = 'Letar efter gps…'; note.hidden = false; }
   navigator.geolocation.getCurrentPosition(
     pos => answer(`Gps:en hittar dig, ±${Math.round(pos.coords.accuracy)} m.`,
-      `position ±${Math.round(pos.coords.accuracy)} m`, false),
+      `position ±${Math.round(pos.coords.accuracy)} m`, null),
     err => answer(GPS_ADVICE[err.code] || `Gps:en svarar inte: ${err.message}`,
-      `fel ${err.code}, ${err.message}`, true),
+      `fel ${err.code}, ${err.message}`, GPS_RECHECK[err.code] || 0),
     { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
 }
 
@@ -548,7 +562,7 @@ function startGps() {
       onFirstPosition(c.latitude, c.longitude);
     }
   }, err => {
-    if (first) gpsTrouble = err.code;
+    if (first && GPS_TROUBLE_WORD[err.code]) gpsTrouble = err.code;
     log('gps-fel: ' + err.message);
   }, { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
 }
@@ -888,6 +902,10 @@ function showResume(def) {
 
   $('start-btn').addEventListener('click', start);
   selectChapter(ch);
+  $('gps-note').addEventListener('click', () => checkGps());
+  // Allowed in the browser's settings, or a prompt answered: ask again.
+  if (navigator.permissions) navigator.permissions.query({ name: 'geolocation' })
+    .then(st => st.addEventListener('change', () => checkGps())).catch(() => {});
   checkGps();
 })();
 
