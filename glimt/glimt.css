@@ -82,7 +82,9 @@ pre { white-space: pre-wrap; font-size: 0.75rem; line-height: 1.5; color: #9090a
 .log li { display: flex; gap: 0.8rem; }
 .log li time { color: #45455e; flex: 0 0 3em; }
 
-button.quiet, #copy-btn {
+a.quiet { display: inline-block; margin-bottom: 1rem; text-decoration: none; }
+a.quiet[hidden] { display: none; }
+button.quiet, a.quiet, #copy-btn {
   padding: 0.6rem 1.6rem;
   background: transparent;
   border: 1px solid #45455e;
