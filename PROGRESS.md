@@ -4,7 +4,8 @@
 - Henric: knackade inte 4:36, men slog kanske i något då. Har **bara använt Firefox såvitt han vet**, även 09-28, men är inte helt säker.
 - Demi: **den glesa gps:en beror troligen inte på Firefox.** Knackpromenaden 09-28 gick sannolikt i samma Firefox (v12, webbläsaren loggades inte före v15) och fick en position i sekunden på ±3-7 m; 10-01 (v13) och 10-05 (v16) fick en var 6,2 s på ±15-25 m, med samma `watchPosition` (hög noggrannhet, maximumAge 0) i alla tre. Även 10-05 kom tre fixar på en sekund, ±6-10 m, när han stod still vid 0:33. Orsaken sitter i telefonen eller ute på promenaden, okänd. Misstänkta: energisparläge, platsinställningen "Google-platsnoggrannhet", eller miljön. Gps-raden om Firefox struken ur startskärmen (v18); Chrome-knappen står kvar för vibrationens skull.
 - Demi: dubbelknacket 4:36 var en stöt, inget knack. Inte rättat: en stöt mot telefonen ser ut som ett knack, och det spelar roll bara när en bana lyssnar.
-- → Nästa: Henric kollar om energisparläget var på, och går de tre i Chrome. Loggens gps-rader (positioner per 30 s och ±) visar direkt om gps:en är tät igen.
+- Henric: energisparläget var **säkert av 10-05**; kan ha slagit på av sig självt 10-01 (svagt batteri). Alltså förklarar det inte i dag.
+- → Nästa: Henric går de tre i Chrome. Tät gps där = webbläsaren eller Firefox inställningar trots allt; gles även där = telefonen eller platsen, och då loggar nästa version höjd och höjdnoggrannhet per fix (finns bara när positionen kommer från riktig gps). Loggens gps-rader visar direkt vilket.
 
 ## 2026-10-05
 - Henric: **Vägvalet, Ljudkompassen och Hon knackar via länken**, med sensordata (`data/uploads/20261005-160321-586719-glimt-sensor-2026-10-05-1401.json` i generalassistant, inte i repot). Igen på alla tre. Gick i **Firefox igen**: länkar till Glimt öppnas i Firefox på hans telefon. Hon knackar hoppades därför över (vibrerar inte).
