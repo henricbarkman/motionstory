@@ -1,5 +1,11 @@
 # PROGRESS — Motionstory
 
+## 2026-10-05, kväll
+- Henric: knackade inte 4:36, men slog kanske i något då. Har **bara använt Firefox såvitt han vet**, även 09-28, men är inte helt säker.
+- Demi: **den glesa gps:en beror troligen inte på Firefox.** Knackpromenaden 09-28 gick sannolikt i samma Firefox (v12, webbläsaren loggades inte före v15) och fick en position i sekunden på ±3-7 m; 10-01 (v13) och 10-05 (v16) fick en var 6,2 s på ±15-25 m, med samma `watchPosition` (hög noggrannhet, maximumAge 0) i alla tre. Även 10-05 kom tre fixar på en sekund, ±6-10 m, när han stod still vid 0:33. Orsaken sitter i telefonen eller ute på promenaden, okänd. Misstänkta: energisparläge, platsinställningen "Google-platsnoggrannhet", eller miljön. Gps-raden om Firefox struken ur startskärmen (v18); Chrome-knappen står kvar för vibrationens skull.
+- Demi: dubbelknacket 4:36 var en stöt, inget knack. Inte rättat: en stöt mot telefonen ser ut som ett knack, och det spelar roll bara när en bana lyssnar.
+- → Nästa: Henric kollar om energisparläget var på, och går de tre i Chrome. Loggens gps-rader (positioner per 30 s och ±) visar direkt om gps:en är tät igen.
+
 ## 2026-10-05
 - Henric: **Vägvalet, Ljudkompassen och Hon knackar via länken**, med sensordata (`data/uploads/20261005-160321-586719-glimt-sensor-2026-10-05-1401.json` i generalassistant, inte i repot). Igen på alla tre. Gick i **Firefox igen**: länkar till Glimt öppnas i Firefox på hans telefon. Hon knackar hoppades därför över (vibrerar inte).
 - Demi: Vägvalet klarade (höger, läst efter 67,9 s), Ljudkompassen klarade (133 m, framme efter 222 s, men "på väg rätt" bara 12 % av tiden). **Gps:en i Firefox är gles:** en position var 6,2 s på ±24 m (10-01 förmiddag: 6,2 s, ±17 m), mot var 0,5 s på ±3 m i knackpromenaden 09-28 (webbläsaren då okänd, loggades inte före v15). Hopp på 30-50 m mellan fixar, telefonens fart upp till 18,8 km/h i gång. Det räcker för att förklara den sega svängen och kompassens 12 %; banorna är inte prövade på tät gps än. Stegräknaren höll (108-129/min, ingen löpning).

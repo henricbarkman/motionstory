@@ -39,12 +39,12 @@ const BROWSER = (() => {
 })();
 const FIREFOX = /(?:Firefox|FxiOS)\//.test(UA);
 const CAN_VIBRATE = typeof navigator.vibrate === 'function' && !FIREFOX;
-// Firefox on Android also hands out few fixes: labb 2 on 2026-10-01 and
-// 10-05 got one every 6.2 s at ±17-24 m (high accuracy asked for), where the
-// knock walk on 09-28 got one every 0.5 s at ±3 m. Vägvalet then read the
-// turn after 68 s and Ljudkompassen pointed right 12 % of the way. Links to
-// Glimt open in Firefox on the field phone, so the start screen offers a way
-// out: an intent link that hands the same address to Chrome.
+// Links to Glimt open in Firefox on the field phone, so the start screen
+// offers a way out: an intent link that hands the same address to Chrome.
+// Not a GPS fix: labb 2 on 2026-10-01 and 10-05 got a fix every 6.2 s at
+// ±17-24 m, but the knock walk on 09-28 got one a second at ±3-7 m with the
+// same watchPosition options, most likely in the same Firefox (Henric thinks
+// so; the browser was not logged before v15). Cause not known yet.
 const ANDROID_FIREFOX = FIREFOX && /Android/.test(UA);
 const chromeIntent = () =>
   `intent://${location.host}${location.pathname}${location.search}#Intent;scheme=https;package=com.android.chrome;end`;
@@ -215,11 +215,10 @@ async function preload() {
       const stations = ONLY_STATION ? [ONLY_STATION] : chosen || LABS[def.lab];
       if (!CAN_VIBRATE && stations.includes('vibration')) {
         note += FIREFOX
-          ? ' Firefox vibrerar inte, så Hon knackar hoppas över.'
+          ? ' Firefox vibrerar inte, så Hon knackar hoppas över. Öppna Glimt i Chrome.'
           : ' Den här webbläsaren vibrerar inte, så Hon knackar hoppas över.';
       }
     }
-    if (ANDROID_FIREFOX) note += ' Firefox ger gps:en bara var sjätte sekund, så svängar och riktning hörs sent. Öppna Glimt i Chrome.';
     if (chapterNo === '2') {
       const lm = savedLandmark();
       note += lm
