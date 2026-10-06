@@ -100,29 +100,38 @@ export function nearestByName(found, origin) {
 }
 
 // Public Overpass servers time out under load, so try two in turn. The
-// landmark is not needed until scene 6, eight minutes in.
+// landmark is not needed until scene 6, eight minutes in, and nothing waits
+// for it, so each gets 20 s, the answer's body included.
+//
+// The second was overpass.kumi.systems until 2026-10-06. It no longer
+// answered at all, and five walks of six fell back on a made-up landmark,
+// most with "timeout 12000 ms". The log named only the last server's error,
+// so which failed how is not known; it names both now. openstreetmap.fr gave
+// the same 17 elements around Karlstad in under two seconds. overpass-api.de
+// refuses a request without a Referer (406); a browser sends one.
 const OVERPASS = [
   'https://overpass-api.de/api/interpreter',
-  'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.openstreetmap.fr/api/interpreter',
 ];
 
-export async function fetchLandmarks(lat, lon, { fetchImpl = fetch, timeout = 12000, endpoints = OVERPASS } = {}) {
-  let lastErr = null;
+export async function fetchLandmarks(lat, lon, { fetchImpl = fetch, timeout = 20000, endpoints = OVERPASS } = {}) {
+  const errors = [];
   for (const url of endpoints) {
     try {
-      const res = await withTimeout(fetchImpl(url, {
+      const data = await withTimeout(fetchImpl(url, {
         method: 'POST',
         body: 'data=' + encodeURIComponent(overpassQuery(lat, lon)),
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      }).then(res => {
+        if (!res.ok) throw new Error(`overpass ${res.status}`);
+        return res.json();
       }), timeout);
-      if (!res.ok) throw new Error(`overpass ${res.status}`);
-      const data = await res.json();
       return classifyElements(data.elements || []);
     } catch (err) {
-      lastErr = err;
+      errors.push(`${new URL(url).hostname}: ${err.message}`);
     }
   }
-  throw lastErr;
+  throw new Error(errors.join('; ') || 'no server to ask');
 }
 
 export function pick(list, random = Math.random) {
