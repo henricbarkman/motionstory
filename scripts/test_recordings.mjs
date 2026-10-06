@@ -14,8 +14,10 @@ import { Walk, buzzReading } from '../glimt/engine.js';
 import { labHelpers } from '../glimt/lab.js';
 
 // Her knocks as these walks were buzzed (v18-v19): 180 ms on, 320 off. The
-// station's pattern has changed since; the recordings have not.
+// station's pattern has changed since; the recordings have not. From v22 they
+// are 400 on, 400 off (the evening walk of 2026-10-06 on).
 const knockPattern = n => Array.from({ length: n }, () => [180, 320]).flat();
+const longerPattern = n => Array.from({ length: n }, () => [400, 400]).flat();
 
 let failures = 0;
 const check = (ok, what) => { console.log(`${ok ? 'ok  ' : 'FAIL'}  ${what}`); if (!ok) failures++; };
@@ -24,7 +26,7 @@ const check = (ok, what) => { console.log(`${ok ? 'ok  ' : 'FAIL'}  ${what}`); i
 // in the samples' seconds: the engine is told of each the way the station
 // tells it, and the knocks back are counted when the station counted them
 // (the detector keeps ten seconds of knocks, so not afterwards).
-function replay(file, { buzzes = [] } = {}) {
+function replay(file, { buzzes = [], pattern = knockPattern } = {}) {
   const rec = JSON.parse(readFileSync(new URL(`./recordings/${file}`, import.meta.url), 'utf8'));
   const walk = new Walk();
   let clock = 0, bi = 0;
@@ -54,7 +56,7 @@ function replay(file, { buzzes = [] } = {}) {
     while (bi < buzzes.length && buzzes[bi].at <= t) {
       tickUntil(buzzes[bi].at);
       clock = buzzes[bi].at;
-      lab.vibrate(knockPattern(buzzes[bi].n));
+      lab.vibrate(pattern(buzzes[bi].n));
       overs.push(lab.buzzOver());
       bi++;
     }
@@ -185,6 +187,38 @@ function replay(file, { buzzes = [] } = {}) {
   const heard = untold.walk.knocks.spikes.filter(x => x.knock && x.t > 76 && x.t < 77).length;
   check(heard === 2, `untold, his two knocks are still knocks (${heard}), so the next check measures something`);
   check(shaken.length === 0, `and the motor's own shake is none (${shaken.length})`);
+}
+
+// Hon knackar alone the same evening, v22: her knocks 400 ms on, 400 off.
+// He felt the try-out on the start screen and stood for the station. The
+// times she asked for her patterns, 73.766 and 84.764 s, are the ticks where
+// the phone's own reading in the log ("surr: sensorn 0,01 före, 0,06 under
+// surren, 0,02 emellan", then 0,03 / 0,07 / 0,03) comes out the same from
+// these samples.
+//
+// He felt all five and answered both: twice, 1.7 s after her last buzz, and
+// three times, 1.1 s after (spikes 16.2, 7.6, 20.3). The motor shows about a
+// third of what it did in the afternoon (0.06-0.07 while, against 0.18), so
+// how much of a buzz the sensor sees says little about whether it was felt.
+//
+// From about 100 s the phone is handled, and at 102.26 that reads as a
+// double. Not counted here: no station was listening.
+{
+  // Counted where the log says "hon knackade 2, du 2" and "hon knackade 3, du 3".
+  const asked = [{ at: 73.766, n: 2, counted: 79.764 }, { at: 84.764, n: 3, counted: 91.264 }];
+  const { doubles, samples, got } = replay('knackar-2026-10-06-kvall.json', { buzzes: asked, pattern: longerPattern });
+  const fmt = xs => xs.map(x => x.toFixed(2)).join(', ') || 'none';
+  const f = x => x === null ? '?' : x.toFixed(2);
+  const [two, three] = asked.map(b => buzzReading(samples, longerPattern(b.n), b.at));
+  check(f(two.before) === '0.01' && f(two.on) === '0.06' && f(two.off) === '0.02',
+    `her two read as the phone logged them (${f(two.before)} before, ${f(two.on)} while, ${f(two.off)} between)`);
+  check(f(three.before) === '0.03' && f(three.on) === '0.07' && f(three.off) === '0.03',
+    `and her three (${f(three.before)} before, ${f(three.on)} while, ${f(three.off)} between)`);
+  check(got[0] === 2, `his two knocks back are counted (${got[0]})`);
+  check(got[1] === 3, `and his three (${got[1]})`);
+  check(doubles.some(d => d >= 76.6 && d <= 78.1) && doubles.some(d => d >= 87.8 && d <= 89.8),
+    `both answers are heard as a double (${fmt(doubles)})`);
+  check(doubles.filter(d => d > 10 && d < 100).length === 2, `nothing else while he stood is a double (${fmt(doubles.filter(d => d > 10 && d < 100))})`);
 }
 
 if (failures) { console.log(`\n${failures} failed`); process.exit(1); }
