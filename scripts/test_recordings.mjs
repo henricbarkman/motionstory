@@ -11,7 +11,11 @@
 
 import { readFileSync } from 'node:fs';
 import { Walk, buzzReading } from '../glimt/engine.js';
-import { labHelpers, knockPattern } from '../glimt/lab.js';
+import { labHelpers } from '../glimt/lab.js';
+
+// Her knocks as these walks were buzzed (v18-v19): 180 ms on, 320 off. The
+// station's pattern has changed since; the recordings have not.
+const knockPattern = n => Array.from({ length: n }, () => [180, 320]).flat();
 
 let failures = 0;
 const check = (ok, what) => { console.log(`${ok ? 'ok  ' : 'FAIL'}  ${what}`); if (!ok) failures++; };
@@ -149,11 +153,11 @@ function replay(file, { buzzes = [] } = {}) {
 // emellan", then 0,17 / 0,28 / 0,10) comes out the same from these samples.
 //
 // After her two he knocked twice, 1.9 s after her last buzz, spikes of 39 and
-// 25 over their neighbours. After her three no knock reaches the phone: the
-// largest spike in the round, before, during or after the buzzes, is 1.9,
-// and from 84.6 s until she speaks at 96 s no sample leaves 9.7-10.2. He
-// remembers knocking back two or three times as it buzzed; if he did, the
-// phone did not feel it.
+// 25 over their neighbours. Her three he never noticed: he remembers one
+// exchange, buzzes felt and knocked back, and nothing after. The motor ran
+// (the reading above), and no knock reaches the phone: the largest spike in
+// the round is 1.9, and from 84.6 s until she speaks at 96 s no sample
+// leaves 9.7-10.2.
 //
 // The phone going into the pocket at 0:05 reads as a double. Not counted
 // here: no station was listening.

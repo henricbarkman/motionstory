@@ -43,7 +43,7 @@ CHROME_UA = (
 )
 FIREFOX_UA = "Mozilla/5.0 (Android 14; Mobile; rv:157.0) Gecko/157.0 Firefox/157.0"
 FIREFOX_DESKTOP_UA = "Mozilla/5.0 (X11; Linux x86_64; rv:157.0) Gecko/20100101 Firefox/157.0"
-PATTERN = [180, 320, 180, 320, 180, 320]
+PATTERN = [400, 400] * 3   # glimt/lab.js knockPattern(3): KNOCK_ON, KNOCK_OFF
 
 # The phone, as the page meets it. `answer` is what navigator.vibrate says,
 # `shake` how hard the motor moves the sensor (0: the phone lies still, as on

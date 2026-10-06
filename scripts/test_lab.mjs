@@ -501,8 +501,8 @@ async function resumeChecks() {
   // when that was not felt the station steps aside before it begins.
   check(chosenWalk.buzzed === 2, `with a phone that buzzes she knocks once a round (${chosenWalk.buzzed})`);
   // She says that a second round comes. On 2026-10-06 the three came with no
-  // word of more, a second and a half after "Rätt. Samma antal.", and no
-  // knock back reached the phone.
+  // word of more, a second and a half after "Rätt. Samma antal.", and he
+  // never noticed them.
   const where = re => chosenWalk.log.map((l, i) => re.test(l) ? i : -1).filter(i => i >= 0);
   const again = where(/▶ vibra-igen$/), counted = where(/hon knackade \d, du \d/), read = where(/surr: /);
   check(again.length === 1 && counted[0] < again[0] && again[0] < read[1],
