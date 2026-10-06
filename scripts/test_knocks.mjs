@@ -234,8 +234,9 @@ function pocket({ knocks = [], stillFrom = Infinity, seconds = 40, seed = 7, big
 // Hon knackar with a motor the sensor feels. Standing, she buzzes twice at
 // 15 s (180 ms on, 320 off), through the lab's own vibrate(), and the motor
 // throws every other sample up and every other down by `shake` while it runs.
-// How hard a real one shakes is not known, no buzz has been recorded
-// (2026-10-06); five is a hostile guess. A real motor also starts late and
+// One real motor has been recorded since (scripts/recordings/knackar-
+// 2026-10-06.json): at most 0.6 between samples. Five stays, a hostile guess
+// for motors nobody has measured. A real motor also starts late and
 // rings on: `lag` and `ring`, in seconds. The walker knocks back twice,
 // lightly, from `after` seconds past her last buzz as it was asked for.
 // `guard`: 'buzz' is what the lab does, 'mute' only keeps the knock detector
@@ -246,7 +247,11 @@ function pocket({ knocks = [], stillFrom = Infinity, seconds = 40, seed = 7, big
 function answered({ shake = 5, after = 0.7, guard = 'buzz', seed = 7, lag = 0, ring = 0, gait = 0, strike = null, fidget = 0 } = {}) {
   let r = seed; const rand = () => (r = (r * 16807) % 2147483647) / 2147483647;
   const walk = new Walk();
-  const HZ = 60, pattern = knockPattern(2), end = 15.68;
+  const HZ = 60, pattern = knockPattern(2);
+  // The stretches the motor runs, as asked from 15 s, and when her last ends.
+  const asked = [];
+  for (let i = 0, t = 15; i < pattern.length; t += (pattern[i] + (pattern[i + 1] || 0)) / 1000, i += 2) asked.push([t, t + pattern[i] / 1000]);
+  const end = asked[asked.length - 1][1];
   let u = 0;
   const lab = labHelpers(walk, { now: () => u, vibrateImpl: () => true });
   // When the lab takes the motor to have stopped: asked of a walk of its own,
@@ -254,7 +259,7 @@ function answered({ shake = 5, after = 0.7, guard = 'buzz', seed = 7, lag = 0, r
   const probe = labHelpers(new Walk(), { now: () => 15, vibrateImpl: () => true });
   probe.vibrate(pattern);
   const over = probe.buzzOver();
-  const on = [[15 + lag, 15.18 + lag], [15.5 + lag, 15.68 + lag]];
+  const on = asked.map(([a, b]) => [a + lag, b + lag]);
   const knocks = gait ? [] : [end + after, end + after + 0.45];
   // stale: the longest the feet went without a sample while the motor ran;
   // at15: the sway's spread and the cadence as the buzz is asked for.
@@ -274,13 +279,13 @@ function answered({ shake = 5, after = 0.7, guard = 'buzz', seed = 7, lag = 0, r
     if (i % 15 === 0 && i > 0) walk.tick(u);
   }
   return {
-    walk, pattern, over, stale, at15, heard: walk.knocks.countBetween(over, 25), before: walk.knocks.countBetween(14, over),
+    walk, pattern, over, end, stale, at15, heard: walk.knocks.countBetween(over, 25), before: walk.knocks.countBetween(14, over),
     steps: walk.steps.times.filter(t => t >= 15 && t < over).length,
   };
 }
 {
   const a = answered();
-  check(a.over > 16.17 && a.over < 16.19, `the lab takes the motor to have stopped half a second after her last buzz (${a.over.toFixed(2)})`);
+  check(Math.abs(a.over - (a.end + 0.5)) < 0.01, `the lab takes the motor to have stopped half a second after her last buzz (${a.over.toFixed(2)}, last buzz ends ${a.end.toFixed(2)})`);
   check(a.heard === 2 && a.before === 0, `two knocks answered 0.7 s after her buzz both count, the motor's shake does not (${a.heard} heard, ${a.before} from the motor)`);
   check(a.walk.knocks.history.length === 0 || a.walk.knocks.history.every(d => d > a.over), `and the motor makes no double of its own (${a.walk.knocks.history.map(d => d.toFixed(2)).join(', ') || 'none'})`);
   // What each guard is there for: the same walk without it goes wrong.

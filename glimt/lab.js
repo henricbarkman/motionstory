@@ -44,8 +44,8 @@ import { haversine, bearing, angleDiff } from './engine.js';
 // a fifth of what a knock takes standing. Half a second is five times what
 // that phone needs. It stays, for a motor nobody has measured, and because
 // it costs less than it looks: the walker cannot know she is done until her
-// next beat, 0.32 s after, stays silent, so a counted answer does not start
-// before then. He answered 1.9 s after.
+// next beat, a pause after (KNOCK_OFF), stays silent, so a counted answer
+// does not start before then. He answered 1.9 s after.
 const BUZZ_TAIL = 0.5;
 
 export function labHelpers(walk, { now, vibrateImpl }) {
@@ -85,9 +85,18 @@ export function labHelpers(walk, { now, vibrateImpl }) {
   };
 }
 
-// Her knocks as a vibration pattern: n short buzzes. The start screen's
-// try-out sends the same ones.
-export const knockPattern = n => Array.from({ length: n }, () => [180, 320]).flat();
+// Her knocks as a vibration pattern: n buzzes of KNOCK_ON ms, KNOCK_OFF ms
+// apart. The start screen's try-out sends the same ones.
+//
+// They were 180 ms, 320 apart, until 2026-10-06. In a front trouser pocket
+// he felt her two and answered them, then waited for more and never felt
+// her three, though the sensor shows the motor shaking the phone as hard the
+// second time (high-frequency shake 0.32-0.47 against 0.34, and at most 0.12
+// lying still). A page cannot make a buzz stronger, only longer, so they are
+// longer: more than twice. 400 is a guess, not a measurement; the next walk
+// says whether every one is felt.
+export const KNOCK_ON = 400, KNOCK_OFF = 400;
+export const knockPattern = n => Array.from({ length: n }, () => [KNOCK_ON, KNOCK_OFF]).flat();
 
 // A buzz reading in the log's words. Under BUZZ_MIN steps between samples,
 // while the motor ran or between, it says nothing. The level before is left
@@ -870,10 +879,8 @@ async function vibration(ctx) {
   for (const n of [2, 3]) {
     // She says that a second round comes. Until 2026-10-06 the three buzzes
     // came a second and a half after "Rätt. Samma antal." with no word of
-    // more: he had answered the two, moved as the three began, and then the
-    // phone lay dead still for twelve seconds. He remembers knocking back as
-    // it buzzed; the phone felt nothing a twentieth as hard as his two. The
-    // word costs a second either way.
+    // more. He was waiting for more all the same, and still never felt them
+    // (knockPattern, above, for what that changed).
     if (rounds.length) await ctx.play('vibra-igen');
     await wait(ctx, 1.5);
     const len = ctx.vibrate(knockPattern(n));
@@ -902,9 +909,9 @@ async function vibration(ctx) {
     rounds.push({ n, got, deaf: ctx.sensorShare(from, ctx.state().t) < 0.5 });
     ctx.log(`hon knackade ${n}, du ${got}`);
     if (got === n) await ctx.play('vibra-ratt');
-    // A miss names what she missed, his knock. "Inget svar. Kände du det?"
-    // sounded to him as if he had missed buzzes, when he had felt all three
-    // and knocked back, too softly or not on the phone (2026-10-06).
+    // A miss says that she did knock, and that no knock came back. "Inget
+    // svar. Kände du det?" left him unsure what he had missed: he had not
+    // felt her three at all (2026-10-06).
     else if (got === 0) await ctx.play('vibra-inget');
     else await ctx.play('vibra-fel');
   }
