@@ -1,5 +1,14 @@
 # PROGRESS — Motionstory
 
+## 2026-10-06, kväll
+- Henric: gick Hon knackar ensam i Chrome med v22 (`?banor=vibration`), i mörkret, provade vibrationen på startskärmen (kändes) och sparade sensordata (`data/uploads/20261006-213552-430284-glimt-sensor-2026-10-06-1935.json` i generalassistant). **Klarade, 2 → 2 och 3 → 3.** Betyg: igen.
+- Demi: **alla fem surren kändes med 0,4 s.** Han stod still och svarade båda gångerna: två knack 1,7 s efter hennes sista surr, tre knack 1,1 s efter (16,2, 7,6 och 20,3 mot stå-gränsen 3). Ett lyckat försök visar inte att det var längden som saknades i eftermiddags, men 0,4 står kvar.
+- Demi: **motorn syns mindre i sensorn än i eftermiddags, fast varje surr kändes.** 0,06 och 0,07 under surren mot 0,02 och 0,03 emellan; i eftermiddags 0,18 mot 0,03. Motorn som aldrig gick på förmiddagen gav 0,03 och 0,04. Att sidan själv skulle märka ett tyst surr ur sensorn är alltså ännu svagare än jag trodde, och provet på startskärmen är rätt väg. Varför motorn syns mindre vet jag inte; fickan kan vara en annan.
+- Demi: `BUZZ_TAIL` (0,5 s) står kvar. Svaret räknas från en halv sekund efter hennes sista surr, och hans snabbaste första knack kom 1,1 s efter. Svansen kunde ha varit drygt en sekund innan något knack föll bort.
+- Demi: kvällens promenad ligger som testfall (`scripts/recordings/knackar-2026-10-06-kvall.json`, positionerna nollade). Testet fäller sviten om svaret börjar räknas för sent (provat på en kopia med svansen på 1,2 s: "3 → 2").
+- Inte rättat: telefonen som togs fram efter banan lästes som ett dubbelknack (1:43), samma sort som i fickan i eftermiddags. Ingen bana lyssnade.
+- → Nästa: labb 2 har ett riktigt betyg på varje bana, och Hon knackar fungerar när telefonen får surra. Henric väljer två eller tre banor att bygga ut. Igen har han sagt om Vänd om, Vägvalet, Ljudkompassen, Kroppsmorse, Hon knackar och Tassa i labb 2, och Spöket, Frys, Flykten, Takten, Stanna för ja och Knacket i labb 1.
+
 ## 2026-10-06, eftermiddag
 - Henric: småsprang i Ljudkompassen på förmiddagen ("Ja, det gjorde jag"), så stegräknarens löpning 2:27-2:35 var rätt. Tror att Stör ej var på då. Gick sedan Hon knackar ensam i Chrome med v19 (`?banor=vibration`), provade vibrationen på startskärmen (kändes) och sparade sensordata (`data/uploads/20261006-171338-517175-glimt-sensor-2026-10-06-1512.json` i generalassistant). Betyg: igen.
 - Demi: **surret fungerar när Stör ej är av.** Provet kändes. I banan knackade hon 2, han svarade 2 efter 1,9 s, hört som dubbelknack, "Rätt". Det stämmer med förmiddagens diagnos: Stör ej stänger av motorn utan att Chrome säger något.
