@@ -136,3 +136,7 @@
 ## 2026-05-30
 - Demi: toy v0 byggt och live på https://henricbarkman.github.io/motionstory/ (OpenAI tts-1 eftersom ElevenLabs-krediterna var slut).
 - → Nästa: fälttest. Gjordes aldrig.
+
+## 2026-10-06: flyttat från work-status
+- Läget: kapitel 1+2, labb 1 och labb 2 live på https://henricbarkman.github.io/motionstory/glimt/. Inte byggt: Förrådet, Nynna, Lugna ner dig, Glimten.
+- Henrics del ligger i Notion: HENRIC-3315 "Gå labb 1 och 2 i Glimt" (https://app.notion.com/p/3e7b0484bfa4810fbe9fe880fa058058). Gå de tre i Chrome via https://henricbarkman.github.io/motionstory/glimt/?banor=vagval,kompass,vibration och spara sensordatan; sedan väljer han 2-3 banor att bygga ut.
