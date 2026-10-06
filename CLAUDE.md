@@ -4,7 +4,9 @@ Arbetsnamn. Narrativt fitness-system där motionsformen styr berättelse-genren.
 
 ## Canonical docs
 
-(uppdatera när docs finns)
+- `PROGRESS.md`: field tests and decisions, newest first.
+- `stories/glimt/varld.md`: the world book (frozen 2026-09-25), Henric's decisions marked **beslut**.
+- Plan page for Henric: `data/uploads/glimt-plan/index.html` in generalassistant (not in this repo), https://demi.henricbarkman.se/uploads/glimt-plan/index.html. Every mechanic with its field status and his rating, the story decisions, proposals, open questions, and style. Update it in the same session whenever a walk changes a mechanic's status or a story or style decision is made, and change the date in its header.
 
 ## Links
 
