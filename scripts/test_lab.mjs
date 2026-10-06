@@ -500,6 +500,13 @@ async function resumeChecks() {
   // knocks and called it a miss. The start screen now has a try-out, and
   // when that was not felt the station steps aside before it begins.
   check(chosenWalk.buzzed === 2, `with a phone that buzzes she knocks once a round (${chosenWalk.buzzed})`);
+  // She says that a second round comes. On 2026-10-06 the three came with no
+  // word of more, a second and a half after "Rätt. Samma antal.", and he
+  // knocked nothing back.
+  const where = re => chosenWalk.log.map((l, i) => re.test(l) ? i : -1).filter(i => i >= 0);
+  const again = where(/▶ vibra-igen$/), counted = where(/hon knackade \d, du \d/), read = where(/surr: /);
+  check(again.length === 1 && counted[0] < again[0] && again[0] < read[1],
+    `she says a second round comes, once, between the first count and her next knocks (line ${again.join(', ')}; counts ${counted.join(', ')}; buzzes read ${read.join(', ')})`);
   const num = x => parseFloat(x.replace(',', '.'));
   const seen = chosenWalk.log.map(l => /surr: sensorn (\d+,\d+) före, (\d+,\d+) under surren, (\d+,\d+) emellan/.exec(l)).filter(Boolean);
   check(seen.length === 2, `and the log has the sensor's reading of each buzz (${seen.length})`);
