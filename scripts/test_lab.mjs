@@ -123,6 +123,25 @@ const EXPECT = {
   'screen-mid': id => ['knack', 'vibration'].includes(id) ? 'hoppade' : 'klarade',
 };
 
+// How hard the phone's motor shakes the sensor, in m/s² either way. A guess,
+// and a hostile one: no buzz has been recorded yet (2026-10-06, the phone was
+// on silent). Five passes for knocks standing still, and for the sway of a
+// gait in the second after the buzz (from about four), which is what the
+// mute and the sway's blind spot are there to stop; taking either out fails
+// Hon knackar here. MOTOR=0 walks the lab with a motor the sensor does not
+// feel at all, and that must pass too.
+const MOTOR = +(process.env.MOTOR ?? 5);
+// A real motor does not start the moment the page asks, nor stop at once:
+// the browser hands over each buzz in turn, and the motor rings on. Seconds
+// late, and seconds its shake takes to die away. Guesses too (a review's,
+// 2026-10-06): with the detector deaf for only a quarter second after her
+// last buzz, this motor's tail was a knock nobody knocked.
+const MOTOR_LAG = +(process.env.MOTOR_LAG ?? 0.2);
+const MOTOR_RING = +(process.env.MOTOR_RING ?? 0.25);
+// Seconds from her last buzz, as the walker feels it, to the pass walker's
+// first knock back.
+const ANSWER_AFTER = +(process.env.ANSWER_AFTER ?? 0.7);
+
 // Smallest whole cadence whose stride model reaches `speed`; the same
 // inverse simulatedMagnitude uses, so pace from steps matches the GPS.
 function cadenceFor(speed) {
@@ -134,7 +153,7 @@ function cadenceFor(speed) {
 function makeWalker(kind, env) {
   const w = {
     base: 1.4, speed: null, cadenceMul: 1, heading: 0, steer: 0,
-    matchBeat: false, knocks: [], events: [],
+    matchBeat: false, knocks: [], events: [], buzzes: [],
   };
   const at = (time, fn) => w.events.push({ time, fn });
   const stopAt = time => at(time, () => { w.speed = 0; });
@@ -200,11 +219,21 @@ function makeWalker(kind, env) {
     }
   };
 
-  // Knock back as many times as the phone buzzed.
+  // The phone buzzes whoever carries it: `buzzes` are the stretches its motor
+  // runs. Only the pass walker knocks back, as many times, and promptly: the
+  // first knock 0.7 s after her last buzz ends, about as soon as one can be
+  // sure it was the last. An earlier walker waited 1.3 s, and the station
+  // passed for days while its count opened a second after the buzz
+  // (2026-10-06).
   w.onVibrate = (pattern, t) => {
+    let u = t + MOTOR_LAG, end = u;
+    for (let i = 0; i < pattern.length; i += 2) {
+      end = u + pattern[i] / 1000;
+      w.buzzes.push([u, end]);
+      u = end + (pattern[i + 1] || 0) / 1000;
+    }
     if (!pass) return;
-    const len = pattern.reduce((a, b) => a + b, 0) / 1000;
-    for (let i = 0; i < pattern.length / 2; i++) knock(t + len + 1.0 + i * 0.45);
+    for (let i = 0; i < Math.ceil(pattern.length / 2); i++) knock(end + ANSWER_AFTER + i * 0.45);
   };
 
   let beatSeen = null;
@@ -230,7 +259,7 @@ function makeWalker(kind, env) {
   return w;
 }
 
-function simulate(labNo, name, run, abortIn = null, { stations = null } = {}) {
+function simulate(labNo, name, run, abortIn = null, { stations = null, noBuzz = null } = {}) {
   reseed(labNo, name, run, abortIn ? `${abortIn.id}@${abortIn.after}` : '', stations ? stations.join(',') : '');
   const profile = PROFILES[name];
   const walk = new Walk();
@@ -240,7 +269,7 @@ function simulate(labNo, name, run, abortIn = null, { stations = null } = {}) {
   let t = 0;
   let lat = 59.38, lon = 13.5;
   let ended = false;
-  let target = null, nextBump = 0, phase = 0, stepNo = -1, stepHard = 1;
+  let target = null, nextBump = 0, phase = 0, stepNo = -1, stepHard = 1, motorUp = false;
   const fmt = s => `${String(Math.floor(s / 60)).padStart(2)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
   // Every other run has a landmark 250 m east, so Hitta tries both kinds.
@@ -270,12 +299,13 @@ function simulate(labNo, name, run, abortIn = null, { stations = null } = {}) {
   let biasN = drift ? drift.sigma * gauss() : 0, biasE = drift ? drift.sigma * gauss() : 0;
 
   let voiceChain = Promise.resolve();
+  let buzzed = 0;               // times the phone was asked to vibrate
   const helpers = labHelpers(walk, {
     now: () => t,
-    vibrateImpl: p => { walker.onVibrate(p, t); return true; },
+    vibrateImpl: p => { buzzed++; walker.onVibrate(p, t); return true; },
   });
   const ctx = {
-    world, sfx, memo: {},
+    world, sfx, memo: {}, noBuzz,
     state: () => walk.state(),
     log: msg => log.push(`${fmt(t)}  ${msg}`),
     hold: on => { walk.contact.hold = on; },
@@ -344,6 +374,14 @@ function simulate(labNo, name, run, abortIn = null, { stations = null } = {}) {
             m += stepHard * (soft ? 0.5 : 1) * h * Math.exp(-(dt * dt) / (2 * sigma * sigma));
           }
           for (const k of walker.knocks) if (u >= k.t - 0.01 && u < k.t + 0.01) m += k.height;
+          // The phone's own motor: every other sample up, every other down
+          // while it runs, and dying away after each buzz.
+          const buzz = walker.buzzes.find(([a, b]) => u >= a && u < b + MOTOR_RING);
+          if (buzz) {
+            const amp = u < buzz[1] ? MOTOR : MOTOR * (1 - (u - buzz[1]) / MOTOR_RING);
+            motorUp = !motorUp;
+            m += motorUp ? amp : -amp;
+          }
           if (profile.gps.handling && speed === 0) {
             if (u >= nextBump + 0.15) nextBump = u + 0.8 + Math.random() * 0.8;
             if (u >= nextBump) m += 1.6;
@@ -388,7 +426,7 @@ function simulate(labNo, name, run, abortIn = null, { stations = null } = {}) {
       const before = trace.findLast(x => x.t <= k - 3) || {};
       return `${fmt(k)} ${at.station} band ${at.band}, ${at.speed?.toFixed(1)} m/s (3 s before: ${before.band}, ${before.speed?.toFixed(1)} m/s)`;
     });
-    return { log, results, ended, t, station, strays, sound: { ...after, liveAtEnd } };
+    return { log, results, ended, t, station, strays, buzzed, sound: { ...after, liveAtEnd } };
   })();
 
   // What finish() in app.js does to the sound and the waits, then five
@@ -456,6 +494,25 @@ async function resumeChecks() {
   const three = ['vagval', 'kompass', 'vibration'];
   const chosenWalk = await simulate(2, 'pass', 0, null, { stations: three });
   check(same(chosenWalk.results.map(x => x.id), three), `the link walks just those (${chosenWalk.results.map(x => x.id).join(', ')})`);
+
+  // Hon knackar and a phone that will not buzz. On 2026-10-06 Chrome said
+  // yes and the phone, on silent, never moved: the station waited twice for
+  // knocks and called it a miss. The start screen now has a try-out, and
+  // when that was not felt the station steps aside before it begins.
+  check(chosenWalk.buzzed === 2, `with a phone that buzzes she knocks once a round (${chosenWalk.buzzed})`);
+  const num = x => parseFloat(x.replace(',', '.'));
+  const seen = chosenWalk.log.map(l => /surr: sensorn (\d+,\d+) före, (\d+,\d+) under surren, (\d+,\d+) emellan/.exec(l)).filter(Boolean);
+  check(seen.length === 2, `and the log has the sensor's reading of each buzz (${seen.length})`);
+  // Against the level before, wherever a late motor's shake landed.
+  if (MOTOR > 0) check(seen.every(m => Math.max(num(m[2]), num(m[3])) > 5 * num(m[1])), `the motor shows in it (${seen.map(m => `${m[1]} / ${m[2]} / ${m[3]}`).join('; ')})`);
+  const why = 'vibrationen kändes inte i provet före start';
+  const unfelt = await simulate(2, 'pass', 0, null, { stations: three, noBuzz: why });
+  const said = id => unfelt.log.some(l => l.endsWith(`▶ ${id}`));
+  const skipped = unfelt.results.find(x => x.id === 'vibration') || {};
+  check(skipped.outcome === 'hoppade' && skipped.detail === why, `a try-out that was not felt skips the station and says why (${skipped.outcome}: ${skipped.detail})`);
+  check(unfelt.buzzed === 0, `the phone is never asked to buzz (${unfelt.buzzed})`);
+  check(said('vibra-kan-inte') && !said('vibra-intro'), 'she says it at once, without asking the walker to stop and feel for it');
+  check(unfelt.results.filter(x => x.id !== 'vibration').every(x => x.outcome === 'klarade') && unfelt.ended, `the other stations are walked as usual (${unfelt.results.map(x => x.outcome).join(', ')})`);
 
   const rest = LABS[2].filter(id => !['normalt', 'vandom'].includes(id));
   const { log, results, ended } = await simulate(2, 'pass', 0, null, { stations: rest });

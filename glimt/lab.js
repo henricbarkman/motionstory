@@ -9,6 +9,10 @@
 //   sfx            the placeholder sounds (synth.js)
 //   vibrate(p)     vibrates a pattern, returns its length in seconds (0 when
 //                  the phone cannot), and keeps the knock detector deaf meanwhile
+//   buzzOver()     when the knock detector hears again after that pattern
+//   buzzSeen()     what the motion sensor made of the last pattern vibrated
+//   noBuzz         why the phone will not buzz, when the app knew before the
+//                  walk (a string for the log); otherwise null or missing
 //   setTarget(c)   a place to walk to; state.distToTarget follows it
 //   position()     the newest decent fix, positionAgo(s) an older one
 //   knocksBetween(a, b), knockTimes(a, b), spikesBetween(a, b), strayDoubles(w)
@@ -27,7 +31,18 @@
 
 import { haversine, bearing, angleDiff } from './engine.js';
 
+// How long after a pattern's last buzz the motor is taken to be running
+// still. The browser asks for each buzz in turn and the motor has to stop, so
+// the real one trails the one asked for, by how much is not known: no buzz
+// has been recorded yet. A quarter second was within reach of a motor that
+// starts 0.15 s late and rings on for 0.2, and its shake then counted as a
+// knock (review, 2026-10-06). The price is the walker who answers on her
+// next beat, 0.32 s after: that knock is not heard. Half a second is a guess
+// until a felt buzz and a real answer have been recorded.
+const BUZZ_TAIL = 0.5;
+
 export function labHelpers(walk, { now, vibrateImpl }) {
+  let buzz = null;              // the last pattern vibrated: {pattern, at, over}
   return {
     position: () => walk.position(),
     positionAgo: s => walk.positionAgo(now(), s),
@@ -40,16 +55,42 @@ export function labHelpers(walk, { now, vibrateImpl }) {
     sensorShare: (a, b) => walk.sensorShare(a, b),
     strayDoubles: windows => walk.knocks.history.filter(t => !windows.some(([a, b]) => t >= a && t <= b)).length,
     // Seconds the pattern lasts, or 0 when the phone would not vibrate. The
-    // motor shakes the sensor, so knocks do not count until it has stopped.
+    // motor shakes the sensor, so knocks do not count until it has stopped:
+    // BUZZ_TAIL after the last buzz. A pause that ends the pattern is silence
+    // already, and not waited out twice.
     vibrate(pattern) {
+      const at = now();
       let ok = false;
       try { ok = !!vibrateImpl(pattern); } catch (_) { ok = false; }
       if (!ok) return 0;
       const len = pattern.reduce((a, b) => a + b, 0) / 1000;
-      walk.knocks.mute(now() + len + 0.25);
+      const pause = pattern.length % 2 ? 0 : pattern[pattern.length - 1] / 1000;
+      buzz = { pattern, at, over: at + len - pause + BUZZ_TAIL };
+      walk.buzz(at, buzz.over);
       return len;
     },
+    // When the detector hears again after the last pattern: an answer is
+    // counted from here. Null before any buzz.
+    buzzOver: () => buzz && buzz.over,
+    // What the sensor made of it, asked once the pattern is over (engine.js,
+    // buzzReading). Null before any buzz.
+    buzzSeen: () => buzz && walk.buzzSeen(buzz.pattern, buzz.at),
   };
+}
+
+// Her knocks as a vibration pattern: n short buzzes. The start screen's
+// try-out sends the same ones.
+export const knockPattern = n => Array.from({ length: n }, () => [180, 320]).flat();
+
+// A buzz reading in the log's words. Under BUZZ_MIN steps between samples,
+// while the motor ran or between, it says nothing. The level before is left
+// out when the sensor had not started by then (the start screen's try-out).
+const BUZZ_MIN = 6;
+export function buzzWords(r) {
+  if (!r || r.n < BUZZ_MIN) return 'sensorn gav för få värden';
+  const f = x => x.toFixed(2).replace('.', ',');
+  const before = r.before === null || r.before === undefined ? '' : `${f(r.before)} före, `;
+  return `sensorn ${before}${f(r.on)} under surren, ${f(r.off)} emellan`;
 }
 
 export const LABS = {
@@ -803,22 +844,40 @@ async function morse(ctx) {
 }
 
 // Hon knackar: she vibrates the phone n times, the walker knocks back n.
+//
+// A browser may say yes to the buzz and leave the motor alone: Chrome does on
+// a silent phone, and on 2026-10-06 the station waited twice for knocks to a
+// buzz that never came and called it a miss. The page cannot tell, only the
+// walker can, so the start screen has a try-out. When that was not felt, or
+// the browser cannot vibrate at all, ctx.noBuzz says why and the station is
+// skipped at once, without asking the walker to stop and feel for it.
 async function vibration(ctx) {
+  if (ctx.noBuzz) {
+    await ctx.play('vibra-kan-inte');
+    return { outcome: 'hoppade', detail: ctx.noBuzz };
+  }
   if (!await sensorReady(ctx)) return deaf(ctx);
   await ctx.play('vibra-intro');
   await ctx.until(s => !s.moving, { timeout: 15 });
   const rounds = [];
   for (const n of [2, 3]) {
     await wait(ctx, 1.5);
-    const pattern = [];
-    for (let i = 0; i < n; i++) pattern.push(180, 320);
-    const len = ctx.vibrate(pattern);
+    const len = ctx.vibrate(knockPattern(n));
     if (!len) {
       await ctx.play('vibra-kan-inte');
       return { outcome: 'hoppade', detail: 'telefonen kan inte vibrera härifrån' };
     }
     await wait(ctx, len + 0.4);
-    const from = ctx.state().t;
+    // What the sensor made of the buzz, for the log only: whether a buzz
+    // shows there at all is what the first felt one will say.
+    ctx.log(`surr: ${buzzWords(ctx.buzzSeen())}`);
+    // The answer counts from when the motor is taken to have stopped
+    // (BUZZ_TAIL after her last buzz), not from now: this line runs about a
+    // second after that buzz (the pattern's last pause, the wait above, the
+    // tick), and a walker who knocked back promptly had the first knock land
+    // before it. The simulation's walker waited 1.3 s and never showed it
+    // (2026-10-06).
+    const from = ctx.buzzOver();
     ctx.memo.knockWindows.push([from, from + 12]);
     // Counting ends 2,5 s after the last knock, or after ten seconds.
     await ctx.until(s => {

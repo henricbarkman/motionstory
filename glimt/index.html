@@ -33,6 +33,14 @@
         <label><input type="radio" name="resume" value="rest" checked> <span id="resume-rest">Fortsätt där du slutade</span></label>
         <label><input type="radio" name="resume" value="all"> <span id="resume-all">Alla från början</span></label>
       </fieldset>
+      <div class="vibra" id="vibra-box" hidden>
+        <p class="hint" id="vibra-note" aria-live="polite"></p>
+        <div class="lab-rate" id="vibra-answer" hidden>
+          <button type="button" value="ja" aria-pressed="false">Ja</button>
+          <button type="button" value="nej" aria-pressed="false">Nej</button>
+        </div>
+        <button class="quiet" id="vibra-btn" type="button">Prova vibrationen</button>
+      </div>
       <button id="start-btn" disabled>Laddar…</button>
       <p class="hint" id="load-note">Sätt på lurarna. Tryck när du står där du vill börja.</p>
       <a class="quiet" id="chrome-link" hidden>Öppna i Chrome</a>

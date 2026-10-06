@@ -94,6 +94,20 @@ button.quiet, a.quiet, #copy-btn {
   cursor: pointer;
 }
 
+/* The vibration try-out on the start screen, above the start button so it
+   is met before the tap: a hint, one button, and the question once it has
+   buzzed. Only the question is lit. The no's hint is a list, one check a
+   line. */
+.vibra { margin: 0 0 2rem; }
+.vibra .hint { margin: 0 0 0.9rem; color: #9090a8; white-space: pre-line; }
+.vibra[data-state="asked"] .hint { color: #e6e6f0; }
+.vibra .lab-rate { justify-content: center; gap: 1rem; margin-bottom: 0.9rem; }
+.vibra .lab-rate[hidden] { display: none; }
+.vibra .lab-rate button { min-width: 5rem; }
+.vibra button { min-height: 44px; }
+.vibra button:disabled { color: #45455e; cursor: default; }
+.vibra button:focus-visible { outline: 2px solid #c8d2ff; outline-offset: 2px; }
+
 .end-word { font-size: 1.4rem; font-weight: 300; margin: 2rem 0 2rem; }
 .final-log { text-align: left; margin-top: 2rem; }
 
