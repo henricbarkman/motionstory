@@ -870,9 +870,10 @@ async function vibration(ctx) {
   for (const n of [2, 3]) {
     // She says that a second round comes. Until 2026-10-06 the three buzzes
     // came a second and a half after "Rätt. Samma antal." with no word of
-    // more: he had answered the two, moved as the three began, and then stood
-    // dead still for twelve seconds without a knock. Whether the missing
-    // word was why is not known; with it, a miss says more.
+    // more: he had answered the two, moved as the three began, and then the
+    // phone lay dead still for twelve seconds. He remembers knocking back as
+    // it buzzed; the phone felt nothing a twentieth as hard as his two. The
+    // word costs a second either way.
     if (rounds.length) await ctx.play('vibra-igen');
     await wait(ctx, 1.5);
     const len = ctx.vibrate(knockPattern(n));
@@ -901,6 +902,9 @@ async function vibration(ctx) {
     rounds.push({ n, got, deaf: ctx.sensorShare(from, ctx.state().t) < 0.5 });
     ctx.log(`hon knackade ${n}, du ${got}`);
     if (got === n) await ctx.play('vibra-ratt');
+    // A miss names what she missed, his knock. "Inget svar. Kände du det?"
+    // sounded to him as if he had missed buzzes, when he had felt all three
+    // and knocked back, too softly or not on the phone (2026-10-06).
     else if (got === 0) await ctx.play('vibra-inget');
     else await ctx.play('vibra-fel');
   }

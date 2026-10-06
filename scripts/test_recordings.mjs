@@ -148,9 +148,12 @@ function replay(file, { buzzes = [] } = {}) {
 // reading in the log ("surr: sensorn 0,03 före, 0,18 under surren, 0,03
 // emellan", then 0,17 / 0,28 / 0,10) comes out the same from these samples.
 //
-// After her two he knocked twice, 1.9 s after her last buzz. After her three
-// he knocked nothing: from 84.6 s until he walks off at 102 s no sample
-// leaves 9.5-10.6.
+// After her two he knocked twice, 1.9 s after her last buzz, spikes of 39 and
+// 25 over their neighbours. After her three no knock reaches the phone: the
+// largest spike in the round, before, during or after the buzzes, is 1.9,
+// and from 84.6 s until she speaks at 96 s no sample leaves 9.7-10.2. He
+// remembers knocking back two or three times as it buzzed; if he did, the
+// phone did not feel it.
 //
 // The phone going into the pocket at 0:05 reads as a double. Not counted
 // here: no station was listening.
@@ -168,7 +171,7 @@ function replay(file, { buzzes = [] } = {}) {
   check(two.on > 4 * two.off && two.on > 4 * two.before, 'a motor that runs shows in a still pocket, several times the level around it');
   check(got[0] === 2, `his two knocks back are counted (${got[0]})`);
   check(doubles.some(d => d >= 76.3 && d <= 76.8), `and heard as a double (${fmt(doubles)})`);
-  check(got[1] === 0, `after her three he knocked nothing, and nothing is counted (${got[1]})`);
+  check(got[1] === 0, `after her three no knock reaches the phone, and nothing is counted (${got[1]})`);
   check(doubles.filter(d => d > 10).length === 1, `nothing else from the stop on is a double (${fmt(doubles.filter(d => d > 10))})`);
   // The same walk with the engine told of no buzz: the motor's shake is far
   // too small to be a knock on its own, so on this phone the mute guards
