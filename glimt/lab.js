@@ -33,12 +33,19 @@ import { haversine, bearing, angleDiff } from './engine.js';
 
 // How long after a pattern's last buzz the motor is taken to be running
 // still. The browser asks for each buzz in turn and the motor has to stop, so
-// the real one trails the one asked for, by how much is not known: no buzz
-// has been recorded yet. A quarter second was within reach of a motor that
-// starts 0.15 s late and rings on for 0.2, and its shake then counted as a
-// knock (review, 2026-10-06). The price is the walker who answers on her
-// next beat, 0.32 s after: that knock is not heard. Half a second is a guess
-// until a felt buzz and a real answer have been recorded.
+// the real one trails the one asked for. A quarter second was within reach
+// of a motor that starts 0.15 s late and rings on for 0.2, and its shake
+// then counted as a knock (review, 2026-10-06).
+//
+// Measured the same afternoon, the first buzz recorded in a pocket
+// (scripts/recordings/knackar-2026-10-06.json): his phone's motor starts
+// 0.07-0.12 s after the call and is still 0.08-0.10 s after the buzz was to
+// end, and its shake moves the sensor 0.6 m/s² between samples at most,
+// a fifth of what a knock takes standing. Half a second is five times what
+// that phone needs. It stays, for a motor nobody has measured, and because
+// it costs less than it looks: the walker cannot know she is done until her
+// next beat, 0.32 s after, stays silent, so a counted answer does not start
+// before then. He answered 1.9 s after.
 const BUZZ_TAIL = 0.5;
 
 export function labHelpers(walk, { now, vibrateImpl }) {
@@ -861,6 +868,12 @@ async function vibration(ctx) {
   await ctx.until(s => !s.moving, { timeout: 15 });
   const rounds = [];
   for (const n of [2, 3]) {
+    // She says that a second round comes. Until 2026-10-06 the three buzzes
+    // came a second and a half after "Rätt. Samma antal." with no word of
+    // more: he had answered the two, moved as the three began, and then stood
+    // dead still for twelve seconds without a knock. Whether the missing
+    // word was why is not known; with it, a miss says more.
+    if (rounds.length) await ctx.play('vibra-igen');
     await wait(ctx, 1.5);
     const len = ctx.vibrate(knockPattern(n));
     if (!len) {
