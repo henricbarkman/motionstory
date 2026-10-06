@@ -49,6 +49,15 @@ node scripts/test_glimt.mjs            # allt
 node scripts/test_glimt.mjs 2 stubborn # ett kapitel, en profil
 ```
 
+Labbens banor, detektorerna och inspelade promenader, och startskärmen i en riktig webbläsare (Playwright, Chromium):
+
+```bash
+node scripts/test_lab.mjs              # båda labben, alla gåarprofiler (ett par minuter)
+node scripts/test_knocks.mjs           # knack, gungning, motorns surr
+node scripts/test_steps.mjs && node scripts/test_recordings.mjs
+python3 scripts/test_browser.py        # vibrationsprovet och Hon knackar, ungefär fyra minuter
+```
+
 Rendera Vegas repliker (v3, en mp3 per replik, hoppar över befintliga):
 
 ```bash

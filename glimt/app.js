@@ -4,10 +4,10 @@
 // has the same choice. ?bana=<id> runs a single lab station (ids in lab.js),
 // ?banor=<id>,<id> some of one lab's stations as a walk of the lab.
 
-import { Walk, Waiter, simulatedMagnitude } from './engine.js';
+import { Walk, Waiter, simulatedMagnitude, buzzReading } from './engine.js';
 import { runChapter1 } from './chapter1.js';
 import { runChapter2 } from './chapter2.js';
-import { runLab, labHelpers, LABS, TITLES, ratedThisRound, RESUMABLE, chosenStations } from './lab.js';
+import { runLab, labHelpers, LABS, TITLES, ratedThisRound, RESUMABLE, chosenStations, knockPattern, buzzWords } from './lab.js';
 import { Synth, SilentSynth } from './synth.js';
 import { Mixer, Library } from './audio.js';
 import { chooseWorld, defaultWorld } from './world.js';
@@ -21,6 +21,9 @@ const CHOSEN = ONLY_STATION ? null : chosenStations(params.get('banor'));
 const BAD_CHOICE = !ONLY_STATION && !CHOSEN && params.has('banor') ? params.get('banor') : null;
 // The stations the link chose, when the chapter on screen is their lab.
 const chosenFor = def => def.lab && CHOSEN && CHOSEN.lab === def.lab ? CHOSEN.stations : null;
+// The stations a walk of the chapter on screen can have: the one ?bana=
+// names, the ones a link chose, or the whole lab. None in a chapter.
+const labStations = def => !def.lab ? [] : ONLY_STATION ? [ONLY_STATION] : chosenFor(def) || LABS[def.lab];
 
 // Which browser ran the walk, for the log. Labb 2 on 2026-10-01 ran in
 // Firefox, and only Firefox's own wording of the GPS error said so. Firefox
@@ -39,12 +42,16 @@ const BROWSER = (() => {
 })();
 const FIREFOX = /(?:Firefox|FxiOS)\//.test(UA);
 const CAN_VIBRATE = typeof navigator.vibrate === 'function' && !FIREFOX;
-// Links to Glimt open in Firefox on the field phone, so the start screen
-// offers a way out: an intent link that hands the same address to Chrome.
-// Not a GPS fix: labb 2 on 2026-10-01 and 10-05 got a fix every 6.2 s at
-// ±17-24 m, but the knock walk on 09-28 got one a second at ±3-7 m with the
-// same watchPosition options, most likely in the same Firefox (Henric thinks
-// so; the browser was not logged before v15). Cause not known yet.
+// Links to Glimt open in Firefox on the field phone, and Firefox there hands
+// out few fixes: one every 6.2 s at ±17-24 m (labb 2 on 2026-10-01 and
+// 10-05), where Chrome gave two a second at ±3-6 m with the same
+// watchPosition options (the knock walk on 09-28, labb 2 on 10-06). The
+// browser was not logged before v15, and the 09-28 walk was first taken for
+// Firefox too; its recording says Chrome three ways: a motion sample every
+// 16-17 ms like Chrome's on 10-06 (Firefox: 9-20 ms, uneven), the fix rate,
+// and her world's squares, which are kept per browser and add up only that
+// way. So the start screen says it and offers a way out: an intent link that
+// hands the same address to Chrome.
 const ANDROID_FIREFOX = FIREFOX && /Android/.test(UA);
 const chromeIntent = () =>
   `intent://${location.host}${location.pathname}${location.search}#Intent;scheme=https;package=com.android.chrome;end`;
@@ -212,13 +219,13 @@ async function preload() {
         : `${chosen ? ` Bara ${andList(chosen.map(id => TITLES[id]))} den här gången.` : ''}` +
           ' Telefonen i fickan, skärmen olåst. Knacka på fickan när hon ber om det.';
       if (BAD_CHOICE !== null) note += ` Länkens banor (${BAD_CHOICE}) gick inte att läsa, så det blir labbet som vanligt.`;
-      const stations = ONLY_STATION ? [ONLY_STATION] : chosen || LABS[def.lab];
-      if (!CAN_VIBRATE && stations.includes('vibration')) {
+      if (!CAN_VIBRATE && labStations(def).includes('vibration')) {
         note += FIREFOX
-          ? ' Firefox vibrerar inte, så Hon knackar hoppas över. Öppna Glimt i Chrome.'
+          ? ` Firefox vibrerar inte, så Hon knackar hoppas över.${ANDROID_FIREFOX ? '' : ' Öppna Glimt i Chrome.'}`
           : ' Den här webbläsaren vibrerar inte, så Hon knackar hoppas över.';
       }
     }
+    if (ANDROID_FIREFOX) note += ' I Firefox kommer gps:en glest, så svängar och riktning hörs sent. Öppna Glimt i Chrome.';
     if (chapterNo === '2') {
       const lm = savedLandmark();
       note += lm
@@ -238,6 +245,7 @@ async function start() {
   const def = CHAPTERS[chapterNo];
   const variant = document.querySelector('input[name="variant"]:checked').value;
   try { localStorage.setItem('glimt-variant', variant); } catch (_) {}
+  stopVibra();
 
   $('start-screen').hidden = true;
   $('walking').hidden = false;
@@ -273,6 +281,8 @@ async function start() {
   clearTimeout(gpsCheckTimer);
   gpsTrouble = null;
   if (!SIM) log(`gps före start: ${gpsStatus()}`);
+  // Only when this walk has Hon knackar, and the phone could have been tried.
+  if (!SIM && CAN_VIBRATE && walkStations(def).includes('vibration')) log(`vibration före start: ${vibraStatus()}`);
   if (BAD_CHOICE !== null) log(`länkens banor gick inte att läsa: ${BAD_CHOICE}`);
   window.glimt = { mixer, walk, world, lib };   // for debugging from the console
 
@@ -342,6 +352,7 @@ async function start() {
     }), {
       sfx,
       memo: labMemo,
+      noBuzz: !CAN_VIBRATE ? 'telefonen kan inte vibrera härifrån' : VIBRA_NO_BUZZ[vibra.answer] || null,
       station(id, k, n) {
         currentStation = id;
         $('scene').textContent = id ? `${TITLES[id]} ${k}/${n}` : 'Slut';
@@ -556,6 +567,136 @@ function checkGps(fresh = true) {
     { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
 }
 
+// ---------- vibration ----------
+// Tried on the start screen, like the GPS, while the phone is still in the
+// hand. Chrome on Android says yes to navigator.vibrate and then leaves the
+// motor alone when the phone is on silent or Do not disturb (it asks the
+// ringer mode itself: Chromium's VibrationManagerAndroid.java, and Android
+// reports silent under Do not disturb), and Android drops the buzz in battery
+// saver or with vibration switched off (VibrationSettings.java). The page is
+// told none of it. On 2026-10-06 Hon knackar buzzed twice into a phone that
+// never moved, and waited for knocks to something the walker never felt.
+// Only the walker can say whether it buzzed, so the start screen asks, and a
+// no skips the station instead of walking into it.
+//
+// The answer is not kept between visits: the phone's sound mode changes more
+// often than Glimt is opened. The sensor listens while the try-out buzzes,
+// for the log and the saved recording: nothing is known yet about what a
+// buzz looks like in it.
+const VIBRA_SETTLE = 0.4;       // s after the tap, which shakes the phone too
+// The question asks for all three: a walker who felt one or two answers no,
+// and is not told the phone lay still. The no's checks are one a line (the
+// box breaks lines as written), in words that do not lean on what a phone
+// maker calls its sound modes. The last sentence is her own when she skips
+// the station ("vibra-kan-inte").
+const VIBRA_NOTES = {
+  idle: 'Banan Hon knackar surrar i telefonen. Prova först om du känner det.',
+  buzzing: 'Surrar tre gånger…',
+  asked: 'Kände du alla tre surren?',
+  ja: 'Bra. Då vet du hur det känns när hon knackar.',
+  nej: 'Då surrade inte telefonen som den ska. Kolla:\n' +
+    'Telefonen står inte på ljudlöst\n' +
+    'Stör ej är av\n' +
+    'Batteri- eller energisparläget är av\n' +
+    'Vibration är på (Inställningar, Ljud och vibration)\n' +
+    'Tryck sedan Prova igen. Går du ändå hoppar vi över den banan.',
+  vägrad: 'Webbläsaren säger nej till vibration. Går du ändå hoppar vi över den banan.',
+};
+const VIBRA_LOG = { ja: 'kändes', nej: 'kändes inte', vägrad: 'webbläsaren sa nej' };
+// Why the station is skipped, for its line on the end screen.
+const VIBRA_NO_BUZZ = {
+  nej: 'vibrationen kändes inte i provet före start',
+  vägrad: 'webbläsaren sa nej till vibration i provet före start',
+};
+// answer: 'ja', 'nej' or 'vägrad' for the newest try-out, null until answered.
+// run: counts the try-outs begun and cut short; one under way that finds the
+// number moved on has been cut short and touches nothing. undo: what stood
+// before the try-out under way, for when it is.
+const vibra = { answer: null, tried: false, busy: false, reading: null, trace: null, run: 0, undo: null };
+
+const vibraStatus = () => {
+  const said = VIBRA_LOG[vibra.answer] || (vibra.tried ? 'provad, inget svar' : 'inte provad');
+  return vibra.reading ? `${said}, ${buzzWords(vibra.reading)}` : said;
+};
+
+// The stations the walk would have as the start screen stands: the link's,
+// the rest of a round under way, or the whole lab.
+function walkStations(def) {
+  if (!def.lab || ONLY_STATION || chosenFor(def)) return labStations(def);
+  const rest = resumeStations && document.querySelector('input[name="resume"]:checked')?.value === 'rest';
+  return rest ? resumeStations : LABS[def.lab];
+}
+
+function showVibra() {
+  // Offered when a walk from here has Hon knackar, and a phone to buzz.
+  $('vibra-box').hidden = SIM || !CAN_VIBRATE || !walkStations(CHAPTERS[chapterNo]).includes('vibration');
+  const state = vibra.busy ? 'buzzing' : vibra.answer || (vibra.tried ? 'asked' : 'idle');
+  $('vibra-box').dataset.state = state === 'vägrad' ? 'refused' : state;
+  $('vibra-note').textContent = VIBRA_NOTES[state];
+  $('vibra-btn').textContent = vibra.tried ? 'Prova igen' : 'Prova vibrationen';
+  $('vibra-btn').disabled = vibra.busy;
+  // The question stays up with its answer marked, so a slip can be changed.
+  $('vibra-answer').hidden = vibra.busy || !vibra.tried || vibra.answer === 'vägrad';
+  $('vibra-answer').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.value === vibra.answer)));
+}
+
+async function tryVibration() {
+  if (vibra.busy) return;
+  const run = ++vibra.run;
+  const pattern = knockPattern(3);
+  const sleep = s => new Promise(r => setTimeout(r, s * 1000));
+  const clock = () => performance.now() / 1000;
+  const samples = [];
+  const listen = e => {
+    const a = e.accelerationIncludingGravity;
+    if (a && a.x != null && a.y != null && a.z != null) samples.push({ t: clock(), m: Math.hypot(a.x, a.y, a.z) });
+  };
+  const undo = { answer: vibra.answer, tried: vibra.tried, reading: vibra.reading, trace: vibra.trace };
+  Object.assign(vibra, { busy: true, answer: null, reading: null, trace: null, undo });
+  showVibra();
+  window.addEventListener('devicemotion', listen);
+  let at = null, ok = false;
+  try {
+    await sleep(VIBRA_SETTLE);
+    // A page out of sight is refused the buzz (the screen locked, another app
+    // in front), and that no says nothing about the phone: as if not tried.
+    if (run === vibra.run && document.hidden) stopVibra();
+    if (run === vibra.run) {
+      at = clock();
+      try { ok = !!navigator.vibrate(pattern); } catch (_) { ok = false; }
+      if (ok) await sleep(pattern.reduce((a, b) => a + b, 0) / 1000 + 0.2);
+    }
+  } finally {
+    window.removeEventListener('devicemotion', listen);
+  }
+  if (run !== vibra.run) return;
+  Object.assign(vibra, { busy: false, tried: true, answer: ok ? null : 'vägrad', undo: null });
+  // The reading is for the log; a fault in it must not leave the box stuck
+  // on "Surrar".
+  if (ok) {
+    try {
+      vibra.reading = buzzReading(samples, pattern, at);
+      vibra.trace = { pattern, t: samples.map(s => ms(s.t - at)), m: samples.map(s => Math.round(s.m * 100)) };
+    } catch (_) {
+      vibra.reading = vibra.trace = null;
+    }
+  }
+  showVibra();
+}
+
+// Cuts a try-out under way short: the motor stops, and what the walker last
+// said about one stands again. The walk does it as it begins. A try-out left
+// buzzing shook the new walk's sensor, and one begun after a "nej" had
+// already wiped that answer, so the station buzzed into a phone known not to
+// (review, 2026-10-06).
+function stopVibra() {
+  if (!vibra.busy) return;
+  vibra.run++;
+  try { navigator.vibrate(0); } catch (_) {}
+  Object.assign(vibra, vibra.undo, { busy: false, undo: null });
+  showVibra();
+}
+
 function startGps() {
   if (!navigator.geolocation) { log('gps stöds inte'); return; }
   let first = true;
@@ -606,8 +747,12 @@ function saveRecording() {
   const body = JSON.stringify({
     kind: 'glimt-sensor', version: 1, build: $('build').textContent, browser: BROWSER,
     chapter: chapterNo, station: ONLY_STATION, saved: new Date().toISOString(),
-    units: { t: 'ms since start', m: 'centi m/s², |acceleration including gravity|', fixes: '[t, north m, east m, accuracy m, speed m/s]' },
+    units: {
+      t: 'ms since start', m: 'centi m/s², |acceleration including gravity|', fixes: '[t, north m, east m, accuracy m, speed m/s]',
+      vibrationCheck: "the start screen's try-out: t in ms from the call to vibrate, m as above",
+    },
     t: rec.t, m: rec.m, fixes: rec.fixes, log: rec.log,
+    vibrationCheck: vibra.trace && { ...vibra.trace, answer: vibra.answer },
   });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([body], { type: 'application/json' }));
@@ -860,7 +1005,9 @@ function selectChapter(n) {
   const def = CHAPTERS[chapterNo];
   $('subtitle').textContent = def.subtitle;
   $('variant-box').hidden = !!def.lab;
+  // The round's choice first: the try-out is offered for the stations it gives.
   showResume(def);
+  showVibra();
   document.title = def.lab ? `Glimt, labb ${def.lab}` : `Glimt, kapitel ${chapterNo}`;
   preload();
 }
@@ -915,6 +1062,16 @@ function showResume(def) {
     $('chrome-link').hidden = false;
   }
   selectChapter(ch);
+  // Going on with the rest of a round, or walking all of it, changes whether
+  // Hon knackar is in the walk.
+  document.querySelectorAll('input[name="resume"]').forEach(el => el.addEventListener('change', showVibra));
+  $('vibra-btn').addEventListener('click', tryVibration);
+  $('vibra-answer').addEventListener('click', e => {
+    const b = e.target.closest('button[value]');
+    if (!b || vibra.busy) return;
+    vibra.answer = b.value;
+    showVibra();
+  });
   $('gps-note').addEventListener('click', () => checkGps());
   // Allowed in the browser's settings, or a prompt answered: ask again.
   if (navigator.permissions) navigator.permissions.query({ name: 'geolocation' })

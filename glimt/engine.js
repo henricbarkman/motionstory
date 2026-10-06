@@ -400,6 +400,19 @@ export class Sway {
   constructor() {
     this.raw = [];               // the last five samples: {t, m}
     this.smooth = [];            // median of five, at the middle sample's time: {t, m}
+    this.held = null;            // {verdict, until}: what stands over a stretch not pushed
+  }
+
+  // The samples from `from` to `until` will not be pushed: the phone's own
+  // motor is running (Walk.buzz). The verdict from before stands until the
+  // sway has been seen again. With an empty window the answer was "standing",
+  // and a walker who kept walking through the buzz had a heel strike right
+  // after it meet the standing bar and count as a knock (review, 2026-10-06).
+  // `feet`: whether the feet were going then. Held, a sway without them was a
+  // walker standing and shifting about, and her prompt first knock met the
+  // walking bar (the second review, same day); it is held as standing.
+  hold(from, until, feet = true) {
+    this.held = { verdict: this.walkingAt(from) && feet, until: until + SWAY_WINDOW + SWAY_SKIP };
   }
 
   push(t, mag) {
@@ -413,13 +426,80 @@ export class Sway {
     while (this.smooth.length && this.smooth[0].t < t - SWAY_WINDOW - 1) this.smooth.shift();
   }
 
-  walkingAt(t) {
+  // The spread over the window before t; null with too little in it to tell.
+  _spread(t) {
     const xs = this.smooth.filter(s => s.t >= t - SWAY_WINDOW - SWAY_SKIP && s.t < t - SWAY_SKIP).map(s => s.m);
-    if (xs.length < SWAY_MIN_SAMPLES) return false;
+    if (xs.length < SWAY_MIN_SAMPLES) return null;
     const mean = xs.reduce((a, b) => a + b, 0) / xs.length;
-    const sd = Math.sqrt(xs.reduce((a, b) => a + (b - mean) ** 2, 0) / xs.length);
+    return Math.sqrt(xs.reduce((a, b) => a + (b - mean) ** 2, 0) / xs.length);
+  }
+
+  walkingAt(t) {
+    const sd = this._spread(t);
+    if (sd === null) return !!this.held && t < this.held.until && this.held.verdict;
     return sd > SWAY_WALKING;
   }
+
+  // Known to stand still at t: the sway seen and under a gait's, or held so
+  // from before the phone's own buzz. Not the opposite of walkingAt: a sensor
+  // with too little to tell is walking to neither, and standing to neither.
+  standingAt(t) {
+    const sd = this._spread(t);
+    if (sd === null) return !!this.held && t < this.held.until && !this.held.verdict;
+    return sd <= SWAY_WALKING;
+  }
+}
+
+// What the motion sensor made of a vibration pattern (Hon knackar). The motor
+// turns several times between two samples, so a buzz shows as samples that
+// jump about, not as a wave: the reading is the mean step between neighbouring
+// samples, in m/s², while the motor ran (`on`) and in the pauses between and
+// after (`off`), and `n` the fewer of the two counts of steps. `before` is
+// the same over the moment before the buzz was asked for: `on` and `off`
+// take the motor to start when asked, and one that starts 0.15 s late puts
+// its shake in the pauses (review, 2026-10-06). Against `before` a buzz shows
+// wherever it landed. A pocket at rest gives a few hundredths.
+//
+// Whether a buzz shows at all is not known yet. On 2026-10-06 the phone never
+// buzzed (Chrome said yes; it leaves the motor alone on a silent phone and
+// does not tell the page) and the sensor lay flat, 0.03 while and 0.01-0.03
+// between, which says nothing until a buzz that was felt has been read too.
+// So this is logged, and decides nothing.
+//
+// `samples` are {t, m} in time order, `pattern` is navigator.vibrate's
+// (milliseconds on, off, on, ...) and `t0` when it was asked for, in the
+// samples' seconds.
+const BUZZ_RISE = 0.05;        // s for the motor to get going
+const BUZZ_FALL = 0.1;         // s for it to stop
+const BUZZ_AFTER = 0.4;        // s read as quiet after the last buzz
+const BUZZ_BEFORE = 0.4;       // s read as the level before the buzz
+const BUZZ_NEIGHBOURS = 0.1;   // s; samples further apart are not neighbours
+
+export function buzzReading(samples, pattern, t0) {
+  const on = [], off = [];
+  let t = t0;
+  for (let i = 0; i < pattern.length; i += 2) {
+    const end = t + pattern[i] / 1000;
+    const pause = (pattern[i + 1] || 0) / 1000;
+    on.push([t + BUZZ_RISE, end]);
+    off.push([end + BUZZ_FALL, end + (i + 2 >= pattern.length ? BUZZ_AFTER : pause)]);
+    t = end + pause;
+  }
+  const restless = windows => {
+    let sum = 0, n = 0;
+    for (const [a, b] of windows) {
+      let prev = null;
+      for (const s of samples) {
+        if (s.t < a) continue;
+        if (s.t >= b) break;      // the sample at a window's end belongs to what comes next
+        if (prev && s.t - prev.t <= BUZZ_NEIGHBOURS) { sum += Math.abs(s.m - prev.m); n++; }
+        prev = s;
+      }
+    }
+    return { mean: n ? sum / n : null, n };
+  };
+  const a = restless(on), b = restless(off);
+  return { before: restless([[t0 - BUZZ_BEFORE, t0]]).mean, on: a.mean, off: b.mean, n: Math.min(a.n, b.n) };
 }
 
 // Knocks on the phone through a pocket (the lab's "Knacket"). A knock is a
@@ -611,6 +691,8 @@ export function simulatedMagnitude(t, speed) {
   return 9.81 + amp * Math.sin(2 * Math.PI * c / 60 * t) + noise;
 }
 
+const RECENT = 20;   // s of raw samples kept, for reading a buzz afterwards
+
 // Everything the chapter script can look at on a tick.
 export class Walk {
   constructor(opts = {}) {
@@ -632,13 +714,44 @@ export class Walk {
     this.gpsSpeeds = [];        // [{t, v}] per fix, last 30 s
     this.gpsSeen = false;
     this.sensorSecs = [];       // whole seconds with a sensor sample, last five minutes
+    this.recent = [];           // every sample of the last RECENT seconds: {t, m}
+    this.buzzUntil = -Infinity; // the phone's own motor runs until then
+    this.running = false;       // a run that mutes knocks, as of the last tick
   }
+
+  // The phone is about to vibrate, from `from` until `until` (the motor's
+  // tail included). Its motor shakes the sensor, and the shake is not the
+  // walker: nothing counts as a knock meanwhile, and motion() below keeps it
+  // from the sway and from the feet. Left in the sway it would hold the knocks
+  // answered right after a buzz to the walking bar for the second the sway
+  // trails, and a knock on a pocket standing still does not clear that bar.
+  buzz(from, until) {
+    // A time that is no number would mute knocks for the rest of the walk.
+    if (!Number.isFinite(from) || !Number.isFinite(until)) return;
+    this.buzzUntil = Math.max(this.buzzUntil, until);
+    this.knocks.mute(this.buzzUntil);
+    this.sway.hold(from, this.buzzUntil, this.steps.cadence(from) > 0);
+  }
+
+  // The sensor's reading of a buzz that is over (buzzReading above).
+  buzzSeen(pattern, t0) { return buzzReading(this.recent, pattern, t0); }
 
   // Called for every accelerometer sample: |acceleration including gravity|.
   motion(t, magnitude) {
-    this.steps.push(t, magnitude);
-    this.sway.push(t, magnitude);
+    // While the phone's own motor runs the sample is the motor's. The sway
+    // is given nothing and keeps its verdict (Sway.hold). The feet are given
+    // the level they had: each buzz rises like a step, and three of them with
+    // the knocks back close behind read as a rhythm fast enough to be a run,
+    // which mutes knocks (review, 2026-10-06). A sample all the same, so the
+    // sensor still counts as live.
+    const own = t < this.buzzUntil;
+    this.steps.push(t, own && this.steps.slow !== null ? this.steps.slow : magnitude);
+    if (!own) this.sway.push(t, magnitude);
     this.knocks.push(t, magnitude);
+    if (Number.isFinite(magnitude)) {
+      this.recent.push({ t, m: magnitude });
+      while (this.recent[0].t < t - RECENT) this.recent.shift();
+    }
     const sec = Math.floor(t);
     if (this.sensorSecs[this.sensorSecs.length - 1] !== sec) {
       this.sensorSecs.push(sec);
@@ -714,19 +827,31 @@ export class Walk {
     this.t = t;
     this.pace = this._pace(t);
     this.odo += this.pace * dt;
-    const ran = this.tempo.band === 'run';
     this.tempo.push(t, this.pace);
     // Running heel strikes are as sharp as knocks; nothing asks for a knock
     // mid-run, so none counts until a second after it. The band trails the
     // feet by up to the cadence window, so when running begins the doubles
     // heard in that window go too: in the simulation the first seconds of
     // Flykten left one in ten walks with a double nobody knocked.
-    if (this.tempo.band === 'run') {
+    //
+    // The band alone does not make it a run. A knock is read as a step too,
+    // and so is a hand landing on the pocket: with one such bump a third of a
+    // second before them, three knocks standing still are a rhythm of 150
+    // steps a minute, and the mute took the third knock of Hon knackar's
+    // answer (the lab simulation's field phone, nine walks in a hundred,
+    // 2026-10-06). A phone known to be still is not running, whatever its
+    // feet seem to say. (A pocket soft enough to hide a run's sway is not
+    // muted either; its heel strikes already meet the standing bar walking.)
+    // A run the GPS reads is left as it was: that is a walker on wheels, the
+    // phone may well lie still, and a road's bumps are sharp too.
+    const running = this.tempo.band === 'run' && !(this.paceSource === 'steps' && this.sway.standingAt(t));
+    if (running) {
       // Only doubles heard on the move: one knocked standing still stays,
       // even if a run starts right after it (review, 2026-09-25).
-      if (!ran) this.knocks.retract(t - STEP_WINDOW, d => this.tempo.speedAt(d) > STILL_MS);
+      if (!this.running) this.knocks.retract(t - STEP_WINDOW, d => this.tempo.speedAt(d) > STILL_MS);
       this.knocks.mute(t + 1);
     }
+    this.running = running;
     this.knocks.settle(t);
     this.contact.step(dt, { moving: this.tempo.moving, accuracy: this.gps.accuracy });
     return this.state();
