@@ -704,7 +704,7 @@ export class Walk {
     this.steps = new Steps();
     this.sway = new Sway();
     this.knocks = new Knocks({ walking: t => this.sway.walkingAt(t) });
-    this.track = [];            // decent fixes, last two minutes: {t, latitude, longitude}
+    this.track = [];            // decent fixes, last two minutes: {t, latitude, longitude, accuracy}
     this.odo = 0;               // metres, the pace integrated over time
     this.t = 0;
     this.lastTick = 0;
@@ -804,7 +804,7 @@ export class Walk {
     if (coord.accuracy == null || coord.accuracy <= 50) {
       this.homing.push(t, coord);
       if (this.target) this.target.push(t, coord);
-      this.track.push({ t, latitude: coord.latitude, longitude: coord.longitude });
+      this.track.push({ t, latitude: coord.latitude, longitude: coord.longitude, accuracy: coord.accuracy ?? null });
       while (this.track.length && this.track[0].t < t - 120) this.track.shift();
     }
   }

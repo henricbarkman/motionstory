@@ -2,28 +2,39 @@
 // ?sim in the URL replaces GPS with a speed slider for testing at a desk.
 // ?kapitel=2 preselects a chapter, ?kapitel=labb1 the lab; the start screen
 // has the same choice. ?bana=<id> runs a single lab station (ids in lab.js),
-// ?banor=<id>,<id> some of one lab's stations as a walk of the lab.
+// ?banor=<id>,<id> some of one lab's stations as a walk of the lab, and
+// ?prov=<id> one of the short test walks (PROV in lab.js).
 
 import { Walk, Waiter, simulatedMagnitude, buzzReading } from './engine.js';
 import { runChapter1 } from './chapter1.js';
 import { runChapter2 } from './chapter2.js';
-import { runLab, labHelpers, LABS, TITLES, ratedThisRound, RESUMABLE, chosenStations, knockPattern, buzzWords } from './lab.js';
+import { runLab, labHelpers, LABS, TITLES, PROV, ratedThisRound, RESUMABLE, chosenStations, knockPattern, buzzWords, realTarget } from './lab.js';
 import { Synth, SilentSynth } from './synth.js';
 import { Mixer, Library } from './audio.js';
-import { chooseWorld, defaultWorld } from './world.js';
+import { chooseWorld, defaultWorld, fetchLandmarks, nearestByName } from './world.js';
 import { Memory, drawWorld, KEY_NAMES } from './memory.js';
+
+// The version the start screen shows, the same number as the service
+// worker's cache. Bump both together.
+const APP_VERSION = 24;
 
 const params = new URLSearchParams(location.search);
 const SIM = params.has('sim');
-const ONLY_STATION = TITLES[params.get('bana')] ? params.get('bana') : null;
-const CHOSEN = ONLY_STATION ? null : chosenStations(params.get('banor'));
+// A test walk wins over everything else the link says.
+const PROV_ID = Object.hasOwn(PROV, params.get('prov') || '') ? params.get('prov') : null;
+const TEST = PROV_ID ? PROV[PROV_ID] : null;
+// A ?prov= the app could not read says so, and offers the lab instead.
+const BAD_PROV = !PROV_ID && params.has('prov') ? params.get('prov') : null;
+const ONLY_STATION = !TEST && TITLES[params.get('bana')] ? params.get('bana') : null;
+const CHOSEN = ONLY_STATION || TEST ? null : chosenStations(params.get('banor'));
 // A ?banor= the app could not read says so, instead of walking everything.
-const BAD_CHOICE = !ONLY_STATION && !CHOSEN && params.has('banor') ? params.get('banor') : null;
+const BAD_CHOICE = !TEST && !ONLY_STATION && !CHOSEN && params.has('banor') ? params.get('banor') : null;
 // The stations the link chose, when the chapter on screen is their lab.
 const chosenFor = def => def.lab && CHOSEN && CHOSEN.lab === def.lab ? CHOSEN.stations : null;
-// The stations a walk of the chapter on screen can have: the one ?bana=
-// names, the ones a link chose, or the whole lab. None in a chapter.
-const labStations = def => !def.lab ? [] : ONLY_STATION ? [ONLY_STATION] : chosenFor(def) || LABS[def.lab];
+// The stations a walk of the chapter on screen can have: the test walk's,
+// the one ?bana= names, the ones a link chose, or the whole lab. None in a
+// chapter.
+const labStations = def => !def.lab ? [] : def.prov ? def.prov.stations : ONLY_STATION ? [ONLY_STATION] : chosenFor(def) || LABS[def.lab];
 
 // Which browser ran the walk, for the log. Labb 2 on 2026-10-01 ran in
 // Firefox, and only Firefox's own wording of the GPS error said so. Firefox
@@ -59,6 +70,13 @@ const chromeIntent = () =>
 const LAB_FILES = { url: '../stories/glimt/labb.json', voices: '../audio/glimt/vega/glimt-labb' };
 
 const CHAPTERS = {
+  // Only reached by a ?prov= link; there is no radio for it.
+  ...(TEST ? {
+    prov: {
+      ...LAB_FILES, lab: 'prov', prov: TEST, first: 'prov-intro',
+      subtitle: `Testpromenad: ${TEST.title}. Ungefär ${TEST.minutes} minuter.`,
+    },
+  } : {}),
   labb1: {
     ...LAB_FILES, lab: 1, first: 'labb-intro-1',
     subtitle: 'Labb 1. Åtta korta banor, en sak i taget, ungefär tjugo minuter. Efteråt säger du vilka du vill göra igen.',
@@ -193,7 +211,7 @@ async function preload() {
     chapter = await (await fetch(def.url)).json();
     lib = new Library(mixer, def.voices);
 
-    const first = def.lab && ONLY_STATION ? 'labb-intro-en' : def.first;
+    const first = def.lab && !def.prov && ONLY_STATION ? 'labb-intro-en' : def.first;
     const [bedRaw, riserRaw, firstRaw] = await Promise.all([
       bedBuf ? null : mixer.fetchBuffer(BED_URL).catch(() => null),
       riserBuf ? null : mixer.fetchBuffer(RISER_URL).catch(() => null),
@@ -212,13 +230,16 @@ async function preload() {
     let note = notes.length
       ? `Ljudet saknar ${notes.join(' och ')} på den här adressen. Rösten fungerar ändå.`
       : 'Sätt på lurarna. Tryck när du står där du vill börja.';
-    if (def.lab) {
+    if (def.prov) {
+      note += ' Telefonen i fickan, skärmen olåst.';
+    } else if (def.lab) {
       const chosen = chosenFor(def);
       note += ONLY_STATION
         ? ` Bara banan ${TITLES[ONLY_STATION]} den här gången.`
         : `${chosen ? ` Bara ${andList(chosen.map(id => TITLES[id]))} den här gången.` : ''}` +
           ' Telefonen i fickan, skärmen olåst. Knacka på fickan när hon ber om det.';
       if (BAD_CHOICE !== null) note += ` Länkens banor (${BAD_CHOICE}) gick inte att läsa, så det blir labbet som vanligt.`;
+      if (BAD_PROV !== null) note += ` Länkens test (${BAD_PROV}) finns inte, så det blir labbet som vanligt.`;
       if (!CAN_VIBRATE && labStations(def).includes('vibration')) {
         note += FIREFOX
           ? ` Firefox vibrerar inte, så Hon knackar hoppas över.${ANDROID_FIREFOX ? '' : ' Öppna Glimt i Chrome.'}`
@@ -272,7 +293,8 @@ async function start() {
   pickedWalk = !!chosen;
   const resume = def.lab && !ONLY_STATION && !chosen && resumeStations &&
     document.querySelector('input[name="resume"]:checked')?.value === 'rest' ? resumeStations : null;
-  const what = def.lab
+  if (def.prov) pickedWalk = true;
+  const what = def.prov ? `prov ${PROV_ID} (${def.prov.title}), version ${APP_VERSION}` : def.lab
     ? `labb ${def.lab}${ONLY_STATION ? `, bara ${TITLES[ONLY_STATION]}` : ''}` +
       `${chosen ? `, bara ${andList(chosen.map(id => TITLES[id]))}` : ''}${resume ? `, från ${TITLES[resume[0]]}` : ''}`
     : `kapitel ${chapterNo}, variant ${variant.toUpperCase()}`;
@@ -281,9 +303,14 @@ async function start() {
   clearTimeout(gpsCheckTimer);
   gpsTrouble = null;
   if (!SIM) log(`gps före start: ${gpsStatus()}`);
+  // What the test walk's start screen found, so its log says it without the
+  // walker having to.
+  if (def.prov && def.prov.sensor && !SIM) log(`sensor före start: ${sensorCheck.status}`);
+  if (def.prov && def.prov.map && !SIM) log(`karta före start: ${mapCheck.status}`);
   // Only when this walk has Hon knackar, and the phone could have been tried.
   if (!SIM && CAN_VIBRATE && walkStations(def).includes('vibration')) log(`vibration före start: ${vibraStatus()}`);
   if (BAD_CHOICE !== null) log(`länkens banor gick inte att läsa: ${BAD_CHOICE}`);
+  if (BAD_PROV !== null) log(`länkens test finns inte: ${BAD_PROV}`);
   window.glimt = { mixer, walk, world, lib };   // for debugging from the console
 
   if (bedBuf) mixer.startBed(bedBuf);
@@ -300,7 +327,9 @@ async function start() {
   });
   tickId = setInterval(tick, 250);
 
-  async function speak(id, { clear = false } = {}) {
+  // `contact`: the line goes through the contact like a chapter's, inside
+  // the lab too (Kontakten).
+  async function speak(id, { clear = false, contact = false } = {}) {
     if (finished) return;
     const buf = await lib.buffer(id);
     if (!buf) { log(`replik saknas: ${id}`); return; }
@@ -313,11 +342,11 @@ async function start() {
       log(`ljud: kontexten var pausad (${mixer.ctx.state})`);
     }
     const at = pendingVoiceAt; pendingVoiceAt = null;
-    // The lab shows the station instead, and Vega is always clear there:
-    // contact is not what is being tried.
+    // The lab shows the station instead, and Vega is clear there unless a
+    // station asks for the contact: elsewhere it is not what is tried.
     if (!def.lab) $('scene').textContent = def.scenes[id.slice(0, 2)] || id;
     log(`▶ ${id}`);
-    const why = await mixer.playVoice(buf, { clear: clear || !!def.lab, at });
+    const why = await mixer.playVoice(buf, { clear: contact ? false : clear || !!def.lab, at });
     if (why === 'timeout') log(`ljud: ${id} nådde aldrig slutet, går vidare`);
   }
 
@@ -368,9 +397,13 @@ async function start() {
   try {
     if (def.lab) {
       // A single station is a try-out, not a walk with her: no memory lines.
-      const opening = ONLY_STATION ? [] : memory.opening(Date.now());
-      const closing = () => ONLY_STATION ? [] : memory.closing(world, new Date());
-      await runLab(ctx, def.lab, { only: ONLY_STATION, stations: chosen || resume, opening, closing });
+      // Nor a test walk (runLab leaves them out).
+      if (def.prov) await runLab(ctx, null, { prov: PROV_ID });
+      else {
+        const opening = ONLY_STATION ? [] : memory.opening(Date.now());
+        const closing = () => ONLY_STATION ? [] : memory.closing(world, new Date());
+        await runLab(ctx, def.lab, { only: ONLY_STATION, stations: chosen || resume, opening, closing });
+      }
     }
     else await def.run(ctx);
   } catch (err) {
@@ -560,11 +593,77 @@ function checkGps(fresh = true) {
   };
   if (fresh) { note.textContent = 'Letar efter gps…'; note.hidden = false; }
   navigator.geolocation.getCurrentPosition(
-    pos => answer(`Gps:en hittar dig, ±${Math.round(pos.coords.accuracy)} m.`,
-      `position ±${Math.round(pos.coords.accuracy)} m`, null),
+    pos => {
+      answer(`Gps:en hittar dig, ±${Math.round(pos.coords.accuracy)} m.`,
+        `position ±${Math.round(pos.coords.accuracy)} m`, null);
+      if (id === gpsCheckId) checkMap(pos.coords);
+    },
     err => answer(GPS_ADVICE[err.code] || `Gps:en svarar inte: ${err.message}`,
       `fel ${err.code}, ${err.message}`, GPS_RECHECK[err.code] || 0),
     { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
+}
+
+// ---------- the test walk's own checks ----------
+// A test walk is a couple of minutes, and one that needs the motion sensor
+// or the map is wasted if either is not there. So the start screen looks
+// first, says what it found in words, and the walk's log repeats it.
+//
+// The sensor: a second and a half of listening. Android hands it out
+// without asking; it answers about sixty times a second while the screen
+// is lit, and not at all in a page out of sight.
+const sensorCheck = { status: 'inte kollad' };
+function checkSensor() {
+  if (!TEST || !TEST.sensor || SIM) return;
+  const note = $('sensor-note');
+  note.hidden = false;
+  if (typeof DeviceMotionEvent === 'undefined') {
+    sensorCheck.status = 'stöds inte';
+    note.textContent = 'Telefonen har ingen rörelsesensor som sidan når. Testet behöver den.';
+    return;
+  }
+  note.textContent = 'Lyssnar efter rörelsesensorn…';
+  let n = 0;
+  const on = e => { const a = e.accelerationIncludingGravity; if (a && a.x != null) n++; };
+  window.addEventListener('devicemotion', on);
+  setTimeout(() => {
+    window.removeEventListener('devicemotion', on);
+    sensorCheck.status = n >= 20 ? `svarar, ${n} värden på 1,5 s` : n ? `svarar glest, ${n} värden på 1,5 s` : 'svarar inte';
+    note.textContent = n >= 20 ? 'Rörelsesensorn svarar.'
+      : 'Rörelsesensorn svarar inte. Testet behöver den: ha skärmen tänd och sidan öppen i Chrome. Tryck här för att kolla igen.';
+  }, 1500);
+}
+
+// The map: asked once the start screen's GPS check has a position, for the
+// walks that go to a place. Ljudkompassen's needs a place 60-350 m away
+// (realTarget in lab.js); Hitta makes one up when the map has none.
+const mapCheck = { status: 'inte kollad', busy: false, at: -Infinity };
+const MAP_WORDS = { vatten: 'vatten', skog: 'skog', berg: 'en höjd', bro: 'en bro', kyrkogard: 'en kyrkogård' };
+function checkMap(coords) {
+  if (!TEST || !TEST.map || SIM || mapCheck.busy || performance.now() - mapCheck.at < 60000) return;
+  mapCheck.busy = true;
+  const note = $('map-note');
+  note.hidden = false;
+  note.textContent = 'Frågar kartan vad som finns här…';
+  const here = { latitude: coords.latitude, longitude: coords.longitude };
+  fetchLandmarks(coords.latitude, coords.longitude).then(found => {
+    const nearby = nearestByName(found, { lat: coords.latitude, lon: coords.longitude });
+    const { target, seen } = realTarget(nearby, here);
+    // An answer holds for a minute; a failure may be asked again at once.
+    mapCheck.at = performance.now();
+    mapCheck.status = seen.length ? `${seen.join(', ')}${target ? `, mål ${MAP_WORDS[target.kind]} ${Math.round(target.dist)} m` : ', inget mål 60-350 m bort'}` : 'inget inom 400 m';
+    if (PROV_ID === 'kompass') {
+      note.textContent = target
+        ? `Kartan hittar ${seen.join(', ')}. Tonen leder till ${MAP_WORDS[target.kind]}, ${Math.round(target.dist)} m bort.`
+        : seen.length
+          ? `Kartan hittar ${seen.join(', ')}, men inget mellan 60 och 350 m härifrån. Gå en bit närmare, eller välj ett annat test.`
+          : 'Kartan hittar inget här att gå till. Välj ett annat ställe, eller ett annat test.';
+    } else {
+      note.textContent = seen.length ? `Kartan hittar ${seen.join(', ')}.` : 'Kartan hittar inget här, så hon väljer en plats en bit bort.';
+    }
+  }).catch(err => {
+    mapCheck.status = `svarar inte (${err.message})`;
+    note.textContent = 'Kartan svarar inte just nu. Tryck här för att fråga igen.';
+  }).finally(() => { mapCheck.busy = false; });
 }
 
 // ---------- vibration ----------
@@ -622,7 +721,7 @@ const vibraStatus = () => {
 // The stations the walk would have as the start screen stands: the link's,
 // the rest of a round under way, or the whole lab.
 function walkStations(def) {
-  if (!def.lab || ONLY_STATION || chosenFor(def)) return labStations(def);
+  if (def.prov || !def.lab || ONLY_STATION || chosenFor(def)) return labStations(def);
   const rest = resumeStations && document.querySelector('input[name="resume"]:checked')?.value === 'rest';
   return rest ? resumeStations : LABS[def.lab];
 }
@@ -742,11 +841,19 @@ function recordFix(t, c) {
 
 // A file, not the clipboard: an hour of samples is a megabyte, and it goes
 // to Demi as an attachment rather than pasted text.
+//
+// A test walk's file is the whole answer: its name says which test, and it
+// carries the end screen's answers and verdicts, so the walker only has to
+// put it in the chat (Henric, 2026-10-07: as little handwork as can be).
 function saveRecording() {
   const stamp = new Date().toISOString().slice(0, 16).replace('T', '-').replace(':', '');
   const body = JSON.stringify({
     kind: 'glimt-sensor', version: 1, build: $('build').textContent, browser: BROWSER,
     chapter: chapterNo, station: ONLY_STATION, saved: new Date().toISOString(),
+    prov: PROV_ID && {
+      id: PROV_ID, title: TEST.title, appVersion: APP_VERSION, answers: provAnswers,
+      results: labResults.map(r => ({ ...r, rating: provRatings[r.id] || null })),
+    },
     units: {
       t: 'ms since start', m: 'centi m/s², |acceleration including gravity|', fixes: '[t, north m, east m, accuracy m, speed m/s]',
       vibrationCheck: "the start screen's try-out: t in ms from the call to vibrate, m as above",
@@ -756,12 +863,12 @@ function saveRecording() {
   });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([body], { type: 'application/json' }));
-  a.download = `glimt-sensor-${stamp}.json`;
+  a.download = PROV_ID ? `glimt-prov-${PROV_ID}-${stamp}.json` : `glimt-sensor-${stamp}.json`;
   document.body.appendChild(a);
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 10000);
-  $('save-btn').textContent = 'Sparad i Nedladdningar';
+  $('save-btn').textContent = PROV_ID ? 'Sparad i Nedladdningar. Lägg filen i chatten med Demi.' : 'Sparad i Nedladdningar';
 }
 
 function startMotion() {
@@ -773,6 +880,8 @@ function startMotion() {
 function startSim() {
   // The slider's speed as footsteps too, so ?sim exercises the step path.
   motionSimId = setInterval(() => {
+    // "sensorn tyst" in the sim box: as when the screen locks.
+    if ($('sim-sensor-off').checked) return;
     const t = now();
     const m = simulatedMagnitude(t, parseFloat($('sim-speed').value));
     record(t, m);
@@ -786,7 +895,13 @@ function startSim() {
   $('sim-left').addEventListener('click', () => { heading -= Math.PI / 2; log('sim: vänster'); });
   $('sim-right').addEventListener('click', () => { heading += Math.PI / 2; log('sim: höger'); });
   // One sharp sample between the simulated steps. Click twice for a double.
-  $('sim-knock').addEventListener('click', () => { record(now(), 9.81 + 9); walk.motion(now(), 9.81 + 9); });
+  // Walking it is as hard as Henric's recorded walking knocks (18-60): the
+  // walking bar is 15, and a standing knock's 9 never cleared it.
+  $('sim-knock').addEventListener('click', () => {
+    const m = 9.81 + (walk.state().moving ? 40 : 9);
+    record(now(), m);
+    walk.motion(now(), m);
+  });
   let first = true;
   simId = setInterval(() => {
     const v = parseFloat(speedEl.value);
@@ -820,7 +935,9 @@ function finish() {
   if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
   $('walking').hidden = true;
   $('done').hidden = false;
-  if (memory) {
+  // A test walk is not one of her walks: it claims no squares and is not
+  // the last walk her memory lines count from.
+  if (memory && !TEST) {
     if (now() >= MEMORY_MIN_WALK) {
       memory.endWalk(Date.now(), chapterNo);
       log(`minne: ${memory.fresh.size} nya rutor, ${memory.known.size} totalt`);
@@ -845,7 +962,9 @@ function finish() {
     showLabResults();
   }
   $('final-log').textContent = logLines.join('\n');
-  $('save-btn').hidden = rec.t.length === 0;
+  // A test walk's file carries its answers, so it is offered without a
+  // sensor too.
+  $('save-btn').hidden = rec.t.length === 0 && !PROV_ID;
 }
 
 // ---------- her world ----------
@@ -897,13 +1016,56 @@ function saveRating(entry) {
   } catch (_) {}
 }
 
+// The test walk's questions on the end screen: what only the walker knows.
+// Each answer goes in the log and in the saved file.
+const provAnswers = {};
+const provRatings = {};
+function showProvAsks() {
+  const box = $('prov-asks');
+  box.textContent = '';
+  box.hidden = !TEST || !TEST.asks || !TEST.asks.length;
+  if (box.hidden) return;
+  for (const q of TEST.asks) {
+    const group = document.createElement('div');
+    group.className = 'prov-ask';
+    const label = document.createElement('p');
+    label.className = 'prov-ask-text';
+    label.textContent = q.text;
+    const row = document.createElement('div');
+    row.className = 'lab-rate';
+    row.setAttribute('role', 'group');
+    row.setAttribute('aria-label', q.text);
+    for (const option of q.options) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = option;
+      b.setAttribute('aria-pressed', 'false');
+      b.addEventListener('click', () => {
+        if (provAnswers[q.id] === option) return;
+        const changed = q.id in provAnswers;
+        provAnswers[q.id] = option;
+        row.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+        log(`svar: ${q.text}: ${option}${changed ? ' (ändrat)' : ''}`);
+        $('final-log').textContent = logLines.join('\n');
+      });
+      row.appendChild(b);
+    }
+    group.append(label, row);
+    box.appendChild(group);
+  }
+}
+
 function showLabResults() {
   const box = $('lab-results');
   const list = $('lab-list');
   list.textContent = '';
-  if (!labResults.length) { box.hidden = true; return; }
+  showProvAsks();
+  if (!labResults.length && !TEST) { box.hidden = true; return; }
   box.hidden = false;
-  $('end-word').textContent = 'Vilka banor vill du göra igen?';
+  $('end-word').textContent = TEST ? `${TEST.title}: några frågor till dig` : 'Vilka banor vill du göra igen?';
+  $('lab-hint').textContent = TEST
+    ? 'Svara på frågorna, tryck Spara filen till Demi och lägg filen i chatten. Mer behövs inte.'
+    : 'Ditt svar hamnar i loggen. Kopiera den och skicka till Demi, och spara gärna sensordatan och lägg filen i chatten.';
   for (const r of labResults) {
     const li = document.createElement('li');
     const head = document.createElement('div');
@@ -931,7 +1093,8 @@ function showLabResults() {
         chosen = value;
         rate.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
         log(`betyg: ${TITLES[r.id]} ${value}${changed ? ' (ändrat)' : ''}`);
-        saveRating({ at: new Date().toISOString(), station: r.id, rating: value, outcome: r.outcome, walk: walkId, only: !!ONLY_STATION, picked: !!pickedWalk });
+        provRatings[r.id] = value;
+        saveRating({ at: new Date().toISOString(), station: r.id, rating: value, outcome: r.outcome, walk: walkId, only: !!ONLY_STATION, picked: !!pickedWalk, prov: PROV_ID });
         $('final-log').textContent = logLines.join('\n');
       });
       rate.appendChild(b);
@@ -1005,11 +1168,25 @@ function selectChapter(n) {
   const def = CHAPTERS[chapterNo];
   $('subtitle').textContent = def.subtitle;
   $('variant-box').hidden = !!def.lab;
+  // A test walk is the link's one choice: nothing else to pick.
+  $('chapter-box').hidden = !!def.prov;
+  showProvBox(def);
   // The round's choice first: the try-out is offered for the stations it gives.
   showResume(def);
   showVibra();
-  document.title = def.lab ? `Glimt, labb ${def.lab}` : `Glimt, kapitel ${chapterNo}`;
+  document.title = def.prov ? `Glimt, test: ${def.prov.title}` : def.lab ? `Glimt, labb ${def.lab}` : `Glimt, kapitel ${chapterNo}`;
   preload();
+}
+
+// The test walk's card: what it is for and what to do, and the version, so a
+// phone still on an old one shows it before the walk.
+function showProvBox(def) {
+  $('prov-box').hidden = !def.prov;
+  if (!def.prov) return;
+  $('prov-title').textContent = def.prov.title;
+  $('prov-question').textContent = def.prov.question;
+  $('prov-todo').textContent = def.prov.todo;
+  $('prov-version').textContent = `Version ${APP_VERSION}`;
 }
 
 // The rated stations of the lab's round under way, and where it goes on.
@@ -1038,10 +1215,11 @@ function showResume(def) {
   if (params.has('kapitel')) ch = params.get('kapitel');
   // A single station belongs to whichever lab has it.
   if (ONLY_STATION) ch = LABS[2].includes(ONLY_STATION) ? 'labb2' : 'labb1';
-  if (CHOSEN) ch = `labb${CHOSEN.lab}`;
-  // An unreadable ?banor= still meant a lab, and only a lab's start screen
-  // has room to say the link was not understood.
-  else if (BAD_CHOICE !== null) ch = `labb${RESUMABLE[0]}`;
+  if (TEST) ch = 'prov';
+  else if (CHOSEN) ch = `labb${CHOSEN.lab}`;
+  // An unreadable ?banor= or ?prov= still meant a lab, and only a lab's
+  // start screen has room to say the link was not understood.
+  else if (BAD_CHOICE !== null || BAD_PROV !== null) ch = `labb${RESUMABLE[0]}`;
   document.querySelectorAll('input[name="chapter"]').forEach(el => {
     el.addEventListener('change', () => selectChapter(el.value));
   });
@@ -1053,8 +1231,9 @@ function showResume(def) {
 
   try {
     const m = new Memory(localStorage);
-    showWorld('world-start', m, m.lastWalkCells(), 'start');
+    if (!TEST) showWorld('world-start', m, m.lastWalkCells(), 'start');
   } catch (_) {}
+  if (TEST) $('save-btn').textContent = 'Spara filen till Demi';
 
   $('start-btn').addEventListener('click', start);
   if (ANDROID_FIREFOX) {
@@ -1073,6 +1252,9 @@ function showResume(def) {
     showVibra();
   });
   $('gps-note').addEventListener('click', () => checkGps());
+  $('sensor-note').addEventListener('click', checkSensor);
+  $('map-note').addEventListener('click', () => { mapCheck.at = -Infinity; checkGps(); });
+  checkSensor();
   // Allowed in the browser's settings, or a prompt answered: ask again.
   if (navigator.permissions) navigator.permissions.query({ name: 'geolocation' })
     .then(st => st.addEventListener('change', () => checkGps())).catch(() => {});

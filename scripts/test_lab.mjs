@@ -13,12 +13,14 @@
 //   RUNS=10 VERBOSE=1 node scripts/test_lab.mjs 2
 //   node scripts/test_lab.mjs 1 abort         # press stop inside every station
 //   DETAILS=vagval node scripts/test_lab.mjs 2 fail-drift   # every run's detail
+//   node scripts/test_lab.mjs prov            # the test walks (?prov=) only
+//   node scripts/test_lab.mjs prov riktning   # one of them
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { Walk, Waiter, cadencePace, bearing } from '../glimt/engine.js';
-import { runLab, labHelpers, LABS, ratedThisRound, chosenStations } from '../glimt/lab.js';
+import { runLab, labHelpers, LABS, PROV, ratedThisRound, chosenStations, denseGps, realTarget } from '../glimt/lab.js';
 import { Synth } from '../glimt/synth.js';
 import { makeClock, FakeAudioContext } from './fake_audio.mjs';
 
@@ -68,6 +70,18 @@ const FIELD_GPS = {
 // field phone; the point is that the error is correlated (review 2026-09-25).
 const DRIFT_GPS = { ...FIELD_GPS, jitter: 5, drift: { sigma: +(process.env.DRIFT_SIGMA || 8), tau: +(process.env.DRIFT_TAU || 30) } };
 
+// Chrome on the field phone: two fixes a second at ±3-6 m (2026-10-06).
+// One a second here, the sim's clock. Measured on that walk's straight
+// stretches: 0,5-0,8 m sideways around a straight line over 20-30 s, and the
+// fast reading's heading within 3 degrees (sd). This jitter and drift give
+// about twice that, on purpose: a walk under trees or between tall houses
+// is worse than his street. The test walks' direction reading is judged on
+// it, straight walks included (CHROME_SIGMA=4 for much worse).
+const CHROME_GPS = {
+  every: 1, jitter: 1.5, accuracy: 5, drift: { sigma: +(process.env.CHROME_SIGMA || 2), tau: 30 },
+  phone: v => v + (v ? (Math.random() - 0.5) * 0.2 : 0),
+};
+
 const PROFILES = {
   pass: { kind: 'pass', gps: GOOD_GPS, steps: true },
   fail: { kind: 'fail', gps: GOOD_GPS, steps: true },
@@ -95,6 +109,19 @@ const PROFILES = {
     kind: 'pass', gps: GOOD_GPS, steps: true,
     sensorOff: { 1: { from: 'ja-intro', until: 'sensor-tyst', after: 8 }, 2: { from: 'morse-intro', until: 'sensor-tyst', after: 8 } },
   },
+  'pass-chrome': { kind: 'pass', gps: CHROME_GPS, steps: true, provOnly: true },
+  'fail-chrome': { kind: 'fail', gps: CHROME_GPS, steps: true, provOnly: true },
+  // Knacket gående: the phone taken out and put back bumps twice, as hard
+  // as a knock standing. That must count as a double, or the walk cannot
+  // tell Henric whether a jolt reads as one.
+  jolt: { kind: 'pass', gps: GOOD_GPS, steps: true, jolt: true, provOnly: true },
+  // Gå och spring: runs at the word but falls back to a walk after six
+  // seconds, both times. The switch is read; the run that did not last must
+  // fail it all the same.
+  'brief-run': { kind: 'pass', gps: GOOD_GPS, steps: true, briefRun: true, provOnly: true },
+  // A test walk whose sensor goes quiet in its first station and comes back
+  // when she says so: she must say it within seconds.
+  'screen-prov': { kind: 'pass', gps: GOOD_GPS, steps: true, sensorOffProv: true, provOnly: true },
   // The sensor dies inside a knock station, after its start check passed:
   // Knacket as she asks for the first knock, Hon knackar after a round it
   // heard (review, 2026-09-28).
@@ -167,10 +194,14 @@ function makeWalker(kind, env) {
 
   w.onLine = (id, t) => {
     const off = env.sensorOff;
-    if (off && id === off.from) w.sensorOff = true;
-    if (off && id === off.until && w.sensorOff) at(t + (off.after || 0), () => { w.sensorOff = false; });
+    if (off && id === off.from) { w.sensorOff = true; env.note('sensor off'); }
+    if (off && id === off.until && w.sensorOff) at(t + (off.after || 0), () => { w.sensorOff = false; env.note('sensor on'); });
     if (id.startsWith('hitta-intro') || id === 'kompass-intro') w.steer = pass ? 1 : -1;
     if (['hitta-framme', 'hitta-tid', 'kompass-framme', 'kompass-tid'].includes(id)) w.steer = 0;
+    // Sensorvakten: the pass walker locks the screen as asked and unlocks
+    // when she says the steps are gone.
+    if (pass && id === 'vakten-intro') at(t + 2, () => { w.sensorOff = true; w.locked = true; env.note('sensor off'); });
+    if (id === 'sensor-tyst' && w.locked) at(t + 4, () => { w.sensorOff = false; w.locked = false; env.note('sensor on'); });
     if (!pass) {
       // The fail walker walks on through everything. Where a station has a
       // second way to fail it does that instead: uneven steps in Stämma
@@ -206,7 +237,20 @@ function makeWalker(kind, env) {
       case 'spoket-intro': speedAt(t + 0.5, w.base * 1.3); break;
       case 'spoket-klarade': case 'spoket-forbi': goAt(t + 0.5); break;
       case 'vandom-nu': case 'vandom-igen': at(t + 1.5, () => { w.heading += Math.PI; }); break;
-      case 'vagval-intro': at(t + 12, () => { w.heading += Math.PI / 2; }); break;
+      // Right, or left when the run says so (the test walk asks for left).
+      case 'vagval-intro': at(t + 12, () => { w.heading += env.left ? -Math.PI / 2 : Math.PI / 2; }); break;
+      // Kontakten: two stops of 28 s, the walk between long enough for her
+      // to come all the way back.
+      case 'kontakt-intro': stopAt(t + 10); goAt(t + 38); stopAt(t + 80); goAt(t + 108); break;
+      // Knacket gående: his recorded walking double, without a stop.
+      case 'knackgang-nu': knock(t + 1.5, 40); knock(t + 1.8, 20); break;
+      // Gå och spring: a jog, 10,8 km/h, a second after each word.
+      case 'vaxla-spring': case 'vaxla-spring-igen': speedAt(t + 1, 3.0); if (env.briefRun) goAt(t + 7); break;
+      case 'vaxla-ga': case 'vaxla-ga-igen': goAt(t + 1); break;
+      case 'knackgang-ficka':
+        stopAt(t + 1); goAt(t + 8);
+        if (env.jolt) { knock(t + 3, 8); knock(t + 3.4, 8); }
+        break;
       case 'morse-intro': case 'morse-igen':
         stopAt(t + 1); goAt(t + 7); stopAt(t + 13); goAt(t + 21); break;
       case 'vibra-intro': stopAt(t + 0.5); break;
@@ -259,8 +303,8 @@ function makeWalker(kind, env) {
   return w;
 }
 
-function simulate(labNo, name, run, abortIn = null, { stations = null, noBuzz = null } = {}) {
-  reseed(labNo, name, run, abortIn ? `${abortIn.id}@${abortIn.after}` : '', stations ? stations.join(',') : '');
+function simulate(labNo, name, run, abortIn = null, { stations = null, noBuzz = null, prov = null } = {}) {
+  reseed(labNo, name, run, abortIn ? `${abortIn.id}@${abortIn.after}` : '', stations ? stations.join(',') : '', prov || '');
   const profile = PROFILES[name];
   const walk = new Walk();
   const waiter = new Waiter();
@@ -278,6 +322,16 @@ function simulate(labNo, name, run, abortIn = null, { stations = null, noBuzz = 
     world.landmark = 'vatten';
     world.landmarkCoord = { lat, lon: lon + 250 / (111320 * Math.cos(lat * Math.PI / 180)) };
   }
+  // The test walks' Ljudkompassen walks to what the map found: a bridge
+  // 180 m east and water 120 m north, so the bridge wins (realTarget).
+  if (prov) {
+    world.landmarkAnswered = 'karta';
+    world.sources = { landmark: 'karta' };
+    world.nearby = {
+      bro: { lat, lon: lon + 180 / (111320 * Math.cos(lat * Math.PI / 180)), dist: 180 },
+      vatten: { lat: lat + 120 / 111320, lon, dist: 120 },
+    };
+  }
 
   // The walker hears the beat: its tempo is read off the last two beats
   // the real Synth scheduled, not off what the station asked for.
@@ -289,7 +343,13 @@ function simulate(labNo, name, run, abortIn = null, { stations = null, noBuzz = 
     const b = h && h.beats;
     return b && b.length >= 2 ? Math.round(60 / (b[b.length - 1] - b[b.length - 2])) : null;
   };
-  const walker = makeWalker(profile.kind, { bpm, target: () => target, sensorOff: profile.sensorOff && profile.sensorOff[labNo] });
+  const sensorOff = profile.sensorOffProv && prov
+    ? { from: { prov: 'prov-intro' }.prov, until: 'sensor-tyst', after: 4 }
+    : profile.sensorOff && profile.sensorOff[labNo];
+  const walker = makeWalker(profile.kind, {
+    bpm, target: () => target, sensorOff, jolt: !!profile.jolt, briefRun: !!profile.briefRun, left: run % 2 === 0,
+    note: msg => log.push(`${fmt(t)}  ~ ${msg}`),
+  });
   let station = null, stationAt = 0, aborted = null;
   let pressedAt = null, startedBefore = 0, liveAtPress = 0;
   const trace = [];
@@ -329,7 +389,7 @@ function simulate(labNo, name, run, abortIn = null, { stations = null, noBuzz = 
     setTarget: c => { target = c; walk.setTarget(c); },
   };
 
-  const done = runLab(ctx, labNo, { stations }).then(() => { ended = true; }, err => { log.push(`ERROR ${err.stack}`); ended = true; });
+  const done = runLab(ctx, labNo, { stations, prov }).then(() => { ended = true; }, err => { log.push(`ERROR ${err.stack}`); ended = true; });
 
   return (async () => {
     while (!ended && t < 45 * 60) {
@@ -531,14 +591,157 @@ async function resumeChecks() {
   return failed;
 }
 
+// ---------- the test walks (?prov=, 2026-10-07) ----------
+// Each walk is run by walkers who do as asked and walkers who do not, like
+// the labs, and its log must say what Henric's walk is for without anyone
+// reading the sensor file: the lines named in PROV_SAYS, per walk, have to
+// be there. Riktning is also walked on dense GPS (Chrome) both ways, and
+// held to how fast it reads a turn there.
+const SENSOR_PROV = Object.keys(PROV).filter(id => PROV[id].sensor);
+const DIRECTION = ['vagval', 'vandom'];
+const PROV_EXPECT = {
+  pass: () => 'klarade',
+  fail: () => 'missade',
+  // Without a sensor the walks that need one step aside; the rest run on GPS.
+  'gps-only': (id, prov) => ['frys', 'knackgang', 'takten', 'tassa', 'vakten'].includes(id) ? 'hoppade' : null,
+  'pass-chrome': id => DIRECTION.includes(id) ? { want: 'klarade', rate: 0.9 } : null,
+  'fail-chrome': id => DIRECTION.includes(id) ? { want: 'missade', rate: 0.95 } : null,
+  jolt: id => id === 'knackgang' ? 'missade' : null,
+  'brief-run': id => id === 'vaxla' ? 'missade' : null,
+  'screen-prov': () => null,
+  abort: () => null,
+};
+const PROV_PROFILES = {
+  pass: Object.keys(PROV), fail: Object.keys(PROV), 'gps-only': [...SENSOR_PROV, 'vaxla'],
+  'pass-chrome': ['riktning'], 'fail-chrome': ['riktning'], jolt: ['knack'], 'brief-run': ['vaxla'], 'screen-prov': Object.keys(PROV), abort: Object.keys(PROV),
+};
+// What a pass walk's results and log must say, so the walk answers its
+// question from the log alone.
+const PROV_SAYS = {
+  frys: [/stopp läst [\d,]+ s efter ordet \(steg\): du stannade .*telefonen märkte det [\d,]+ s efter sista steget/, /frys 2: /],
+  ja: [/ja-q1: ja läst [\d,]+ s efter ordet \(steg\): du stannade/, /ja\/ja\/nej \(rätt: ja\/ja\/nej\)/],
+  kontakt: [/stopp 1: stod [\d,]+ s \(still läst [\d,]+ s efter sista steget\), dov under 0,5 efter [\d,]+ s, under 0,2 efter/, /stopp 2: .*över 0,8 efter [\d,]+ s/],
+  knack: [/knack gående 3: hört \(\d+ utslag/, /gående 3 av 3 hörda .*upp ur fickan 0 dubbelknack/],
+  riktning: [/vägval: (tät|gles) gps \(\d+ positioner på 20 s/, /läst [\d,]+ s efter frågan, [\d,]+ s efter svängen i spåret/, /[\d,]+ s efter vändpunkten i spåret/],
+  kompass: [/kompass: mot en bro \d+ m bort, framme inom 25 m \(kartan: /, /en bro \d+ m bort, framme efter/],
+  takten: [/dina steg \d+\/\d+\/\d+ per minut, gps /],
+  hitta: [/framme efter/],
+  tassa: [/före: \d+ steg, styrka/],
+  vaxla: [/växla 2 \(spring\): löpning läst [\d,]+ s efter ordet, annat band \d+ % .*\d+ steg\/min, gps [\d,]+ km\/h, stegen avgjorde/,
+    /växla 3 \(gå\): gång läst [\d,]+ s efter ordet/, /Flykten och Spöket räknar från gångfarten [\d,]+ km\/h/, /Gå och spring gicks blandat \(löpning \d+ %/],
+  vakten: [/tyst (redan under ordet|[\d,]+ s efter ordet), hon bad om att få säga till [\d,]+ s (senare|efter ordet), sensorn tillbaka efter/],
+};
+
+async function provChecks(only) {
+  let failed = 0;
+  const check = (ok, what) => { console.log(`${ok ? 'ok  ' : 'FAIL'}  ${what}`); if (!ok) failed++; };
+
+  // The pure parts first.
+  const fixes = (n, acc, step = 1) => Array.from({ length: n }, (_, i) => ({ t: 100 - i * step, latitude: 0, longitude: 0, accuracy: acc }));
+  check(denseGps(fixes(20, 5), 100), 'twenty fixes in twenty seconds at ±5 m is dense');
+  check(!denseGps(fixes(14, 5), 100), 'fourteen is not');
+  check(!denseGps(fixes(20, 20), 100), 'twenty at ±20 m is not');
+  check(!denseGps(fixes(4, 20, 6), 100), "Firefox's one every six seconds is not");
+  check(!denseGps(fixes(20, null), 100), 'fixes without an accuracy are not');
+  const here = { latitude: 59.38, longitude: 13.5 };
+  const east = m => 13.5 + m / (111320 * Math.cos(59.38 * Math.PI / 180));
+  const at = (m, lat = 59.38) => ({ lat, lon: east(m) });
+  const pick = nearby => realTarget(nearby, here).target?.kind ?? null;
+  check(pick({ vatten: at(120), bro: at(200) }) === 'bro', 'a bridge 200 m away goes before water 120 m away');
+  check(pick({ vatten: at(120), bro: at(400) }) === 'vatten', 'water, when the bridge is out of reach');
+  check(pick({ bro: at(40) }) === null, 'nothing under 60 m: the walk would be over before it began');
+  check(pick({ skog: { lat: null, lon: null } }) === null, 'a kind without a position is not a place to walk to');
+  const told = realTarget({ skog: at(500), bro: at(90) }, here).seen.join(', ');
+  check(/^skog \d{3} m, en bro \d{2} m$/.test(told), `and what the map found is told, near and far (${told})`);
+
+  for (const [name, ids] of Object.entries(PROV_PROFILES)) {
+    const profile = name === 'abort' ? PROFILES.abort : PROFILES[name];
+    for (const prov of ids) {
+      if (only && only !== prov) continue;
+      const stations = PROV[prov].stations;
+      const expect = PROV_EXPECT[name];
+      const byRate = stations.some(id => { const w = expect(id); return !!w && typeof w === 'object'; });
+      const runs = profile.abort ? stations.flatMap(id => profile.abort.map(after => ({ id, after })))
+        : Array.from({ length: byRate ? RATE_RUNS : Math.min(RUNS, 4) }, () => null);
+      const tally = {}, problems = [], lags = [], took = [];
+      let firstLog = null;
+      for (let run = 0; run < runs.length; run++) {
+        const abortIn = runs[run];
+        const r = await simulate(null, name, run, abortIn, { prov });
+        if (!firstLog) firstLog = r.log;
+        const where = abortIn ? `stop ${abortIn.after} s into ${abortIn.id}` : `run ${run}`;
+        if (r.sound.playing || r.sound.intervals || r.sound.started || r.sound.raised) problems.push(`${where}: sound on after the end`);
+        if (abortIn) continue;
+        if (!r.ended) problems.push(`${where}: did not end`);
+        took.push(r.t);
+        const err = r.log.find(l => l.startsWith('ERROR'));
+        if (err) problems.push(`${where}: ${err}`);
+        for (const x of r.results) {
+          if (x.detail.startsWith('fel:')) problems.push(`${where}: ${x.id} threw: ${x.detail}`);
+          (tally[x.id] = tally[x.id] || []).push(x.outcome);
+          const want = expect(x.id, prov);
+          if (typeof want === 'string' && x.outcome !== want) problems.push(`${where}: ${x.id} ${x.outcome}, wanted ${want} (${x.detail})`);
+          const ran = x.id === 'vaxla' && name === 'pass' && /löpning läst ([\d,]+) s \/ ([\d,]+) s/.exec(x.detail);
+          if (ran && [ran[1], ran[2]].some(v => parseFloat(v.replace(',', '.')) < 1)) problems.push(`${where}: a run read before the walker started running (${x.detail})`);
+          const lag = x.id === 'vagval' && /([\d,]+) s efter svängen i spåret/.exec(x.detail);
+          if (lag) lags.push(parseFloat(lag[1].replace(',', '.')));
+          if (process.env.DETAILS === x.id) console.log(`    ${where}: ${x.outcome}. ${x.detail}`);
+        }
+        const missing = stations.filter(id => !r.results.some(x => x.id === id));
+        if (missing.length) problems.push(`${where}: never finished ${missing.join(', ')}`);
+        const text = r.log.join('\n');
+        if (name === 'pass') for (const re of PROV_SAYS[prov]) if (!re.test(text)) problems.push(`${where}: the log never says ${re}`);
+        // The sensor's silence, said within seconds (3 s, plus the 2 s it
+        // takes to count as silent, plus a tick).
+        const said = id => r.log.filter(l => l.endsWith(`▶ ${id}`)).map(l => parseInt(l.slice(0, 2), 10) * 60 + parseInt(l.slice(3, 5), 10));
+        const offs = r.log.filter(l => l.endsWith('~ sensor off')).map(l => parseInt(l.slice(0, 2), 10) * 60 + parseInt(l.slice(3, 5), 10));
+        if (offs.length && !said('sensor-tyst').some(w => w >= offs[0] && w <= offs[0] + 7)) {
+          problems.push(`${where}: the sensor went quiet at ${offs[0]} s and she did not say so within 7 s (${said('sensor-tyst').join(', ') || 'never'})`);
+        }
+        if (!offs.length && said('sensor-tyst').length) problems.push(`${where}: she said the sensor went quiet while it answered`);
+        if (r.ended && !r.log.some(l => l.endsWith('▶ prov-slut'))) problems.push(`${where}: no end line`);
+        if (r.log.some(l => /▶ (labb-|franvaro|nyckel|varld)/.test(l))) problems.push(`${where}: a lab's or the memory's line in a test walk`);
+      }
+      for (const id of stations) {
+        const want = expect(id, prov);
+        const outs = tally[id] || [];
+        if (want && typeof want === 'object' && outs.length) {
+          const got = outs.filter(o => o === want.want).length / outs.length;
+          if (got < want.rate) problems.push(`${id}: ${want.want} in ${Math.round(got * 100)} % of runs, wanted ${Math.round(want.rate * 100)} %`);
+        }
+      }
+      // Dense GPS is for reading a turn sooner: the slow reading took 42 s
+      // after the corner on his Chrome walk of 2026-10-06, the fast one 9,9.
+      // Here, half within thirteen seconds and none later than twenty, and
+      // every turn's corner found in the track.
+      if (name === 'pass-chrome') {
+        const sorted = [...lags].sort((a, b) => a - b);
+        const med = sorted[Math.floor(sorted.length / 2)], worst = sorted[sorted.length - 1];
+        const read = (tally.vagval || []).filter(o => o === 'klarade').length;
+        if (!lags.length || med > 13 || worst > 20) problems.push(`vagval read ${med} s after the corner (median), ${worst} s at worst`);
+        if (lags.length < read) problems.push(`the corner was found in ${lags.length} of ${read} turns read`);
+        console.log(`  vagval on dense GPS: read ${med} s after the corner (median), ${worst} s at worst, ${lags.length} turns`);
+      }
+      const summary = Object.entries(tally).map(([id, outs]) => `${id} ${Object.entries(outs.reduce((a, o) => ({ ...a, [o]: (a[o] || 0) + 1 }), {})).map(([o, n]) => `${o} ${n}/${outs.length}`).join(', ')}`).join('; ');
+      const minutes = took.length ? `${(Math.max(...took) / 60).toFixed(1)} min at most` : '';
+      console.log(`${problems.length ? 'FAIL' : 'ok  '}  prov ${prov} / ${name}: ${summary || `${runs.length} stops`} ${minutes}`);
+      if (problems.length) { failed++; console.log(`  ${problems.slice(0, 8).join('\n  ')}`); }
+      if (VERBOSE && firstLog) console.log(firstLog.join('\n'));
+    }
+  }
+  return failed;
+}
+
 async function main() {
+  if (process.argv[2] === 'prov') process.exit(await provChecks(process.argv[3]) ? 1 : 0);
   const onlyLab = process.argv[2] ? parseInt(process.argv[2], 10) : null;
   const onlyProfile = process.argv[3];
-  let failures = onlyLab || onlyProfile ? 0 : await resumeChecks();
+  let failures = onlyLab || onlyProfile ? 0 : await resumeChecks() + await provChecks();
   for (const labNo of [1, 2]) {
     if (onlyLab && onlyLab !== labNo) continue;
     for (const name of Object.keys(PROFILES)) {
       if (onlyProfile && onlyProfile !== name) continue;
+      if (PROFILES[name].provOnly) continue;
       const profile = PROFILES[name];
       const tally = {};
       const problems = [];

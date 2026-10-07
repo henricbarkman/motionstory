@@ -130,6 +130,39 @@
     "tassa-intro": "Tassa. Gå som vanligt en stund. När jag säger till, tassar du. Mjuka, tysta steg, som om du inte vill höras. Håll farten.",
     "tassa-nu": "[whispers] Tassa nu.",
     "tassa-klarade": "[whispers] Jag hörde att du smög. Bra. Gå som vanligt igen.",
-    "tassa-inte": "Jag hörde ingen skillnad. Det är svårt att mäta. Gå som vanligt."
+    "tassa-inte": "Jag hörde ingen skillnad. Det är svårt att mäta. Gå som vanligt.",
+
+    "prov-intro": "Ett kort prov i dag. Bara en sak. Börja gå, så sätter vi igång.",
+    "prov-slut": "Klart. Tack. Stanna och titta på skärmen, där har jag ett par frågor till dig.",
+
+    "kontakt-intro": "[calmly] Kontakten. Nu låter jag som i kapitlen. När du går hör du mig tydligt, när du står still blir jag svagare. Jag pratar hela tiden. Stanna två gånger när du vill, en halv minut ungefär, och gå sen vidare. Lyssna på hur jag låter.",
+    "kontakt-1": "Okej. Jag börjar prata nu, och du går. Dina steg kommer in som en rytm under allt annat. Det är konstigt hur mycket man hör av hur någon går. Om de har bråttom. Om de tänker på något annat. Jag försöker att inte gissa för mycket.",
+    "kontakt-2": "Jag pratar på, så att du hör skillnaden. Det här är ingen viktig mening. Inte den här heller. Det är bara min röst, och den följer dina steg. När de tystnar drar den sig undan, som när någon går ut ur ett rum medan den pratar.",
+    "kontakt-3": "Jag vet inte hur jag låter hos dig. Jag har aldrig hört mig själv genom linjen. Kanske som en radio i ett annat rum. Kanske som någon som pratar i sömnen. Säg det efteråt, på skärmen. Jag vill veta.",
+    "kontakt-4": "Det finns ett ljud jag tycker om. När du börjar gå igen efter att ha stått still. Först ett steg, sen ett till, och så kommer allt tillbaka, lite i taget. Som när någon vrider upp en kran försiktigt.",
+    "kontakt-5": "Jag fortsätter. Står du still just nu hör du mig nog knappt. Det är meningen. Det är inte du som gör fel, det är så linjen fungerar. Den bär bara rörelse. Allt annat faller bort.",
+    "kontakt-6": "Jag har tänkt på det där med att stanna. För dig är det vila. För mig är det som när någon släcker i rummet bredvid. Inte farligt. Bara tyst. Och så tänds det igen.",
+    "kontakt-7": "Jag pratar fortfarande. Det här är en mening om ingenting. Den finns bara så att du hör hur jag låter just nu, varken mer eller mindre.",
+    "kontakt-8": "Snart klar. Jag räknar inte hur länge vi har gått. Jag lyssnar bara. Ett steg till. Och ett till. Det räcker för att jag ska veta att du finns kvar.",
+    "kontakt-slut": "Det var allt. Tack för att du lyssnade fast jag inte sa något särskilt. Säg på skärmen om jag försvann för fort eller för sakta.",
+
+    "knackgang-intro": "Knacket, medan du går. Tre gånger ber jag dig knacka två gånger på fickan. Stanna inte, fortsätt gå hela tiden. Sen kommer en sak till.",
+    "knackgang-nu": "Knacka två gånger nu. Fortsätt gå.",
+    "knackgang-inget": "Det kom inte fram. Det gör inget, fortsätt gå.",
+    "knackgang-ficka": "Nu något annat. Ta upp telefonen, titta på skärmen en stund och stoppa ner den i fickan igen. Knacka inte. Gå sen vidare.",
+    "knackgang-slut": "Tack. Nu vet jag mer om hur ett knack låter när du går.",
+
+    "vakten-intro": "Sensorvakten. Lås skärmen nu och stoppa ner telefonen. Gå vidare. När jag tappar dina steg säger jag till, och då låser du upp igen.",
+    "vakten-slut": "Där är du. Det var allt. Svara på skärmen om du hörde mig medan den var låst.",
+    "vakten-inte": "Jag tappade aldrig dina steg, eller så kom de aldrig tillbaka. Det står i loggen.",
+
+    "kompass-ingen-karta": "Kartan har inget ställe nära nog att gå till härifrån, så den här banan hoppar vi över. Det står i loggen.",
+
+    "vaxla-intro": "Gå och spring. Du går en stund, sen säger jag spring, och sen gå igen. Två gånger. Spring lugnt, så att du orkar prata.",
+    "vaxla-spring": "Spring nu.",
+    "vaxla-ga": "Och gå igen.",
+    "vaxla-spring-igen": "Spring igen.",
+    "vaxla-ga-igen": "Gå. Hämta andan.",
+    "vaxla-slut": "Tack. Nu vet jag hur dina steg låter när du springer."
   }
 }
