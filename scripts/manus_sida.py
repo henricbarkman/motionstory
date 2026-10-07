@@ -282,7 +282,7 @@ PAGE = """<!doctype html>
 <header>
   <a class="held" href="https://www.instagram.com/held.band/"><img src="held-logo.svg" alt="HELD" width="1281" height="607"></a>
   <h1>Utkast</h1>
-  <p class="lead">De första episoderna som manus. Inget är inspelat eller byggt än, så allt går att ändra. Läs, och säg vad som skaver.</p>
+  <p class="lead">De första episoderna som manus. Läs, och säg vad som skaver. Allt går att ändra, också det som redan är inspelat.</p>
   <p class="back"><a href="index.html">Till planen och läget</a></p>
   <p class="updated">Senast ändrad __DATE__.</p>
 </header>
