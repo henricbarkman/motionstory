@@ -164,12 +164,17 @@ export async function chooseWorld(world, { lat, lon, date = new Date(), log = ()
     world.landmarkCoord = typeof saved.lat === 'number' && typeof saved.lon === 'number'
       ? { lat: saved.lat, lon: saved.lon } : null;
     world.sources.landmark = `från förra kapitlet${world.landmarkCoord ? '' : ', utan position'}`;
+    world.landmarkAnswered = 'sparat';
     log(`landmärke: ${world.landmark} (${world.sources.landmark})`);
     landmark = Promise.resolve();
   } else {
     landmark = fetchLandmarks(lat, lon).then(found => {
       const nearest = nearestByName(found, { lat, lon });
       const names = Object.keys(nearest);
+      // Every kind the map found, for a station that wants a real place to
+      // walk to (Ljudkompassen's test walk) rather than the one picked here.
+      world.nearby = nearest;
+      world.landmarkAnswered = 'karta';
       if (names.length) {
         world.landmark = pick(names);
         const c = nearest[world.landmark];
@@ -181,6 +186,7 @@ export async function chooseWorld(world, { lat, lon, date = new Date(), log = ()
       }
       log(`landmärke: ${world.landmark} (${world.sources.landmark})`);
     }).catch(err => {
+      world.landmarkAnswered = 'fel';
       world.sources.landmark = `slumpat (${err.message})`;
       log(`landmärke: ${world.landmark} slumpat (${err.message})`);
     });
@@ -196,6 +202,12 @@ export function defaultWorld(date = new Date()) {
     rain: false,
     landmark: pick(LANDMARKS),
     landmarkCoord: null,
+    // How the map lookup ended: null until it has, then 'karta' (it
+    // answered, maybe with nothing), 'fel' (no server did) or 'sparat'
+    // (not asked: the landmark came from the chapter before). `nearby` is
+    // what it found, nearest of each kind: {name: {lat, lon, dist}}.
+    landmarkAnswered: null,
+    nearby: {},
     sources: { light: 'klocka', rain: 'gissning', landmark: 'slumpat' },
   };
 }

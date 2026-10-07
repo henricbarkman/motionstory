@@ -16,7 +16,13 @@
     </header>
 
     <section id="start-screen">
-      <fieldset class="variant">
+      <section class="prov" id="prov-box" hidden>
+        <p class="prov-kicker">Testpromenad · <span id="prov-version"></span></p>
+        <h2 class="prov-title" id="prov-title"></h2>
+        <p class="prov-question" id="prov-question"></p>
+        <p class="prov-todo"><span class="prov-label">Gör så här</span> <span id="prov-todo"></span></p>
+      </section>
+      <fieldset class="variant" id="chapter-box">
         <legend>Kapitel</legend>
         <label><input type="radio" name="chapter" value="1"> 1. Det är när du går jag hör dig</label>
         <label><input type="radio" name="chapter" value="2"> 2. Stanna för ja</label>
@@ -45,6 +51,8 @@
       <p class="hint" id="load-note">Sätt på lurarna. Tryck när du står där du vill börja.</p>
       <a class="quiet" id="chrome-link" hidden>Öppna i Chrome</a>
       <p class="hint" id="gps-note" hidden></p>
+      <p class="hint" id="sensor-note" hidden></p>
+      <p class="hint" id="map-note" hidden></p>
       <section class="world" id="world-start" hidden>
         <h2 class="world-name">Hennes värld</h2>
         <canvas class="world-map" aria-label="Rutorna du har gått, norr uppåt. De ljusaste är från senaste promenaden."></canvas>
@@ -78,6 +86,7 @@
           <button id="sim-right" type="button">Höger</button>
           <button id="sim-knock" type="button">Knacka</button>
           <label><input id="sim-fog" type="checkbox"> dålig gps</label>
+          <label><input id="sim-sensor-off" type="checkbox"> sensorn tyst</label>
         </div>
       </div>
 
@@ -88,8 +97,9 @@
     <section id="done" hidden>
       <p class="end-word" id="end-word">Kom tillbaka och gå.</p>
       <div id="lab-results" class="lab-results" hidden>
+        <div id="prov-asks" class="prov-asks" hidden></div>
         <ol id="lab-list" class="lab-list"></ol>
-        <p class="hint">Ditt svar hamnar i loggen. Kopiera den och skicka till Demi, och spara gärna sensordatan och lägg filen i chatten.</p>
+        <p class="hint" id="lab-hint">Ditt svar hamnar i loggen. Kopiera den och skicka till Demi, och spara gärna sensordatan och lägg filen i chatten.</p>
       </div>
       <section class="world" id="world-end" hidden>
         <h2 class="world-name">Hennes värld</h2>

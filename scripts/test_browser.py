@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Glimt in a real browser: the start screen's vibration try-out, and Hon
-knackar walked from start to end.
+"""Glimt in a real browser: the start screen's vibration try-out, Hon
+knackar walked from start to end, and every test walk (?prov=) walked with
+?sim from its link to the file it saves.
 
 The node tests run the engine and the stations. This runs what app.js wires
 together, which nothing else does: Chromium with Chrome-on-Android's user
@@ -12,6 +13,7 @@ knock back. The motor there starts late and rings on, as a real one may.
     pip install playwright && playwright install chromium
     python3 scripts/test_browser.py                # all of it, about four minutes
     python3 scripts/test_browser.py first,resume   # some scenarios
+    python3 scripts/test_browser.py prov            # the ten test walks, about five minutes
     GLIMT_SHOTS=/tmp/shots python3 scripts/test_browser.py first   # with screenshots
 
 It serves this repo on a free local port and lets no request leave the
@@ -85,6 +87,7 @@ PHONE = """
       }
     }
     for (const k of window.__knocks) if (!k.done && now >= k.t) { k.done = true; extra += 8; }
+    if (cfg.motion === false) return;
     const e = new Event('devicemotion');
     e.accelerationIncludingGravity = { x: 0, y: 0, z: 9.81 + extra + (Math.random() - 0.5) * 0.04 };
     window.dispatchEvent(e);
@@ -130,7 +133,12 @@ def serve():
     return server, f"http://127.0.0.1:{server.server_address[1]}"
 
 
-def open_page(browser, base, ua=CHROME_UA, url="?banor=vagval,kompass,vibration", init="", answer=True, shake=1.5, lag=0, ring=0):
+# What the map answers, when a scenario asks for one: a bridge 180 m east of
+# where the sim walk starts (59.38, 13.5).
+BRIDGE = {"elements": [{"type": "way", "tags": {"bridge": "yes"}, "center": {"lat": 59.38, "lon": 13.5 + 180 / (111320 * 0.5096)}}]}
+
+
+def open_page(browser, base, ua=CHROME_UA, url="?banor=vagval,kompass,vibration", init="", answer=True, shake=1.5, lag=0, ring=0, motion=True, overpass=None):
     ctx = browser.new_context(
         user_agent=ua,
         viewport={"width": 412, "height": 915},
@@ -139,12 +147,20 @@ def open_page(browser, base, ua=CHROME_UA, url="?banor=vagval,kompass,vibration"
         geolocation={"latitude": 59.38, "longitude": 13.5},
         permissions=["geolocation"],
     )
-    ctx.route("**/*", lambda route: route.continue_() if route.request.url.startswith(base) else route.abort())
+    def route(r):
+        if r.request.url.startswith(base):
+            r.continue_()
+        elif overpass is not None and "/api/interpreter" in r.request.url:
+            r.fulfill(status=200, content_type="application/json", body=json.dumps(overpass))
+        else:
+            r.abort()
+
+    ctx.route("**/*", route)
     page = ctx.new_page()
     errors = []
     page.on("pageerror", lambda e: errors.append(str(e)))
     page.on("response", lambda r: errors.append(f"{r.status} {r.url}") if r.status >= 400 else None)
-    phone = json.dumps({"answer": answer, "shake": shake, "lag": lag, "ring": ring})
+    phone = json.dumps({"answer": answer, "shake": shake, "lag": lag, "ring": ring, "motion": motion})
     page.add_init_script(PHONE % phone + init)
     page.goto(f"{base}/glimt/{url}")
     page.wait_for_function("document.getElementById('start-btn').textContent === 'Börja gå'", timeout=30000)
@@ -421,6 +437,195 @@ def station(browser, base):
     ctx.close()
 
 
+# The test walks' walker, in the page: it reads Vega's lines off the log as
+# they start and does with the sim's controls what each test asks of the
+# body. Toward a place (Ljudkompassen, Hitta) it turns right whenever the
+# distance has grown, which gets there in the end.
+WALKER = """
+(() => {
+  const $ = id => document.getElementById(id);
+  const speed = v => { $('sim-speed').value = String(v); $('sim-speed').dispatchEvent(new Event('input')); };
+  const later = (s, fn) => setTimeout(fn, s * 1000);
+  const sensor = on => { $('sim-sensor-off').checked = !on; };
+  let steer = false, lastD = null, quietUntil = 0;
+  setInterval(() => {
+    if (!steer || !window.glimt || performance.now() < quietUntil) return;
+    const d = window.glimt.walk.state().distToTarget;
+    if (d === null) return;
+    if (lastD !== null && d > lastD + 0.5) { $('sim-right').click(); lastD = null; quietUntil = performance.now() + 6000; return; }
+    lastD = d;
+  }, 3000);
+  const walkOn = () => speed(1.4), stop = () => speed(0);
+  const toward = () => { steer = true; lastD = null; };
+  const on = {
+    'prov-intro': walkOn,
+    'frys-nu': () => later(1, stop), 'frys-klarade': walkOn, 'frys-rorde': walkOn, 'frys-sen': walkOn,
+    'ja-q1': () => later(2.5, stop), 'ja-q2-ljust': () => later(2.5, stop), 'ja-q2-morkt': () => later(2.5, stop),
+    'ja-svar-ja': () => later(1, walkOn),
+    'kontakt-1': () => { later(4, stop); later(30, walkOn); },
+    'kontakt-5': () => { later(2, stop); later(28, walkOn); },
+    'vaxla-spring': () => later(1, () => speed(3)), 'vaxla-spring-igen': () => later(1, () => speed(3)),
+    'vaxla-ga': () => later(1, walkOn), 'vaxla-ga-igen': () => later(1, walkOn),
+    'knackgang-nu': () => { later(1.2, () => $('sim-knock').click()); later(1.5, () => $('sim-knock').click()); },
+    'knackgang-ficka': () => { later(1, stop); later(8, walkOn); },
+    'vagval-intro': () => later(12, () => $('sim-left').click()),
+    'vandom-nu': () => later(2, () => $('sim-turn').click()), 'vandom-igen': () => later(2, () => $('sim-turn').click()),
+    'kompass-intro': toward, 'hitta-intro-bro': toward, 'hitta-intro-plats': toward, 'hitta-intro-vatten': toward,
+    'hitta-intro-skog': toward, 'hitta-intro-berg': toward, 'hitta-intro-kyrkogard': toward,
+    'kompass-framme': () => { steer = false; }, 'kompass-tid': () => { steer = false; },
+    'hitta-framme': () => { steer = false; }, 'hitta-tid': () => { steer = false; },
+    'vakten-intro': () => later(3, () => sensor(false)),
+    'sensor-tyst': () => later(3, () => sensor(true)),
+  };
+  const seen = new WeakSet();
+  // The init script runs before there is a document to watch.
+  const watch = () => new MutationObserver(() => {
+    for (const li of document.querySelectorAll('#log li')) {
+      if (seen.has(li)) continue;
+      seen.add(li);
+      const m = /▶ (\\S+)$/.exec(li.textContent);
+      if (m && on[m[1]]) on[m[1]]();
+    }
+  }).observe(document.documentElement, { childList: true, subtree: true });
+  if (document.documentElement) watch(); else document.addEventListener('DOMContentLoaded', watch);
+})();
+"""
+
+# What each test walk must end with in the browser. Takten and Tassa cannot
+# be walked right with a slider (a beat to follow, soft steps), so for them
+# only that they ran to an end without a fault.
+PROV_WANT = {
+    "frys": {"frys": "klarade"}, "ja": {"ja": "klarade"}, "kontakt": {"kontakt": "klarade"}, "vaxla": {"vaxla": "klarade"},
+    "knack": {"knackgang": "klarade"}, "riktning": {"vagval": "klarade", "vandom": "klarade"},
+    "kompass": {"kompass": "klarade"}, "takten": {"takten": None}, "hitta": {"hitta": "klarade"},
+    "tassa": {"tassa": None}, "vakten": {"vakten": "klarade"},
+}
+# GLIMT_PROV=frys,ja walks only those.
+PROV_IDS = [x for x in PROV_WANT if not os.environ.get("GLIMT_PROV") or x in os.environ["GLIMT_PROV"].split(",")]
+
+
+def prov(browser, base):
+    # Every test link, from the start screen to the saved file, side by side.
+    pages = []
+    for pid in PROV_IDS:
+        ctx, page, errors = open_page(browser, base, url=f"?prov={pid}&sim", init=WALKER, overpass=BRIDGE)
+        card = page.evaluate("""() => ({
+          box: !document.getElementById('prov-box').hidden,
+          chapters: !document.getElementById('chapter-box').hidden,
+          vibra: !document.getElementById('vibra-box').hidden,
+          title: document.getElementById('prov-title').textContent,
+          version: document.getElementById('prov-version').textContent,
+          question: document.getElementById('prov-question').textContent,
+          todo: document.getElementById('prov-todo').textContent,
+          sub: document.getElementById('subtitle').textContent,
+          doc: document.title,
+        })""")
+        check(card["box"] and not card["chapters"] and not card["vibra"] and card["version"] == "Version 24" and card["question"] and card["todo"],
+              f"?prov={pid}: the start screen shows its card and nothing to choose ({card['title']!r}, {card['version']!r}, {card['sub']!r})")
+        shot(page, f"prov-{pid}-start")
+        page.click("#start-btn")
+        pages.append((pid, ctx, page, errors))
+    for pid, ctx, page, errors in pages:
+        try:
+            page.wait_for_function("!document.getElementById('done').hidden", timeout=600000)
+        except PlaywrightTimeout:
+            check(False, f"?prov={pid}: never reached the end screen ({walk_log(page)[-3:]})")
+            ctx.close()
+            continue
+        log = walk_log(page)
+        check(any(f"start, prov {pid} " in line and "version 24" in line for line in log), f"?prov={pid}: the log names the test and the version")
+        check(any("▶ prov-slut" in line for line in log) and not any(re.search(r"▶ (labb-|franvaro|nyckel|varld)", line) for line in log),
+              f"?prov={pid}: her end line, and no lab or memory lines")
+        untouched = not any(line.split("  ", 1)[-1].startswith("minne:") for line in log) and page.evaluate("document.getElementById('world-end').hidden")
+        check(untouched, f"?prov={pid}: her world is left as it was")
+        results = page.evaluate("""() => [...document.querySelectorAll('#lab-list li')].map(li => ({
+          title: li.querySelector('strong').textContent,
+          outcome: li.querySelector('.lab-outcome').className.replace(/.*lab-/, ''),
+          detail: li.querySelector('.lab-detail').textContent,
+        }))""")
+        for station, want in PROV_WANT[pid].items():
+            title = TITLE[station]
+            got = next((r for r in results if r["title"] == title), None)
+            ok = got is not None and "fel:" not in got["detail"] and (want is None or got["outcome"] == want)
+            check(ok, f"?prov={pid}: {title} {got['outcome'] + ', ' + got['detail'] if got else 'has no result'}")
+        asks = page.evaluate("[...document.querySelectorAll('#prov-asks .prov-ask')].length")
+        check(asks >= 1, f"?prov={pid}: the end screen asks {asks} question(s)")
+        for b in page.query_selector_all("#prov-asks .lab-rate"):
+            b.query_selector("button").click()
+        for b in page.query_selector_all("#lab-list .lab-rate"):
+            b.query_selector("button").click()
+        shot(page, f"prov-{pid}-done")
+        label = page.evaluate("document.getElementById('save-btn').hidden ? null : document.getElementById('save-btn').textContent")
+        with page.expect_download() as dl:
+            page.click("#save-btn")
+        d = dl.value
+        body = json.loads(Path(d.path()).read_text())
+        p = body.get("prov") or {}
+        check(d.suggested_filename.startswith(f"glimt-prov-{pid}-") and d.suggested_filename.endswith(".json"), f"?prov={pid}: the file is named for the test ({d.suggested_filename})")
+        check(p.get("id") == pid and p.get("appVersion") == 24 and len(p.get("answers", {})) == asks and all(r.get("rating") == "igen" for r in p.get("results", [])) and p.get("results"),
+              f"?prov={pid}: it carries the answers and the verdicts ({json.dumps(p.get('answers'), ensure_ascii=False)})")
+        check(any(m[1].startswith("svar: ") for m in body["log"]), f"?prov={pid}: and the log in it has the answers")
+        check(label is not None and "Demi" in page.evaluate("document.getElementById('save-btn').textContent"), f"?prov={pid}: the save button is there without a sensor recording too")
+        check(not errors, f"?prov={pid}: no page errors ({errors[:3]})")
+        ctx.close()
+
+
+TITLE = {"frys": "Frys", "ja": "Stanna för ja", "kontakt": "Kontakten", "knackgang": "Knacket gående", "vagval": "Vägvalet",
+         "vandom": "Vänd om", "kompass": "Ljudkompassen", "takten": "Takten", "hitta": "Hitta", "tassa": "Tassa", "vakten": "Sensorvakten", "vaxla": "Gå och spring"}
+
+
+def provstart(browser, base):
+    # The start screen's own checks, on a phone that is not simulated.
+    ctx, page, errors = open_page(browser, base, url="?prov=frys")
+    try:
+        page.wait_for_function("document.getElementById('sensor-note').textContent.startsWith('Rörelsesensorn')", timeout=5000)
+    except PlaywrightTimeout:
+        pass
+    note = page.evaluate("document.getElementById('sensor-note').textContent")
+    check(note == "Rörelsesensorn svarar.", f"Frys, a sensor that answers: said so before the walk ({note!r})")
+    page.click("#start-btn")
+    line = wait_log(page, "sensor före start")
+    check("svarar" in line and "inte" not in line, f"and the walk logs it: {line!r}")
+    ctx.close()
+    ctx, page, errors = open_page(browser, base, url="?prov=frys", motion=False)
+    page.wait_for_timeout(2000)
+    note = page.evaluate("document.getElementById('sensor-note').textContent")
+    check(note.startswith("Rörelsesensorn svarar inte") and "Chrome" in note, f"a sensor that is silent: said so, with what to do ({note!r})")
+    ctx.close()
+    ctx, page, errors = open_page(browser, base, url="?prov=kompass", overpass=BRIDGE)
+    try:
+        page.wait_for_function("document.getElementById('map-note').textContent.startsWith('Kartan hittar')", timeout=10000)
+    except PlaywrightTimeout:
+        pass
+    note = page.evaluate("document.getElementById('map-note').textContent")
+    check("en bro 180 m" in note and "Tonen leder till en bro" in note, f"Ljudkompassen: the map's answer before the walk ({note!r})")
+    sensor = page.evaluate("document.getElementById('sensor-note').hidden")
+    check(sensor, "and no sensor check for a walk that does not need one")
+    shot(page, "prov-kompass-map")
+    page.click("#start-btn")
+    line = wait_log(page, "karta före start")
+    check("en bro 180 m" in line and "mål en bro" in line, f"the walk logs it: {line!r}")
+    ctx.close()
+    ctx, page, errors = open_page(browser, base, url="?prov=kompass")
+    try:
+        page.wait_for_function("document.getElementById('map-note').textContent.startsWith('Kartan svarar inte')", timeout=60000)
+    except PlaywrightTimeout:
+        pass
+    note = page.evaluate("document.getElementById('map-note').textContent")
+    check(note.startswith("Kartan svarar inte"), f"a map that does not answer: said so ({note!r})")
+    ctx.close()
+    # Links open in Firefox on his phone: the way to Chrome keeps the test.
+    ctx, page, errors = open_page(browser, base, ua=FIREFOX_UA, url="?prov=riktning")
+    href = page.evaluate("document.getElementById('chrome-link').hidden ? null : document.getElementById('chrome-link').getAttribute('href')")
+    check(bool(href) and href.startswith("intent://") and "?prov=riktning#Intent" in href and "package=com.android.chrome" in href, f"Firefox: Öppna i Chrome keeps ?prov= ({href})")
+    ctx.close()
+    ctx, page, errors = open_page(browser, base, url="?prov=finnsinte")
+    load = page.evaluate("document.getElementById('load-note').textContent")
+    box = page.evaluate("!document.getElementById('prov-box').hidden")
+    check("Länkens test (finnsinte) finns inte" in load and not box, f"an unknown test says so, and offers the lab ({load!r})")
+    ctx.close()
+
+
 SCENARIOS = {
     "first": first,
     "no": no,
@@ -432,6 +637,8 @@ SCENARIOS = {
     "resume": resume,
     "firefox": firefox,
     "station": station,
+    "provstart": provstart,
+    "prov": prov,
 }
 
 

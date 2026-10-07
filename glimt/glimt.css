@@ -16,6 +16,23 @@ header .subtitle { margin-bottom: 2rem; }
 .variant label { display: block; padding: 0.4rem 0; cursor: pointer; }
 .variant input { margin-right: 0.6rem; accent-color: #c8d2ff; }
 
+/* A test walk's card: which test, what it asks, what the body does. */
+.prov { text-align: left; margin: 0 0 2rem; padding: 1.2rem 1.2rem 1rem; border: 1px solid #2a2a40; border-radius: 0.6rem; }
+.prov[hidden] { display: none; }
+.prov-kicker { margin: 0 0 0.4rem; color: #707090; font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; }
+.prov-title { margin: 0 0 0.6rem; font-size: 1.4rem; font-weight: 300; color: #e6e6f0; }
+.prov-question { margin: 0 0 0.8rem; color: #c8d2ff; line-height: 1.5; }
+.prov-todo { margin: 0; color: #9090a8; font-size: 0.9rem; line-height: 1.5; }
+.prov-label { color: #707090; font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; margin-right: 0.3rem; }
+#sensor-note, #map-note { cursor: pointer; }
+
+/* The test walk's questions on the end screen, above the station's verdict. */
+.prov-asks { margin: 0 0 1.5rem; }
+.prov-ask { padding: 0 0 1.2rem; }
+.prov-ask-text { margin: 0 0 0.6rem; color: #e6e6f0; }
+.prov-ask .lab-rate { flex-wrap: wrap; }
+.prov-ask .lab-rate button { min-height: 44px; }
+
 #start-btn:disabled { color: #707090; border-color: #2a2a40; cursor: default; }
 
 details { margin-top: 2.5rem; text-align: left; color: #707090; font-size: 0.8rem; }
