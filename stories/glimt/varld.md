@@ -1,121 +1,197 @@
 # Glimt: världen
 
-> **Fryst 2026-09-25.** Mekaniken går först, och det här är en uppslagsbok, inte en arbetsyta. Kopplingen mellan story och mekanik ska kännas rätt i stunden, men den behöver ingen förklaring. Nya lorefrågor väntar tills mekaniklabbet har valt de två eller tre mekaniker spelet bygger på. De öppna storyfrågorna under Öppet besvaras av de mekanikerna. Se PROGRESS.md.
+> Uppslagsbok, inte plan. Omskriven 2026-10-07 efter Henrics beslut samma dag. Alla datum nedan är 2026. Henrics beslut är märkta **Beslut** med datum, Demis förslag *Förslag* och får strykas. Berättelsen skrivs när banorna är valda (beslut 25/9: mekaniken först, berättelsen anpassas efteråt).
 
-Vad Glimt är i HELD:s universum. Skrivet 2026-09-13 ur kvällens samtal, fastslaget av Henric 2026-09-14. HELD:s kanon står över det här: `projects/held/universe/LORE.md` (Henrics ord) vinner, sedan `WORLDBUILDING.md`, sedan den här filen. Det som är beslutat av Henric är markerat **beslut**. Resten är Demis förslag och får strykas.
+HELD:s kanon står över det här: `projects/held/universe/LORE.md` (Henrics ord) vinner, sedan `WORLDBUILDING.md`, sedan den här filen.
+
+**Beslut 7/10:** berättelsen planeras inte för mycket, "då blir den tråkig att skriva". Slutet ska vi ha en idé om. Därför står här vad som gäller i världen, inga kapitel och inga episoder.
 
 ## Premissen
 
-Vandraren går i sin egen värld, nu. Vega är i HELD:s värld, tjugo till trettio år fram, någonstans där ute. Hon hör vandraren bara när vandraren rör sig. Du ser den här världen, du hör den andra.
+Vandraren går i sin egen värld, nu. Vega lever 20-30 år fram, i HELD:s värld.
 
-**Beslut:** Glimt utspelar sig i samma universum som HELD:s musikvärld, men tonen och genren är andra. Mindre sci-fi, mer mystik. Mer äventyr. En smula lättsammare. I fokus står relationen mellan vandraren och Vega. HELD:s uppror är det som pågår runt henne, inte det berättelsen handlar om.
+**Beslut 7/10:** data färdas mellan de två världarna, genom tiden. Hur förklaras aldrig. Henric: "man har liksom knäckt nån slags kod kring tid".
 
-**Beslut:** Ingen reser i tiden. Det vandraren gör påverkar hennes värld, och där ligger den politiska ambitionen. Varningen är två saker: överkonsumtionen och maktkoncentrationen.
+**Beslut 14/9:** ingen reser i tiden. Det är data som färdas, inga människor.
 
-## Var och när Vega är
+**Beslut 7/10:** Vega är arbetare åt Företaget, ute i rymden på en asteroid, en måne eller en planet. Hon är på väg att bli rebell. Vandraren hjälper henne och arbetarkollektivet mot uppror.
 
-**Beslut:** Vega befinner sig i en replika av åtminstone delar av jorden. Var replikan står sägs aldrig. Hon säger "här", på samma sätt som dagboken skriver "here" för det som är bortom vår syn men hemma för skribenten.
+**Beslut 7/10:** relationen är kärnan, från främlingar till jämlikar. Berättelsen väver ihop de två världarna. Upproret är det som händer, relationen är det berättelsen handlar om. (14/9 stod det att upproret bara pågår runt henne. Det gäller inte längre: upproret är nu berättelsens yttre spår.)
 
-Replikan är företagets: byggd på kartdata och rörelsedata från jorden, en promenadslinga i artificiellt ljus så arbetarna håller sig lugna. Kopian av just den här platsen råkar vara den vandraren går i. Därför ser hon glimtar som stämmer. Därför är kapitel 1 redan sant:
+**Beslut 13/9:** det vandraren gör påverkar hennes värld, och där ligger den politiska ambitionen. Varningen gäller två saker: överkonsumtionen och maktkoncentrationen.
 
-| Replik | Vad den betyder i replikan |
+**Beslut 14/9:** samma universum som HELD:s musikvärld, annan ton och genre (se Tonen).
+
+*Förslag 12/9:* du ser den här världen, du hör den andra. Berättelsen beskriver aldrig det vandraren ser, bara det hen hör.
+
+## Var Vega är
+
+**Beslut 14/9:** Vega är i en kopia av åtminstone delar av jorden. Var kopian står sägs aldrig i berättelsen. Hon säger "här", som dagboken skriver "here" om det som är bortom vår syn men hemma för skribenten. Sedan 7/10 vet vi att kopian finns ute i rymden.
+
+*Förslag:* kopian är Företagets promenadslinga i artificiellt ljus, byggd på kartdata och rörelsedata från jorden, så att arbetarna håller sig lugna. Kopian av just den här platsen råkar vara den vandraren går i, därför ser hon glimtar som stämmer. Slingan är också hennes vanliga runda: när du går ser Företaget en arbetare som går sin runda. Kapitel 1 blir då bokstavligen sant:
+
+| Replik | Vad den betyder i kopian |
 |---|---|
 | "Det ser ut som här. Men det är inte här." | Hon går i kopian, vandraren i originalet. |
 | "Här är det aldrig riktigt ljust." | Habitatets belysning. |
-| "Bron går över ingenting." | Kopian renderade bron men inte ån. |
-| "Träden rör sig fast det inte blåser." | En loopad animation. |
-| "Allt som finns här fanns hos dig först." | Bokstavligen: kopian är gjord av vandrarens karta. |
-| "Det låter som någon som försöker låta som steg." | Taktsignalens syntetiska fotsteg. |
+| "Bron går över ingenting." | Kopian ritade bron men inte ån. |
+| "Träden rör sig fast det inte blåser." | En animation som loopar. |
+| "Allt som finns här fanns hos dig först." | Kopian är gjord av vandrarens karta. |
 
-**Tiden:** vandraren är nu, Vega är om trettio år. Vega säger aldrig vilket år det är, bara "hos dig".
+Tiden: Vega säger aldrig vilket år det är, bara "hos dig".
 
-## Länkens logik, i två lager
+## Hennes värld
 
-**Lager 1, det som syns: Vega kontrolleras av företaget, bokstavligen hennes rörelser.** (Beslut.) Ett hjärnimplantat i Neuralink-stil, eller proteser, eller båda. Det började som företagets krav. Det följer en taktsignal som företaget sänder, dagbokens rad 9: algoritmerna bestämmer arbetets takt och rytm. Hennes kropp går i den takt hon får. Hon vänder inte på huvudet för att signalen inte säger det.
+**Beslut 7/10:** hoten där hon är:
+- Företagets vakter.
+- Lojalisterna, arbetare som är lojala mot Företaget.
+- AI och robotar.
+- Ett väsen som lever där, så att det blir mystik och inte bara sci-fi-thriller.
 
-Taktsignalen matas av rörelsedata från jorden: stegräknare, pulsklockor, GPS-spår. Det som spåras i dag ligger i någons träningsdata om trettio år, och vandrarens telefon skriver in i samma rör. När vandraren går, går hon. När vandraren stannar, stannar hon. Röret bär bara rörelse, så hon hör bara steg, och rösten tystnar när datan upphör. Kontakt som filter följer ur premissen.
+**Beslut 7/10:** vad väsendet är och hur det beter sig tas när berättelsen skrivs. *Ett förslag ligger parkerat:* väsendet hör det som rör sig medan Företaget ser det som står still, så att de två hoten drar åt var sitt håll. Henric sköt frågan till skrivandet.
 
-**Lager 2, det som inte syns: hur kopplingen uppstod.** (Beslut: loren ska finnas, men den kommer inte fram i berättelsen.) Att vandrarens steg i kväll styr hennes kropp om trettio år, och att hennes röst når tillbaka, är ganska crazy tech ändå. Kandidater, valda av Henric som riktning: kvantmekanik, parallella universum, en öppning av ytterligare dimensioner. Implantatet och röret är det som gjorde henne nåbar. Öppningen är det som gjorde det möjligt. Ingen i berättelsen förstår den, och Vega beskriver bara vad hon hör. Dold lore skrivs i en egen sektion nedan när Henric vill.
+*Ur HELD:s kanon:* AI-enheter får inte kopplas ihop och lever lika utsatta som arbetarna, och i Horizons blir en AI arbetarens kamrat. Hotet är alltså Företagets maskiner. En AI kan byta sida.
 
-Den dåliga linjen är öppningens brus, det vandraren hör som muffling och avstånd. Dagboken 17: orden blir ljumma, och de lär sig använda det.
+*Förslag:* Företaget läser sina arbetare genom hur de rör sig. Dagboken säger det redan (rad 9): algoritmerna bestämmer arbetets takt och rytm. Det är därför dina steg kan dölja henne.
 
-## Vad vandraren gör
+**Beslut 14/9:** Företaget kan styra hennes rörelser bokstavligen, med implantat, proteser eller båda. Sedan 7/10 är det inte grundläget: hon rör sig själv, och låsningen är det tillfälliga inslaget A. Osäkert om implantatet har någon annan roll efter 7/10.
 
-Vandraren fixar inte framtiden. Vandraren håller linjen öppen, med kroppen, så länge att Vega hinner göra något med den. Change, after all, is work: i Glimt är det ordagrant. Det Vega saknar helt är val (dagboken 5: "Nothing here is ours, not even choice"). Det är vandrarens gåva, och Vegas gåva tillbaka är att veta hur det blev. I hennes historia, inte nödvändigtvis i vandrarens: kontakten har knoppat av vandrarens värld (se Dold lore).
+## Kopplingen
 
-Fällan: om vandrarens handlingar "förbättrar" framtiden blir spelet en moralisk stegräknare, och det är HELD:s förbjudna register. Vega ger aldrig ett råd om hur vandraren bör leva. Hon beskriver vad hon hör. Slutsatsen är vandrarens.
+**Beslut 7/10**, allt i det här avsnittet utom där det står förslag. Hon förklarar aldrig hur det fungerar. Vandraren märker det bara.
 
-Vandraren får makt över en annan kropp. Loren ställer redan frågan: vem är jag att ta makten över en annan konstruktion? Det ska kännas. Någon gång i bågen ber hon vandraren stanna för att kunna kopplas loss, och vandraren måste släppa.
+**Huvudspåret: dina steg är hennes kamouflage.** Företaget följer arbetarna på hur de rör sig. När du går skriver dina steg över hennes, och de ser en arbetare på sin vanliga runda. "Gå. Bara gå, som vanligt. De ser mig när du står still."
 
-Appen är själv länken. Spelet spårar vandraren. Samma handling matar företagets signal och håller Vega vid liv. Complicit och befriande i samma steg, aldrig utsagt.
+**Alltid med: hon hörs bara när du går.** Rösten är ljudet av täckningen. Stannar du blir hon dov och tyst, för då kan de se henne. (Beslut 12/9: att kontakten hörs i rösten är kärnan.)
+
+**Tre regler:**
+1. Står du still syns det hon gör. Står hon också still finns inget att se, och då gömmer ni er ihop.
+2. Täckningen håller så länge du går alls. Du behöver inte gå jämnt eller i takt. Takt krävs bara i enstaka skarpa lägen.
+3. Frånvaro är aldrig skuld. Länken finns bara när du är ute, och däremellan klarar hon sig själv.
+
+**Variant B är grundläget:** hon rör sig fritt. Variant A, där hon är bunden till dina steg, är ett tillfälligt läge.
+
+**Tillfälliga inslag**, i enstaka scener:
+- **A.** Hon kan inte röra sig utan dig. Företaget låser hennes kropp, och bara dina steg flyttar henne.
+- **C.** Dina steg är hennes ögon. Ljuset går där hon är, och hon ser bara det du går fram.
+- **E.** Du bär budskap som kollektivet behöver få fram utan att Företaget ser det.
+- **F.** Gången är en kod. Dina stopp blir ett meddelande till dem som lyssnar på hennes sida.
+
+**Tonen: hon är glad att du kom.** Vissa promenader har inget uppdrag. "Du kom. Jag har inget särskilt i dag. Jag ville bara gå en bit med någon."
+
+Inte med: att du styr en robot i hennes värld, och att tiden bara går när du går (det tar bort hotet när du står still).
+
+## Vad vandraren hjälper henne med
+
+**Beslut 7/10:** nio sysslor. Vilka banor som bär varje syssla står på plansidan.
+
+- **Täckning.** Du går, så kan hon röra sig osedd.
+- **Utkik.** Dina steg blir hennes ögon.
+- **Bud.** Du bär meddelanden mellan arbetarna i kollektivet.
+- **Kod.** Din gång öppnar dörrar, med stopp och steg som signaler.
+- **Svar.** Du knackar tillbaka när hon inte kan prata.
+- **Kartläggning.** Dina rundor ritar världen runt henne.
+- **Fynd.** Det som finns på en viss plats letar du upp och visar henne.
+- **Störning.** En kort rusning stör Företagets data, så hon hinner öppna en dörr.
+- **Tjuvlyssning.** Står du still tappar du henne men hör något annat, till exempel Företagets kanal. Du tar en risk för att få veta något.
+
+**Beslut 7/10:** himlen hör till relationen, inte till sysslorna. Du berättar om mörker, regn och fullmåne.
+
+## Relationen
+
+**Beslut 7/10** (Demis princip, Henric sa ja): varje mekanik har en riktning, någon ber, någon svarar, någon leder. Bågen från främlingar till jämlikar är att riktningen vänder. Först följer du hennes ton, sedan följer hon dina svängar. Först knackar hon, sedan du. Frågorna går från praktiska till personliga. Surret är den enda beröringen mellan världarna, Frys är rädsla ni delar, och hon minns var ni gått och första gången i mörker.
+
+*Förslag:* val är det hon saknar. Dagboken (rad 5): "Nothing here is ours, not even choice."
+
+*Förslag:* ingen moralisk stegräknare. Vega ger aldrig råd om hur vandraren ska leva. Hon beskriver vad hon hör, och slutsatsen är vandrarens.
+
+*Förslag:* när inslag A är på har vandraren makt över en annan kropp. HELD:s lore ställer redan frågan: vem är jag att ta makten över en annan konstruktion? Det ska kännas.
+
+*Förslag:* appen är själv spårningen. Företaget följer arbetarna på hur de rör sig, appen följer vandraren på samma sätt, och just den spårningen är det som döljer henne. Medskyldig och befriande i samma steg, aldrig utsagt. (LORE: vi är alla "complicit".)
+
+## Slutet och vägen dit
+
+**Beslut 7/10:** arbetarna bryter sig fria på något sätt. Vandraren kan till sist prata direkt med Vega, i mikrofonen. Kopplingen växer stegvis, från svag och enkel till avancerad, allteftersom hon tar sig in i systemen. Mellan start och slut ryms många episoder.
+
+**Beslut 7/10:** det vandraren gör förändrar hennes värld, och slutet bygger på det. Hon vet alltså inte hur det slutar, för det har inte hänt än (se Grenregeln nedan).
+
+*Förslag, inte beslutat:* kanalerna öppnas i ordningen närvaro, ja och nej, beröring, riktning och plats, kartan och fynden, och sist rösten.
+
+*Förslag, inte beslutat:* de två sluten är samma händelse. Kanalen var smal för att Företagets system filtrerade den, och när arbetarna bryter sig fria faller filtret. Det svarar på hålet Henric själv pekade på, varför de inte kunnat prata förut. Budet från 20/9 ryms i samma bild: när filtret faller gäller inte längre regeln att hon bara hörs när du går. (Budets förklaring, taktsignalen, är struken.)
+
+Befrielsen sker genom språk, sång och kod, aldrig eldkraft (HELD:s spärr).
 
 ## Tonen
 
-Mystik och äventyr, med skräck som krydda och inte som rätt. Lättsammare än HELD:s låtar. Vegas humor får plats: det torra skämtet när det är som värst är hennes, och det får komma oftare än i en ren skräckberättelse. Relationen är motorn: en främling, ett förtroende, ett beroende, ett släppande, två jämlikar. Upproret därute är väder, inte handling.
+**Beslut 14/9:** "Mindre sci-fi, mer mystik. Mer äventyr. En smula lättsammare." **Beslut 12/9:** mystik och äventyr, med lite skräck som inte får ta över. **Beslut 7/10:** väsendet finns för att det ska bli mystik och inte bara sci-fi-thriller.
 
-Överkonsumtionen syns i platsen: det vandraren ser nu och Vega beskriver som borta. Maktkoncentrationen hörs i rösten: vem som äger luften, vem som sätter hennes takt. Ingen av dem sägs.
+*Förslag:* Vegas humor får plats. Det torra skämtet när det är som värst är hennes, och det får komma oftare än i en ren skräckberättelse.
+
+*Förslag:* överkonsumtionen syns i platsen, det vandraren ser nu och Vega beskriver som borta. Maktkoncentrationen hörs i rösten: vem som äger luften, vem som läser hennes steg. Ingen av dem sägs rakt ut.
 
 ## Vega
 
-Hennes personlighet är dagbokens "I" (`projects/held/universe/stories/here-diary.md`): ensam så länge att en främlings steg blir en relation, försiktig av nödvändighet, läser i stället för att prata, modig en mening i taget, torr humor som skydd när det är som värst. Hon vill gå ut.
+*Förslag 13/9, står kvar:* hennes personlighet är dagbokens "I" (`projects/held/universe/stories/here-diary.md`). Ensam så länge att en främlings steg blir en relation, försiktig av nödvändighet, läser hellre än pratar, modig en mening i taget, torr humor som skydd när det är som värst. Hon vill gå ut, och i dagboken (rad 16) är "going outside" frasen för den som tänker bortom. Det passar arbetaren på väg att bli rebell.
 
-Berättarstil: nära och talspråklig (beslut 2026-09-13), en person i en dålig telefonlinje. Regler från andra sidan i sagoton högst ett par gånger per kapitel.
+**Beslut 13/9:** berättarstil 2, nära och talspråklig, en person i en dålig telefonlinje. Lite magisk realism, "men sällan och absolut inte i varje beat".
 
-Namnet: Vega är stjärnan i Lyran, lyrans stjärnbild. I ett universum där svetslågan blir en stjärna och revolutionen har en sångbok. Sägs aldrig rakt ut. Får betyda något i ett senare kapitel.
+**Beslut 13/9:** Vega är också stjärnan i Lyran, "glöm inte den grejen". I ett universum där svetslågan blir en stjärna och revolutionen har en sångbok. Sägs aldrig rakt ut och får betyda något längre fram.
 
-Rösten på slutet av kapitel 1, "hon är här", kan vara följeslagaren, som enligt bibeln aldrig får heta något.
+## Musiken
 
-## Varianterna
+**Beslut 7/10:** HELD:s musik är bädden. Ljuden från Splice är tillfälliga.
 
-Variant A (bunden till vandrarens rörelser) är kanon: hon är bunden för att hennes kropp är ägd. Variant B (fri, men tappar räckvidd vid stillhet) är inte en alternativ regel utan ett senare tillstånd, när implantatet tystats eller proteserna kopplats loss. Bågen A till B är befrielsen. Utomhustestet mäter fortfarande båda, för känslan.
+**Beslut 7/10:** HELD:s låtar hör hemma i båda världarna, några i hennes framtid och andra här och nu. HELD:s egen placering (LORE 27/9): Drifting Away är i dag, på jorden. Horizons och The Way We Are är framtiden. Linger, Language och The Code är inte placerade.
 
-## Bågen (förslag)
+*Förslag 7/10:* låtar är också data. En låt från din tid kan nå henne, och hon hör den för första gången.
 
-Ryggraden är relationen, inte upproret:
+*Förslag:* Drifting Away är vandrarens egen domning, före kontakten.
 
-1. Främlingen. Kapitel 1 som det står. Hon hör steg, vandraren hör en röst. Ingen vet vad den andra är.
-2. Förtroendet. Hon lär sig vad länken kan, vandraren lär sig vad hon kostar. Första gången hon ber om något som inte handlar om att överleva.
-3. Beroendet. Hon behöver vandraren för att röra sig alls. Vandraren märker att det är makt.
-4. Släppandet. Hon ber vandraren stanna för att kunna kopplas loss. Tystnad. Variant B börjar här.
-5. Jämlikar. Hon går själv. Vandraren hör henne ändå, av ett annat skäl än förut.
-
-HELD:s låtar ligger under som bädd, en per kapitel i bågens ordning (Horizons, Language, Linger, The Code, The Way We Are), men de styr inte handlingen. Drifting är vandrarens egen domning i scen 0, innan kontakten.
+Den gamla ordningen, en låt per kapitel i bågens ordning, var Demis förslag från när alla låtar hörde till hennes värld. Osäkert om "en låt per kapitel" gäller efter 7/10.
 
 ## HELD:s spärrar som gäller här
 
-Ägarna namnges aldrig, får aldrig ett ansikte. Följeslagaren namnges aldrig. Befrielsen sker genom språk, sång och kod, aldrig eldkraft. Solarpunk-världen glimtas, ockuperas inte. Om en replik skulle passa på ägarnas rekryteringsaffisch stryks den.
+- Ägarna namnges aldrig och får aldrig ett ansikte. Företaget heter bara Företaget. *Demis läsning:* vakterna och lojalisterna är inte ägarna, och dem får man möta.
+- Följeslagaren, HELD:s AI-kamrat, namnges aldrig och är aldrig söt eller ett hot.
+- Befrielsen sker genom språk, sång och kod, aldrig eldkraft.
+- Solarpunk-världen glimtas, den ockuperas inte.
+- Om en replik skulle passa på ägarnas rekryteringsaffisch stryks den.
 
-## Dold lore (skrivs senare)
+## Dold lore
 
-Här hamnar det som ska finnas men inte berättas: vad öppningen är, vem som hittade den, varför just Vega, vad den kostar. Henric äger den.
+**Beslut 14/9:** hur kopplingen uppstod ska finnas som lore men aldrig komma fram i berättelsen. Riktningen: kvantmekanik, parallella universum eller fler dimensioner. Henric äger den. Osäkert om det gäller efter 7/10, då Henric sa att hur data färdas inte behöver förklaras. Kanske behövs ingen dold lore alls.
 
-### Grenregeln är struken (Henric 2026-10-07)
+Öppet om den behövs: vad öppningen är, vem som hittade den, varför just Vega, vad den kostar.
 
-Från 2026-09-14 gällde att kontakten knoppar av en gren, efter regeln i Gibsons *The Peripheral*: Vegas historia låg fast, och vandraren kunde bara röra vid den, aldrig ändra den. Henric strök regeln 2026-10-07. Skälet: premissen och slutet bygger på att vandrarens hjälp förändrar Vegas värld. Arbetarna bryter sig fria, och vandraren har varit med och gjort det möjligt. Med regeln kvar hade det varit omöjligt, eller så hade varje vandrare fått ett eget uppror.
-
-Det som följer: den sorgligare läsningen av Vegas gåva gäller inte längre. Hon vet inte hur det slutar, för det har inte hänt än.
+**Grenregeln är struken (beslut 7/10).** Från 14/9 gällde att kontakten knoppar av en gren, efter regeln i Gibsons *The Peripheral*: Vegas historia låg fast och vandraren kunde bara röra vid den. Henric strök regeln, för slutet bygger på att vandrarens hjälp förändrar Vegas värld.
 
 ## Öppet
 
-- En tredje sak Henric glömde 2026-09-13.
-
-### Storyarbete (påbörjat 2026-09-20)
-
-Glimt läst med hantverkets vanliga frågor: slutet först, ett yttre mål bredvid det inre, motstånd som kostar mer för varje steg. Det här saknas:
-
-- **Slutet.** Bågens steg 5 är ett tillstånd, inget slut. Vad är "ett annat skäl än förut"? Demis bud, inte beslutat: slutet svarar på kapitel 1:s titel, omvänt. Vandraren står still och hör henne ändå, för att hon lärt sig skriva i röret själv och gjort taktsignalen till sin linje ut. Takt, lyra, sång.
-- **Vegas yttre mål.** Relationen är den inre storyn. Det saknas en yttre: något konkret hon försöker göra, som driver kapitel 3 till 5. Dagboken säger att hon vill gå ut. Ut ur vad, och till vad?
-- **Motståndet och priset.** Ägarna får aldrig ett ansikte, så de märks som följder. Vad kan hon förlora, och vad kostar varje steg mer än det förra?
+- En tredje sak Henric glömde 13/9.
+- Var hon är: asteroid, måne eller planet.
+- Väsendet: vad det är och hur det beter sig.
+- Vad Vega vill, i detalj. Riktningen finns sedan 7/10 (fri från Företaget, ihop med kollektivet), vägen dit gör det inte.
+- Priset: vad hon kan förlora, och vad varje steg kostar mer än det förra.
+- Kapitel 1 och 2 skrevs när variant A var kanon (kapitel 2 finns bara i A). Osäkert hur de passar efter 7/10.
 
 Planterat i kapitel 1 och 2 utan att vi bestämt vad det är:
 
 | Planterat | Var | Vad vi vet |
 |---|---|---|
 | Kvällen då "allt tystnade, som när någon drar ur sladden" | 1, scen 1 | Inget bestämt. |
-| Det bakom henne som "försöker låta som steg" och inte stannar när vandraren stannar | 1, scen 4 och 7 | Taktsignalens syntetiska fotsteg (tabellen under Var och när Vega är). Vad som händer när det hinner ifatt är öppet. |
-| "Hela den här sidan lutar åt vänster, som om något drar" | 1, scen 5 | Inget bestämt. Kandidat till det yttre målet. |
+| Det bakom henne som "försöker låta som steg" och inte stannar när vandraren stannar | 1, scen 4 och 7 | Inget bestämt. Demis förklaring, taktsignalens syntetiska fotsteg, är struken. |
+| "Hela den här sidan lutar åt vänster, som om något drar" | 1, scen 5 | Inget bestämt. |
 | "Gå inte dit. Inte ikväll." om landmärket | 1, scen 6 | Hon ändrar sig i kapitel 2. Varför hon varnade är aldrig sagt. |
-| Den andra rösten: "hon är här", "hon frågade" | 1 och 2, sista repliken | Kan vara följeslagaren. Varför de väntade på att hon skulle fråga är öppet. |
-| "Det som är ritat kan suddas" | 2, scen 4 | Ett hot som ännu inte använts. |
-| "Någon kom och tittade på mig. De märker när jag inte går som jag ska." | 2, scen 8 | Priset för att springa. Fröet till kapitel 3. |
-| Namnet Vega, stjärnan i Lyran | 1, scen 7 | Se Vega ovan. Ska betyda något i ett senare kapitel. |
+| Den andra rösten: "hon är här", "hon frågade" | 1 och 2, sista repliken | *Förslag:* följeslagaren. Varför de väntade på att hon skulle fråga är öppet. |
+| "Det som är ritat kan suddas" | 2, scen 4 | Ett hot som ännu inte använts. Passar kopian. |
+| "Någon kom och tittade på mig. De märker när jag inte går som jag ska." | 2, scen 8 | Priset för att springa. *Förslag:* passar kamouflaget, Företaget läser rörelse. |
+| Namnet Vega, stjärnan i Lyran | 1, scen 7 | Se Vega ovan. |
+
+## Struket 7/10
+
+Det här stod i tidigare versioner och gäller inte längre:
+- Taktsignalen som förklaring (Demis förslag 13/9, aldrig ja från Henric): att Företaget styr hennes kropp med en signal som matas av jordens rörelsedata, och att vandrarens telefon skriver in i samma rör.
+- "Vandraren håller linjen öppen" som vandrarens uppgift (Demis förslag 13/9). Ersatt av sysslorna.
+- Variant A som kanon och bågen från A till B som befrielsen. B är grundläget.
+- Bågen i fem steg (främlingen, förtroendet, beroendet, släppandet, jämlikar), som byggde på A. Kvar är främlingar till jämlikar och att riktningen vänder.
+- Upproret som bara väder runt relationen.
