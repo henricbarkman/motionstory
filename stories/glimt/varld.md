@@ -79,6 +79,8 @@ Tiden: Vega säger aldrig vilket år det är, bara "hos dig".
 
 **Tonen: hon är glad att du kom.** Vissa promenader har inget uppdrag. "Du kom. Jag har inget särskilt i dag. Jag ville bara gå en bit med någon."
 
+**Gå, spring eller båda (beslut 7/10).** Vandraren väljer inget läge. Glimt ska fungera gående, springande och i kombination, och vandraren får byta när som helst. Berättelsen får också styra: Vega kan be den som springer att stanna eller gå en stund, och be den som går att skynda. Kombinationen ska användas mycket, för den blir intervallträning utan att någon kallar det så. Löpning ger andra sysslor (störning, flykt, snabba bud) men är aldrig det rätta sättet att spela: täckningen håller så länge du rör dig alls. *Förslag:* "spring" mäts mot din egen fart, så att den som inte kan springa kan gå fort i stället. Knack, Kroppsmorse, Tassa och Takten fungerar bara gående; springer vandraren väljer episoden något annat eller ber om en paus.
+
 Inte med: att du styr en robot i hennes värld, och att tiden bara går när du går (det tar bort hotet när du står still).
 
 ## Vad vandraren hjälper henne med
