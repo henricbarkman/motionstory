@@ -123,6 +123,23 @@ Inte med: att du styr en robot i hennes värld, och att tiden bara går när du 
 
 Befrielsen sker genom språk, sång och kod, aldrig eldkraft (HELD:s spärr).
 
+## När vandraren misslyckas
+
+**Beslut 7/10** (Demis förslag, Henric: "Vi kör på dom"). Ett misslyckande ger en ny situation, aldrig ett nytt försök och aldrig game over. En promenad går inte att spela om, och den som låter bli att spurta över en gata ska inte straffas: grenen där du inte hann är också en säkerhetsventil. Ofta blir den grenen den bättre scenen.
+
+Konsekvenserna, från lätt till tung:
+1. **Vägen ändras.** Dörren stängdes, ni tar en annan väg. Får kosta några minuter till, men ska inte kännas som ett straff.
+2. **Kontakten skadas en stund.** Rösten dov en minut, en kanal stänger tillfälligt. Misslyckandet känns genom mekaniken.
+3. **Företaget blir misstänksamt.** En mätare över episoderna: vakterna blir uppmärksammare, lojalisterna frågar. Den kan sjunka igen.
+4. **Upproret försenas** (Henrics tillägg). Planen skjuts upp och det syns i berättelsen. Det ska märkas som ett hinder i historien, inte som ett antal extra promenader att beta av.
+5. **Någon annan betalar.** En arbetare åker fast, eller något Vega byggt går förlorat. Tyngst och sällsynt.
+
+Två skydd:
+- **Mät mot vandrarens egen fart.** "Inte tillräckligt fort" betyder att du inte ökade, inte att du är långsammare än någon annan.
+- **Tung konsekvens bara där telefonen läser säkert.** Mekaniker vi är osäkra på (knacket) får bara lätta konsekvenser tills testerna visar att de håller.
+
+Vega skyller aldrig på vandraren. Hon blir rädd, arg på Företaget eller tyst en stund, men inte besviken (samma rot som att frånvaro aldrig är skuld).
+
 ## Tonen
 
 **Beslut 14/9:** "Mindre sci-fi, mer mystik. Mer äventyr. En smula lättsammare." **Beslut 12/9:** mystik och äventyr, med lite skräck som inte får ta över. **Beslut 7/10:** väsendet finns för att det ska bli mystik och inte bara sci-fi-thriller.
