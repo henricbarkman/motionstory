@@ -1,5 +1,10 @@
 # PROGRESS — Motionstory
 
+## 2026-10-07
+- Henric: Glimts utseende ska följa HELD:s designspråk. De ska hänga ihop, men får skilja sig något.
+- Demi: plansidan omlagd efter omslaget till Drifting Away (`projects/held/releases/drifting-away.md` i generalassistant). Samma som HELD: marinblå #152E43 och lila #271240 som gardiner, blekt turkost sken #A4DADB, mint #48FEC8 som signalfärg (statuslinjerna), text #E4F6F5, Open Sans med glesa versaler i rubrikerna, titeln dubblerad och förskjuten som på omslaget, HELD:s logga liten överst. Glimts eget: Vegas repliker i Spectral kursiv och bärnsten #ecc98e, och kontaktlinjen. Förra versionen ligger kvar bredvid som `fore-held.html`.
+- Inte gjort: appen har kvar nattfärgerna (#0a0a14, #c8d2ff) tills Henric sett riktningen på plansidan.
+
 ## 2026-10-06, kväll
 - Henric: gick Hon knackar ensam i Chrome med v22 (`?banor=vibration`), i mörkret, provade vibrationen på startskärmen (kändes) och sparade sensordata (`data/uploads/20261006-213552-430284-glimt-sensor-2026-10-06-1935.json` i generalassistant). **Klarade, 2 → 2 och 3 → 3.** Betyg: igen.
 - Demi: **alla fem surren kändes med 0,4 s.** Han stod still och svarade båda gångerna: två knack 1,7 s efter hennes sista surr, tre knack 1,1 s efter (16,2, 7,6 och 20,3 mot stå-gränsen 3). Ett lyckat försök visar inte att det var längden som saknades i eftermiddags, men 0,4 står kvar.
