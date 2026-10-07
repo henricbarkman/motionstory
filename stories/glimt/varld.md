@@ -188,7 +188,7 @@ Den gamla ordningen, en låt per kapitel i bågens ordning, var Demis förslag f
 
 **Beslut 7/10:** romanen *Asi* skrivs inte som eget verk, den uppgår i Glimt. Henric: "jag kommer inte skriva två noveller." Kanske inte i grundstoryn, men Asi kan bli en variant inom Glimt-universumet. Materialet (Mai och hennes asi Lokk, Länken, Kupan, Dirigenten, tvillingarna, Gamma, Norden runt 2040) ligger kvar i `projects/novell-asi/` i generalassistant.
 
-Beröringspunkter, *förslag* och inget beslutat:
+Beröringspunkter, *förslag* och inte inskrivna i berättelsen. Henric 7/10: "så himla coola kopplingar", noterade på plansidan under Asi i Glimt.
 - Asis Länken, kopplingen mellan en människas hjärna och hennes asi, är samma sorts band som det mellan vandraren och Vega. Där är den dessutom ett samhällskontrakt.
 - Dirigenten, en AI som styr alla asi:er, passar HELD:s regel att AI-enheter inte får kopplas ihop: de får inte tala med varandra, bara genom Dirigenten.
 - Asis kapitel 1 heter "Länken bryts". Glimts kapitel 1 har redan kvällen då "allt tystnade, som när någon drar ur sladden", och den är inte förklarad.
