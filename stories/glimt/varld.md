@@ -89,23 +89,11 @@ HELD:s låtar ligger under som bädd, en per kapitel i bågens ordning (Horizons
 
 Här hamnar det som ska finnas men inte berättas: vad öppningen är, vem som hittade den, varför just Vega, vad den kostar. Henric äger den.
 
-### Kontakt knoppar av en gren (Demis förslag 2026-09-13, beslut av Henric 2026-09-14)
+### Grenregeln är struken (Henric 2026-10-07)
 
-**Beslut**, inklusive den sorgligare läsningen av Vegas gåva nedan. Lånat ur William Gibsons *The Peripheral* och *Agency*, men bara regeln, inte tekniken eller orden.
+Från 2026-09-14 gällde att kontakten knoppar av en gren, efter regeln i Gibsons *The Peripheral*: Vegas historia låg fast, och vandraren kunde bara röra vid den, aldrig ändra den. Henric strök regeln 2026-10-07. Skälet: premissen och slutet bygger på att vandrarens hjälp förändrar Vegas värld. Arbetarna bryter sig fria, och vandraren har varit med och gjort det möjligt. Med regeln kvar hade det varit omöjligt, eller så hade varje vandrare fått ett eget uppror.
 
-**Regeln:** i samma ögonblick som öppningen förbinder vandrarens nu med Vegas tid knoppas vandrarens värld av och blir en egen gren. Vegas historia ligger fast. Allt som händer hos vandraren efter kontakten händer i en värld som inte längre leder till henne.
-
-**Vad den förklarar som redan står i filen:**
-- *Vandraren fixar inte framtiden.* Det kan vandraren inte, för Vegas framtid är redan en annan grens förflutna.
-- *Loren ställer frågan om makt över en annan kropp.* Grenen gör den skarpare: vandraren styr en kropp i en värld vandraren aldrig kan påverka, bara röra.
-
-**Vad den ändrar:** raden "Vegas gåva tillbaka är att veta hur det blev" blir sann på ett sorgligare sätt. Hon vet hur det blev i *sin* historia. Hon kan berätta det, men inte lova att det blir så här. Den läsningen gäller (beslut 2026-09-14).
-
-**Två avgränsningar:**
-- **Riktningen är vår, inte Gibsons.** Hos Gibson styr framtiden det förflutna. I Glimt styr vandrarens steg Vegas kropp. Det behålls.
-- **Inget namn, ingen mekanik.** Ordet "stub", servrar och hela Gibsons tekniska apparat hålls ute. Ingen i berättelsen förstår öppningen, så regeln kan finnas utan att den heter något. Det skiljer lån från fanfiction.
-
-**Passar kandidaterna:** det är en form av parallella universum, en av de riktningar Henric redan valt, och säger ingenting om vad öppningen *är*. Den kan fortfarande vara kvantmekanik eller en extra dimension.
+Det som följer: den sorgligare läsningen av Vegas gåva gäller inte längre. Hon vet inte hur det slutar, för det har inte hänt än.
 
 ## Öppet
 
