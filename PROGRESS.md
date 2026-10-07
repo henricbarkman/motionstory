@@ -1,6 +1,7 @@
 # PROGRESS — Motionstory
 
 ## 2026-10-07
+- Henric: romanen Asi uppgår i Glimt, "jag kommer inte skriva två noveller". Kanske inte i grundstoryn, men som en variant i universumet. Demi: avsnittet Asi i `stories/glimt/varld.md` (beslutet plus fyra beröringspunkter som förslag) och samma sak på plansidan.
 - Henric: Glimts utseende ska följa HELD:s designspråk. De ska hänga ihop, men får skilja sig något.
 - Demi: plansidan omlagd efter omslaget till Drifting Away (`projects/held/releases/drifting-away.md` i generalassistant). Samma som HELD: marinblå #152E43 och lila #271240 som gardiner, blekt turkost sken #A4DADB, mint #48FEC8 som signalfärg (statuslinjerna), text #E4F6F5, Open Sans med glesa versaler i rubrikerna, titeln dubblerad och förskjuten som på omslaget, HELD:s logga liten överst. Glimts eget: Vegas repliker i Spectral kursiv och bärnsten #ecc98e, och kontaktlinjen. Förra versionen ligger kvar bredvid som `fore-held.html`.
 - Inte gjort: appen har kvar nattfärgerna (#0a0a14, #c8d2ff) tills Henric sett riktningen på plansidan.

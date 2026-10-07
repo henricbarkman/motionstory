@@ -184,6 +184,16 @@ Den gamla ordningen, en låt per kapitel i bågens ordning, var Demis förslag f
 
 **Grenregeln är struken (beslut 7/10).** Från 14/9 gällde att kontakten knoppar av en gren, efter regeln i Gibsons *The Peripheral*: Vegas historia låg fast och vandraren kunde bara röra vid den. Henric strök regeln, för slutet bygger på att vandrarens hjälp förändrar Vegas värld.
 
+## Asi
+
+**Beslut 7/10:** romanen *Asi* skrivs inte som eget verk, den uppgår i Glimt. Henric: "jag kommer inte skriva två noveller." Kanske inte i grundstoryn, men Asi kan bli en variant inom Glimt-universumet. Materialet (Mai och hennes asi Lokk, Länken, Kupan, Dirigenten, tvillingarna, Gamma, Norden runt 2040) ligger kvar i `projects/novell-asi/` i generalassistant.
+
+Beröringspunkter, *förslag* och inget beslutat:
+- Asis Länken, kopplingen mellan en människas hjärna och hennes asi, är samma sorts band som det mellan vandraren och Vega. Där är den dessutom ett samhällskontrakt.
+- Dirigenten, en AI som styr alla asi:er, passar HELD:s regel att AI-enheter inte får kopplas ihop: de får inte tala med varandra, bara genom Dirigenten.
+- Asis kapitel 1 heter "Länken bryts". Glimts kapitel 1 har redan kvällen då "allt tystnade, som när någon drar ur sladden", och den är inte förklarad.
+- Asi som variant: en episod eller ett spår där vandraren hör Mai i stället för Vega, i samma värld men på jorden.
+
 ## Öppet
 
 - En tredje sak Henric glömde 13/9.
