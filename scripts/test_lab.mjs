@@ -628,7 +628,7 @@ const PROV_SAYS = {
   hitta: [/framme efter/],
   tassa: [/före: \d+ steg, styrka/],
   vaxla: [/växla 2 \(spring\): löpning läst [\d,]+ s efter ordet, annat band \d+ % .*\d+ steg\/min, gps [\d,]+ km\/h, stegen avgjorde/,
-    /växla 3 \(gå\): gång läst [\d,]+ s efter ordet/, /Flykten och Spöket räknar från gångfarten [\d,]+ km\/h/, /Gå och spring: blandat \(löpning \d+ %/],
+    /växla 3 \(gå\): gång läst [\d,]+ s efter ordet/, /Flykten och Spöket räknar från gångfarten [\d,]+ km\/h/, /Gå och spring gicks blandat \(löpning \d+ %/],
   vakten: [/tyst (redan under ordet|[\d,]+ s efter ordet), hon bad om att få säga till [\d,]+ s (senare|efter ordet), sensorn tillbaka efter/],
 };
 

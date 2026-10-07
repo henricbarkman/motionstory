@@ -1597,7 +1597,7 @@ export async function runLab(ctx, no, { only = null, stations = null, opening = 
     const moved = gaitTime.walk + gaitTime.run;
     const runShare = moved ? gaitTime.run / moved : 0;
     const gait = runShare >= 0.7 ? 'springande' : runShare <= 0.1 ? 'gående' : 'blandat';
-    ctx.log(`${TITLES[id]}: ${gait} (löpning ${pct(runShare)} av tiden i rörelse)`);
+    ctx.log(`${TITLES[id]} gicks ${gait} (löpning ${pct(runShare)} av tiden i rörelse)`);
     ctx.hold(true);
     ctx.sfx.stopAll();
     results.push({ id, ...r, gait });
