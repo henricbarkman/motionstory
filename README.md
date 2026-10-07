@@ -64,7 +64,7 @@ Rendera Vegas repliker (v3, en mp3 per replik, hoppar över befintliga):
 python3 scripts/render_glimt.py stories/glimt/kapitel-2.json [--force] [--only s3-1]
 ```
 
-Bädd och riser är Splice-samples och ligger i `audio/glimt/bed/` och `audio/glimt/fx/`, som är gitignorade tills licensfrågan för det publika repot är avgjord. Appen fungerar utan dem, rösten spelas ändå.
+Bädd och riser är Splice-samples som Henric har betalat för, och de är tillfälliga: berättelsen ska ha HELD:s musik som bädd (`stories/glimt/varld.md`). De ligger i `audio/glimt/bed/` och `audio/glimt/fx/`, som är gitignorade eftersom råfilerna inte ska ligga öppet i ett publikt repo. Appen fungerar utan dem, rösten spelas ändå.
 
 ## Lokalt dev
 

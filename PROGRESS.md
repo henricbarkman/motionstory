@@ -8,6 +8,9 @@
 - Henric, **kopplingen bestämd** (ur Demis lista A–I): B som huvudspår, dina steg är hennes kamouflage. C, E, F och A som tillfälliga inslag. Han höll med om Demis tre justeringar: D (hon hörs bara när du går) är permanent, som ljudet av täckningen; står vandraren still syns det hon gör, och står hon också still finns inget att se (Frys blir att gömma sig ihop); frånvaro är aldrig skuld, länken finns bara när vandraren är ute. Täckningen håller så länge vandraren går alls, takt krävs bara i enstaka skarpa lägen (han har sagt nej till Stämma linjen och Gå normalt). I blir ton, inte mekanik. G och H är inte med.
 - Demi: plansidan har ett nytt avsnitt Kopplingen över mekanikerna, med en exempelreplik per koppling och vilka banor som bär den. Variant B (fri) blir grundläget och variant A (bunden) ett tillfälligt läge. Mitt förslag "du håller linjen öppen" struket.
 - Öppet: om grenregeln från 14/9 stryks har Henric inte sagt. `stories/glimt/varld.md` är inte ändrad efter premissen.
+- Henric, **vision**: Glimt kan bli en plattform där andra skriver egna "motionstories" med våra mekaniker, lite crowdsourcat. Vi står för mekanikerna, andra för berättelserna. Den byggs inte nu: först ska vi se om vi själva får till en engagerande upplevelse. Demi höll med. Det enda som görs redan nu är att varje mekanik beskrivs fristående (testsidan), för det blir katalogen sedan.
+- Henric, ljudet: bädden och risern från Splice är betalda med hans krediter och är tillfälliga. Berättelsen ska ha HELD:s musik som bädd, som världsboken redan säger (en låt per kapitel).
+- Demi: testpromenader, en mekanik i taget, beställda som bakgrundsjobb samma dag. Ordningen går efter vad kopplingen vilar på: Frys, Stanna för ja och Kontakten först.
 - → Nästa: Henric väljer två eller tre banor. Huvudspåret bärs av Står/går/springer, Kontakten, Flykten och Spöket (alla fungerat ute); Frys behöver gås om innan stoppregeln byggs på den.
 
 ## 2026-10-06, kväll
