@@ -279,6 +279,9 @@ button.av::after { content: ''; position: absolute; inset: -0.6rem; }
 .regi { font-family: var(--sans); font-style: italic; font-size: 0.9em; color: var(--dov); }
 .annan { color: var(--text); }
 .mk { color: var(--svag); }
+/* The marks that make bold and italic are part of the text, and show only in
+   the paragraph being written in. Everywhere else the page reads as the sketch. */
+.ProseMirror .st:not(.har) .mk { font-size: 0; }
 .fet { font-weight: 600; }
 .st:is(.replik, .variant, .stycke) .fet { font-family: var(--sans); font-size: 0.9375rem; color: var(--blad); }
 .kursiv { font-style: italic; }
