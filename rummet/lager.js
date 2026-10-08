@@ -52,6 +52,9 @@ export function skapaLager(adapter, {
   };
   const giltig = (a) => !!a && typeof a === 'object' && TYPER.includes(a.typ) && typeof a.nr === 'string'
     && typeof a.fore === 'string' && typeof a.efter === 'string' && typeof a.vem === 'string';
+  // false while the last write to the browser's list failed: then what this
+  // window holds is newer than the list, and a read must not throw it away.
+  let lagrat = true;
   const synka = () => {
     if (!ko) return;
     let sparade;
@@ -60,17 +63,20 @@ export function skapaLager(adapter, {
     } catch {
       return; // unreadable: keep what this window holds
     }
-    const lista = (Array.isArray(sparade) ? sparade : []).filter(giltig);
-    const utanId = lista.some((a) => !a.aid);
-    vantar.splice(0, vantar.length, ...lista.map((a) => (a.aid ? a : { ...a, aid: innehallsId(a) })));
-    // A note from before ids, or a list with junk in it: keep the cleaned list.
-    if (utanId || lista.length !== (Array.isArray(sparade) ? sparade.length : 0)) sparaKo();
+    const raa = Array.isArray(sparade) ? sparade : [];
+    const lista = raa.filter(giltig).map((a) => (a.aid ? a : { ...a, aid: innehallsId(a) }));
+    if (!lagrat) for (const a of vantar) if (!lista.some((x) => x.aid === a.aid)) lista.push(a);
+    vantar.splice(0, vantar.length, ...lista);
+    // A note from before ids, junk in the list, or notes only this window had.
+    if (!lagrat || lista.length !== raa.length || raa.some((a) => giltig(a) && !a.aid)) sparaKo();
   };
   const sparaKo = () => {
+    if (!ko) return;
     try {
-      if (ko) ko.skriv(vantar.slice());
+      ko.skriv(vantar.slice());
+      lagrat = true;
     } catch {
-      // The note still waits in memory.
+      lagrat = false; // the note still waits in memory
     }
   };
   synka();
@@ -137,18 +143,21 @@ export function skapaLager(adapter, {
   // { typ, nr, fore, efter (the manuscript before and after), i, skift, vem,
   // nar, ... }. Plain data, so it can wait in the browser.
   function tillampa(rum, a, g) {
-    // Already in the file (another window sent it, or an answer was lost
-    // after the write went through): nothing to do.
-    if (a.aid && rum.logg.some((l) => l.avsikt === a.aid)) return rum;
     let ut;
     try {
+      // Already in the file (another window sent it, or an answer was lost
+      // after the write went through): nothing to do.
+      if (a.aid && rum.logg.some((l) => l && l.avsikt === a.aid)) return rum;
       ut = tillampaEn(rum, a, g);
     } catch (e) {
       if (e instanceof R.RumFel) throw e;
       // The note itself cannot be applied; trying again would fail the same way.
       throw new R.RumFel('avsikt', 'Anteckningen om vem som skrev repliken gick inte att lägga in.');
     }
+    if (ut === rum) return rum;
     for (let k = rum.logg.length; k < ut.logg.length; k++) ut.logg[k].avsikt = a.aid;
+    // Every applied note leaves its id in the log, also one that logged nothing.
+    if (ut.logg.length === rum.logg.length) ut.logg.push({ nar: a.nar, vem: a.vem, vad: 'avsikt', avsikt: a.aid });
     return ut;
   }
 
@@ -223,6 +232,7 @@ export function skapaLager(adapter, {
   // Gives up on the waiting notes. The lines they were about show as changed
   // outside the room, and a person can say whose they are.
   function slangVantande() {
+    synka();
     vantar.splice(0, vantar.length);
     sparaKo();
   }
@@ -231,6 +241,7 @@ export function skapaLager(adapter, {
   // so they are never overtaken. If they still do not get through, nothing
   // new is saved; the form keeps its text.
   async function iFas() {
+    synka(); // another window may have left a note since this one loaded
     if (!vantar.length) return;
     try {
       await forsokIgen();
@@ -246,6 +257,7 @@ export function skapaLager(adapter, {
   // --- Reading ---------------------------------------------------------------
 
   async function lasEpisod(nr) {
+    synka();
     const [manus, rum, grundFil, ljud, tider] = await Promise.all([
       adapter.las(`manus:${nr}`),
       adapter.kanSkriva ? adapter.las(`rum:${nr}`) : null,

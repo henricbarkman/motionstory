@@ -824,6 +824,44 @@ function nyttRum(vem) {
   ok(lagring === '[]' && JSON.parse(a.text('rum:1')).kommentarer.some((k) => k.text === 'Också fram.'), 'a note that cannot apply is dropped and saving goes on');
   f5.slangVantande();
   ok(f5.vantar.length === 0, 'waiting notes can be thrown away');
+
+  // A window opened before another one left a note still waits for that note.
+  let lag2 = null;
+  const ko2 = { las: () => (lag2 ? JSON.parse(lag2) : null), skriv: (v) => { lag2 = JSON.stringify(v); } };
+  const b2 = nyttRum();
+  let natet2 = false;
+  b2.fore = (p) => { if (p === 'rum:1' && !natet2) throw new TypeError('Failed to fetch'); };
+  const tidig = S.skapaLager(b2, { nu: NU, nyttId: ID, ko: ko2 });
+  const sen = S.skapaLager(b2, { nu: NU, nyttId: ID, ko: ko2 });
+  await rejectsKod(sen.andraRad('1', ank, 'Sent fönster.'), 'halvt');
+  ok(await rejectsKod(tidig.kommentera('1', ank, 'Tidigt fönster.'), 'efterslapar'), 'an earlier window does not save past another window\'s waiting note');
+  natet2 = true;
+  await tidig.kommentera('1', ank, 'Tidigt fönster.');
+  const r2 = JSON.parse(b2.text('rum:1'));
+  ok(r2.logg[0].vad === 'andrade' && r2.kommentarer.length === 1 && lag2 === '[]', 'and sends it first when it can');
+
+  // The browser's list is full: the note stays in memory and still goes first.
+  let lag3 = '[]';
+  const ko3 = { las: () => JSON.parse(lag3), skriv: () => { throw new Error('QuotaExceededError'); } };
+  const c3 = nyttRum();
+  let natet3 = false;
+  c3.fore = (p) => { if (p === 'rum:1' && !natet3) throw new TypeError('Failed to fetch'); };
+  const w3 = S.skapaLager(c3, { nu: NU, nyttId: ID, ko: ko3 });
+  await rejectsKod(w3.andraRad('1', ank, 'Fullt i webbläsaren.'), 'halvt');
+  ok(w3.vantar.length === 1 && lag3 === '[]', 'storage full: the note waits in memory');
+  natet3 = true;
+  await w3.kommentera('1', ank, 'Sedan.');
+  const r3 = JSON.parse(c3.text('rum:1'));
+  ok(r3.logg.some((l) => l.vad === 'andrade' && l.avsikt) && r3.kommentarer.length === 1 && w3.vantar.length === 0,
+    'and is sent before the next save, not lost');
+
+  // A hand-edited notes file with junk in its log does not block saving.
+  const d4 = nyttRum();
+  d4.store.set('rum:1', { text: JSON.stringify({ ...R.tomtRum('1'), logg: [null] }), version: 1 });
+  const lag4 = [{ typ: 'andrad', nr: '1', fore: EP[1], efter: EP[1], i: rad.i, skift: null, vem: 'henric', nar: NU(), aid: 'x4', post: {} }];
+  const w4 = S.skapaLager(d4, { nu: NU, nyttId: ID, ko: { las: () => lag4, skriv() {} } });
+  await w4.kommentera('1', ank, 'Trots skräp.');
+  ok(JSON.parse(d4.text('rum:1')).kommentarer.length === 1, 'junk in the log does not block saving');
 }
 
 // --- 5e. The manuscript as it is now, against the baseline of the recorded draft ----

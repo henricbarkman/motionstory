@@ -339,6 +339,13 @@ def main() -> int:
                 "op": "svara", "rum": t, "episod": hittad, "svarPa": a.pa, "text": text, "id": nytt_id(), "nar": nu(),
             }))
             print(f"Postat som Demi: svar {ut['id']} i tråden {ut['svarPa']}, episod {hittad}")
+            # The end of the thread as it stands now: a question that came in
+            # after Demi read the thread shows here, above Demi's answer.
+            print("Tråden nu:")
+            for t in ut["trad"][-6:]:
+                vem = NAMN.get(t["skrev"], t["skrev"])
+                eget = "  <- ditt svar" if t["id"] == ut["id"] else ("  (till Demi)" if t.get("till") == "demi" else "")
+                print(f"  {vem}: {kort(t['text'], 160)}{eget}")
             return 0
 
         if a.cmd == "lore":

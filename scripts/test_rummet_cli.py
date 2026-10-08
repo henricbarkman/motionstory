@@ -134,6 +134,7 @@ def main() -> int:
         r = kor(rot, "svara", "--pa", fraga, "--text", "För att hon lyssnar.")
         svar = rum(rot)["kommentarer"][-1]
         ok(r.returncode == 0 and svar["svarPa"] == fraga and svar["skrev"] == "demi", "svara: a reply in the thread, as Demi")
+        ok("Tråden nu:" in r.stdout and "<- ditt svar" in r.stdout, "svara: shows the thread as it stands, so a late question is seen")
         ok(kor(rot, "nytt", "--sedan", "2020-01-01T00:00").stdout.startswith("Väntar på svar från Demi: 0"), "answered: no longer waiting")
 
         # 'nytt' without --sedan moves its mark: the second time there is nothing new.

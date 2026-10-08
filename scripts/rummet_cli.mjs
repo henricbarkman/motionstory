@@ -107,6 +107,7 @@ function nytt({ episoder, lore, sedan, sedda = [] }) {
       if (f.undan && f.undan.av !== DEMI && efter(f.undan.nar, sedan)) lagg({ nar: f.undan.nar, vem: f.undan.av, typ: 'undan', id: f.id, text: f.kropp });
     }
     for (const l of rum.logg) {
+      if (!l || l.vad === 'avsikt') continue; // the room's own bookkeeping
       if (l.vem !== DEMI && efter(l.nar, sedan)) lagg({ nar: l.nar, vem: l.vem, typ: `manus:${l.vad}`, scen: l.scen, fore: l.fore || null, efter: l.efter || null, av: l.av || null });
     }
   }
@@ -142,7 +143,12 @@ function steg(in_) {
   if (op === 'svara') {
     const rum = R.nyKommentar(R.lasRum(in_.rum, in_.episod), { id, mal: null, text: in_.text, vem: DEMI, nar, svarPa: in_.svarPa });
     const post = rum.kommentarer.at(-1);
-    return { text: R.skrivRum(rum), id, svarPa: post.svarPa, mal: post.mal };
+    // The thread as it stands now, so anything that landed in it after Demi
+    // last read it is seen at once.
+    const rot = [...rum.kommentarer, ...rum.forslag].find((x) => x.id === post.svarPa);
+    const trad = [rot, ...R.trad(rum, post.svarPa)].filter(Boolean)
+      .map((x) => ({ id: x.id, skrev: x.skrev, text: x.text != null ? x.text : x.kropp, till: x.till || null }));
+    return { text: R.skrivRum(rum), id, svarPa: post.svarPa, mal: post.mal, trad };
   }
   if (op === 'foresla') {
     const manus = tolka(in_.manus);
