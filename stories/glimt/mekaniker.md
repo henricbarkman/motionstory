@@ -76,7 +76,7 @@ Ett stopp är det tydligaste vandraren kan säga.
 **Du gör:** stannar kort för ja, går vidare för nej.
 **I berättelsen:** ett samtal utan ord från dig. Frågorna kan gå från praktiska till personliga.
 **Omdöme:** Håller, gående. På stegen blev ja, ja, nej rätt alla tre och kändes i tid (8/10).
-**Tänk på:** ett ja hörs ungefär fem sekunder efter att vandraren stannat (två för att märka stoppet, tre att stå), så räkna med sju till tio sekunder från frågan. Ett nej hörs först när väntetiden är ute, i dag tjugo sekunder. Ge henne något att säga medan hon väntar. Ett nej är också ett svar som ska ha en gren.
+**Tänk på:** ett ja hörs ungefär tre sekunder efter att vandraren stannat (två för att märka stoppet, en att stå), så räkna med fem till sju sekunder från frågan. Ett nej hörs när vandraren gått vidare i tio sekunder efter frågan (version 26, Henrics val 8/10; på gps tjugo). Ge henne något att säga medan hon väntar. Ett nej är också ett svar som ska ha en gren.
 
 ### Frys
 **Du gör:** stannar tvärt när hon säger nu, och står blickstilla tills något har passerat.
