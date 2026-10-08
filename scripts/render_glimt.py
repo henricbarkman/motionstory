@@ -2,7 +2,9 @@
 """Render every line of a Glimt chapter via ElevenLabs v3.
 
 One mp3 per line id, written to audio/glimt/vega/<chapter>/<line>.mp3.
-Lines listed under "otherVoiceLines" use the second voice.
+Lines listed under "otherVoiceLines" use the second voice. An episode with
+more voices names them under "voices" and maps lines to them in "lineVoices";
+"voiceSettings" overrides the render settings per voice.
 
 Idempotent: existing files are skipped. Re-render everything with --force,
 or a single line with --only <id>.
@@ -32,7 +34,15 @@ OUTPUT_FORMAT = "mp3_44100_128"
 VOICE_SETTINGS = {"stability": 0.5}
 
 
-def render(api_key: str, voice_id: str, text: str) -> bytes:
+def voice_for(chapter: dict, line_id: str) -> str:
+    """Name of the voice (a key in chapter["voices"]) that speaks a line."""
+    named = chapter.get("lineVoices", {}).get(line_id)
+    if named:
+        return named
+    return "other" if line_id in chapter.get("otherVoiceLines", []) else "vega"
+
+
+def render(api_key: str, voice_id: str, text: str, settings: dict | None = None) -> bytes:
     resp = requests.post(
         f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}",
         params={"output_format": OUTPUT_FORMAT},
@@ -41,7 +51,7 @@ def render(api_key: str, voice_id: str, text: str) -> bytes:
             "text": text,
             "model_id": MODEL_ID,
             "language_code": "sv",
-            "voice_settings": VOICE_SETTINGS,
+            "voice_settings": {**VOICE_SETTINGS, **(settings or {})},
         },
         timeout=300,
     )
@@ -65,7 +75,9 @@ def main() -> None:
     chapter = json.loads(args.chapter.read_text(encoding="utf-8"))
     out_dir = REPO / "audio" / "glimt" / "vega" / chapter["id"]
     out_dir.mkdir(parents=True, exist_ok=True)
-    other = set(chapter.get("otherVoiceLines", []))
+
+    if args.only and args.only not in chapter["lines"]:
+        sys.exit(f"no line {args.only!r} in {args.chapter}")
 
     billed = 0
     for line_id, text in chapter["lines"].items():
@@ -75,8 +87,11 @@ def main() -> None:
         if out.exists() and not args.force:
             print(f"skip  {out.relative_to(REPO)}")
             continue
-        voice = chapter["voices"]["other" if line_id in other else "vega"]
-        audio = render(api_key, voice, text)
+        name = voice_for(chapter, line_id)
+        if name not in chapter["voices"]:
+            sys.exit(f"line {line_id} wants voice {name!r}, missing under voices")
+        settings = chapter.get("voiceSettings", {}).get(name)
+        audio = render(api_key, chapter["voices"][name], text, settings)
         out.write_bytes(audio)
         billed += len(text)
         print(f"wrote {out.relative_to(REPO)} ({len(audio) // 1024} KB)")

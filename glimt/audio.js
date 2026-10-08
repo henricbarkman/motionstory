@@ -63,6 +63,16 @@ export class Mixer {
     this.bedGain.gain.linearRampToValueAtTime(gain, now + fadeIn);
     src.start(now);
     this.bedSource = src;
+    this.bedLevel = gain;
+  }
+
+  // Steps the bed back under another layer (episode 1: her side) and brings
+  // it up again. `share` is of the level the bed started at.
+  setBed(share, seconds = 0.5) {
+    if (this.bedLevel === undefined || this.fading) return;
+    const now = this.ctx.currentTime;
+    this.bedGain.gain.cancelScheduledValues(now);
+    this.bedGain.gain.setTargetAtTime(this.bedLevel * share, now, seconds);
   }
 
   // Plays a one-shot through the fx path. Returns the AudioContext time it
@@ -130,6 +140,7 @@ export class Mixer {
   }
 
   fadeOut(seconds = 4) {
+    this.fading = true;
     const now = this.ctx.currentTime;
     for (const g of [this.bedGain.gain, this.voiceGain.gain]) {
       g.cancelScheduledValues(now);
