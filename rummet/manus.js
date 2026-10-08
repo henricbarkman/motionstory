@@ -236,7 +236,8 @@ export function provaKropp(kropp, rad = {}) {
     throw new ManusFel('flera-rader', 'En replik är en rad. Dela upp texten i flera repliker.');
   }
   if (kropp.trim() === '') throw new ManusFel('tom', 'Repliken är tom. Stryk den i stället, om den ska bort.');
-  if (kropp !== kropp.trim()) throw new ManusFel('kant', 'Texten börjar eller slutar med mellanslag.');
+  // A space at either end is kept as typed: the room saves exactly what was
+  // written, and a phone keyboard often leaves one after the last word.
   const tillbaka = tolkaInnehall(huvud(rad) + kropp);
   const samma = tillbaka.typ === 'replik'
     && (tillbaka.etikett || null) === (rad.etikett || null)

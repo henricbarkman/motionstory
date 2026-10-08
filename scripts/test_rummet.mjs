@@ -127,6 +127,10 @@ for (const n of [1, 2]) {
     ['två\nrader', 'flera-rader'], ['', 'tom'], ['   ', 'tom'],
   ]) ok(throwsKod(() => M.andra(EP[1], a, text), kod), `refused for a plain line: ${JSON.stringify(text)} (${kod})`);
   ok(M.andra(EP[1], a, 'Hon säger (paus) något "annat".').text !== EP[1], 'parentheses and quotes inside the words are allowed');
+  const kant = M.andra(EP[1], a, 'Med mellanslag efter. ');
+  ok(kant.text.split('\n')[vanlig.i] === `> Med mellanslag efter. ` && M.tolka(kant.text).rader[vanlig.i].kropp === 'Med mellanslag efter. ',
+    'a space at the end is saved exactly as typed, and reads back the same');
+  ok(M.skriv(M.tolka(kant.text)) === kant.text, 'a line with a trailing space still roundtrips');
   const va = M.andra(EP[1], M.ankareFor(m, variant.i), 'Ny text.');
   ok(va.text.split('\n')[variant.i] === `> [${variant.variant}] Ny text.`, 'a variant keeps its tag: people write only the words');
   ok(M.byggKropp({ slag: 'regi', ord: 'dovt' }) === '(dovt)' && M.kroppDelar('(dovt)').slag === 'regi', 'direction: the room adds the parentheses');
