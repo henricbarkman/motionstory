@@ -289,6 +289,31 @@ function nyttRum(vem) {
   vy = R.vy(ep.manus, ep.rum, ep.grund);
   ok(vy.rader.get(forslagsrad.i).kommentarer[0].galler === 'paus' && vy.scener.get('3').kommentarer[0].galler === 'nar', 'a comment can be about the pause or about when something happens');
 
+  // A comment on a line stays on it when the line is edited, and notes on a
+  // twin further down follow when the first twin's text changes.
+  {
+    const kom = repliker(ep.manus).find((r) => r.kropp.startsWith('Jag går också.'));
+    await lager.kommentera('1', M.ankareFor(ep.manus, kom.i), 'Mer torrt.', null);
+    await lager.andraRad('1', M.ankareFor(ep.manus, kom.i), 'Jag går också, varje kväll.');
+    const e2 = await lager.lasEpisod('1');
+    const v2 = R.vy(e2.manus, e2.rum, e2.grund);
+    ok(v2.rader.get(kom.i).kommentarer.length === 1 && v2.scener.get('1').losa.length === 0, 'a comment stays on its line when the line is edited in the room');
+    await lager.andraRad('1', M.ankareFor(e2.manus, kom.i), kom.kropp);
+  }
+  {
+    const t = '# Glimt, episod 1: Prov\n\nA.\n\n---\n\n## 0. A\n\n> Hej.\n>\n> Mitt.\n>\n> Hej.\n\n---\n\n## Bilaga\n';
+    const tw = minnesAdapter({ 'manus:1': t });
+    const lt = S.skapaLager(tw, { nu: NU, nyttId: ID });
+    let e3 = await lt.lasEpisod('1');
+    const [forsta, andra] = repliker(e3.manus).filter((r) => r.kropp === 'Hej.');
+    await lt.kommentera('1', M.ankareFor(e3.manus, andra.i), 'Om den andra.', null);
+    await lt.andraRad('1', M.ankareFor(e3.manus, forsta.i), 'Hallå.');
+    e3 = await lt.lasEpisod('1');
+    const v3 = R.vy(e3.manus, e3.rum, null);
+    ok(v3.rader.get(andra.i).kommentarer.length === 1 && v3.rader.get(forsta.i).kommentarer.length === 0,
+      'twin lines: a note on the second stays on the second when the first one changes');
+  }
+
   // Strike: notes go with the struck line, and come back with it.
   const strykes = alla.find((r) => r.kropp.startsWith('Men det gör det.'));
   await lager.strykRad('1', M.ankareFor(ep.manus, strykes.i));

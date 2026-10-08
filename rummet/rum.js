@@ -101,6 +101,7 @@ export function vy(manus, rum, grund) {
     if (!rader.has(i)) rader.set(i, { forslag: [], kommentarer: [] });
     return rader.get(i);
   };
+  for (const s of manus.scener) scen(s.nr);
   for (const r of manus.rader) {
     if (r.typ === 'replik' && r.scen != null) rad(r.i).skrev = skrevRad(manus, rum, grund, r.i);
   }
