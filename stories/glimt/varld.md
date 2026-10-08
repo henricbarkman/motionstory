@@ -1,6 +1,6 @@
 # Glimt: världen
 
-> Uppslagsbok, inte plan. Omskriven 2026-10-07 efter Henrics beslut samma dag. Alla datum nedan är 2026. Henrics beslut är märkta **Beslut** med datum, Demis förslag *Förslag* och får strykas. Berättelsen skrivs när banorna är valda (beslut 25/9: mekaniken först, berättelsen anpassas efteråt).
+> Uppslagsbok, inte plan. Omskriven 2026-10-07 efter Henrics beslut samma dag, kompletterad 2026-10-08 efter första promenaden av episod 1. Alla datum nedan är 2026. Henrics beslut är märkta **Beslut** med datum, Demis förslag *Förslag* och får strykas. Berättelsen skrivs när banorna är valda (beslut 25/9: mekaniken först, berättelsen anpassas efteråt).
 
 HELD:s kanon står över det här: `projects/held/universe/LORE.md` (Henrics ord) vinner, sedan `WORLDBUILDING.md`, sedan den här filen.
 
@@ -22,7 +22,7 @@ Vandraren går i sin egen värld, nu. Vega lever 20-30 år fram, i HELD:s värld
 
 **Beslut 14/9:** samma universum som HELD:s musikvärld, annan ton och genre (se Tonen).
 
-*Förslag 12/9:* du ser den här världen, du hör den andra. Berättelsen beskriver aldrig det vandraren ser, bara det hen hör.
+**Beslut 8/10:** du hör hennes värld, hon ser din. Vandraren hör Vega och hennes sida. Vega ser glimtar av vandrarens värld, men hör den aldrig. (Ersätter förslaget 12/9 att berättelsen aldrig beskriver det vandraren ser: hon får beskriva det hon ser, inom reglerna under Kopplingen.)
 
 ## Var Vega är
 
@@ -68,6 +68,14 @@ Tiden: Vega säger aldrig vilket år det är, bara "hos dig".
 1. Står du still syns det hon gör. Står hon också still finns inget att se, och då gömmer ni er ihop.
 2. Täckningen håller så länge du går alls. Du behöver inte gå jämnt eller i takt. Takt krävs bara i enstaka skarpa lägen.
 3. Frånvaro är aldrig skuld. Länken finns bara när du är ute, och däremellan klarar hon sig själv.
+
+**Vad hon ser (beslut 8/10, Henrics idé efter första promenaden, med Demis två regler):**
+1. Hon ser glimtar av vandrarens värld och rörelser, aldrig vandraren själv. Bara det telefonen vet: om du går, springer eller står, ljuset, vädret och det kartan har nära dig. Aldrig människor, bilar eller saker, för då skulle hon säga något som inte stämmer.
+2. Inget ljud går över, inte stegen heller, förrän i slutet då vandraren kan prata i mikrofonen. Snäckan räknar stegen som siffror åt Företaget; det Vega själv får är glimtar. Därför hör hon aldrig vad vandraren säger, och vandraren svarar bara med kroppen.
+
+Glimtarna är suddiga och få i början och kan bli fler och skarpare episod för episod. Utkik, Kartläggning och Fynd blir starkare av dem. Inslag C nedan blir det skarpa läget av samma sak.
+
+**Hennes närvaro i ljudet (Henric 8/10):** inga ständiga stegljud från henne, det blir konstigt att lyssna på. Hennes steg hörs när de betyder något (hon stannar, kliver av, springer), annars subtilare ljud. Ljudkopplingen är otydlig i början och förstärks i senare episoder.
 
 **Variant B är grundläget:** hon rör sig fritt. Variant A, där hon är bunden till dina steg, är ett tillfälligt läge.
 
@@ -177,6 +185,12 @@ Den gamla ordningen, en låt per kapitel i bågens ordning, var Demis förslag f
 - Om en replik skulle passa på ägarnas rekryteringsaffisch stryks den.
 
 ## Dold lore
+
+**Beslut 8/10:** en okänd rebellgrupp har hackat Företagets system, och det är de som gör kopplingen mellan Vega och vandraren möjlig. Vega är lika förvånad som vandraren. Ingen av dem får veta det förrän långt senare, kanske i slutet, kanske aldrig i den här berättelsen. Henric övervägde först att Vega själv kommit åt någon teknik, men valde mystiken.
+
+*Förslag 8/10, inte beslutat:* kopian är byggd av kartdata och rörelsedata från jorden, och rebellerna har öppnat det röret åt ett håll till. I röret finns precis det telefonen känner av och inget ljud, vilket förklarar vad hon ser och varför hon inte hör.
+
+**Tempot (Henric 8/10):** hot och nya figurer kommer inte för tidigt. Första episoden är mötet mellan två. En krok i slutet ska bara ge känslan av att det finns något annat, aldrig en utsagd ny figur.
 
 **Beslut 14/9:** hur kopplingen uppstod ska finnas som lore men aldrig komma fram i berättelsen. Riktningen: kvantmekanik, parallella universum eller fler dimensioner. Henric äger den. Osäkert om det gäller efter 7/10, då Henric sa att hur data färdas inte behöver förklaras. Kanske behövs ingen dold lore alls.
 
