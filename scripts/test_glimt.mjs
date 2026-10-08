@@ -407,18 +407,33 @@ const EPISODE_WALKERS = {
     has: ['s3-5', 's3-6', 'x-avvikelse', 's3-lamp-1'], not: ['s3-ask', 's3-lamp-2'],
     lamps: 1, cuts: 0, memory: { svarade: false, misstanke: false },
   },
-  // Sits down on a bench for twelve minutes while she sits under the tree.
-  // The snäcka asks three times and then lets her be.
+  // Sits down on a bench for twelve minutes while she sits under the tree,
+  // on the field phone: the feet say so, and the story waits. The snäcka
+  // asks three times and then lets her be.
   sits: {
-    walk: out(), stops: { 's4-1': ['start', 8, 8 + 12 * 60], ...END_STOP },
+    walk: t => ({ ...out()(t), ...FIELD_2, handling: true }), stops: { 's4-1': ['start', 8, 8 + 12 * 60], ...END_STOP },
     has: ['r-vilar', 's5-hon-walk'], twice: ['s4-skog'], reserves: 3,
     lamps: 0, memory: { svarade: false, misstanke: false },
   },
   // Stands so long that scene 5 stops waiting. Someone who stood there all
   // along has not stopped: no lamp, and no suspicion for episode 2.
   gone: {
-    walk: out(), stops: { 's4-1': ['start', 8, 8 + 21 * 60], ...END_STOP },
+    walk: t => ({ ...out()(t), ...FIELD_2, handling: true }), stops: { 's4-1': ['start', 8, 8 + 21 * 60], ...END_STOP },
     has: ['s5-hon-walk'], not: ['s5-lamp-sten'], twice: ['s4-skog'], reserves: 3, logs: ['scene 5: the walker stands'],
+    lamps: 0, memory: { svarade: false, misstanke: false },
+  },
+  // The same long stand on GPS alone, which cannot be trusted on a stop:
+  // scene 5 gives up after the short wait, and still lights no lamp.
+  stalls: {
+    walk: out(), stops: { 's4-1': ['start', 8, 8 + 12 * 60], ...END_STOP },
+    has: ['r-vilar', 's5-hon-walk'], not: ['s5-lamp-sten'], twice: ['s4-skog'], logs: ['scene 5: the walker stands'],
+    lamps: 0, memory: { svarade: false, misstanke: false },
+  },
+  // Waits at a kerb through her question and shifts their weight just after
+  // it: the phone sees a new stop, but nobody walked, so it is no answer.
+  shuffle: {
+    walk: t => ({ ...out()(t), ...FIELD_2, handling: true }), stops: { 's2-1': [['start', 5, 24], ['start', 25.2, 50]], ...END_STOP },
+    has: ['s2-no'], not: ['s2-yes-1', 'r-hjalp'],
     lamps: 0, memory: { svarade: false, misstanke: false },
   },
   // The walker who stops when asked, on the field phone: a fix every six

@@ -36,7 +36,8 @@ const MIN = 60;
 const ASK_WINDOW = 20;      // s she waits for a stop she asked for
 const HALF_MINUTE = 30;     // s without steps before the snäcka asks
 const RESERVE_MAX = 3;      // times it asks in one walk, then it lets her be
-const LONG_WAIT = 10 * MIN;  // s a scene that needs the walker's steps waits for them
+const SHORT_WAIT = 2.5 * MIN; // s a scene waits for a walker who is not walking
+const LONG_WAIT = 10 * MIN;   // the same, when the feet say the walker stands
 
 // A stop the walker means. The feet say it two seconds after the last step,
 // so one second more is enough; GPS alone needs longer to be sure.
@@ -123,11 +124,16 @@ export async function runEpisode1(ctx) {
 
   // Scenes open when the walker is walking, so a line never starts into a
   // stop. The deadline is for a phone that cannot tell: the episode goes on.
+  // With `patience` she waits longer, but only while the feet say the walker
+  // stands: the step sensor can be trusted on that, GPS alone cannot.
   // 'lamp' if a stop lit the lamp while it waited, 'late' at the deadline.
-  async function opens(at, patience = 2.5 * MIN) {
+  async function opens(at, patience = SHORT_WAIT) {
+    let by = at + SHORT_WAIT;
     for (;;) {
-      const why = await hold(s => s.t >= at && s.moving && s.movingFor >= 3, { by: at + patience });
-      if (why !== 'rest') return why;
+      const why = await hold(s => s.t >= at && s.moving && s.movingFor >= 3, { by });
+      if (why === 'rest') continue;
+      if (why === 'late' && by < at + patience && ctx.state().paceSource === 'steps') { by = at + patience; continue; }
+      return why;
     }
   }
 
@@ -136,17 +142,21 @@ export async function runEpisode1(ctx) {
   // stops on the word and walks again before she has finished has answered.
   // It closes twenty seconds after the line. With `patience`, a walker who
   // stood there before she asked gets that long to walk again first.
+  // The answer is a stop out of walking: someone waiting at a kerb who shifts
+  // their weight makes the phone see a new stop, and that is not one.
   async function ask(id, patience = 0) {
     const askedAt = now() + ctx.cue(id, 'stanna');
+    let walked = false;
     let yes = false;
     let closes = Infinity;
     const answer = ctx.until(s => {
-      if (stopped(s) && stopBegan(s) >= askedAt) yes = true;
+      if (s.t >= askedAt - 2 && walking(s)) walked = true;
+      if (walked && stopped(s) && stopBegan(s) >= askedAt) yes = true;
       return yes || s.t >= closes;
     });
     await ctx.play(id);
     const s = ctx.state();
-    if (!yes && patience && !s.moving && stopBegan(s) < askedAt) await ctx.until(walking, { timeout: patience });
+    if (!yes && patience && !s.moving && stopBegan(s) < askedAt) await ctx.until(s => yes || walking(s), { timeout: patience });
     closes = now() + ASK_WINDOW;
     await answer;
     return yes;
@@ -254,7 +264,7 @@ export async function runEpisode1(ctx) {
       // Her hand stays on the trunk and she walks slowly round it. After the
       // lamp she does not: she stands where she stood.
       if (her.exposed && after !== 'lamp') side.walk('mjukt', { rate: 62 });
-      return after;
+      return after === 'lamp' ? after : 'ok';
     },
     () => said('s3-6'),
   ];
