@@ -245,12 +245,15 @@ const median = xs => {
 };
 
 // A question answered by stopping. Resolves {yes, after}: yes when the walker
-// is still for three seconds within `window` seconds of the line ending (or
-// already stands still when it ends), `after` the seconds that took.
-async function askStop(ctx, id, { window = 20 } = {}) {
+// has stood still one second after the feet read the stop (three on GPS)
+// within the window after the line ends, or already stands still when it
+// ends; `after` the seconds that took. The window is ten seconds when the
+// feet decide and twenty on GPS, which reads a stop five to twelve seconds
+// late (Henric 2026-10-08, after the test walk: one second and ten).
+async function askStop(ctx, id, { window = null } = {}) {
   await ctx.play(id);
   const t0 = ctx.state().t;
-  const yes = await ctx.until(s => s.stillFor >= 3, { timeout: window });
+  const yes = await ctx.until(s => s.stillFor >= stillToAnswer(s), { timeout: window ?? answerWindow(ctx.state()) });
   // Which of the two read the stop: steps take about three seconds, GPS on
   // the field phone took twelve (2026-09-28), so the log has to say.
   const state = ctx.state();
@@ -258,6 +261,8 @@ async function askStop(ctx, id, { window = 20 } = {}) {
 }
 
 const via = src => src === 'steps' ? 'steg' : 'gps';
+const stillToAnswer = s => s.paceSource === 'steps' ? 1 : 3;
+const answerWindow = s => s.paceSource === 'steps' ? 10 : 20;
 
 // The phone stops the motion sensor when the screen goes dark or another app
 // takes the front, and says nothing about it. In the first field lab
@@ -447,7 +452,12 @@ async function ja(ctx, { expect = null } = {}) {
   for (const q of qs) {
     const a = await askStop(ctx, q);
     answers.push(a);
-    ctx.log(`${q}: ${a.yes ? `ja ${stopTiming(a.said, a.said + a.after, a.state)}` : 'nej'}`);
+    // The stop itself, apart from the second (or three) of standing that
+    // makes it a yes: the log said "märkte det 5,3 s efter" for a stop the
+    // feet read in two (2026-10-08).
+    const read = a.state.t - a.state.stillFor;
+    ctx.log(`${q}: ${!a.yes ? 'nej' : read < a.said ? `ja efter ${sec(a.after)}, stod redan still`
+      : `ja efter ${sec(a.after)}, stoppet ${stopTiming(a.said, read, a.state)}`}`);
     await ctx.play(a.yes ? 'ja-svar-ja' : 'ja-svar-nej');
     if (a.yes) await walkOn(ctx);
     await wait(ctx, 4);

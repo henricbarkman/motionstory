@@ -33,7 +33,9 @@
 //   remember(facts) what episode 2 will want to know
 
 const MIN = 60;
-const ASK_WINDOW = 20;      // s she waits for a stop she asked for
+// s she waits for a stop she asked for, after the line: ten when the feet
+// decide (Henric 2026-10-08), twenty on GPS, which reads a stop late.
+const askWindow = s => s.paceSource === 'steps' ? 10 : 20;
 const HALF_MINUTE = 30;     // s without steps before the snäcka asks
 const RESERVE_MAX = 3;      // times it asks in one walk, then it lets her be
 const SHORT_WAIT = 2.5 * MIN; // s a scene waits for a walker who is not walking
@@ -140,7 +142,7 @@ export async function runEpisode1(ctx) {
   // She asks for a stop with line `id`, where she is not exposed. The window
   // opens at the word that asks, not at the end of the line: a walker who
   // stops on the word and walks again before she has finished has answered.
-  // It closes twenty seconds after the line. With `patience`, a walker who
+  // It closes ten seconds after the line (twenty on GPS). With `patience`, a walker who
   // stood there before she asked gets that long to walk again first.
   // The answer is a stop out of walking: someone waiting at a kerb who shifts
   // their weight makes the phone see a new stop, and that is not one.
@@ -157,7 +159,7 @@ export async function runEpisode1(ctx) {
     await ctx.play(id);
     const s = ctx.state();
     if (!yes && patience && !s.moving && stopBegan(s) < askedAt) await ctx.until(s => yes || walking(s), { timeout: patience });
-    closes = now() + ASK_WINDOW;
+    closes = now() + askWindow(ctx.state());
     await answer;
     return yes;
   }
@@ -292,7 +294,7 @@ export async function runEpisode1(ctx) {
       askedAt = now() + ctx.cue('s3-ask', 'stanna');
       why = await line('s3-ask');
     }
-    if (why !== 'lamp') why = await pause(ASK_WINDOW);
+    if (why !== 'lamp') why = await pause(askWindow(ctx.state()));
     if (why === 'lamp') {
       await lampAtTheTree(askedAt);
     } else {

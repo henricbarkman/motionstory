@@ -18,13 +18,15 @@ const MIN = 60;
 // the answer, whenever it began. Leaves the hold on for a yes so the caller
 // can play the reply into the stop, then call release().
 //
-// The window is counted from the end of the line. A stop registers three to
-// seven seconds after the feet stop (speed smoothing, then stillFor), so
-// twenty seconds gives the walker about ten to react.
-async function ask(ctx, lineId, { window = 20 } = {}) {
+// The window is counted from the end of the line. On the feet a stop reads
+// about two seconds after the last step and one second of standing makes it
+// a yes, so ten seconds is enough (Henric 2026-10-08); on GPS a stop reads
+// five to twelve seconds late, so it keeps three seconds and twenty.
+async function ask(ctx, lineId, { window = null } = {}) {
   ctx.hold(true);
   await ctx.play(lineId);
-  const yes = await ctx.until(s => s.stillFor >= 3, { timeout: window });
+  const steps = ctx.state().paceSource === 'steps';
+  const yes = await ctx.until(s => s.stillFor >= (s.paceSource === 'steps' ? 1 : 3), { timeout: window ?? (steps ? 10 : 20) });
   if (!yes) ctx.hold(false);
   return yes;
 }
