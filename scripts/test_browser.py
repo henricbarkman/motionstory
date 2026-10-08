@@ -37,6 +37,8 @@ except ImportError:
     sys.exit("Install deps: pip install playwright && playwright install chromium")
 
 REPO = Path(__file__).resolve().parents[1]
+# The app's version, read from the app, so a version bump is not a red test.
+APP_VERSION = int(re.search(r"const APP_VERSION = (\d+);", (Path(__file__).resolve().parent.parent / "glimt" / "app.js").read_text()).group(1))
 ONLY = [x for x in (sys.argv[1].split(",") if len(sys.argv) > 1 else []) if x]
 SHOTS = os.environ.get("GLIMT_SHOTS")
 FAIL_FAST = bool(os.environ.get("GLIMT_FAIL_FAST"))
@@ -521,7 +523,7 @@ def prov(browser, base):
           sub: document.getElementById('subtitle').textContent,
           doc: document.title,
         })""")
-        check(card["box"] and not card["chapters"] and not card["vibra"] and card["version"] == "Version 25" and card["question"] and card["todo"],
+        check(card["box"] and not card["chapters"] and not card["vibra"] and card["version"] == f"Version {APP_VERSION}" and card["question"] and card["todo"],
               f"?prov={pid}: the start screen shows its card and nothing to choose ({card['title']!r}, {card['version']!r}, {card['sub']!r})")
         shot(page, f"prov-{pid}-start")
         page.click("#start-btn")
@@ -534,7 +536,7 @@ def prov(browser, base):
             ctx.close()
             continue
         log = walk_log(page)
-        check(any(f"start, prov {pid} " in line and "version 25" in line for line in log), f"?prov={pid}: the log names the test and the version")
+        check(any(f"start, prov {pid} " in line and f"version {APP_VERSION}" in line for line in log), f"?prov={pid}: the log names the test and the version")
         check(any("▶ prov-slut" in line for line in log) and not any(re.search(r"▶ (labb-|franvaro|nyckel|varld)", line) for line in log),
               f"?prov={pid}: her end line, and no lab or memory lines")
         untouched = not any(line.split("  ", 1)[-1].startswith("minne:") for line in log) and page.evaluate("document.getElementById('world-end').hidden")
@@ -563,7 +565,7 @@ def prov(browser, base):
         body = json.loads(Path(d.path()).read_text())
         p = body.get("prov") or {}
         check(d.suggested_filename.startswith(f"glimt-prov-{pid}-") and d.suggested_filename.endswith(".json"), f"?prov={pid}: the file is named for the test ({d.suggested_filename})")
-        check(p.get("id") == pid and p.get("appVersion") == 25 and len(p.get("answers", {})) == asks and all(r.get("rating") == "igen" for r in p.get("results", [])) and p.get("results"),
+        check(p.get("id") == pid and p.get("appVersion") == APP_VERSION and len(p.get("answers", {})) == asks and all(r.get("rating") == "igen" for r in p.get("results", [])) and p.get("results"),
               f"?prov={pid}: it carries the answers and the verdicts ({json.dumps(p.get('answers'), ensure_ascii=False)})")
         check(any(m[1].startswith("svar: ") for m in body["log"]), f"?prov={pid}: and the log in it has the answers")
         check(label is not None and "Demi" in page.evaluate("document.getElementById('save-btn').textContent"), f"?prov={pid}: the save button is there without a sensor recording too")
@@ -760,7 +762,7 @@ def episod(browser, base):
         # The end screen's log: one line a row, the time and two spaces first.
         log = page.evaluate("document.getElementById('final-log').textContent.split('\\n')")
         heard = [line.split("▶ ", 1)[1] for line in log if "▶ " in line]
-        check(any("Det är när du går (episod1), version 25" in line for line in log), f"episod, {who}: the log names the episode and the version ({log[0]!r})")
+        check(any(f"Det är när du går (episod1), version {APP_VERSION}" in line for line in log), f"episod, {who}: the log names the episode and the version ({log[0]!r})")
         missing = [x for x in want["has"] if x not in heard]
         check(not missing, f"episod, {who}: every line of the walker's branches is heard ({'missing ' + ', '.join(missing) if missing else len(heard)})")
         extra = [x for x in want["not"] if any(h.split(" ")[0] == x for h in heard)]
