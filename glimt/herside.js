@@ -18,15 +18,15 @@
 // walker stands still and the voice sinks away. The bus goes to the mixer's
 // master beside the voice, so contact never muffles it.
 
-const UNDER = 0.35;     // bus level under her voice
-const LIFTED = 0.62;    // under, but brought up: the count, someone coming
+const UNDER = 0.3;      // bus level under her voice
+const LIFTED = 0.7;     // under, but brought up: the count, someone coming
 const FORWARD = 1.0;    // the walker stands still
 const STEP_PEAK = 0.3;  // every step is levelled to this before the bus
 
 // Where the other woman is: [level, lowpass Hz, pan].
 const OTHER = {
   far: [0.0001, 700, -0.7],
-  near: [0.6, 7000, -0.15],
+  near: [1.1, 7000, -0.15],
   past: [0.0001, 900, 0.7],
 };
 
@@ -117,7 +117,7 @@ export class HerSide {
     const now = c.currentTime;
     // Two saws a hair apart beat slowly, as a transformer does. The third,
     // an octave up, is what small earbuds can actually reproduce.
-    for (const [type, freq, level] of [['sawtooth', 98, 0.07], ['sawtooth', 98.6, 0.07], ['triangle', 196.4, 0.05]]) {
+    for (const [type, freq, level] of [['sawtooth', 98, 0.1], ['sawtooth', 98.6, 0.1], ['triangle', 196.4, 0.07]]) {
       const osc = c.createOscillator();
       osc.type = type;
       osc.frequency.value = freq;
@@ -137,7 +137,7 @@ export class HerSide {
     band.frequency.value = 900;
     band.Q.value = 0.8;
     const air = c.createGain();
-    air.gain.value = 0.012;
+    air.gain.value = 0.017;
     noise.connect(band);
     band.connect(air);
     air.connect(hum);
@@ -279,7 +279,7 @@ export class HerSide {
     if (!on || this.closed) return;
     this.toneStop = this._loop(() => 40, when => {
       const c = this.ctx;
-      for (const [freq, level] of [[587.3, 0.2], [880, 0.05]]) {
+      for (const [freq, level] of [[587.3, 0.16], [880, 0.04]]) {
         const osc = c.createOscillator();
         osc.type = 'sine';
         osc.frequency.value = freq;
@@ -359,7 +359,7 @@ export class HerSide {
     if (kind === 'snacka') {
       through('highpass', 480);
       through('lowpass', 2700);
-      g.gain.value = 0.75;
+      g.gain.value = 0.5;
       // A copy a few milliseconds late hollows it out: the sound of a small
       // speaker in an ear, and of a voice nobody is behind.
       if (c.createDelay) {

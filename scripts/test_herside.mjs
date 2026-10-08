@@ -128,7 +128,7 @@ function rig() {
   side.other('near', 5);
   run(5);
   check(startedSince(n) >= 7, `her steps come (${startedSince(n)})`);
-  check(side.otherGain.gain.value > 0.5, `and are close after the five seconds (${side.otherGain.gain.value})`);
+  check(side.otherGain.gain.value > 0.9, `and are close after the five seconds (${side.otherGain.gain.value})`);
   side.other('stop');
   run(0.3);
   n = audio.started.length;
