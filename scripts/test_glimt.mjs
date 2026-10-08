@@ -431,8 +431,11 @@ const EPISODE_WALKERS = {
   },
   // Waits at a kerb through her question and shifts their weight just after
   // it: the phone sees a new stop, but nobody walked, so it is no answer.
+  // Whether the phone sees it hangs on the bumps, hence the seed: with this
+  // one the stop was taken as her answer before `ask` asked for steps first.
   shuffle: {
-    walk: t => ({ ...out()(t), ...FIELD_2, handling: true }), stops: { 's2-1': [['start', 5, 24], ['start', 25.2, 50]], ...END_STOP },
+    seed: 3,
+    walk: t => ({ ...out()(t), ...FIELD_2, handling: true }), stops: { 's2-1': [['start', 5, 24], ['start', 25.4, 50]], ...END_STOP },
     has: ['s2-no'], not: ['s2-yes-1', 'r-hjalp'],
     lamps: 0, memory: { svarade: false, misstanke: false },
   },
@@ -460,8 +463,23 @@ for (const w of EPISODE_WORLDS) {
   };
 }
 
+// A small seeded generator (mulberry32). A walker with `seed` gets the same
+// bumps and the same wandering GPS every run, so a case that hangs on them
+// is a case and not a coin toss.
+function seeded(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let x = Math.imul(a ^ (a >>> 15), 1 | a);
+    x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x;
+    return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 function simulateEpisode(name) {
   const profile = EPISODE_WALKERS[name];
+  const random = Math.random;
+  if (profile.seed !== undefined) Math.random = seeded(profile.seed);
   const walk = new Walk();
   const waiter = new Waiter();
   const log = [];
@@ -556,6 +574,7 @@ function simulateEpisode(name) {
       t = Math.round((t + 0.25) * 4) / 4;
     }
     await Promise.race([done, Promise.resolve()]);
+    Math.random = random;
     return { log, ended, t, played, sideCalls, memory, cuts };
   })();
 }
