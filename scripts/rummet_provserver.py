@@ -20,6 +20,7 @@ import argparse
 import importlib.util
 import json
 import mimetypes
+import os
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -27,7 +28,8 @@ from urllib.parse import parse_qs, unquote, urlparse
 
 REPO = Path(__file__).resolve().parents[1]
 GA = "/home/henric/generalassistant"
-FILES_PY = Path(GA) / "scripts" / "dashboard" / "files.py"
+# RUMMET_FILES_PY: another copy of the module, to test a change to it.
+FILES_PY = Path(os.environ.get("RUMMET_FILES_PY") or Path(GA) / "scripts" / "dashboard" / "files.py")
 
 
 def load_files_api(rot: Path):
