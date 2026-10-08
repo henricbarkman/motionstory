@@ -6,6 +6,7 @@ Arbetsnamn. Narrativt fitness-system där motionsformen styr berättelse-genren.
 
 - `PROGRESS.md`: field tests and decisions, newest first.
 - `stories/glimt/varld.md`: the world book (frozen 2026-09-25), Henric's decisions marked **beslut**.
+- `stories/glimt/mekaniker.md`: the catalogue of mechanics, written for whoever writes a manuscript: what the walker does, what it is in the story, a one-word verdict (Håller, Delvis, Osäker, Oprövad, Idé) and what to watch for. This is the list of which mechanics exist. The measurements behind each verdict stay on the plan page. When a walk changes a mechanic's status, or a mechanic is built or struck, change the catalogue in the same session as the plan page. A trigger that begins `Ny mekanik:` in a manuscript is a writer's request: answer whether the phone can read it.
 - Plan page for Henric: `data/uploads/glimt-plan/index.html` in generalassistant (not in this repo), https://demi.henricbarkman.se/uploads/glimt-plan/index.html. Every mechanic with its field status and his rating, the story decisions, proposals, open questions, and style. Update it in the same session whenever a walk changes a mechanic's status or a story or style decision is made, and change the date in its header.
 
 ## Manusrummet (the manuscript room)
