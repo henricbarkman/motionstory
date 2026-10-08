@@ -256,9 +256,14 @@ function minne(filer) {
 }
 function adapterFor(m, vem = 'henric') {
   const a = {
-    namn: 'minne', rot: 'test', kanSkriva: true, skrivningar: [], fore: null, efterSkriv: null,
+    namn: 'minne', rot: 'test', kanSkriva: true, skrivningar: [], fore: null, efterSkriv: null, efterLas: null,
     async vem() { return { id: vem, namn: vem }; },
-    async las(p) { const f = m.store.get(p); return f ? { text: f.text, version: f.version } : null; },
+    async las(p) {
+      const f = m.store.get(p);
+      const ut = f ? { text: f.text, version: f.version } : null;
+      if (a.efterLas) await a.efterLas(p);
+      return ut;
+    },
     async skriv(p, text, version) {
       if (a.fore) await a.fore(p);
       const f = m.store.get(p);
@@ -440,6 +445,73 @@ const replik = (ed, borjan) => ed.hitta((p) => p.typ === 'replik' && p.text.star
   await h.d.spara();
   const t = text(m, 'manus:1');
   ok(gang >= 2 && t.includes('> Min ändring.') && t.includes('> Emellan.'), 'a file changed between read and write: the save starts over and both are kept');
+}
+
+{
+  // Someone saved right after this window read the file: the write must go
+  // with the version that was read, never with a fresher one.
+  const m = minne({ 'manus:1': FIL[1] });
+  const a = adapterFor(m);
+  const h = await oppna(a, '1');
+  const p = replik(h.ed, 'Jag vet inte vem du är');
+  h.ed.skriv(p.id, 'Min ändring.');
+  let gang = 0;
+  a.efterLas = async (plats) => {
+    if (plats !== 'manus:1' || gang++) return;
+    const raa = rader(text(m, 'manus:1'));
+    raa[raa.findIndex((r) => r.startsWith('> Fortsätt gå'))] = '> Strax efter läsningen.';
+    utifran(m, 'manus:1', raa.join('\n'));
+  };
+  await h.d.spara();
+  a.efterLas = null;
+  const t = text(m, 'manus:1');
+  ok(t.includes('> Min ändring.') && t.includes('> Strax efter läsningen.') && diffRader(FIL[1], t).length === 2, 'a file changed right after it was read: the write goes with the version read, and both are kept');
+}
+
+{
+  // The same paragraph changed here (not saved yet) and in the file: reading
+  // never takes away what is typed, and the save keeps the other version.
+  const m = minne({ 'manus:1': FIL[1] });
+  const h = await oppna(adapterFor(m), '1');
+  // A first save, so the room's notes know the paragraphs by name.
+  h.ed.skriv(replik(h.ed, 'Fortsätt gå').id, 'Fortsätt gå, du.');
+  await h.d.spara();
+  const p = replik(h.ed, 'Jag vet inte vem du är');
+  h.ed.skriv(p.id, 'Skrivet här, inte sparat.');
+  const raa = rader(text(m, 'manus:1'));
+  raa[raa.indexOf(p.raw)] = `${p.raw} Ändrat i filen under tiden.`;
+  utifran(m, 'manus:1', raa.join('\n'));
+  await h.d.hamta();
+  ok(h.ed.hitta((x) => x.id === p.id).text === 'Skrivet här, inte sparat.', 'reading the file never replaces a paragraph that was changed here');
+  await h.d.spara();
+  const not = JSON.parse(text(m, 'rum:1'));
+  const kr = (not.krockar || []).find((k) => k.stycke === p.id);
+  ok(text(m, 'manus:1').includes('> Skrivet här, inte sparat.') && kr && kr.text.endsWith('Ändrat i filen under tiden.') && !kr.vem,
+    'and the save puts it in the text, with the file\'s version kept as a krock from outside the room');
+}
+
+{
+  // Taking away the first scene heading would make every line after it read
+  // as something else: nothing is written, and the save says why.
+  const m = minne({ 'manus:1': FIL[1] });
+  const a = adapterFor(m);
+  const h = await oppna(a, '1');
+  const scen = h.ed.hitta((x) => x.typ === 'scen');
+  h.ed.bort(scen.id);
+  let fel = null;
+  try { await h.d.spara(); } catch (e) { fel = e; }
+  ok(fel && fel.kod === 'format' && text(m, 'manus:1') === FIL[1] && a.skrivningar.length === 0, 'a file that would read back as something else is never written');
+}
+
+{
+  // The portal: a file believed missing is written with 0 as its version,
+  // so one that appeared in between is a Krock and not overwritten.
+  const sant = [];
+  const f = async (url, o) => { sant.push(JSON.parse(o.body)); return { status: 200, ok: true, json: async () => ({ mtime: 5 }) }; };
+  const pa = D.portalAdapter({ fetch: f });
+  await pa.skriv('rum:1', '{}', null);
+  await pa.skriv('rum:1', '{}', 7.5);
+  ok(sant[0].expected_mtime === 0 && sant[1].expected_mtime === 7.5, 'the portal adapter sends 0 for a file it believes is missing, and the version read otherwise');
 }
 
 {
