@@ -158,17 +158,21 @@ export class HerSide {
   // Calls `hit(time)` at `rate` steps a minute, looking a little ahead so
   // the walk does not depend on setInterval's jitter. After a stall (a
   // backgrounded tab) it starts again from now, no burst of missed steps.
+  // `hit` returns what it started; stopping the loop takes back what has not
+  // sounded yet, so her last step is not heard after she has stopped.
   _loop(rateFn, hit) {
     const ctx = this.ctx;
     let next = ctx.currentTime + 0.1;
     let stopped = false;
+    let ahead = [];
     const id = this.timers.setInterval(() => {
       if (stopped) return;
       const rate = rateFn();
       if (!(rate > 0)) { next = ctx.currentTime + 0.1; return; }
       if (next < ctx.currentTime) next = ctx.currentTime + 0.05;
+      ahead = ahead.filter(a => a.when > ctx.currentTime);
       while (next < ctx.currentTime + 0.25) {
-        hit(next);
+        ahead.push({ when: next, nodes: hit(next) || [] });
         next += 60 / rate;
       }
     }, 50);
@@ -177,6 +181,14 @@ export class HerSide {
       stopped = true;
       this.timers.clearInterval(id);
       this.stops.delete(stop);
+      for (const a of ahead) {
+        if (a.when <= ctx.currentTime) continue;
+        for (const node of a.nodes) {
+          try { node.stop(); } catch (_) {}
+          this.sources.delete(node);
+        }
+      }
+      ahead = [];
     };
     this.stops.add(stop);
     return stop;
@@ -185,7 +197,7 @@ export class HerSide {
   // One cut of a sound at `when`, never the same cut twice in a row.
   _cut(name, when, dest, level = 1) {
     const sound = this.sounds[name];
-    if (!sound || this.closed) return;
+    if (!sound || this.closed) return null;
     let i = Math.floor(Math.random() * sound.cuts.length);
     if (sound.cuts.length > 1 && i === sound.last) i = (i + 1) % sound.cuts.length;
     sound.last = i;
@@ -204,6 +216,7 @@ export class HerSide {
     src.onended = () => this.sources.delete(src);
     src.start(when, cut.start, cut.length);
     this.sources.add(src);
+    return [src];
   }
 
   // Her own steps. `surface` is 'grus' or 'mjukt'; null stops her. `rate` in
@@ -279,6 +292,7 @@ export class HerSide {
     if (!on || this.closed) return;
     this.toneStop = this._loop(() => 40, when => {
       const c = this.ctx;
+      const started = [];
       for (const [freq, level] of [[587.3, 0.16], [880, 0.04]]) {
         const osc = c.createOscillator();
         osc.type = 'sine';
@@ -294,7 +308,9 @@ export class HerSide {
         osc.start(when);
         osc.stop(when + 1.15);
         this.sources.add(osc);
+        started.push(osc);
       }
+      return started;
     });
   }
 

@@ -12,10 +12,12 @@ offsets named under "cueWords" into "cues" (episode 1 needs to know when the
 word "trettio" falls inside the counting line). The tests read both.
 
 Usage:
-    python3 scripts/check_glimt_audio.py stories/glimt/episod-1.json [--listen] [--only s3-3]
+    python3 scripts/check_glimt_audio.py stories/glimt/episod-1.json [--listen [--cached]] [--only s3-3]
 
 --listen needs ELEVENLABS_API_KEY in ~/generalassistant/.env and is billed as
-speech-to-text. Transcripts are kept in ~/.cache/demi-scratch/glimt-listen/.
+speech-to-text. Transcripts are kept in ~/.cache/demi-scratch/glimt-listen/,
+and --cached reads a kept one again when it is newer than its mp3: a new cue
+word costs nothing to measure.
 """
 import argparse
 import difflib
@@ -73,6 +75,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("chapter", type=Path)
     parser.add_argument("--listen", action="store_true")
+    parser.add_argument("--cached", action="store_true", help="with --listen: reuse kept transcripts")
     parser.add_argument("--only", help="check just this line id")
     args = parser.parse_args()
 
@@ -101,9 +104,16 @@ def main() -> int:
             sys.exit(f"ELEVENLABS_API_KEY missing in {ENV_FILE}")
         SCRATCH.mkdir(parents=True, exist_ok=True)
         have = [i for i in ids if (audio_dir / f"{i}.mp3").exists()]
+
+        def listen(line_id: str) -> dict:
+            mp3 = audio_dir / f"{line_id}.mp3"
+            kept = SCRATCH / f"{chapter['id']}-{line_id}.json"
+            if args.cached and kept.exists() and kept.stat().st_mtime >= mp3.stat().st_mtime:
+                return json.loads(kept.read_text(encoding="utf-8"))
+            return transcribe(api_key, mp3)
+
         with ThreadPoolExecutor(max_workers=4) as pool:
-            heard = dict(zip(have, pool.map(
-                lambda i: transcribe(api_key, audio_dir / f"{i}.mp3"), have)))
+            heard = dict(zip(have, pool.map(listen, have)))
         for line_id in have:
             result = heard[line_id]
             (SCRATCH / f"{chapter['id']}-{line_id}.json").write_text(

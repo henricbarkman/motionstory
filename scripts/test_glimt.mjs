@@ -273,7 +273,8 @@ const E_SECONDS = EPISODE.seconds || {};
 const E_CUE = (EPISODE.cues && EPISODE.cues['s3-3'] && EPISODE.cues['s3-3'].trettio) || 0;
 
 // What a walker does when a line is heard: `[when, from, to]`, a stop from
-// `from` to `to` seconds after the line's 'start' or 'end'.
+// `from` to `to` seconds after the line's 'start' or 'end'. A list of them
+// for more than one stop.
 const ANSWER = ['end', 2, 12];
 const END_STOP = { 's6-all': ['end', 3, Infinity] };
 const out = (speed = 1.4, turn = 330) => t => ({ speed: t < 5 ? 0 : speed, heading: t < turn ? 0 : Math.PI });
@@ -352,6 +353,67 @@ const EPISODE_WALKERS = {
     has: ['r-hjalp', 'r-vilar', 's3-4'], twice: ['s3-2', 's3-3'],
     lamps: 0, memory: { svarade: false, misstanke: false },
   },
+  // Stands at a kerb from early in her question and forty seconds on, then
+  // walks: a stop that began before she asked is no answer, and while she
+  // walks her round it is nothing to the snäcka either.
+  kerb: {
+    walk: out(), stops: { 's2-1': ['start', 5, 45], ...END_STOP },
+    has: ['s2-no', 's6-never-1'], not: ['s2-yes-1', 'r-hjalp'],
+    lamps: 0, memory: { svarade: false, misstanke: false },
+  },
+  // The same kerb, a shorter wait, and then the stop she asked for.
+  again: {
+    walk: out(), stops: { 's2-1': [['start', 5, 26], ['start', 34, 44]], ...END_STOP },
+    has: ['s2-yes-1', 's2-yes-2', 's6-yes'], not: ['s2-no'],
+    lamps: 0, memory: { svarade: true, misstanke: false },
+  },
+  // Stops on the word and walks again before she has finished the line.
+  quick: {
+    walk: t => ({ ...out()(t), steps: true }), stops: { 's2-1': ['start', 17.5, 21.5], ...END_STOP },
+    has: ['s2-yes-1', 's2-yes-2', 's6-yes'], not: ['s2-no'],
+    lamps: 0, memory: { svarade: true, misstanke: false },
+  },
+  // A red light between scene 2 and 3: forty seconds still while she walks.
+  light: {
+    walk: out(), stops: { 's2-no': ['end', 2, 44], ...END_STOP },
+    has: ['s3-no'], not: ['r-hjalp'],
+    lamps: 0, memory: { svarade: false, misstanke: false },
+  },
+  // Home and standing from the bell on: the last time she asks, a walker
+  // who already stood there has not answered.
+  home: {
+    walk: out(), stops: { 's6-1': ['start', 0, Infinity] },
+    has: ['s6-never-1', 's6-never-no', 's6-other'], not: ['s6-never-yes-1', 's6-yes'],
+    lamps: 0, memory: { svarade: false, misstanke: false },
+  },
+  // Walks on when she asks at the tree, and stops a moment later, while she
+  // is still out there.
+  after: {
+    walk: out(), stops: { 's3-no': ['end', 3, 15], ...END_STOP },
+    has: ['s3-ask', 's3-no', 'x-avvikelse', 's3-lamp-1'], not: ['s3-lamp-2', 's6-yes'],
+    lamps: 1, memory: { svarade: false, misstanke: false },
+  },
+  // Stops a moment before she would ask at the tree. The stop shows as the
+  // lamp before she has asked for anything, so it is not her answer.
+  brink: {
+    walk: out(), stops: { 's3-6': ['start', 4.5, 22], ...END_STOP },
+    has: ['s3-6', 'x-avvikelse', 's3-lamp-1'], not: ['s3-ask', 's3-no', 's3-lamp-2', 's6-yes'],
+    lamps: 1, cuts: 0, memory: { svarade: false, misstanke: false },
+  },
+  // Sits down on a bench for twelve minutes while she sits under the tree.
+  // The snäcka asks three times and then lets her be.
+  sits: {
+    walk: out(), stops: { 's4-1': ['start', 8, 8 + 12 * 60], ...END_STOP },
+    has: ['r-vilar', 's5-hon-walk'], twice: ['s4-skog'], reserves: 3,
+    lamps: 0, memory: { svarade: false, misstanke: false },
+  },
+  // Stands so long that scene 5 stops waiting. Someone who stood there all
+  // along has not stopped: no lamp, and no suspicion for episode 2.
+  gone: {
+    walk: out(), stops: { 's4-1': ['start', 8, 8 + 21 * 60], ...END_STOP },
+    has: ['s5-hon-walk'], not: ['s5-lamp-sten'], twice: ['s4-skog'], reserves: 3, logs: ['scene 5: the walker stands'],
+    lamps: 0, memory: { svarade: false, misstanke: false },
+  },
   // The walker who stops when asked, on the field phone: a fix every six
   // seconds, a wandering speed, and the feet deciding moving or still.
   field: {
@@ -395,7 +457,9 @@ function simulateEpisode(name) {
   const fmt = s => `${String(Math.floor(s / 60)).padStart(2)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
   const react = (id, when) => {
     const r = profile.stops[id];
-    if (r && r[0] === when) stops.push({ from: t + r[1], to: t + r[2] });
+    for (const [at, from, to] of !r ? [] : Array.isArray(r[0]) ? r : [r]) {
+      if (at === when) stops.push({ from: t + from, to: t + to });
+    }
   };
   const sound = (id, mark) => {
     const dur = E_SECONDS[id];
@@ -423,7 +487,7 @@ function simulateEpisode(name) {
     until: (pred, opts) => waiter.until(pred, opts),
     fadeOut: s => waiter.until(() => false, { timeout: s }).then(() => {}),
     seconds: id => E_SECONDS[id] || 0,
-    cue: () => E_CUE,
+    cue: (id, word) => ((EPISODE.cues || {})[id] || {})[word] || 0,
     remember: facts => { memory = { ...facts }; },
     side: {
       walk: call('walk'), other: call('other'), hand: call('hand'), tone: call('tone'),
@@ -438,7 +502,7 @@ function simulateEpisode(name) {
   // between ticks: the episode's helpers are several awaits deep, and her
   // half minute is checked to the tick.
   return (async () => {
-    while (!ended && t < 24 * 60) {
+    while (!ended && t < 40 * 60) {
       let { speed, heading, accuracy = 8, every = 1, doppler = true, jitter = 0, phone = null,
         steps = false, handling = false } = profile.walk(t);
       if (stops.some(st => t >= st.from && t < st.to)) speed = 0;
@@ -499,6 +563,8 @@ function episodeProblems(name, run) {
     if (count(id) > allowed) problems.push(`${id} heard ${count(id)} times`);
   }
   if (count('x-avvikelse') !== p.lamps) problems.push(`the lamp lit ${count('x-avvikelse')} times, wanted ${p.lamps}`);
+  if (p.reserves !== undefined && count('r-hjalp') !== p.reserves) problems.push(`the snäcka asked ${count('r-hjalp')} times, wanted ${p.reserves}`);
+  for (const want of p.logs || []) if (!log.some(l => l.includes(want))) problems.push(`the log never says "${want}"`);
   if (p.cuts !== undefined && run.cuts !== p.cuts) problems.push(`${run.cuts} lines cut short, wanted ${p.cuts}`);
 
   // The lamp only between her stepping off the gravel and scene 4, and in

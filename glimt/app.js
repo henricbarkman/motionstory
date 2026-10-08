@@ -152,6 +152,7 @@ let side = null;                // her side of the line, in an episode
 let sideSounds = null;          // its decoded sounds, loaded with the chapter
 let veiled = false, ducked = false;
 let cutSeq = 0;                 // bumped by ctx.cut(), so a line not yet started is dropped
+let preloadTurn = 0;            // bumped by each preload, so an earlier one gives way
 let labResults = [];
 let labMemo = null;
 let currentStation = null;      // the lab station running, so a stop mid-station can still be rated
@@ -232,11 +233,16 @@ function saveLandmark(w) {
 // ---------- preload ----------
 async function preload() {
   const def = CHAPTERS[chapterNo];
+  // Another chapter chosen while this one loads: its preload takes over, and
+  // this one must not hand its chapter or her sounds to the other.
+  const turn = ++preloadTurn;
   $('start-btn').disabled = true;
   $('start-btn').textContent = 'Laddar…';
   try {
     if (!mixer) mixer = new Mixer();
-    chapter = await (await fetch(def.url)).json();
+    const loaded = await (await fetch(def.url)).json();
+    if (turn !== preloadTurn) return;
+    chapter = loaded;
     lib = new Library(mixer, def.voices);
 
     const first = def.lab && !def.prov && ONLY_STATION ? 'labb-intro-en' : def.first;
@@ -246,10 +252,12 @@ async function preload() {
       lib.load(first),
       def.side ? loadSide(def.side, chapter.sfx || {}) : null,
     ]);
+    if (turn !== preloadTurn) return;
+    sideSounds = sounds;
     if (!firstRaw) throw new Error(`första repliken saknas (${first}.mp3)`);
     if (bedRaw) bedBuf = await mixer.decode(bedRaw);
     if (riserRaw) riserBuf = await mixer.decode(riserRaw);
-    sideSounds = sounds;
+    if (turn !== preloadTurn) return;
 
     // The rest streams in behind the start button.
     lib.loadAll(Object.keys(chapter.lines));
@@ -288,6 +296,7 @@ async function preload() {
     $('start-btn').textContent = 'Börja gå';
     $('start-btn').disabled = false;
   } catch (err) {
+    if (turn !== preloadTurn) return;
     $('load-note').textContent = 'Kunde inte ladda kapitlet: ' + err.message;
   }
 }
@@ -400,6 +409,7 @@ async function start() {
       // seconds the line goes ahead; playVoice's watchdog carries it from there.
       try { await Promise.race([mixer.resume(), new Promise(r => setTimeout(r, 2000))]); } catch (_) {}
       log(`ljud: kontexten var pausad (${mixer.ctx.state})`);
+      if (seq !== cutSeq) return;     // cut while it waited for the audio
     }
     const at = pendingVoiceAt; pendingVoiceAt = null;
     // The lab shows the station instead, and Vega is clear there unless a
@@ -1244,6 +1254,8 @@ $('stop-btn').addEventListener('click', async () => {
   // The lab's sounds go past the faded buses, straight to master: stop them
   // now, or a beat plays on at full level while Vega fades (seen in Chrome).
   if (sfx) sfx.close();
+  // Her side has its own way out to the speakers and fades with the rest.
+  if (side) side.fade(2);
   await mixer.fadeOut(2);
   finish();
 });

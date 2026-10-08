@@ -307,8 +307,17 @@
     }
   },
   "cueWords": {
+    "s2-1": [
+      "stanna"
+    ],
     "s3-3": [
       "trettio"
+    ],
+    "s3-ask": [
+      "stanna"
+    ],
+    "s6-never-1": [
+      "stanna"
     ]
   },
   "seconds": {
@@ -366,6 +375,15 @@
   "cues": {
     "s3-3": {
       "trettio": 6.96
+    },
+    "s2-1": {
+      "stanna": 18.18
+    },
+    "s3-ask": {
+      "stanna": 0.1
+    },
+    "s6-never-1": {
+      "stanna": 16.08
     }
   }
 }

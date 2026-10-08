@@ -19,6 +19,10 @@
 // other woman has passed. `her.exposed` is that fact, and `lit` is the one
 // place a stop is turned into the lamp.
 //
+// When she asks for a stop, her answer is a stop that begins after the word
+// that asks. A walker who stood there already, at a kerb or a red light, has
+// not said anything.
+//
 // ctx as in chapter1.js, plus:
 //   side            her side of the line (herside.js): walk, other, hand,
 //                   tone, bell, lift, pin, fade, and say(lineId, kind)
@@ -32,6 +36,7 @@ const MIN = 60;
 const ASK_WINDOW = 20;      // s she waits for a stop she asked for
 const HALF_MINUTE = 30;     // s without steps before the snäcka asks
 const RESERVE_MAX = 3;      // times it asks in one walk, then it lets her be
+const LONG_WAIT = 10 * MIN;  // s a scene that needs the walker's steps waits for them
 
 // A stop the walker means. The feet say it two seconds after the last step,
 // so one second more is enough; GPS alone needs longer to be sure.
@@ -52,9 +57,13 @@ export async function runEpisode1(ctx) {
 
   // The gate. A stop lights the lamp only while she is exposed.
   const lit = s => her.exposed && stopped(s);
-  // Both still for half a minute: the snäcka has had nothing to read.
-  const resting = s => her.stillSince !== null && !her.exposed && her.reserves < RESERVE_MAX &&
+  // Both still for half a minute: the snäcka has had nothing to read. She is
+  // never exposed and still at once: `stillSince` is null whenever she walks.
+  const resting = s => her.stillSince !== null && her.reserves < RESERVE_MAX &&
     Math.min(s.stillFor, s.t - her.stillSince) >= HALF_MINUTE;
+  // When the walker's stop began, as far as the phone knows.
+  const stopBegan = s => s.t - s.stillFor;
+  let lampStop = 0;           // when the stop that last lit the lamp began
 
   // The reserve. It asks, she answers, and the story waits for the walker.
   async function reserve() {
@@ -73,7 +82,7 @@ export async function runEpisode1(ctx) {
   async function hold(pred, opts) {
     let why = null;
     const hit = await ctx.until(s => {
-      if (lit(s)) why = 'lamp';
+      if (lit(s)) { why = 'lamp'; lampStop = stopBegan(s); }
       else if (resting(s)) why = 'rest';
       else if (pred(s)) why = 'ok';
       return !!why;
@@ -93,7 +102,7 @@ export async function runEpisode1(ctx) {
     const playing = ctx.play(id, opts).then(() => { if (!why) why = 'done'; });
     const watch = ctx.until(s => {
       if (why) return true;
-      if (lit(s)) why = 'lamp';
+      if (lit(s)) { why = 'lamp'; lampStop = stopBegan(s); }
       else if (resting(s)) why = 'rest';
       return !!why;
     });
@@ -114,12 +123,33 @@ export async function runEpisode1(ctx) {
 
   // Scenes open when the walker is walking, so a line never starts into a
   // stop. The deadline is for a phone that cannot tell: the episode goes on.
-  // 'lamp' if a stop lit the lamp while it waited.
-  async function opens(at) {
+  // 'lamp' if a stop lit the lamp while it waited, 'late' at the deadline.
+  async function opens(at, patience = 2.5 * MIN) {
     for (;;) {
-      const why = await hold(s => s.t >= at && s.moving && s.movingFor >= 3, { by: at + 2.5 * MIN });
+      const why = await hold(s => s.t >= at && s.moving && s.movingFor >= 3, { by: at + patience });
       if (why !== 'rest') return why;
     }
+  }
+
+  // She asks for a stop with line `id`, where she is not exposed. The window
+  // opens at the word that asks, not at the end of the line: a walker who
+  // stops on the word and walks again before she has finished has answered.
+  // It closes twenty seconds after the line. With `patience`, a walker who
+  // stood there before she asked gets that long to walk again first.
+  async function ask(id, patience = 0) {
+    const askedAt = now() + ctx.cue(id, 'stanna');
+    let yes = false;
+    let closes = Infinity;
+    const answer = ctx.until(s => {
+      if (stopped(s) && stopBegan(s) >= askedAt) yes = true;
+      return yes || s.t >= closes;
+    });
+    await ctx.play(id);
+    const s = ctx.state();
+    if (!yes && patience && !s.moving && stopBegan(s) < askedAt) await ctx.until(walking, { timeout: patience });
+    closes = now() + ASK_WINDOW;
+    await answer;
+    return yes;
   }
 
   // 0. Start. Not clear: the contact builds from low, so her first words come
@@ -138,9 +168,7 @@ export async function runEpisode1(ctx) {
   // 2. The question. She walks her round, so the stop costs nothing.
   await opens(2.5 * MIN);
   ctx.log('scene 2');
-  await ctx.play('s2-1');
-  const answered2 = await ctx.until(stopped, { timeout: ASK_WINDOW });
-  if (answered2) {
+  if (await ask('s2-1', MIN)) {
     ctx.log('scene 2: yes');
     her.askedFor = true;
     await ctx.play('s2-yes-1');
@@ -152,8 +180,9 @@ export async function runEpisode1(ctx) {
   }
   remember(false);
 
-  // 3. The tree.
-  await opens(Math.max(4 * MIN, now() + 20));
+  // 3. The tree. What she does here needs the walker's steps, so a walker
+  // who has stopped for a while is waited for longer than elsewhere.
+  await opens(Math.max(4 * MIN, now() + 20), LONG_WAIT);
   ctx.log('scene 3');
   await ctx.play('s3-1');
 
@@ -184,8 +213,10 @@ export async function runEpisode1(ctx) {
   her.exposed = true;
   ctx.log('scene 3: off the gravel');
 
-  // The lamp in scene 3, from the tone on. `asked`: she had asked for the stop.
-  async function lampAtTheTree(asked) {
+  // The lamp in scene 3, from the tone on. `askedAt`: when she asked for a
+  // stop, if she did. The stop is her answer if it began after that.
+  async function lampAtTheTree(askedAt = null) {
+    const asked = askedAt !== null && lampStop >= askedAt;
     ctx.log(`scene 3: lamp${asked ? ', she asked' : ''}`);
     side.pin(true);
     side.tone(true);
@@ -207,20 +238,25 @@ export async function runEpisode1(ctx) {
 
   // What she does among the trees, one beat at a time, so a stop can come in
   // anywhere and the rest still gets said.
+  // `again`: the beat a stop broke off is done once more after the lamp.
+  let again = false;
+  const said = async id => { const why = await line(id); again = heard < 0.5; return why; };
   const beats = [
-    () => line('s3-5'),
+    () => said('s3-5'),
     async () => {
+      again = true;
       side.walk(null);
       const why = await pause(0.8);
       if (why === 'lamp') return why;
       side.hand();
+      again = false;
       const after = await pause(1.4);
       // Her hand stays on the trunk and she walks slowly round it. After the
       // lamp she does not: she stands where she stood.
       if (her.exposed && after !== 'lamp') side.walk('mjukt', { rate: 62 });
       return after;
     },
-    () => line('s3-6'),
+    () => said('s3-6'),
   ];
   let next = 0;
   for (; next < beats.length; next++) {
@@ -230,23 +266,29 @@ export async function runEpisode1(ctx) {
   }
   if (next < beats.length) {
     // The walker stopped by themselves while she walked among the trees.
-    const cutShort = heard < 0.5;
-    await lampAtTheTree(false);
-    for (let i = cutShort ? next : next + 1; i < beats.length; i++) {
+    const from = again ? next : next + 1;
+    await lampAtTheTree();
+    for (let i = from; i < beats.length; i++) {
       const why = await beats[i]();
       if (why === 'rest') i--;
     }
   } else {
     // No stop since she stepped off: she asks for one, walking round the tree.
-    ctx.log('scene 3: she asks');
-    let why = await line('s3-ask');
+    // A walker in the middle of a stop has decided already; it shows first.
+    let askedAt = null;
+    let why = ctx.state().moving ? 'ok' : await hold(s => s.moving, { timeout: 4 });
+    if (why !== 'lamp') {
+      ctx.log('scene 3: she asks');
+      askedAt = now() + ctx.cue('s3-ask', 'stanna');
+      why = await line('s3-ask');
+    }
     if (why !== 'lamp') why = await pause(ASK_WINDOW);
     if (why === 'lamp') {
-      await lampAtTheTree(true);
+      await lampAtTheTree(askedAt);
     } else {
       ctx.log('scene 3: no');
       why = await line('s3-no');
-      if (why === 'lamp') await lampAtTheTree(false);
+      if (why === 'lamp') await lampAtTheTree();
     }
   }
   remember(false);
@@ -254,7 +296,7 @@ export async function runEpisode1(ctx) {
   // 4. The sky. She sits down under the tree; a short stop is harmless again.
   // Until she does, she is still walking out there, and a stop still shows.
   if (await opens(Math.max(6 * MIN, now() + 20)) === 'lamp') {
-    await lampAtTheTree(false);
+    await lampAtTheTree();
     await opens(now() + 10);
   }
   side.walk(null);
@@ -270,11 +312,14 @@ export async function runEpisode1(ctx) {
   await say(`s4-${ctx.world.landmark}`);
 
   // 5. Someone is coming. She is still off the gravel and has to get back
-  // before she is seen: a stop lights the lamp.
-  await opens(Math.max(8 * MIN, now() + 25));
+  // before she is seen: a stop lights the lamp. A stop, not a walker who has
+  // stood there all along: if the wait ran out on one, she gets back unseen,
+  // and episode 2 is not told of a suspicion the walker never caused.
+  const into5 = await opens(Math.max(8 * MIN, now() + 25), LONG_WAIT);
   ctx.log('scene 5');
   her.stillSince = null;
-  her.exposed = true;
+  her.exposed = into5 !== 'late' || ctx.state().moving;
+  if (!her.exposed) ctx.log('scene 5: the walker stands, no lamp');
   side.walk('mjukt', { rate: 66, level: 0.8 });
 
   async function lampOnTheLoop() {
@@ -354,9 +399,7 @@ export async function runEpisode1(ctx) {
     await ctx.play('s6-yes');
   } else {
     ctx.log('scene 6: she asks once more');
-    await ctx.play('s6-never-1');
-    const answered6 = await ctx.until(stopped, { timeout: ASK_WINDOW });
-    if (answered6) {
+    if (await ask('s6-never-1')) {
       ctx.log('scene 6: yes');
       her.askedFor = true;
       await ctx.play('s6-never-yes-1');

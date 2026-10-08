@@ -73,6 +73,22 @@ function rig() {
   run(5);
   check(startedSince(n) === 0, `no step after she stops (${startedSince(n)})`);
   check(audio.playing.size === 4, `and only the hum is left (${audio.playing.size} playing)`);
+
+  // The loop looks a quarter of a second ahead. A step it has already handed
+  // to the audio clock is taken back when she stops, and so is a lamp pulse.
+  const onItsWay = () => audio.started.filter(x => x.node.startedAt > audio.currentTime && x.node.endAt > x.node.startedAt).length;
+  for (const [what, on, off] of [
+    ['step', () => side.walk('mjukt', { rate: 120 }), () => side.walk(null)],
+    ['pulse of the lamp', () => side.tone(true), () => side.tone(false)],
+  ]) {
+    on();
+    for (let i = 0; i < 80 && !onItsWay(); i++) run(0.05);
+    const before = onItsWay();
+    off();
+    check(before > 0 && onItsWay() === 0, `a ${what} on its way is taken back (${before} before, ${onItsWay()} after)`);
+    run(2);
+    check(audio.playing.size === 4, `and never sounds (${audio.playing.size} playing)`);
+  }
 }
 
 // A surface whose clip has not loaded yet: the loop runs and makes no sound,
