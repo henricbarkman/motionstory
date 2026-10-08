@@ -1,6 +1,7 @@
 // Glimt: wires GPS, clock, audio and the chapter script together.
 // ?sim in the URL replaces GPS with a speed slider for testing at a desk.
-// ?kapitel=2 preselects a chapter, ?kapitel=labb1 the lab; the start screen
+// ?kapitel=2 preselects a chapter, ?kapitel=episod1 the episode,
+// ?kapitel=labb1 the lab; the start screen
 // has the same choice. ?bana=<id> runs a single lab station (ids in lab.js),
 // ?banor=<id>,<id> some of one lab's stations as a walk of the lab, and
 // ?prov=<id> one of the short test walks (PROV in lab.js).
@@ -8,6 +9,8 @@
 import { Walk, Waiter, simulatedMagnitude, buzzReading } from './engine.js';
 import { runChapter1 } from './chapter1.js';
 import { runChapter2 } from './chapter2.js';
+import { runEpisode1 } from './episod1.js';
+import { HerSide, SilentSide } from './herside.js';
 import { runLab, labHelpers, LABS, TITLES, PROV, ratedThisRound, RESUMABLE, chosenStations, knockPattern, buzzWords, realTarget } from './lab.js';
 import { Synth, SilentSynth } from './synth.js';
 import { Mixer, Library } from './audio.js';
@@ -16,7 +19,7 @@ import { Memory, drawWorld, KEY_NAMES } from './memory.js';
 
 // The version the start screen shows, the same number as the service
 // worker's cache. Bump both together.
-const APP_VERSION = 24;
+const APP_VERSION = 25;
 
 const params = new URLSearchParams(location.search);
 const SIM = params.has('sim');
@@ -70,6 +73,20 @@ const chromeIntent = () =>
 const LAB_FILES = { url: '../stories/glimt/labb.json', voices: '../audio/glimt/vega/glimt-labb' };
 
 const CHAPTERS = {
+  // `side`: the episode has her side of the line (herside.js), and the folder
+  // its sounds are in. Standing still dulls her voice at once there.
+  episod1: {
+    url: '../stories/glimt/episod-1.json',
+    voices: '../audio/glimt/vega/glimt-e1',
+    side: '../audio/glimt/side',
+    first: 's0',
+    run: runEpisode1,
+    subtitle: 'Episod 1. Ungefär tolv minuter. Gå eller spring. Hon hörs när du går.',
+    scenes: {
+      s0: 'Start', s1: 'Slingan', s2: 'Frågan', s3: 'Trädet',
+      s4: 'Himlen', s5: 'Någon kommer', s6: 'Klockan',
+    },
+  },
   // Only reached by a ?prov= link; there is no radio for it.
   ...(TEST ? {
     prov: {
@@ -112,6 +129,13 @@ const BED_URL = '../audio/glimt/bed/steep-dm.opus';
 const RISER_URL = '../audio/glimt/fx/riser-sunbeams.opus';
 const RISER_VOICE_AT = 0.7;   // Vega enters at 70 % of the riser
 const LANDMARK_KEY = 'glimt-landmark';
+// What episode 2 will want to know about episode 1. A simulated walk keeps
+// its own, so a try at the desk does not rewrite the evening that was walked.
+const EPISODE_KEY = SIM ? 'glimt-episod-1-sim' : 'glimt-episod-1';
+// The contact her voice gets while the walker stands still in an episode:
+// dull and far, at once, where the chapters let it sink over half a minute.
+const VEIL = 0.2;
+const BED_UNDER_SIDE = 0.35;  // the bed's share of itself while her side is forward
 
 const BAND_WORDS = { still: 'stilla', walk: 'gång', run: 'löpning' };
 // 'doppler' is whatever the phone reports as speed. On a six-second fix it is
@@ -121,9 +145,14 @@ const SPEED_SOURCE = { doppler: 'telefonens fart', distance: 'räknat ur avstån
 const $ = id => document.getElementById(id);
 
 // ---------- state ----------
-let chapterNo = '1';          // a key of CHAPTERS
+let chapterNo = 'episod1';    // a key of CHAPTERS
 let mixer, lib, chapter;
 let sfx = null;
+let side = null;                // her side of the line, in an episode
+let sideSounds = null;          // its decoded sounds, loaded with the chapter
+let veiled = false, ducked = false;
+let cutSeq = 0;                 // bumped by ctx.cut(), so a line not yet started is dropped
+let preloadTurn = 0;            // bumped by each preload, so an earlier one gives way
 let labResults = [];
 let labMemo = null;
 let currentStation = null;      // the lab station running, so a stop mid-station can still be rated
@@ -204,22 +233,31 @@ function saveLandmark(w) {
 // ---------- preload ----------
 async function preload() {
   const def = CHAPTERS[chapterNo];
+  // Another chapter chosen while this one loads: its preload takes over, and
+  // this one must not hand its chapter or her sounds to the other.
+  const turn = ++preloadTurn;
   $('start-btn').disabled = true;
   $('start-btn').textContent = 'Laddar…';
   try {
     if (!mixer) mixer = new Mixer();
-    chapter = await (await fetch(def.url)).json();
+    const loaded = await (await fetch(def.url)).json();
+    if (turn !== preloadTurn) return;
+    chapter = loaded;
     lib = new Library(mixer, def.voices);
 
     const first = def.lab && !def.prov && ONLY_STATION ? 'labb-intro-en' : def.first;
-    const [bedRaw, riserRaw, firstRaw] = await Promise.all([
+    const [bedRaw, riserRaw, firstRaw, sounds] = await Promise.all([
       bedBuf ? null : mixer.fetchBuffer(BED_URL).catch(() => null),
       riserBuf ? null : mixer.fetchBuffer(RISER_URL).catch(() => null),
       lib.load(first),
+      def.side ? loadSide(def.side, chapter.sfx || {}) : null,
     ]);
+    if (turn !== preloadTurn) return;
+    sideSounds = sounds;
     if (!firstRaw) throw new Error(`första repliken saknas (${first}.mp3)`);
     if (bedRaw) bedBuf = await mixer.decode(bedRaw);
     if (riserRaw) riserBuf = await mixer.decode(riserRaw);
+    if (turn !== preloadTurn) return;
 
     // The rest streams in behind the start button.
     lib.loadAll(Object.keys(chapter.lines));
@@ -227,6 +265,7 @@ async function preload() {
     const notes = [];
     if (!bedBuf) notes.push('ingen bädd');
     if (!riserBuf) notes.push('ingen riser');
+    if (def.side && Object.keys(sounds).length < Object.keys(chapter.sfx || {}).length) notes.push('några av hennes steg');
     let note = notes.length
       ? `Ljudet saknar ${notes.join(' och ')} på den här adressen. Rösten fungerar ändå.`
       : 'Sätt på lurarna. Tryck när du står där du vill börja.';
@@ -257,8 +296,22 @@ async function preload() {
     $('start-btn').textContent = 'Börja gå';
     $('start-btn').disabled = false;
   } catch (err) {
+    if (turn !== preloadTurn) return;
     $('load-note').textContent = 'Kunde inte ladda kapitlet: ' + err.message;
   }
+}
+
+// The sounds of her side: each a clip, some cut into single steps. One that
+// does not load is left out; the episode runs without it.
+async function loadSide(base, sfx) {
+  const out = {};
+  await Promise.all(Object.entries(sfx).map(async ([name, spec]) => {
+    try {
+      const raw = await mixer.fetchBuffer(`${base}/${spec.file}`);
+      if (raw) out[name] = { buffer: await mixer.decode(raw), slices: spec.slices || null };
+    } catch (_) {}
+  }));
+  return out;
 }
 
 // ---------- start ----------
@@ -297,6 +350,7 @@ async function start() {
   const what = def.prov ? `prov ${PROV_ID} (${def.prov.title}), version ${APP_VERSION}` : def.lab
     ? `labb ${def.lab}${ONLY_STATION ? `, bara ${TITLES[ONLY_STATION]}` : ''}` +
       `${chosen ? `, bara ${andList(chosen.map(id => TITLES[id]))}` : ''}${resume ? `, från ${TITLES[resume[0]]}` : ''}`
+    : def.side ? `${chapter.title} (${chapterNo}), version ${APP_VERSION}`
     : `kapitel ${chapterNo}, variant ${variant.toUpperCase()}`;
   log(`start, ${what}${SIM ? ', simulerad' : ''}`);
   log(`webbläsare: ${BROWSER}`);
@@ -311,7 +365,19 @@ async function start() {
   if (!SIM && CAN_VIBRATE && walkStations(def).includes('vibration')) log(`vibration före start: ${vibraStatus()}`);
   if (BAD_CHOICE !== null) log(`länkens banor gick inte att läsa: ${BAD_CHOICE}`);
   if (BAD_PROV !== null) log(`länkens test finns inte: ${BAD_PROV}`);
-  window.glimt = { mixer, walk, world, lib };   // for debugging from the console
+  // Her side starts with the walk: the hum is there from the first second.
+  side = null;
+  veiled = ducked = false;
+  if (def.side) {
+    try {
+      side = new HerSide(mixer);
+      for (const [name, snd] of Object.entries(sideSounds || {})) side.setSound(name, snd.buffer, snd.slices);
+    } catch (err) {
+      side = new SilentSide();
+      log('hennes sida: ' + err.message);
+    }
+  }
+  window.glimt = { mixer, walk, world, lib, side };   // for debugging from the console
 
   if (bedBuf) mixer.startBed(bedBuf);
   if (riserBuf) {
@@ -329,10 +395,13 @@ async function start() {
 
   // `contact`: the line goes through the contact like a chapter's, inside
   // the lab too (Kontakten).
-  async function speak(id, { clear = false, contact = false } = {}) {
+  // `seq`: the cut count when the line was asked for. A cut that came while
+  // the line was still being decoded drops it, as it would have stopped it.
+  async function speak(id, { clear = false, contact = false } = {}, seq = cutSeq) {
     if (finished) return;
     const buf = await lib.buffer(id);
     if (!buf) { log(`replik saknas: ${id}`); return; }
+    if (seq !== cutSeq) return;
     if (mixer.ctx.state === 'suspended') {
       // Bounded: every line queues behind this one, so a resume that never
       // settles (a hidden page may not be allowed to start audio) would
@@ -340,11 +409,14 @@ async function start() {
       // seconds the line goes ahead; playVoice's watchdog carries it from there.
       try { await Promise.race([mixer.resume(), new Promise(r => setTimeout(r, 2000))]); } catch (_) {}
       log(`ljud: kontexten var pausad (${mixer.ctx.state})`);
+      if (seq !== cutSeq) return;     // cut while it waited for the audio
     }
     const at = pendingVoiceAt; pendingVoiceAt = null;
     // The lab shows the station instead, and Vega is clear there unless a
     // station asks for the contact: elsewhere it is not what is tried.
-    if (!def.lab) $('scene').textContent = def.scenes[id.slice(0, 2)] || id;
+    // An episode has lines that belong to no scene (the reserve); they
+    // leave the scene's name standing.
+    if (!def.lab && (def.scenes[id.slice(0, 2)] || !def.side)) $('scene').textContent = def.scenes[id.slice(0, 2)] || id;
     log(`▶ ${id}`);
     const why = await mixer.playVoice(buf, { clear: contact ? false : clear || !!def.lab, at });
     if (why === 'timeout') log(`ljud: ${id} nådde aldrig slutet, går vidare`);
@@ -359,7 +431,8 @@ async function start() {
     log: msg => { if (!finished) log(msg); },
     hold: on => { walk.contact.hold = on; },
     play(id, opts = {}) {
-      const turn = voiceChain.then(() => speak(id, opts));
+      const seq = cutSeq;
+      const turn = voiceChain.then(() => speak(id, opts, seq));
       voiceChain = turn.catch(() => {});
       return turn;
     },
@@ -370,6 +443,58 @@ async function start() {
       if (buf) await mixer.playQuiet(buf);
     },
   };
+
+  if (def.side) {
+    // A line on her side: the flat voice in her ear, the woman beside her,
+    // the other voice. Without her side it comes down the line instead, so
+    // the walker still hears what was said.
+    const speakSide = async (id, kind) => {
+      if (finished) return;
+      if (side.silent) return speak(id);
+      const buf = await lib.buffer(id);
+      if (!buf) { log(`replik saknas: ${id}`); return; }
+      if (finished) return;
+      log(`▶ ${id} (hennes sida)`);
+      const why = await side.say(buf, kind);
+      if (why === 'timeout') log(`ljud: ${id} nådde aldrig slutet, går vidare`);
+    };
+    const her = side;
+    Object.assign(ctx, {
+      side: {
+        walk: (surface, o) => her.walk(surface, o),
+        other: (where, seconds) => her.other(where, seconds),
+        hand: () => her.hand(),
+        tone: on => her.tone(on),
+        bell: () => her.bell(),
+        lift: on => her.lift(on),
+        pin: on => her.pin(on),
+        fade: s => her.fade(s),
+        say(id, kind) {
+          const turn = voiceChain.then(() => speakSide(id, kind));
+          voiceChain = turn.catch(() => {});
+          return turn;
+        },
+      },
+      cut() { cutSeq++; mixer.stopVoice(); },
+      seconds: id => (chapter.seconds || {})[id] || 0,
+      cue: (id, word) => ((chapter.cues || {})[id] || {})[word] || 0,
+      remember(facts) {
+        if (finished) return;
+        // A walk broken off does not overwrite one that was walked to its end.
+        try {
+          const old = JSON.parse(localStorage.getItem(EPISODE_KEY) || 'null');
+          if (old && old.klar && !facts.klar) return;
+          localStorage.setItem(EPISODE_KEY, JSON.stringify({
+            ...facts, landmark: world.landmark, at: Date.now(), version: APP_VERSION,
+          }));
+        } catch (_) {}
+        if (facts.klar) {
+          log(`minne till episod 2: ${facts.svarade ? 'stannade när hon bad om det' : 'stannade aldrig på begäran'}, ` +
+            `${facts.misstanke ? 'lampan tändes när lojalisten kom' : 'ingen misstanke'}`);
+        }
+      },
+    });
+  }
 
   if (def.lab) {
     try { sfx = new Synth(mixer); } catch (err) { sfx = new SilentSynth(); log('ljudeffekter: ' + err.message); }
@@ -422,7 +547,8 @@ function onFirstPosition(lat, lon) {
   if (chapterNo === '2') opts.landmark = savedLandmark();
   chooseWorld(world, opts).then(() => {
     if (chapterNo === '1') saveLandmark(world);
-    if (world.landmarkCoord && !lab) {
+    // An episode asks for no direction: the landmark is only spoken of.
+    if (world.landmarkCoord && !lab && !CHAPTERS[chapterNo].side) {
       walk.setTarget({ latitude: world.landmarkCoord.lat, longitude: world.landmarkCoord.lon });
     }
   }).catch(err => log('omvärld: ' + err.message));
@@ -431,7 +557,19 @@ function onFirstPosition(lat, lon) {
 function tick() {
   const s = walk.tick(now());
   waiter.check(s);
-  mixer.setContact(s.contact);
+  if (side) {
+    // The veil. Standing still, or a line on her side that must be heard
+    // out: her voice goes dull and far at once, her side comes forward, and
+    // the bed steps back to leave room for it.
+    veiled = !s.moving || side.pinned;
+    mixer.setContact(veiled ? Math.min(s.contact, VEIL) : s.contact);
+    side.setPresence(s.moving ? 0 : 1);
+    // Not in the bed's own fade-in, which a new level would cut short.
+    const duck = veiled && s.t > 3;
+    if (duck !== ducked) { ducked = duck; mixer.setBed(duck ? BED_UNDER_SIDE : 1); }
+  } else {
+    mixer.setContact(s.contact);
+  }
   render(s);
   logSteps(s);
   if (CHAPTERS[chapterNo].lab) logKnocks(s);
@@ -528,7 +666,9 @@ function render(s) {
   fill.style.width = `${Math.round(s.contact * 100)}%`;
   fill.style.opacity = String(0.35 + 0.65 * s.contact);
   fill.style.boxShadow = `0 0 ${Math.round(2 + 10 * s.contact)}px rgba(200,210,255,${(0.15 + 0.4 * s.contact).toFixed(2)})`;
+  // An episode holds the contact all the way; what changes is the veil.
   $('contact-word').textContent =
+    side ? (veiled ? 'dov' : s.contact > 0.8 ? 'nära' : s.contact > 0.5 ? 'hör dig' : 'svagt') :
     s.hold ? 'håller' :
     s.contact > 0.8 ? 'nära' :
     s.contact > 0.5 ? 'hör dig' :
@@ -931,6 +1071,7 @@ function finish() {
   if (waiter) waiter.abort();
   if (mixer) mixer.stopVoice();
   if (sfx) sfx.close();
+  if (side) side.close();
   if (watchId !== null) navigator.geolocation.clearWatch(watchId);
   if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
   $('walking').hidden = true;
@@ -1113,6 +1254,8 @@ $('stop-btn').addEventListener('click', async () => {
   // The lab's sounds go past the faded buses, straight to master: stop them
   // now, or a beat plays on at full level while Vega fades (seen in Chrome).
   if (sfx) sfx.close();
+  // Her side has its own way out to the speakers and fades with the rest.
+  if (side) side.fade(2);
   await mixer.fadeOut(2);
   finish();
 });
@@ -1158,7 +1301,7 @@ document.addEventListener('visibilitychange', () => {
 
 // ---------- start screen ----------
 function selectChapter(n) {
-  chapterNo = CHAPTERS[n] ? String(n) : '1';
+  chapterNo = CHAPTERS[n] ? String(n) : 'episod1';
   // A hidden choice (?kapitel=labb2 before its radio exists) still runs,
   // it just has no radio to tick.
   const radio = document.querySelector(`input[name="chapter"][value="${chapterNo}"]`);
@@ -1167,14 +1310,15 @@ function selectChapter(n) {
   try { if (radio) localStorage.setItem('glimt-chapter', chapterNo); } catch (_) {}
   const def = CHAPTERS[chapterNo];
   $('subtitle').textContent = def.subtitle;
-  $('variant-box').hidden = !!def.lab;
+  $('variant-box').hidden = !!def.lab || !!def.side;
   // A test walk is the link's one choice: nothing else to pick.
   $('chapter-box').hidden = !!def.prov;
   showProvBox(def);
   // The round's choice first: the try-out is offered for the stations it gives.
   showResume(def);
   showVibra();
-  document.title = def.prov ? `Glimt, test: ${def.prov.title}` : def.lab ? `Glimt, labb ${def.lab}` : `Glimt, kapitel ${chapterNo}`;
+  document.title = def.prov ? `Glimt, test: ${def.prov.title}` : def.lab ? `Glimt, labb ${def.lab}`
+    : def.side ? 'Glimt, episod 1' : `Glimt, kapitel ${chapterNo}`;
   preload();
 }
 
@@ -1210,8 +1354,8 @@ function showResume(def) {
   if (variant !== 'a' && variant !== 'b') variant = 'a';
   document.querySelector(`input[name="variant"][value="${variant}"]`).checked = true;
 
-  let ch = '1';
-  try { ch = localStorage.getItem('glimt-chapter') || '1'; } catch (_) {}
+  let ch = 'episod1';
+  try { ch = localStorage.getItem('glimt-chapter') || 'episod1'; } catch (_) {}
   if (params.has('kapitel')) ch = params.get('kapitel');
   // A single station belongs to whichever lab has it.
   if (ONLY_STATION) ch = LABS[2].includes(ONLY_STATION) ? 'labb2' : 'labb1';

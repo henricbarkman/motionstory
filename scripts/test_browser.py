@@ -14,6 +14,7 @@ knock back. The motor there starts late and rings on, as a real one may.
     python3 scripts/test_browser.py                # all of it, about four minutes
     python3 scripts/test_browser.py first,resume   # some scenarios
     python3 scripts/test_browser.py prov            # the ten test walks, about five minutes
+    python3 scripts/test_browser.py episod          # episode 1 walked twice side by side, about twelve minutes
     GLIMT_SHOTS=/tmp/shots python3 scripts/test_browser.py first   # with screenshots
 
 It serves this repo on a free local port and lets no request leave the
@@ -520,7 +521,7 @@ def prov(browser, base):
           sub: document.getElementById('subtitle').textContent,
           doc: document.title,
         })""")
-        check(card["box"] and not card["chapters"] and not card["vibra"] and card["version"] == "Version 24" and card["question"] and card["todo"],
+        check(card["box"] and not card["chapters"] and not card["vibra"] and card["version"] == "Version 25" and card["question"] and card["todo"],
               f"?prov={pid}: the start screen shows its card and nothing to choose ({card['title']!r}, {card['version']!r}, {card['sub']!r})")
         shot(page, f"prov-{pid}-start")
         page.click("#start-btn")
@@ -533,7 +534,7 @@ def prov(browser, base):
             ctx.close()
             continue
         log = walk_log(page)
-        check(any(f"start, prov {pid} " in line and "version 24" in line for line in log), f"?prov={pid}: the log names the test and the version")
+        check(any(f"start, prov {pid} " in line and "version 25" in line for line in log), f"?prov={pid}: the log names the test and the version")
         check(any("▶ prov-slut" in line for line in log) and not any(re.search(r"▶ (labb-|franvaro|nyckel|varld)", line) for line in log),
               f"?prov={pid}: her end line, and no lab or memory lines")
         untouched = not any(line.split("  ", 1)[-1].startswith("minne:") for line in log) and page.evaluate("document.getElementById('world-end').hidden")
@@ -562,7 +563,7 @@ def prov(browser, base):
         body = json.loads(Path(d.path()).read_text())
         p = body.get("prov") or {}
         check(d.suggested_filename.startswith(f"glimt-prov-{pid}-") and d.suggested_filename.endswith(".json"), f"?prov={pid}: the file is named for the test ({d.suggested_filename})")
-        check(p.get("id") == pid and p.get("appVersion") == 24 and len(p.get("answers", {})) == asks and all(r.get("rating") == "igen" for r in p.get("results", [])) and p.get("results"),
+        check(p.get("id") == pid and p.get("appVersion") == 25 and len(p.get("answers", {})) == asks and all(r.get("rating") == "igen" for r in p.get("results", [])) and p.get("results"),
               f"?prov={pid}: it carries the answers and the verdicts ({json.dumps(p.get('answers'), ensure_ascii=False)})")
         check(any(m[1].startswith("svar: ") for m in body["log"]), f"?prov={pid}: and the log in it has the answers")
         check(label is not None and "Demi" in page.evaluate("document.getElementById('save-btn').textContent"), f"?prov={pid}: the save button is there without a sensor recording too")
@@ -626,6 +627,180 @@ def provstart(browser, base):
     ctx.close()
 
 
+# Episode 1's walkers. Both set off at her first line and turn for home in
+# scene 3, so the bell comes on the distance. `asked` stops when she asks
+# (scene 2, then at the tree, where it lights the lamp); `own` never does,
+# and stops by themselves among the trees and when the other woman comes.
+# Offsets are seconds from the start of the line, which the log marks.
+EPISODE_WALKER = """
+(() => {
+  const who = %s;
+  const $ = id => document.getElementById(id);
+  const speed = v => { $('sim-speed').value = String(v); $('sim-speed').dispatchEvent(new Event('input')); };
+  const later = (s, fn) => setTimeout(fn, s * 1000);
+  const walkOn = () => speed(1.4), stop = () => speed(0);
+  // What the mixer is doing, read a moment into a stop and again once walking.
+  window.__mix = [];
+  const sample = label => later(0, () => {
+    const g = window.glimt;
+    if (!g || !g.side) return;
+    window.__mix.push({ label, voiceHz: g.mixer.voiceFilter.frequency.value, voice: g.mixer.voiceGain.gain.value,
+      side: g.side.out.gain.value, bed: g.mixer.bedGain.gain.value, moving: g.walk.state().moving });
+  });
+  const on = {
+    asked: {
+      's0': walkOn,
+      's2-1': () => { later(24, stop); later(34, walkOn); },
+      's2-yes-1': () => later(1.5, () => sample('still')),
+      's2-yes-2': () => later(8, () => sample('walking')),
+      's3-1': () => later(60, () => $('sim-turn').click()),
+      's3-ask': () => { later(9, stop); later(24, walkOn); },
+      's6-all': () => later(25, stop),
+    },
+    own: {
+      's0': walkOn,
+      's3-1': () => later(60, () => $('sim-turn').click()),
+      's3-5': () => { later(1, stop); later(16, walkOn); },
+      's5-1': () => { later(14, stop); later(32, walkOn); },
+      's6-all': () => later(25, stop),
+    },
+  }[who];
+  const seen = new WeakSet();
+  const watch = () => new MutationObserver(() => {
+    for (const li of document.querySelectorAll('#log li')) {
+      if (seen.has(li)) continue;
+      seen.add(li);
+      const m = /▶ (\\S+)$/.exec(li.textContent);
+      if (m && on[m[1]]) on[m[1]]();
+    }
+  }).observe(document.documentElement, { childList: true, subtree: true });
+  if (document.documentElement) watch(); else document.addEventListener('DOMContentLoaded', watch);
+})();
+"""
+
+EPISODE_WANT = {
+    "asked": {
+        "has": ["s0", "s1-walk", "s1-2", "s2-1", "s2-yes-1", "s2-yes-2", "s3-1", "s3-2", "s3-3", "s3-4", "s3-5", "s3-6", "s3-ask",
+                "x-avvikelse (hennes sida)", "s3-lamp-1", "s4-1", "s5-1", "s5-2", "s5-hon-walk", "s5-ok-walk", "s6-1", "s6-yes", "s6-all",
+                "s6-other (hennes sida)"],
+        "not": ["s2-no", "s3-no", "s3-lamp-2", "s5-lamp-sten", "s6-never-1", "r-hjalp"],
+        "lamps": 1, "memory": {"svarade": True, "misstanke": False, "klar": True},
+    },
+    "own": {
+        "has": ["s2-no", "s3-5", "s3-6", "x-avvikelse (hennes sida)", "s3-lamp-1", "s5-1", "s5-hon-fraga (hennes sida)", "s5-lamp-sten",
+                "s5-lamp-after", "s6-never-1", "s6-never-no", "s6-all", "s6-other (hennes sida)"],
+        "not": ["s2-yes-1", "s3-ask", "s3-no", "s3-lamp-2", "s5-hon-walk", "s5-ok-walk", "s6-yes"],
+        "lamps": 2, "memory": {"svarade": False, "misstanke": True, "klar": True},
+    },
+}
+
+
+def clock(line):
+    m, s = line.split("  ", 1)[0].split(":")
+    return int(m) * 60 + int(s)
+
+
+def episodstart(browser, base):
+    # The start screen: the episode is first and chosen, and the chapters,
+    # the labs and the test links are where they were.
+    ctx, page, errors = open_page(browser, base, url="?sim")
+    s = page.evaluate("""() => ({
+      radios: [...document.querySelectorAll('input[name="chapter"]')].map(el => el.value),
+      checked: document.querySelector('input[name="chapter"]:checked')?.value,
+      label: document.querySelector('input[name="chapter"]').closest('label').textContent.trim(),
+      sub: document.getElementById('subtitle').textContent,
+      variant: !document.getElementById('variant-box').hidden,
+      vibra: !document.getElementById('vibra-box').hidden,
+      load: document.getElementById('load-note').textContent,
+      doc: document.title,
+    })""")
+    check(s["radios"][0] == "episod1" and s["checked"] == "episod1" and s["label"].startswith("Episod 1"),
+          f"a phone that has chosen nothing: Episod 1 is first and chosen ({s['radios']}, {s['checked']!r})")
+    check(s["radios"][1:] == ["1", "2", "labb1", "labb2"], f"the chapters and the labs follow as before ({s['radios'][1:]})")
+    check(s["sub"].startswith("Episod 1.") and s["doc"] == "Glimt, episod 1" and not s["variant"] and not s["vibra"],
+          f"its subtitle, and neither her variants nor the vibration try-out ({s['sub']!r})")
+    check("saknar" not in s["load"], f"everything it needs loaded ({s['load']!r})")
+    shot(page, "episod-start")
+    page.click('input[name="chapter"][value="1"]')
+    page.wait_for_function("document.getElementById('start-btn').textContent === 'Börja gå'", timeout=30000)
+    s1 = page.evaluate("({ sub: document.getElementById('subtitle').textContent, variant: !document.getElementById('variant-box').hidden })")
+    check(s1["sub"].startswith("Kapitel 1.") and s1["variant"], f"chapter 1 is a tap away, with its variants ({s1['sub']!r})")
+    check(not errors, f"no page errors ({errors[:3]})")
+    ctx.close()
+    for url, want in (("?kapitel=2&sim", "2"), ("?kapitel=episod1", "episod1"), ("?kapitel=labb2", "labb2"), ("?kapitel=finns-inte", "episod1")):
+        ctx, page, errors = open_page(browser, base, url=url)
+        got = page.evaluate("document.querySelector('input[name=\"chapter\"]:checked')?.value")
+        check(got == want and not errors, f"{url} chooses {want} ({got!r}, {errors[:2]})")
+        ctx.close()
+    # A chapter walked from the start screen still runs: its first line, no her side.
+    ctx, page, errors = open_page(browser, base, url="?kapitel=1&sim")
+    page.click("#start-btn")
+    line = wait_log(page, "▶ s0", 20000)
+    side = page.evaluate("window.glimt && window.glimt.side")
+    check(bool(line) and side is None and not errors, f"chapter 1 starts as before, without her side ({line!r}, {errors[:2]})")
+    check(any("kapitel 1, variant" in x for x in walk_log(page)), "and its log names the chapter and the variant")
+    ctx.close()
+
+
+def episod(browser, base):
+    # The episode walked to its end in the app, twice side by side.
+    pages = []
+    for who in EPISODE_WANT:
+        ctx, page, errors = open_page(browser, base, url="?kapitel=episod1&sim", init=EPISODE_WALKER % json.dumps(who))
+        page.click("#start-btn")
+        pages.append((who, ctx, page, errors))
+    for who, ctx, page, errors in pages:
+        want = EPISODE_WANT[who]
+        try:
+            page.wait_for_function("!document.getElementById('done').hidden", timeout=900000)
+        except PlaywrightTimeout:
+            check(False, f"episod, {who}: never reached the end screen ({walk_log(page)[-4:]})")
+            ctx.close()
+            continue
+        # The end screen's log: one line a row, the time and two spaces first.
+        log = page.evaluate("document.getElementById('final-log').textContent.split('\\n')")
+        heard = [line.split("▶ ", 1)[1] for line in log if "▶ " in line]
+        check(any("Det är när du går (episod1), version 25" in line for line in log), f"episod, {who}: the log names the episode and the version ({log[0]!r})")
+        missing = [x for x in want["has"] if x not in heard]
+        check(not missing, f"episod, {who}: every line of the walker's branches is heard ({'missing ' + ', '.join(missing) if missing else len(heard)})")
+        extra = [x for x in want["not"] if any(h.split(" ")[0] == x for h in heard)]
+        check(not extra, f"episod, {who}: and none of the other branches ({extra})")
+        lamps = sum(1 for h in heard if h.startswith("x-avvikelse"))
+        check(lamps == want["lamps"], f"episod, {who}: the lamp lights {lamps} time(s)")
+        scenes = [line.split("  ", 1)[1] for line in log if re.search(r"  (scene \d|end)", line)]
+        order = [x for x in scenes if re.fullmatch(r"scene \d|end", x)]
+        check(order == ["scene 1", "scene 2", "scene 3", "scene 5", "scene 6", "end"],
+              f"episod, {who}: the scenes come in order ({order})")
+        check(any(x.startswith("scene 4: ") for x in scenes), f"episod, {who}: scene 4 names light, weather and landmark ({[x for x in scenes if x.startswith('scene 4')]})")
+        stood = [clock(line) for line in log if "she stands still" in line]
+        counted = [clock(line) for line in log if line.endswith("▶ s3-3")]
+        cue = json.loads((REPO / "stories/glimt/episod-1.json").read_text())["cues"]["s3-3"]["trettio"]
+        half = counted[-1] + cue - stood[-1] if stood and counted else None
+        check(half is not None and abs(half - 30) <= 2, f"episod, {who}: from her last step to \"trettio\" is half a minute ({half})")
+        missing_files = [line for line in log if "replik saknas" in line or "nådde aldrig slutet" in line or "fel:" in line]
+        check(not missing_files, f"episod, {who}: no line missing or stalled ({missing_files[:3]})")
+        memory = page.evaluate("JSON.parse(localStorage.getItem('glimt-episod-1-sim') || 'null')")
+        real = page.evaluate("localStorage.getItem('glimt-episod-1')")
+        ok = memory is not None and all(memory.get(k) == v for k, v in want["memory"].items())
+        check(ok and real is None, f"episod, {who}: episode 2 is told the right things, and a simulated walk leaves the real memory alone ({memory})")
+        check(any("minne till episod 2" in line for line in log), f"episod, {who}: and the log says what it was told")
+        if who == "asked":
+            mix = {m["label"]: m for m in page.evaluate("window.__mix")}
+            still, walking = mix.get("still"), mix.get("walking")
+            check(bool(still and walking), f"episod, {who}: the mixer was read standing and walking ({list(mix)})")
+            if still and walking:
+                check(still["voiceHz"] < 1500 and walking["voiceHz"] > 8000 and still["voice"] < walking["voice"],
+                      f"episod, {who}: her voice is dull while the walker stands and clear when they walk ({still['voiceHz']:.0f} Hz, then {walking['voiceHz']:.0f} Hz)")
+                check(still["side"] > 0.8 and walking["side"] < 0.5 and still["bed"] < walking["bed"],
+                      f"episod, {who}: her side comes forward and the bed steps back, then the other way ({still['side']:.2f}/{still['bed']:.2f}, then {walking['side']:.2f}/{walking['bed']:.2f})")
+        sounds = page.evaluate("Object.keys(window.glimt.side.sounds).sort()")
+        check(sounds == ["grus", "hand", "harda", "mjukt"] and page.evaluate("window.glimt.side.closed"),
+              f"episod, {who}: her side had its four sounds, and is closed at the end ({sounds})")
+        shot(page, f"episod-{who}-done")
+        check(not errors, f"episod, {who}: no page errors ({errors[:3]})")
+        ctx.close()
+
+
 SCENARIOS = {
     "first": first,
     "no": no,
@@ -639,6 +814,8 @@ SCENARIOS = {
     "station": station,
     "provstart": provstart,
     "prov": prov,
+    "episodstart": episodstart,
+    "episod": episod,
 }
 
 
