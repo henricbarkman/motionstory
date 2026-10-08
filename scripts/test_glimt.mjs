@@ -400,6 +400,13 @@ const EPISODE_WALKERS = {
     has: ['s3-6', 'x-avvikelse', 's3-lamp-1'], not: ['s3-ask', 's3-no', 's3-lamp-2', 's6-yes'],
     lamps: 1, cuts: 0, memory: { svarade: false, misstanke: false },
   },
+  // A stop that shows in the moment between her line and her hand on the
+  // trunk: after the lamp she still reaches out and touches it.
+  pat: {
+    walk: out(), stops: { 's3-5': ['start', 4.5, 25], ...END_STOP },
+    has: ['s3-5', 's3-6', 'x-avvikelse', 's3-lamp-1'], not: ['s3-ask', 's3-lamp-2'],
+    lamps: 1, cuts: 0, memory: { svarade: false, misstanke: false },
+  },
   // Sits down on a bench for twelve minutes while she sits under the tree.
   // The snäcka asks three times and then lets her be.
   sits: {
