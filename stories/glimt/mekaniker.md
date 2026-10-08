@@ -42,9 +42,9 @@ Grunden. Nästan allt annat bygger på att telefonen vet vilket av de tre du gö
 **Tänk på:** att stå och skruva på sig, eller ta upp telefonen, kan läsas som en sekunds löpning. Bygg inget på en enda sekund.
 
 ### Kontakten
-**Du gör:** går, så hörs hon klart. Står du still blir rösten dov och avlägsen, och klarnar långsamt när du går igen.
+**Du gör:** går, så hörs hon klart. Står du still blir rösten dov och avlägsen direkt, och klar igen så fort du går.
 **I berättelsen:** kärnan. Dina steg är hennes täckning, och rösten är ljudet av den.
-**Omdöme:** Håller. Henric 12/9: "det var perfekt!"
+**Omdöme:** Håller. Henric 12/9: "det var perfekt!" Den långsamma formen, där rösten sjönk under en halv minut och klarnade under nästan en, var för sakta åt båda hållen (8/10). Episod 1 gör det direkt, och det är den formen som gäller.
 **Tänk på:** viktiga repliker ska inte ligga där vandraren troligen står still.
 
 ### Hon rör sig fritt, eller är bunden till dina steg
