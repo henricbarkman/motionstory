@@ -153,6 +153,28 @@ def tolka_tid(s: str) -> str:
     return iso(t if t.tzinfo else t.astimezone())
 
 
+# The room's times come from different clocks (a phone, a laptop, this
+# machine). 'nytt' therefore looks a day further back than its mark and
+# recognises what it already showed by key, not by time.
+OVERLAPP = timedelta(days=1)
+
+
+def las_markering(rum: Rum, path: Path) -> tuple[str, list[str], str]:
+    """-> (since, keys already shown, a label for the output)."""
+    text, _ = rum.las(path)
+    if text:
+        try:
+            m = json.loads(text)
+            t = datetime.fromisoformat(str(m["sett"]).replace("Z", "+00:00"))
+            if not t.tzinfo:
+                raise ValueError
+            nycklar = [str(x) for x in (m.get("nycklar") or [])]
+            return iso(t - OVERLAPP), nycklar, f"förra gången ({iso(t)[:16].replace('T', ' ')} UTC)"
+        except (ValueError, KeyError, TypeError, AttributeError):
+            print("Obs: markeringen för vad Demi redan sett gick inte att läsa; visar en vecka bakåt.", file=sys.stderr)
+    return iso(datetime.now(UTC) - timedelta(days=7)), [], "en vecka bakåt"
+
+
 def nytt_id() -> str:
     return f"{int(time.time() * 1000):x}-{secrets.token_hex(3)}"
 
@@ -184,7 +206,7 @@ TYPER = {
 }
 
 
-def skriv_nytt(ut: dict, sedan: str) -> None:
+def skriv_nytt(ut: dict, sedan: str) -> None:  # sedan: a time or a label
     v = ut["vantar"]
     print(f"Väntar på svar från Demi: {len(v)}")
     for x in v:
@@ -256,21 +278,20 @@ def main() -> int:
         if a.cmd == "nytt":
             sett_path = rum.p["sett"]()
             if a.sedan:
-                sedan = tolka_tid(a.sedan)
+                sedan, sedda, etikett = tolka_tid(a.sedan), [], tolka_tid(a.sedan)
             else:
-                text, _ = rum.las(sett_path)
-                sedan = json.loads(text)["sett"] if text else iso(datetime.now(UTC) - timedelta(days=7))
+                sedan, sedda, etikett = las_markering(rum, sett_path)
             nar = nu()
             episoder = {}
             for e in EPISODER:
                 episoder[e] = {"rum": rum.las(rum.p["rum"](e))[0], "manus": rum.las(rum.p["manus"](e))[0]}
-            ut = rum.steg({"op": "nytt", "episoder": episoder, "lore": rum.las(rum.p["lore"]())[0], "sedan": sedan})
+            ut = rum.steg({"op": "nytt", "episoder": episoder, "lore": rum.las(rum.p["lore"]())[0], "sedan": sedan, "sedda": sedda})
             if a.json:
                 print(json.dumps({"sedan": sedan, "vantar": ut["vantar"], "handelser": ut["handelser"]}, ensure_ascii=False, indent=1))
             else:
-                skriv_nytt(ut, sedan)
+                skriv_nytt(ut, etikett)
             if not a.sedan and not a.behall:
-                rum.files.write_file(sett_path, json.dumps({"sett": nar}) + "\n", None)
+                rum.files.write_file(sett_path, json.dumps({"sett": nar, "nycklar": ut["nycklar"]}) + "\n", None)
             return 0
 
         if a.cmd == "rader":
@@ -285,6 +306,9 @@ def main() -> int:
 
         if a.cmd in ("kommentera", "foresla"):
             text = las_text(a.text)
+            if a.cmd == "foresla" and a.text == "-" and text.endswith("\n"):
+                # A line is one line: the newline echo or a heredoc ends with is not part of it.
+                text = text[:-1]
             manus = rum.manus(a.episod)
             ut = rum.byt(rum.p["rum"](a.episod), lambda t: rum.steg({
                 "op": a.cmd, "rum": t, "manus": manus, "episod": a.episod, "scen": a.scen, "rad": a.rad, "n": a.n,
@@ -299,7 +323,14 @@ def main() -> int:
             hittad = None
             for e in ([a.episod] if a.episod else EPISODER):
                 t, _ = rum.las(rum.p["rum"](e))
-                if t and any(x.get("id") == a.pa for x in json.loads(t).get("kommentarer", []) + json.loads(t).get("forslag", [])):
+                if not t:
+                    continue
+                try:
+                    d = json.loads(t)
+                    poster = list(d.get("kommentarer") or []) + list(d.get("forslag") or [])
+                except (ValueError, AttributeError, TypeError):
+                    raise Fel(f"Anteckningarna för episod {e} går inte att läsa.") from None
+                if any(isinstance(x, dict) and x.get("id") == a.pa for x in poster):
                     hittad = e
                     break
             if not hittad:
@@ -320,6 +351,9 @@ def main() -> int:
                 print(f"Postat som Demi: loresida {ut['id']} «{a.titel}»")
             return 0
     except Fel as e:
+        print(f"Fel: {e}", file=sys.stderr)
+        return 2
+    except (OSError, UnicodeError) as e:
         print(f"Fel: {e}", file=sys.stderr)
         return 2
     return 1

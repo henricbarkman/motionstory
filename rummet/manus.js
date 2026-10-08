@@ -160,11 +160,17 @@ export function ankareFor(manus, i) {
   if (!r || !r.citat || r.typ === 'q-tom' || r.scen == null) return null;
   const scen = scenFor(manus, r.scen);
   let n = 0;
+  let alla = 0;
   for (const x of citatIScen(manus, scen)) {
-    if (x.i >= i) break;
-    if (x.innehall === r.innehall) n++;
+    if (x.innehall !== r.innehall) continue;
+    alla++;
+    if (x.i < i) n++;
   }
-  return { scen: r.scen, text: r.innehall, n, fore: granne(manus, i, -1), efter: granne(manus, i, 1) };
+  const ankare = { scen: r.scen, text: r.innehall, n, fore: granne(manus, i, -1), efter: granne(manus, i, 1) };
+  // A line with twins: if only one of them is left later, its neighbours
+  // must say it is this one.
+  if (alla > 1) ankare.tvillingar = alla;
+  return ankare;
 }
 
 // Strict: this very line, or nothing. Loose (for showing notes): the best
@@ -185,7 +191,7 @@ export function hitta(manus, ankare, { strikt = false } = {}) {
     if (vidN) return vidN.i;
     return strikt ? -1 : har[har.length - 1].i;
   }
-  if (har.length === 1 && n === 0) return har[0].i;
+  if (har.length === 1 && n === 0 && !(ankare.tvillingar > 1)) return har[0].i;
   const poang = (r) => (granne(manus, r.i, -1) === ankare.fore) + (granne(manus, r.i, 1) === ankare.efter);
   const basta = Math.max(...har.map(poang));
   if (basta > 0) {

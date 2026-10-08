@@ -37,13 +37,35 @@ export function skapaLager(adapter, {
 } = {}) {
   let jag = null;
   // Notes that should follow a manuscript change but could not be saved.
+  // The browser keeps them (ko), and every window of the room shares that
+  // list: it is read again before it changes, and each note has its own id
+  // (aid), so one window never undoes another's and none is applied twice.
   const vantar = [];
-  try {
-    const sparade = ko ? ko.las() : null;
-    if (Array.isArray(sparade)) vantar.push(...sparade);
-  } catch {
-    // Nothing kept, or unreadable: start empty.
-  }
+  const TYPER = ['andrad', 'tillagd', 'struken', 'tillbakalagd', 'steg'];
+  // A note from before ids gets one from its content: the same in every
+  // window and on every read.
+  const innehallsId = (a) => {
+    let h = 5381;
+    const t = JSON.stringify(a);
+    for (let k = 0; k < t.length; k++) h = ((h * 33) ^ t.charCodeAt(k)) >>> 0;
+    return `k${h.toString(36)}${t.length.toString(36)}`;
+  };
+  const giltig = (a) => !!a && typeof a === 'object' && TYPER.includes(a.typ) && typeof a.nr === 'string'
+    && typeof a.fore === 'string' && typeof a.efter === 'string' && typeof a.vem === 'string';
+  const synka = () => {
+    if (!ko) return;
+    let sparade;
+    try {
+      sparade = ko.las();
+    } catch {
+      return; // unreadable: keep what this window holds
+    }
+    const lista = (Array.isArray(sparade) ? sparade : []).filter(giltig);
+    const utanId = lista.some((a) => !a.aid);
+    vantar.splice(0, vantar.length, ...lista.map((a) => (a.aid ? a : { ...a, aid: innehallsId(a) })));
+    // A note from before ids, or a list with junk in it: keep the cleaned list.
+    if (utanId || lista.length !== (Array.isArray(sparade) ? sparade.length : 0)) sparaKo();
+  };
   const sparaKo = () => {
     try {
       if (ko) ko.skriv(vantar.slice());
@@ -51,6 +73,7 @@ export function skapaLager(adapter, {
       // The note still waits in memory.
     }
   };
+  synka();
 
   async function vem() {
     if (!jag) jag = await adapter.vem();
@@ -114,6 +137,22 @@ export function skapaLager(adapter, {
   // { typ, nr, fore, efter (the manuscript before and after), i, skift, vem,
   // nar, ... }. Plain data, so it can wait in the browser.
   function tillampa(rum, a, g) {
+    // Already in the file (another window sent it, or an answer was lost
+    // after the write went through): nothing to do.
+    if (a.aid && rum.logg.some((l) => l.avsikt === a.aid)) return rum;
+    let ut;
+    try {
+      ut = tillampaEn(rum, a, g);
+    } catch (e) {
+      if (e instanceof R.RumFel) throw e;
+      // The note itself cannot be applied; trying again would fail the same way.
+      throw new R.RumFel('avsikt', 'Anteckningen om vem som skrev repliken gick inte att lägga in.');
+    }
+    for (let k = rum.logg.length; k < ut.logg.length; k++) ut.logg[k].avsikt = a.aid;
+    return ut;
+  }
+
+  function tillampaEn(rum, a, g) {
     const manusFore = tolka(a.fore);
     const manusEfter = tolka(a.efter);
     const karta = kartaFran(a.skift);
@@ -141,12 +180,14 @@ export function skapaLager(adapter, {
   // The manuscript is saved first. If the note about it cannot be saved the
   // text is still safe; the line just shows as changed outside the room until
   // the note gets through.
-  async function rumEfter(avsikt) {
+  async function rumEfter(avsikt0) {
+    const avsikt = { ...avsikt0, aid: nyttId() };
     try {
       const g = await grund(avsikt.nr);
       await bytRum(avsikt.nr, (rum) => tillampa(rum, avsikt, g));
     } catch (e) {
       if (e instanceof R.RumFel) throw e;
+      synka();
       vantar.push(avsikt);
       sparaKo();
       throw new SparFel(
@@ -161,17 +202,29 @@ export function skapaLager(adapter, {
   // longer take (the proposal it marks is gone, say) is dropped; one that
   // fails for any other reason stays, and so do the ones after it.
   async function forsokIgen() {
-    while (vantar.length) {
+    synka();
+    const gjorda = new Set();
+    while (vantar.length && !gjorda.has(vantar[0].aid)) {
       const a = vantar[0];
+      gjorda.add(a.aid);
       try {
         const g = await grund(a.nr);
         await bytRum(a.nr, (rum) => tillampa(rum, a, g));
       } catch (e) {
         if (!(e instanceof R.RumFel) || e.kod === 'trasig') throw e;
       }
-      vantar.shift();
+      synka();
+      const k = vantar.findIndex((x) => x.aid === a.aid);
+      if (k >= 0) vantar.splice(k, 1);
       sparaKo();
     }
+  }
+
+  // Gives up on the waiting notes. The lines they were about show as changed
+  // outside the room, and a person can say whose they are.
+  function slangVantande() {
+    vantar.splice(0, vantar.length);
+    sparaKo();
   }
 
   // Before anything new is saved in an episode, the notes that wait go first,
@@ -443,7 +496,7 @@ export function skapaLager(adapter, {
   }
 
   return {
-    adapter, vem, vantar, forsokIgen,
+    adapter, vem, vantar, forsokIgen, slangVantande,
     lasEpisod, lasText,
     andraRad, nyRad, strykRad, laggTillbakaRad, taTillbakaText, sattNamn,
     foresla, sagJa, draUndanForslag, laggInForslag,

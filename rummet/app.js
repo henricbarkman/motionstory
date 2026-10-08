@@ -442,7 +442,10 @@ function episodHuvud() {
   if (kanSkriva() && S.lager.vantar.length) {
     f.append(h('div', { class: 'band varning' },
       h('p', null, h('strong', null, 'Halvt sparat. '), 'Texten står i manuset, men anteckningen om vem som skrev den kom inte fram. Tills den gör det visas raden som ändrad utanför rummet.'),
-      h('div', { class: 'knappar' }, h('button', { class: 'knapp liten', type: 'button', onclick: () => gora(() => S.lager.forsokIgen()) }, 'Försök igen'))));
+      h('p', { class: 'dov liten' }, 'Slänger du anteckningen står texten kvar i manuset, och du kan säga vems den är.'),
+      h('div', { class: 'knappar' },
+        h('button', { class: 'knapp liten', type: 'button', onclick: () => gora(() => S.lager.forsokIgen()) }, 'Försök igen'),
+        h('button', { class: 'knapp liten', type: 'button', onclick: () => { S.lager.slangVantande(); ritaEpisod(); } }, 'Släng anteckningen'))));
   }
   if (kanSkriva() && !ep.grund && !ep.rumFel) {
     f.append(h('div', { class: 'band' }, 'Listan över Demis utkast går inte att läsa, så rummet säger inte vem som skrev de rader som inte ändrats här.'));
@@ -617,7 +620,7 @@ function ritaRad(r) {
     : h('div', { class: 'radtext' }, innehall);
 
   const sida = h('div', { class: 'sida' });
-  for (const f of synliga(info.forslag)) if (f.lage === 'oppet') sida.append(forslagKort(f, { rad: r }));
+  for (const f of synliga(info.forslag)) if (visaForslag(f)) sida.append(forslagKort(f, { rad: r }));
   sida.append(...kommentarer(synliga(info.kommentarer), { rad: r }));
   if (oppen) sida.append(verktyg(r, info, ankare));
 
@@ -949,9 +952,21 @@ function bekrafta({ text, ja, fara = false, gor, avbryt = stangForm }) {
 
 // --- Proposals and comments --------------------------------------------------------------
 
+// Open proposals, and decided ones that people talked about: their thread
+// stays readable after the proposal was laid in or withdrawn.
+const visaForslag = (f) => f.lage === 'oppet' || synliga(S.v.svar.get(f.id) || []).length > 0;
+
 function forslagKort(f, { rad = null, scen = null, galde = null } = {}) {
   const nr = S.ep.nr;
   const scenNiva = f.mal.text == null;
+  if (f.lage !== 'oppet') {
+    return h('div', { class: `kort forslag stangd${arAI(f.skrev) ? ' fran-ai' : ''}` },
+      h('p', { class: 'kort-huvud' }, h('span', { class: 'slag' }, 'Förslag'), ' ', avsandare(f.skrev), tid(f.nar),
+        h('span', { class: 'lage' }, f.lage === 'inlagt' ? `inlagt i manus av ${namn(f.inlagt && f.inlagt.av)}` : 'draget undan')),
+      galde,
+      scenNiva ? h('div', { class: 'kort-text' }, renderText(f.kropp)) : h('p', { class: 'kort-manus' }, radText(f.kropp)),
+      trad(f, { rad, scen }));
+  }
   const kort = h('div', { class: `kort forslag${arAI(f.skrev) ? ' fran-ai' : ''}` },
     h('p', { class: 'kort-huvud' }, h('span', { class: 'slag' }, scenNiva ? 'Förslag för scenen' : 'Förslag'), ' ', avsandare(f.skrev), tid(f.nar)),
     galde,
@@ -1022,9 +1037,11 @@ function kommentarKort(k, { rad = null, scen = null, galde = null } = {}) {
     }));
     return kort;
   }
+  // A first post others have answered stays: removing it would hide their replies.
+  const andraSvar = (S.v.svar.get(k.id) || []).some((x) => x.skrev !== k.skrev);
   kort.append(h('div', { class: 'knappar' },
     h('button', { class: 'knapp liten', type: 'button', onclick: () => gora(() => S.lager.kommentarKlar(nr, k.id, !k.klar)) }, k.klar ? 'Inte klar' : 'Klar'),
-    mitt(k)
+    mitt(k) && !andraSvar
       ? h('button', { class: 'knapp liten', type: 'button', onclick: () => oppna(ctxOppen(rad, scen), { typ: 'ta-bort', id: k.id }) }, 'Ta bort')
       : null));
   kort.append(trad(k, { rad, scen, galde }));
@@ -1063,7 +1080,7 @@ function trad(rot, { rad = null, scen = null } = {}) {
   if (!S.inst.doljDemi && [rot, ...alla].some((x) => S.v.vantar.has(x.id))) {
     ut.append(h('p', { class: 'vantar' }, 'Väntar på svar från Demi.'));
   }
-  if (kan() && !rot.borta && !rot.klar) {
+  if (kan() && !rot.borta && !rot.klar && (rot.lage == null || rot.lage === 'oppet')) {
     const nyckel = utkastNyckel(`e${nr}`, 'svar', `svar-${rot.id}`);
     if (S.form && S.form.typ === 'svara' && S.form.id === rot.id) {
       const sista = svar.length ? svar[svar.length - 1] : rot;
@@ -1093,14 +1110,14 @@ function ritaFot(s) {
   const oppen = !!(S.oppen && S.oppen.i == null && S.oppen.scen === s.nr);
   const fot = h('div', { class: 'scenfot', id: `fot-${s.nr}` });
 
-  const forslag = synliga(sv.forslag).filter((f) => f.lage === 'oppet');
+  const forslag = synliga(sv.forslag).filter(visaForslag);
   const scenKommentarer = synliga(sv.kommentarer);
   if (forslag.length || scenKommentarer.length) {
     fot.append(h('h4', null, 'Om hela scenen'));
     for (const f of forslag) fot.append(forslagKort(f, { scen: s.nr }));
     fot.append(...kommentarer(scenKommentarer, { scen: s.nr }));
   }
-  const losa = sv.losa.filter((x) => !dold(x.post.skrev) && (x.slag === 'kommentarer' || x.post.lage === 'oppet'));
+  const losa = sv.losa.filter((x) => !dold(x.post.skrev) && (x.slag === 'kommentarer' || visaForslag(x.post)));
   if (losa.length) {
     fot.append(h('h4', null, 'Gällde en replik som inte står så längre'));
     for (const { slag, post } of losa) {

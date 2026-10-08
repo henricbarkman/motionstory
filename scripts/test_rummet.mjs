@@ -570,7 +570,8 @@ function nyttRum(vem) {
 
   // A note whose proposal is gone by the time it is sent is dropped, and the queue moves on.
   const c = nyttRum();
-  const lc = S.skapaLager(c, { nu: NU, nyttId: ID, ko: { las: () => [{ typ: 'steg', nr: '1', fore: EP[1], efter: EP[1], i: rad.i, skift: null, vem: 'henric', nar: NU(), foreKropp: rad.kropp, steg: [{ typ: 'inlagt', id: 'finns-inte' }] }], skriv() {} } });
+  const gammal = { typ: 'steg', nr: '1', fore: EP[1], efter: EP[1], i: rad.i, skift: null, vem: 'henric', nar: NU(), foreKropp: rad.kropp, steg: [{ typ: 'inlagt', id: 'finns-inte' }] };
+  const lc = S.skapaLager(c, { nu: NU, nyttId: ID, ko: { las: () => [gammal], skriv() {} } });
   await lc.kommentera('1', M.ankareFor(m, rad.i), 'Går fram ändå.');
   ok(lc.vantar.length === 0 && JSON.parse(c.text('rum:1')).kommentarer.length === 1, 'a note that can no longer apply is dropped, not stuck');
 
@@ -729,6 +730,100 @@ function nyttRum(vem) {
   const tva2 = repliker(m2).filter((r) => r.kropp === 'Ja.');
   ok(tva2.every((r) => R.skrevRad(m2, rum, new Set(), r.i).hur === 'utanfor'),
     'twins whose neighbours all changed outside: credited to nobody, read as changed outside the room');
+}
+
+// --- 5f. Waiting, threads and the queue, under clocks and windows that disagree --
+
+{
+  const m = M.tolka(EP[1]);
+  const rad = repliker(m)[3];
+  const ank = M.ankareFor(m, rad.i);
+  const post = (id, skrev, nar, extra = {}) => ({ id, mal: ank, text: id, galler: null, skrev, nar, ...extra });
+
+  // The order in the file decides, never the clocks.
+  let rum = R.tomtRum('1');
+  rum.kommentarer.push(post('q1', 'henric', '2026-10-08T12:00:00.000Z', { till: 'demi' }));
+  rum.kommentarer.push(post('s1', 'demi', '2026-10-08T11:58:00.000Z', { svarPa: 'q1' })); // the mini-PC is two minutes behind
+  ok(R.vantarPa(rum, 'demi').length === 0, 'clocks: an answer stamped before the question but written after it counts');
+  rum.kommentarer.push(post('q2', 'henric', '2026-10-08T11:57:00.000Z', { svarPa: 'q1', till: 'demi' })); // the phone is behind
+  ok(R.vantarPa(rum, 'demi').map((k) => k.id).join() === 'q2', 'clocks: a new question stamped before the last answer still waits');
+
+  // A thread closed by a decision or by a person waits for nobody; Demi cannot close it.
+  rum = R.tomtRum('1');
+  rum.forslag.push({ id: 'f1', mal: ank, kropp: 'Nytt.', skrev: 'liv', nar: NU(), lage: 'oppet', ja: [] });
+  rum.kommentarer.push(post('q3', 'henric', NU(), { svarPa: 'f1', till: 'demi' }));
+  ok(R.vantarPa(rum, 'demi').length === 1, 'a question on an open proposal waits');
+  rum.forslag[0].lage = 'inlagt';
+  ok(R.vantarPa(rum, 'demi').length === 0, 'a proposal laid in closes its thread');
+  rum = R.tomtRum('1');
+  rum.kommentarer.push(post('d1', 'demi', NU()));
+  rum.kommentarer.push(post('q4', 'henric', NU(), { svarPa: 'd1', till: 'demi' }));
+  rum = R.kommentarKlar(rum, { id: 'd1', vem: 'demi', nar: NU() });
+  ok(R.vantarPa(rum, 'demi').length === 1, 'Demi marking its own comment done does not silence a question to it');
+  rum = R.kommentarKlar(rum, { id: 'd1', vem: 'henric', nar: NU() });
+  ok(throwsKod(() => R.kommentarKlar(rum, { id: 'd1', vem: 'demi', nar: NU(), klar: false }), 'bara-manniskor'),
+    'Demi cannot open a thread a person closed');
+
+  // Removing a first post would hide the others' replies: refused.
+  rum = R.tomtRum('1');
+  rum.kommentarer.push(post('h1', 'henric', NU()));
+  rum.kommentarer.push(post('l1', 'liv', NU(), { svarPa: 'h1' }));
+  ok(throwsKod(() => R.taBortKommentar(rum, { id: 'h1', vem: 'henric', nar: NU() }), 'har-svar'), 'a comment others have answered cannot be removed');
+  rum.kommentarer.push(post('h2', 'henric', NU(), { svarPa: 'h1' }));
+  ok(R.taBortKommentar(rum, { id: 'h2', vem: 'henric', nar: NU() }).kommentarer.find((k) => k.id === 'h2').borta, 'one\'s own reply can be removed');
+
+  // A proposal laid in cannot be withdrawn afterwards.
+  rum = R.tomtRum('1');
+  rum.forslag.push({ id: 'f2', mal: ank, kropp: 'Nytt.', skrev: 'liv', nar: NU(), lage: 'inlagt', ja: [] });
+  ok(throwsKod(() => R.draUndanForslag(rum, { id: 'f2', vem: 'liv', nar: NU() }), 'inte-oppet'), 'a proposal laid in cannot be withdrawn');
+  ok(throwsKod(() => R.nyKommentar(R.tomtRum('1'), { id: 'x', mal: ank, text: 'x', vem: 'henric', nar: NU(), till: 'toString' }), 'okand'),
+    'asking someone who is not in the room is refused');
+
+  // Twins: once only one is left, the first twin's anchor does not land on the second.
+  const t = '# Glimt, episod 1: Prov\n\nA.\n\n---\n\n## 0. A\n\n> A\n>\n> Ja.\n>\n> B\n>\n> Ja.\n>\n> C\n\n---\n\n## Bilaga\n';
+  const tm = M.tolka(t);
+  const forsta = M.ankareFor(tm, repliker(tm).find((r) => r.kropp === 'Ja.').i);
+  const t2 = M.tolka(t.replace('> Ja.\n>\n> B', '> Nej.\n>\n> B'));
+  ok(forsta.tvillingar === 2 && M.hitta(t2, forsta, { strikt: true }) === -1, 'twins: the first one changed, its anchor does not move to the second');
+
+  // Two windows with the same waiting note: it is applied once.
+  let lagring = null;
+  const ko = { las: () => (lagring ? JSON.parse(lagring) : null), skriv: (v) => { lagring = JSON.stringify(v); } };
+  const a = nyttRum();
+  let natet = false;
+  a.fore = (p) => { if (p === 'rum:1' && !natet) throw new TypeError('Failed to fetch'); };
+  const f1 = S.skapaLager(a, { nu: NU, nyttId: ID, ko });
+  await rejectsKod(f1.andraRad('1', ank, 'Två fönster.'), 'halvt');
+  const f2 = S.skapaLager(a, { nu: NU, nyttId: ID, ko });
+  natet = true;
+  ok(f2.vantar.length === 1, 'window 2 loaded the same waiting note');
+  await f1.forsokIgen();
+  await f2.forsokIgen();
+  const rf = JSON.parse(a.text('rum:1'));
+  ok(rf.rader.length === 1 && rf.logg.filter((l) => l.vad === 'andrade').length === 1 && rf.logg[0].avsikt,
+    'two windows send the same note: it is in the file once, marked with its id');
+  // Applying a stored note twice by hand: the second time changes nothing.
+  const tidigare = a.text('rum:1');
+  const gammal = { ...JSON.parse(JSON.stringify(rf.logg[0])) };
+  ok(gammal.avsikt && lagring === '[]', 'the shared list is empty after the note went through');
+  lagring = JSON.stringify([{ typ: 'andrad', nr: '1', fore: EP[1], efter: a.text('manus:1'), i: rad.i, skift: null, vem: 'henric', nar: NU(), aid: gammal.avsikt, post: {} }]);
+  const f3 = S.skapaLager(a, { nu: NU, nyttId: ID, ko });
+  await f3.forsokIgen();
+  ok(a.text('rum:1') === tidigare && lagring === '[]', 'a note already in the file is recognised by its id and not applied again');
+
+  // Junk in the browser's list never blocks saving.
+  lagring = JSON.stringify([null, { typ: 'okand' }, 'x', { typ: 'andrad', nr: 1 }]);
+  const f4 = S.skapaLager(a, { nu: NU, nyttId: ID, ko });
+  ok(f4.vantar.length === 0 && lagring === '[]', 'junk in the stored list is dropped on load');
+  await f4.kommentera('1', ank, 'Går fram.');
+  ok(JSON.parse(a.text('rum:1')).kommentarer.some((k) => k.text === 'Går fram.'), 'and saving goes on');
+  // A note that cannot be applied (its text is not a manuscript) is dropped, not retried forever.
+  lagring = JSON.stringify([{ typ: 'andrad', nr: '1', fore: EP[1], efter: EP[1], i: 99999, skift: null, vem: 'henric', nar: NU(), aid: 'trasig-1', post: {} }]);
+  const f5 = S.skapaLager(a, { nu: NU, nyttId: ID, ko });
+  await f5.kommentera('1', ank, 'Också fram.');
+  ok(lagring === '[]' && JSON.parse(a.text('rum:1')).kommentarer.some((k) => k.text === 'Också fram.'), 'a note that cannot apply is dropped and saving goes on');
+  f5.slangVantande();
+  ok(f5.vantar.length === 0, 'waiting notes can be thrown away');
 }
 
 // --- 5e. The manuscript as it is now, against the baseline of the recorded draft ----

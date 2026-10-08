@@ -70,7 +70,7 @@ function plats(manus, mal) {
 
 const efter = (nar, sedan) => nar != null && String(nar) > sedan;
 
-function nytt({ episoder, lore, sedan }) {
+function nytt({ episoder, lore, sedan, sedda = [] }) {
   const vantar = [];
   const handelser = [];
   for (const [nr, { rum: rumText, manus: manusText }] of Object.entries(episoder)) {
@@ -118,9 +118,15 @@ function nytt({ episoder, lore, sedan }) {
       }
     }
   }
-  handelser.sort((a, b) => String(a.nar).localeCompare(String(b.nar)));
+  // What was shown last time is known by its key, not by its time: the times
+  // come from different clocks.
+  const nyckel = (h) => [h.typ, h.id || '', h.vem || '', h.nar || ''].join('|');
+  const sett = new Set(sedda || []);
+  const nycklar = handelser.map(nyckel);
+  const nya = handelser.filter((h) => !sett.has(nyckel(h)));
+  nya.sort((a, b) => String(a.nar).localeCompare(String(b.nar)));
   vantar.sort((a, b) => String(a.nar).localeCompare(String(b.nar)));
-  return { vantar, handelser };
+  return { vantar, handelser: nya, nycklar };
 }
 
 function steg(in_) {

@@ -425,9 +425,11 @@ def main() -> int:
             hkort = rad(page, L3["i"]).locator(".kort.kommentar:not(.fran-ai)")
             ok(hkort.locator(".svar.fran-ai").count() == 1 and hkort.locator(".svar.fran-ai .ai-markor").count() == 1,
                "demi: Demi's reply hangs under Henric's comment, marked")
-            ok(dk.get_by_role("button", name="Ta bort").count() == 0 and hkort.locator(".kort-huvud ~ .knappar").get_by_role("button", name="Ta bort").count() == 1
-               and hkort.locator(".svar.fran-ai").get_by_role("button", name="Ta bort").count() == 0,
-               "demi: Henric can remove his own comment, never Demi's comment or reply")
+            ok(dk.get_by_role("button", name="Ta bort").count() == 0 and hkort.locator(".svar.fran-ai").get_by_role("button", name="Ta bort").count() == 0,
+               "demi: Henric cannot remove Demi's comment or reply")
+            ok(hkort.locator(".kort-huvud ~ .knappar").get_by_role("button", name="Ta bort").count() == 0
+               and page.locator("#fot-2 .kort.kommentar:not(.fran-ai)").first.get_by_role("button", name="Ta bort").count() == 1,
+               "demi: his own comment can be removed until someone answers it")
             skarm(page, "08-demi")
 
             # Henric asks Demi something in the thread; it waits until Demi answers.

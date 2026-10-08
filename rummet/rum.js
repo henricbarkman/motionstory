@@ -297,6 +297,7 @@ export function draUndanForslag(rum0, { id, vem, nar }) {
   const rum = kopia(rum0);
   const f = forslag(rum, id);
   egen(f, vem, 'förslaget');
+  if (f.lage !== 'oppet') throw new RumFel('inte-oppet', f.lage === 'inlagt' ? 'Förslaget är redan inlagt i manus.' : 'Förslaget är redan undandraget.');
   f.lage = 'undan';
   f.undan = { av: vem, nar };
   return rum;
@@ -336,7 +337,7 @@ export const GALLER = { orden: 'orden', tempo: 'tempot', paus: 'pausen', ljud: '
 export function nyKommentar(rum0, { id, mal, text, galler = null, vem, nar, svarPa = null, till = null }) {
   const rum = kopia(rum0);
   if (typeof text !== 'string' || !text.trim()) throw new RumFel('tom', 'Kommentaren är tom.');
-  if (till != null && !PERSONER[till]) throw new RumFel('okand', 'Den personen finns inte i rummet.');
+  if (till != null && !Object.hasOwn(PERSONER, till)) throw new RumFel('okand', 'Den personen finns inte i rummet.');
   const post = { id, mal, text, galler, skrev: vem, nar };
   if (svarPa) {
     const fore = rum.kommentarer.find((x) => x.id === svarPa) || rum.forslag.find((x) => x.id === svarPa);
@@ -358,11 +359,14 @@ function kommentar(rum, id) {
 }
 
 // Marking a thread done is not changing anyone's words, so any person can do
-// it. Demi can only mark its own.
+// it. Demi can only mark its own, and never opens what a person closed.
 export function kommentarKlar(rum0, { id, vem, nar, klar = true }) {
   const rum = kopia(rum0);
   const k = kommentar(rum, id);
-  if (arAI(vem)) egen(k, vem, 'kommentaren');
+  if (arAI(vem)) {
+    egen(k, vem, 'kommentaren');
+    if (!klar && k.klar && k.klar.av !== vem) throw new RumFel('bara-manniskor', 'Bara en människa kan öppna en tråd som en människa har stängt.');
+  }
   if (klar) k.klar = { av: vem, nar }; else delete k.klar;
   return rum;
 }
@@ -371,6 +375,10 @@ export function taBortKommentar(rum0, { id, vem, nar }) {
   const rum = kopia(rum0);
   const k = kommentar(rum, id);
   egen(k, vem, 'kommentaren');
+  // Removing the first post would hide everyone's replies with it.
+  if (!k.svarPa && rum.kommentarer.some((x) => x.svarPa === k.id && !x.borta && x.skrev !== vem)) {
+    throw new RumFel('har-svar', 'Andra har svarat i tråden, så den går inte att ta bort. Markera den som klar i stället.');
+  }
   k.borta = { av: vem, nar };
   return rum;
 }
@@ -380,19 +388,23 @@ export function trad(rum, rotId) {
   return rum.kommentarer.filter((x) => x.svarPa === rotId && !x.borta);
 }
 
-// Posts addressed to someone (till) that still wait for their answer: nobody
-// has marked the thread done, and the person has not written in the thread
-// after it.
+// Posts addressed to someone (till) that still wait for their answer: the
+// thread is open (not marked done by a person, not a proposal that has been
+// laid in or withdrawn), and the person has not written in it since.
+// "Since" is the order in the file, never the time stamps: those come from
+// different clocks (a phone, a laptop, the mini-PC), while every post is
+// appended to the file it was read from.
 export function vantarPa(rum, vem) {
   const ut = [];
   const rotar = new Map([...rum.forslag, ...rum.kommentarer].map((x) => [x.id, x]));
+  const plats = new Map(rum.kommentarer.map((x, n) => [x.id, n]));
   for (const k of rum.kommentarer) {
     if (k.till !== vem || k.borta) continue;
     const rotId = k.svarPa || k.id;
     const rot = rotar.get(rotId);
-    if (!rot || rot.borta || rot.klar) continue;
-    const efter = [rot, ...trad(rum, rotId)].some((x) => x.skrev === vem && String(x.nar || '') > String(k.nar || ''));
-    if (!efter) ut.push(k);
+    if (!rot || rot.borta || (rot.klar && !arAI(rot.klar.av)) || (rot.lage != null && rot.lage !== 'oppet')) continue;
+    const har = plats.get(k.id);
+    if (!trad(rum, rotId).some((x) => x.skrev === vem && plats.get(x.id) > har)) ut.push(k);
   }
   return ut;
 }

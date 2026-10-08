@@ -141,6 +141,26 @@ def main() -> int:
         ok("Nytt sedan" in kor(rot, "nytt").stdout and kor(rot, "nytt", "--json").stdout.count('"typ"') == 0,
            "nytt remembers where it was")
 
+        # A post stamped by a clock that is behind still shows as new: what was
+        # shown is known by key, not by time.
+        efter_klocka = rum(rot)
+        sett = json.loads((rot / "data" / "glimt-rummet" / "demi-sett.json").read_text(encoding="utf-8"))["sett"]
+        # Written after the mark, stamped earlier the same day.
+        efter_klocka["kommentarer"].append({"id": "sen1", "mal": {"scen": "1", "text": None}, "text": "Telefonen går efter.",
+                                            "galler": None, "skrev": "liv", "nar": sett[:11] + "00:00:00.000Z"})
+        (rot / "data" / "glimt-rummet" / "episod-1.json").write_text(json.dumps(efter_klocka), encoding="utf-8")
+        r = kor(rot, "nytt")
+        ok(r.returncode == 0 and "Telefonen går efter." in r.stdout, "nytt: a post stamped before the mark (a clock behind) still shows once")
+        ok("Telefonen går efter." not in kor(rot, "nytt").stdout, "and not again")
+        (rot / "data" / "glimt-rummet" / "demi-sett.json").write_text("{trasig", encoding="utf-8")
+        r = kor(rot, "nytt", "--behall")
+        ok(r.returncode == 0 and "en vecka bakåt" in r.stdout and "gick inte att läsa" in r.stderr, "nytt: a broken mark file falls back to a week, and says so")
+        kor(rot, "nytt")
+
+        # A proposal from stdin: the trailing newline of echo is not part of the line.
+        r = kor(rot, "foresla", "--episod", "1", "--scen", "1", "--rad", forsta, "--text", "-", stdin="Från en heredoc.\n")
+        ok(r.returncode == 0 and rum(rot)["forslag"][-1]["kropp"] == "Från en heredoc.", "foresla --text -: the trailing newline is dropped, nothing else")
+
         # Lore: Demi's own page, and someone else's.
         r = kor(rot, "lore", "--titel", "Slingan", "--text", "Den surrar.")
         lore_path = rot / "data" / "glimt-rummet" / "lore.json"
