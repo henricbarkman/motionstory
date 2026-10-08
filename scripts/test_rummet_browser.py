@@ -344,6 +344,8 @@ def skrivaren(b, url: str, rot: Path, storlek: str, skarmar: Path | None) -> Non
     ok(page.locator("#panel .mek-val").count() >= 1, f"{pre} searching narrows the list")
     page.locator("#panel .mek-val", has_text="Stanna för ja").first.click()
     ok(vanta_fil(page, F, lambda t: "*Trigger: kontakten stark första gången, efter ungefär en minut i rörelse. Stanna för ja.*\n" in t), f"{pre} the name is added last in the scene's Mekanik row")
+    besked = page.locator("#status").inner_text()
+    ok("Stanna för ja står nu i scenens mekanik" in besked and "null" not in besked, f"{pre} the notice says what happened, and nothing else: {besked!r}")
     mek1 = stycke_id(page, "kontakten stark första gången")
     ok(page.locator(f'.st[data-id="{mek1}"] .bricka').count() == 2, f"{pre} the row now has two chips")
     varsel = page.locator(f'.st[data-id="{mek1}"] .varsel').all_inner_texts()

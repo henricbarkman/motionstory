@@ -100,7 +100,8 @@ function status(text, typ = 'info', { kvar = false, knapp = null } = {}) {
   const el = $('status');
   clearTimeout(statusTimer);
   el.className = `status ${typ}`;
-  el.replaceChildren(h('span', null, text), knapp, h('button', { type: 'button', class: 'stang', 'aria-label': 'Stäng', onclick: () => { el.hidden = true; } }, svg(IKON.stang)));
+  // replaceChildren would write a missing button out as the word null.
+  el.replaceChildren(...[h('span', null, text), knapp, h('button', { type: 'button', class: 'stang', 'aria-label': 'Stäng', onclick: () => { el.hidden = true; } }, svg(IKON.stang))].filter(Boolean));
   el.hidden = false;
   if (!kvar) statusTimer = setTimeout(() => { el.hidden = true; }, typ === 'fel' ? 9000 : 3200);
 }
