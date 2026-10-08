@@ -5,8 +5,15 @@
 //
 // Nothing in this file writes manuscript text. A proposal lies beside its
 // line until a person presses "Lägg in i manus".
+//
+// Three people take part: Henric, Liv and Demi. Demi is an AI and is marked
+// as one everywhere. Everyone writes their own comments, proposals, replies
+// and lore pages, and nobody can change or remove someone else's. Deciding is
+// for people: only they change the manuscript, say yes, lay a proposal in,
+// or say whose a line is.
 
 import { ankareFor, hitta, tolkaInnehall } from './manus.js';
+import { PERSONER } from './data.js';
 
 export class RumFel extends Error {
   constructor(kod, text) {
@@ -64,12 +71,26 @@ export function lasGrund(text) {
 
 const kopia = (x) => JSON.parse(JSON.stringify(x));
 
+export const arAI = (vem) => !!(PERSONER[vem] && PERSONER[vem].ai);
+
+export function baraManniskor(vem) {
+  if (!vem || arAI(vem)) {
+    throw new RumFel('bara-manniskor', 'Det här gör bara en människa i rummet: Henric eller Liv.');
+  }
+}
+
+function egen(post, vem, vad) {
+  if (!post.skrev || post.skrev !== vem) {
+    throw new RumFel('inte-din', `Bara den som skrev ${vad} kan ändra eller ta bort det.`);
+  }
+}
+
 // --- Who wrote a line ------------------------------------------------------
 
 function postFor(manus, rum, i) {
   let basta = null;
   for (const p of rum.rader) {
-    if (hitta(manus, p.mal) !== i) continue;
+    if (hitta(manus, p.mal, { strikt: true }) !== i) continue;
     // A record must say this very text; a loose match on a changed line is
     // exactly the misattribution the room is there to avoid.
     if (p.mal.text !== manus.rader[i].innehall) continue;
@@ -107,7 +128,7 @@ export function vy(manus, rum, grund) {
   }
   const lagg = (lista, slag) => {
     for (const x of lista) {
-      if (x.borta) continue;
+      if (x.borta || x.svarPa) continue;
       const hem = manus.scener.some((s) => s.nr === x.mal.scen) ? x.mal.scen : (manus.scener[0] || {}).nr;
       if (x.mal.text == null) { scen(hem)[slag].push(x); continue; }
       if (x.mal.struken) { scen(hem).losa.push({ slag, post: x }); continue; }
@@ -119,7 +140,15 @@ export function vy(manus, rum, grund) {
   lagg(rum.forslag, 'forslag');
   lagg(rum.kommentarer, 'kommentarer');
   for (const s of rum.strukna) scen(manus.scener.some((x) => x.nr === s.scen) ? s.scen : (manus.scener[0] || {}).nr).strukna.push(s);
-  return { rader, scener };
+  // Replies are shown under the post that started their thread.
+  const svar = new Map();
+  for (const k of rum.kommentarer) {
+    if (!k.svarPa || k.borta) continue;
+    if (!svar.has(k.svarPa)) svar.set(k.svarPa, []);
+    svar.get(k.svarPa).push(k);
+  }
+  const vantar = new Set(vantarPa(rum, 'demi').map((k) => k.id));
+  return { rader, scener, svar, vantar };
 }
 
 // --- After the manuscript changed in the room -------------------------------
@@ -146,7 +175,7 @@ function utan(tidigare, en) {
 }
 
 function utanPostFor(rum, manus, i) {
-  rum.rader = rum.rader.filter((p) => !(hitta(manus, p.mal) === i && p.mal.text === manus.rader[i].innehall));
+  rum.rader = rum.rader.filter((p) => !(hitta(manus, p.mal, { strikt: true }) === i && p.mal.text === manus.rader[i].innehall));
 }
 
 // A line got a new text. skrev is whose words the new text is: the person at
@@ -156,6 +185,7 @@ function utanPostFor(rum, manus, i) {
 // nar}) leaves the list of earlier texts (it is the line again) and the
 // replaced one joins it.
 export function efterAndrad(rum0, { manusFore, manusEfter, i, vem, nar, grund, hur = 'andrade', skrev = vem, skrevNar = nar, utanTidigare = null }) {
+  baraManniskor(vem);
   const rum = kopia(rum0);
   const forut = skrevRad(manusFore, rum, grund, i);
   const fore = manusFore.rader[i];
@@ -175,6 +205,7 @@ export function efterAndrad(rum0, { manusFore, manusEfter, i, vem, nar, grund, h
 }
 
 export function efterTillagd(rum0, { manusFore, manusEfter, karta, i, vem, nar }) {
+  baraManniskor(vem);
   const rum = kopia(rum0);
   flytta(rum, manusFore, manusEfter, karta);
   rum.rader.push({ mal: ankareFor(manusEfter, i), skrev: vem, nar, hur: 'skrev', tidigare: [] });
@@ -183,6 +214,7 @@ export function efterTillagd(rum0, { manusFore, manusEfter, karta, i, vem, nar }
 }
 
 export function efterStruken(rum0, { manusFore, manusEfter, karta, i, struken, id, vem, nar, grund }) {
+  baraManniskor(vem);
   const rum = kopia(rum0);
   const forut = skrevRad(manusFore, rum, grund, i);
   utanPostFor(rum, manusFore, i);
@@ -203,6 +235,7 @@ export function efterStruken(rum0, { manusFore, manusEfter, karta, i, struken, i
 }
 
 export function efterTillbakalagd(rum0, { manusFore, manusEfter, karta, i, id, vem, nar }) {
+  baraManniskor(vem);
   const rum = kopia(rum0);
   const s = rum.strukna.find((x) => x.id === id);
   flytta(rum, manusFore, manusEfter, karta);
@@ -221,6 +254,8 @@ export function efterTillbakalagd(rum0, { manusFore, manusEfter, karta, i, id, v
 
 // Someone says whose a line is, for text that was changed outside the room.
 export function sattNamn(rum0, { manus, i, skrev, vem, nar, grund }) {
+  baraManniskor(vem);
+  if (i == null || i < 0 || !manus.rader[i]) throw new RumFel('saknas', 'Repliken står inte längre så i manuset.');
   const rum = kopia(rum0);
   const forut = skrevRad(manus, rum, grund, i);
   utanPostFor(rum, manus, i);
@@ -244,6 +279,7 @@ function forslag(rum, id) {
 }
 
 export function sagJa(rum0, { id, vem, nar }) {
+  baraManniskor(vem);
   const rum = kopia(rum0);
   const f = forslag(rum, id);
   if (!f.ja.some((j) => j.vem === vem)) f.ja.push({ vem, nar });
@@ -260,6 +296,7 @@ export function taTillbakaJa(rum0, { id, vem }) {
 export function draUndanForslag(rum0, { id, vem, nar }) {
   const rum = kopia(rum0);
   const f = forslag(rum, id);
+  egen(f, vem, 'förslaget');
   f.lage = 'undan';
   f.undan = { av: vem, nar };
   return rum;
@@ -269,6 +306,7 @@ export function draUndanForslag(rum0, { id, vem, nar }) {
 // (the store does both in one write); for a whole scene it is a note that the
 // people have carried it out themselves.
 export function forslagInlagt(rum0, { id, vem, nar, ersatte = null }) {
+  baraManniskor(vem);
   const rum = kopia(rum0);
   const f = forslag(rum, id);
   f.lage = 'inlagt';
@@ -279,6 +317,7 @@ export function forslagInlagt(rum0, { id, vem, nar, ersatte = null }) {
 }
 
 export function forslagOppnatIgen(rum0, { id, vem, nar }) {
+  baraManniskor(vem);
   const rum = kopia(rum0);
   const f = forslag(rum, id);
   f.lage = 'oppet';
@@ -291,9 +330,24 @@ export function forslagOppnatIgen(rum0, { id, vem, nar }) {
 
 export const GALLER = { orden: 'orden', tempo: 'tempot', paus: 'pausen', ljud: 'ljudnivån', nar: 'när det händer' };
 
-export function nyKommentar(rum0, { id, mal, text, galler = null, vem, nar }) {
+// A comment on a line or a scene, or a reply in a thread (svarPa: the id of
+// the comment or proposal that started it). till: 'demi' asks Demi for an
+// answer; the room shows it as waiting until Demi has replied in the thread.
+export function nyKommentar(rum0, { id, mal, text, galler = null, vem, nar, svarPa = null, till = null }) {
   const rum = kopia(rum0);
-  rum.kommentarer.push({ id, mal, text, galler, skrev: vem, nar });
+  if (typeof text !== 'string' || !text.trim()) throw new RumFel('tom', 'Kommentaren är tom.');
+  if (till != null && !PERSONER[till]) throw new RumFel('okand', 'Den personen finns inte i rummet.');
+  const post = { id, mal, text, galler, skrev: vem, nar };
+  if (svarPa) {
+    const fore = rum.kommentarer.find((x) => x.id === svarPa) || rum.forslag.find((x) => x.id === svarPa);
+    if (!fore || fore.borta) throw new RumFel('saknas', 'Det du svarar på finns inte kvar.');
+    // Every reply hangs on the thread's first post, so a thread is one list.
+    post.svarPa = fore.svarPa || fore.id;
+    post.mal = kopia(fore.mal);
+    post.galler = null;
+  }
+  if (till) post.till = till;
+  rum.kommentarer.push(post);
   return rum;
 }
 
@@ -303,17 +357,44 @@ function kommentar(rum, id) {
   return k;
 }
 
+// Marking a thread done is not changing anyone's words, so any person can do
+// it. Demi can only mark its own.
 export function kommentarKlar(rum0, { id, vem, nar, klar = true }) {
   const rum = kopia(rum0);
   const k = kommentar(rum, id);
+  if (arAI(vem)) egen(k, vem, 'kommentaren');
   if (klar) k.klar = { av: vem, nar }; else delete k.klar;
   return rum;
 }
 
 export function taBortKommentar(rum0, { id, vem, nar }) {
   const rum = kopia(rum0);
-  kommentar(rum, id).borta = { av: vem, nar };
+  const k = kommentar(rum, id);
+  egen(k, vem, 'kommentaren');
+  k.borta = { av: vem, nar };
   return rum;
+}
+
+// The first post of each thread and its replies, in order.
+export function trad(rum, rotId) {
+  return rum.kommentarer.filter((x) => x.svarPa === rotId && !x.borta);
+}
+
+// Posts addressed to someone (till) that still wait for their answer: nobody
+// has marked the thread done, and the person has not written in the thread
+// after it.
+export function vantarPa(rum, vem) {
+  const ut = [];
+  const rotar = new Map([...rum.forslag, ...rum.kommentarer].map((x) => [x.id, x]));
+  for (const k of rum.kommentarer) {
+    if (k.till !== vem || k.borta) continue;
+    const rotId = k.svarPa || k.id;
+    const rot = rotar.get(rotId);
+    if (!rot || rot.borta || rot.klar) continue;
+    const efter = [rot, ...trad(rum, rotId)].some((x) => x.skrev === vem && String(x.nar || '') > String(k.nar || ''));
+    if (!efter) ut.push(k);
+  }
+  return ut;
 }
 
 // --- Lore pages ------------------------------------------------------------------
@@ -355,6 +436,7 @@ export function andraLoresida(lore0, { id, titel, text, vem, nar }) {
   const lore = kopia(lore0);
   const s = lore.sidor.find((x) => x.id === id);
   if (!s) throw new RumFel('saknas', 'Sidan finns inte kvar.');
+  egen(s, vem, 'sidan');
   s.versioner = s.versioner || [];
   s.versioner.push({ titel: s.titel, text: s.text, av: (s.andrad && s.andrad.av) || s.skrev, nar: (s.andrad && s.andrad.nar) || s.skapad });
   s.titel = titel;
@@ -368,16 +450,52 @@ export function taBortLoresida(lore0, { id, vem, nar }) {
   const lore = kopia(lore0);
   const s = lore.sidor.find((x) => x.id === id);
   if (!s) throw new RumFel('saknas', 'Sidan finns inte kvar.');
+  egen(s, vem, 'sidan');
   s.borta = { av: vem, nar };
   return lore;
 }
 
-export function hamtaTillbakaLoresida(lore0, { id }) {
+export function hamtaTillbakaLoresida(lore0, { id, vem }) {
   const lore = kopia(lore0);
   const s = lore.sidor.find((x) => x.id === id);
   if (!s) throw new RumFel('saknas', 'Sidan finns inte kvar.');
+  egen(s, vem, 'sidan');
   delete s.borta;
   return lore;
+}
+
+// --- Settings ------------------------------------------------------------------
+// What each person has chosen for themselves. Only doljDemi for now: whether
+// Demi's comments, proposals, replies and lore pages are hidden for them.
+
+export const tomaInstallningar = () => ({ format: 1, personer: {} });
+
+export function lasInstallningar(text) {
+  if (text == null) return tomaInstallningar();
+  let inst;
+  try {
+    inst = JSON.parse(text);
+  } catch {
+    throw new RumFel('trasig', 'Inställningarna går inte att läsa: filen är trasig.');
+  }
+  if (!inst || typeof inst !== 'object' || Array.isArray(inst)) throw new RumFel('trasig', 'Inställningarna har fel form.');
+  if (!inst.personer || typeof inst.personer !== 'object' || Array.isArray(inst.personer)) inst.personer = {};
+  return inst;
+}
+
+export function installningFor(inst, vem) {
+  const egna = (vem && inst.personer[vem]) || {};
+  const forval = (vem && PERSONER[vem]) || {};
+  return { doljDemi: typeof egna.doljDemi === 'boolean' ? egna.doljDemi : !!forval.doljDemi };
+}
+
+const NYCKLAR = { doljDemi: 'boolean' };
+
+export function sattInstallning(inst0, { vem, nyckel, varde, nar }) {
+  if (!NYCKLAR[nyckel] || typeof varde !== NYCKLAR[nyckel]) throw new RumFel('okand', 'Den inställningen finns inte.');
+  const inst = kopia(inst0);
+  inst.personer[vem] = { ...(inst.personer[vem] || {}), [nyckel]: varde, andrad: nar };
+  return inst;
 }
 
 // Used by the store to check a kropp read back from the file is still a line.

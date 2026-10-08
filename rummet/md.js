@@ -6,7 +6,11 @@
 // Covers what those files use: headings, paragraphs, lists, block quotes,
 // tables, rules, **bold**, *italic*, `code` and [links](https://...).
 
-const SAKER_LANK = /^(https?:\/\/|#|\.{0,2}\/)/i;
+// A link may go out over http(s), to a heading on the page, or to a file next
+// to it. "//host" and "/\host" lead to another site, so a bare "/" is not
+// allowed, and neither is a backslash anywhere.
+const SAKER_LANK = /^(https?:\/\/|#|\.\.?\/)/i;
+const sakerLank = (href) => SAKER_LANK.test(href) && !href.includes('\\');
 
 function el(tag, klass, ...barn) {
   const e = document.createElement(tag);
@@ -39,7 +43,7 @@ export function inline(text) {
       const m = /^\[([^\]]+)\]\(([^)\s]+)\)/.exec(text.slice(k));
       if (m) {
         flush();
-        if (SAKER_LANK.test(m[2])) {
+        if (sakerLank(m[2])) {
           const a = el('a', null, inline(m[1]));
           a.href = m[2];
           if (/^https?:/i.test(m[2])) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
@@ -118,7 +122,9 @@ export function renderMd(text) {
       ut.append(lista);
       continue;
     }
-    const stycke = [];
+    // The first line always belongs to the paragraph, so every turn of the
+    // outer loop moves on (a "|" line that is not a table used to stall it).
+    const stycke = [rader[k++]];
     while (k < rader.length && rader[k].trim() !== '' && !/^(#{1,4}\s|>|\s*\||\s*([-*]|\d+\.)\s|\s*---\s*$)/.test(rader[k])) {
       stycke.push(rader[k]);
       k++;

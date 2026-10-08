@@ -30,12 +30,14 @@ export class DataFel extends Error {
 
 export const EPISODER = ['1', '2'];
 
-// The people whose words can stand in the manuscript. Demi is listed because
-// the drafts are Demi's; Demi is not someone who sits in the room.
+// The people in the room. Demi is an AI (ai: true): it writes the drafts, and
+// its own comments, proposals, replies and lore pages, always marked as
+// Demi's; it never changes the manuscript or decides. doljDemi is whether a
+// person sees Demi's posts before they have chosen themselves.
 export const PERSONER = {
-  henric: { namn: 'Henric' },
-  liv: { namn: 'Liv' },
-  demi: { namn: 'Demi' },
+  henric: { namn: 'Henric', doljDemi: false },
+  liv: { namn: 'Liv', doljDemi: true },
+  demi: { namn: 'Demi', ai: true },
 };
 
 const GA = '/home/henric/generalassistant';
@@ -54,6 +56,7 @@ function sokvagar(rot) {
       rum: (n) => `${p}/episod-${n}.json`,
       grund: (n) => `${p}/grund/episod-${n}.json`,
       lore: () => `${p}/lore.json`,
+      installningar: () => `${p}/installningar.json`,
     };
   }
   const glimt = `${GA}/projects/motionstory/stories/glimt`;
@@ -66,6 +69,7 @@ function sokvagar(rot) {
     rum: (n) => `${rum}/episod-${n}.json`,
     grund: (n) => `${rum}/grund/episod-${n}.json`,
     lore: () => `${rum}/lore.json`,
+    installningar: () => `${rum}/installningar.json`,
   };
 }
 

@@ -126,8 +126,10 @@ export function skriv(manus) {
 }
 
 // --- Anchors -------------------------------------------------------------
-// The file carries no ids, so a line is known by its scene, its exact content
-// and which one it is among identical lines in that scene.
+// The file carries no ids, so a line is known by its scene, its exact content,
+// which one it is among identical lines in that scene (n), and the lines just
+// before and after it (fore, efter). The neighbours tell two identical lines
+// apart when one of them has come or gone since the anchor was taken.
 
 function scenFor(manus, nr) {
   return manus.scener.find((s) => s.nr === nr) || null;
@@ -142,6 +144,17 @@ function citatIScen(manus, scen) {
   return ut;
 }
 
+// The content of the nearest quote line before (steg -1) or after (+1) in the
+// same scene, skipping the lone ">" between paragraphs. null at the edge.
+function granne(manus, i, steg) {
+  for (let k = i + steg; k >= 0 && k < manus.rader.length; k += steg) {
+    const r = manus.rader[k];
+    if (r.typ === 'scen' || r.scen !== manus.rader[i].scen) return null;
+    if (r.citat && r.typ !== 'q-tom') return r.innehall;
+  }
+  return null;
+}
+
 export function ankareFor(manus, i) {
   const r = manus.rader[i];
   if (!r || !r.citat || r.typ === 'q-tom' || r.scen == null) return null;
@@ -151,22 +164,40 @@ export function ankareFor(manus, i) {
     if (x.i >= i) break;
     if (x.innehall === r.innehall) n++;
   }
-  return { scen: r.scen, text: r.innehall, n };
+  return { scen: r.scen, text: r.innehall, n, fore: granne(manus, i, -1), efter: granne(manus, i, 1) };
 }
 
-// Strict: the same scene, the same text, the same occurrence, or nothing.
-// Loose (for showing notes and names): fall back to the nearest sure match.
+// Strict: this very line, or nothing. Loose (for showing notes): the best
+// guess inside the same scene. Never a line in another scene.
+//
+// A text that stands once in the scene is that line. Among identical lines
+// the one whose neighbours match the anchor wins; if the neighbours cannot
+// tell them apart either, the position (n) decides.
 export function hitta(manus, ankare, { strikt = false } = {}) {
   if (!ankare || ankare.text == null) return -1;
   const scen = scenFor(manus, ankare.scen);
   const har = scen ? citatIScen(manus, scen).filter((r) => r.innehall === ankare.text) : [];
+  if (!har.length) return -1;
   const n = ankare.n || 0;
-  if (har.length > n) return har[n].i;
+  const vidN = har[n] || null;
+  // Anchors from before the neighbours were kept: position only.
+  if (!('fore' in ankare) && !('efter' in ankare)) {
+    if (vidN) return vidN.i;
+    return strikt ? -1 : har[har.length - 1].i;
+  }
+  if (har.length === 1 && n === 0) return har[0].i;
+  const poang = (r) => (granne(manus, r.i, -1) === ankare.fore) + (granne(manus, r.i, 1) === ankare.efter);
+  const basta = Math.max(...har.map(poang));
+  if (basta > 0) {
+    const kandidater = har.filter((r) => poang(r) === basta);
+    if (vidN && kandidater.includes(vidN)) return vidN.i;
+    if (kandidater.length === 1) return kandidater[0].i;
+    return strikt ? -1 : kandidater[0].i;
+  }
+  // Both neighbours changed for every candidate: nothing ties the anchor to
+  // one of them.
   if (strikt) return -1;
-  if (har.length) return har[har.length - 1].i;
-  const alla = [];
-  for (const s of manus.scener) for (const r of citatIScen(manus, s)) if (r.innehall === ankare.text) alla.push(r);
-  return alla.length === 1 ? alla[0].i : -1;
+  return (vidN || har[har.length - 1]).i;
 }
 
 // --- The words inside a line ----------------------------------------------
@@ -256,6 +287,18 @@ export function provaKropp(kropp, rad = {}) {
 // Each of these takes the file as it is now and gives back the new file. They
 // find their line by anchor in the text they were given, never by a line
 // number remembered from an earlier read.
+//
+// skift says how the lines moved: from line vid, bort lines went and in lines
+// came. It is plain data, so a note that still has to be saved can wait in
+// the browser and be applied later; karta is the same as a function.
+
+export function kartaFran(skift) {
+  if (!skift) return (k) => k;
+  const { vid, bort = 0, in: inn = 0 } = skift;
+  return (k) => (k < vid ? k : k < vid + bort ? -1 : k - bort + inn);
+}
+
+const flyttat = (skift) => ({ skift, karta: kartaFran(skift) });
 
 function replikVid(manus, ankare) {
   const i = hitta(manus, ankare, { strikt: true });
@@ -285,7 +328,7 @@ export function andra(text, ankare, kropp) {
   provaKropp(kropp, r);
   const raa = manus.rader.map((x) => x.ra);
   raa[r.i] = r.prefix + huvud(r) + kropp;
-  return { text: raa.join('\n'), i: r.i, fore: r.innehall, foreKropp: r.kropp, karta: (k) => k };
+  return { text: raa.join('\n'), i: r.i, fore: r.innehall, foreKropp: r.kropp, ...flyttat(null) };
 }
 
 // plats: { efter: ankare } puts the line as its own paragraph after the
@@ -298,14 +341,14 @@ export function laggTill(text, plats, kropp) {
     const r = replikVid(manus, plats.efter);
     const [, till] = grupp(manus, r.i);
     raa.splice(till + 1, 0, '>', `> ${kropp}`);
-    return { text: raa.join('\n'), i: till + 2, karta: (k) => (k <= till ? k : k + 2) };
+    return { text: raa.join('\n'), i: till + 2, ...flyttat({ vid: till + 1, in: 2 }) };
   }
   const scen = scenFor(manus, plats.forst.scen);
   const block = scen && scen.delar.filter((d) => d.typ === 'citat')[plats.forst.block || 0];
   if (!block) throw new ManusFel('hittas-inte', 'Scenen står inte längre så i manuset.');
   const b = block.rader[0].i;
   raa.splice(b, 0, `> ${kropp}`, '>');
-  return { text: raa.join('\n'), i: b, karta: (k) => (k < b ? k : k + 2) };
+  return { text: raa.join('\n'), i: b, ...flyttat({ vid: b, in: 2 }) };
 }
 
 export function stryk(text, ankare) {
@@ -335,10 +378,11 @@ export function stryk(text, ankare) {
   const raa = manus.rader.map((x) => x.ra);
   raa.splice(bort[0], bort[1] - bort[0] + 1);
   const ut = raa.join('\n');
-  const antal = bort[1] - bort[0] + 1;
-  const karta = (k) => (k < bort[0] ? k : k > bort[1] ? k - antal : -1);
+  const { skift, karta } = flyttat({ vid: bort[0], bort: bort[1] - bort[0] + 1 });
   return {
     text: ut,
+    iFore: i,
+    skift,
     karta,
     struken: {
       scen: r.scen, innehall: r.innehall, ra: r.ra, lage,
@@ -362,20 +406,20 @@ export function laggTillbaka(text, struken) {
     if (!rader.length) throw new ManusFel('hittas-inte', 'Scenen där repliken stod finns inte kvar.');
     const sist = rader[rader.length - 1].i;
     raa.splice(sist + 1, 0, '>', ra);
-    return { text: raa.join('\n'), i: sist + 2, reserv: true, karta: (k) => (k <= sist ? k : k + 2) };
+    return { text: raa.join('\n'), i: sist + 2, reserv: true, ...flyttat({ vid: sist + 1, in: 2 }) };
   }
   if (struken.lage === 'A') {
     raa.splice(j + 1, 0, '>', ra);
-    return { text: raa.join('\n'), i: j + 2, karta: (k) => (k <= j ? k : k + 2) };
+    return { text: raa.join('\n'), i: j + 2, ...flyttat({ vid: j + 1, in: 2 }) };
   }
   if (struken.lage === 'B') {
     raa.splice(j, 0, ra, '>');
-    return { text: raa.join('\n'), i: j, karta: (k) => (k < j ? k : k + 2) };
+    return { text: raa.join('\n'), i: j, ...flyttat({ vid: j, in: 2 }) };
   }
   if (struken.lage === 'D-efter') {
     raa.splice(j + 1, 0, ra);
-    return { text: raa.join('\n'), i: j + 1, karta: (k) => (k <= j ? k : k + 1) };
+    return { text: raa.join('\n'), i: j + 1, ...flyttat({ vid: j + 1, in: 1 }) };
   }
   raa.splice(j, 0, ra);
-  return { text: raa.join('\n'), i: j, karta: (k) => (k < j ? k : k + 1) };
+  return { text: raa.join('\n'), i: j, ...flyttat({ vid: j, in: 1 }) };
 }

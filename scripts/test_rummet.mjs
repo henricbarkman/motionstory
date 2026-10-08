@@ -10,11 +10,12 @@
 //
 // Never writes to stories/: every write goes to memory or to a temp folder.
 
+import { execFileSync } from 'node:child_process';
 import { readFileSync, mkdtempSync, mkdirSync, copyFileSync, writeFileSync, rmSync, statSync, utimesSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DIR = process.env.RUMMET_DIR || join(REPO, 'rummet');
@@ -32,7 +33,17 @@ const ok = (cond, what) => { checks++; check(cond, what); };
 const throwsKod = (fn, kod) => { try { fn(); return false; } catch (e) { return e.kod === kod; } };
 async function rejectsKod(p, kod) { try { await p; return false; } catch (e) { return e.kod === kod || e.name === kod; } }
 
+// The checks that name particular lines and clips read episode 1 as it was
+// recorded (commit ece9bb0, the text episod-1.json was made from). The files
+// as they stand now are read too, for everything that must hold for any
+// manuscript.
+const INSPELAD = 'ece9bb0';
+const vidCommit = (c, f) => execFileSync('git', ['-C', REPO, 'show', `${c}:${f}`], { encoding: 'utf8' });
 const EP = {
+  1: vidCommit(INSPELAD, 'stories/glimt/episod-1.md'),
+  2: vidCommit(INSPELAD, 'stories/glimt/episod-2.md'),
+};
+const NU_EP = {
   1: readFileSync(join(REPO, 'stories/glimt/episod-1.md'), 'utf8'),
   2: readFileSync(join(REPO, 'stories/glimt/episod-2.md'), 'utf8'),
 };
@@ -59,12 +70,16 @@ const repliker = (m) => m.rader.filter((r) => r.typ === 'replik' && r.scen != nu
 
 // --- 1. Reading and writing the real manuscripts -------------------------------
 
-for (const n of [1, 2]) {
-  const m = M.tolka(EP[n]);
-  ok(M.skriv(m) === EP[n], `episod ${n}: read and written back is the same file, byte for byte`);
-  ok(m.episod === String(n) && m.scener.length >= 7, `episod ${n}: title and ${m.scener.length} scenes found`);
+const UPPLAGOR = [
+  ...[1, 2].map((n) => ({ n, namn: `episod ${n} (${INSPELAD})`, text: EP[n], scener: 7, rader: 80 })),
+  ...[1, 2].map((n) => ({ n, namn: `episod ${n} (now)`, text: NU_EP[n], scener: 5, rader: 50 })),
+];
+for (const { n, namn, text, scener, rader } of UPPLAGOR) {
+  const m = M.tolka(text);
+  ok(M.skriv(m) === text, `${namn}: read and written back is the same file, byte for byte`);
+  ok(m.episod === String(n) && m.scener.length >= scener, `${namn}: title and ${m.scener.length} scenes found`);
   const r = repliker(m);
-  ok(r.length > 80, `episod ${n}: ${r.length} lines people can edit`);
+  ok(r.length > rader, `${namn}: ${r.length} lines people can edit`);
 
   let enRad = 0;
   let tillbaka = 0;
@@ -76,30 +91,30 @@ for (const n of [1, 2]) {
     const a = M.ankareFor(m, rad.i);
     if (M.hitta(m, a, { strikt: true }) === rad.i) ankare++;
     const ny = `${rad.kropp} ändrad`;
-    const ut = M.andra(EP[n], a, ny);
-    const d = diffLines(EP[n], ut.text);
+    const ut = M.andra(text, a, ny);
+    const d = diffLines(text, ut.text);
     if (d && d.length === 1 && d[0] === rad.i && ut.text.split('\n')[rad.i] === rad.ra.replace(rad.kropp, '') + ny) enRad++;
     const atert = M.andra(ut.text, M.ankareFor(M.tolka(ut.text), rad.i), rad.kropp);
-    if (atert.text === EP[n]) tillbaka++;
+    if (atert.text === text) tillbaka++;
     try {
-      const s = M.stryk(EP[n], a);
+      const s = M.stryk(text, a);
       const igen = M.laggTillbaka(s.text, s.struken);
-      if (igen.text === EP[n] && !igen.reserv) strukna++;
+      if (igen.text === text && !igen.reserv) strukna++;
     } catch (e) {
       if (e.kod === 'variant' || e.kod === 'sista-i-blocket') vagrade++;
       else throw e;
     }
-    const t = M.laggTill(EP[n], { efter: a }, 'En ny replik.');
+    const t = M.laggTill(text, { efter: a }, 'En ny replik.');
     const efter = M.tolka(t.text);
     if (efter.rader[t.i].typ === 'replik' && efter.rader[t.i].kropp === 'En ny replik.' && efter.rader[t.i].scen === rad.scen
-        && insattVid(EP[n], t.text, t.i - 1, 2) && M.skriv(efter) === t.text) lagda++;
+        && insattVid(text, t.text, t.i - 1, 2) && M.skriv(efter) === t.text) lagda++;
   }
-  ok(ankare === r.length, `episod ${n}: every line is found again by its anchor (${ankare}/${r.length})`);
-  ok(enRad === r.length, `episod ${n}: changing a line changes exactly that one line (${enRad}/${r.length})`);
-  ok(tillbaka === r.length, `episod ${n}: changing it back gives the original file (${tillbaka}/${r.length})`);
+  ok(ankare === r.length, `${namn}: every line is found again by its anchor (${ankare}/${r.length})`);
+  ok(enRad === r.length, `${namn}: changing a line changes exactly that one line (${enRad}/${r.length})`);
+  ok(tillbaka === r.length, `${namn}: changing it back gives the original file (${tillbaka}/${r.length})`);
   ok(strukna + vagrade === r.length && strukna > r.length / 2,
-    `episod ${n}: striking and putting back gives the original file (${strukna}; ${vagrade} refused: variants and lone lines)`);
-  ok(lagda === r.length, `episod ${n}: adding after a line inserts exactly ">" and the new line (${lagda}/${r.length})`);
+    `${namn}: striking and putting back gives the original file (${strukna}; ${vagrade} refused: variants and lone lines)`);
+  ok(lagda === r.length, `${namn}: adding after a line inserts exactly ">" and the new line (${lagda}/${r.length})`);
 }
 
 // Identical lines: only the one pointed at changes.
@@ -185,6 +200,7 @@ function minnesAdapter(filer, vem = 'henric') {
       klocka += 1;
       store.set(p, { text, version: klocka });
       a.skrivningar.push(p);
+      if (a.efter) await a.efter(p);
       return { version: klocka };
     },
     utifran(p, text) { klocka += 1; store.set(p, { text, version: klocka }); },
@@ -425,16 +441,282 @@ function nyttRum(vem) {
   let lore = await lager.lasLore();
   ok(R.loreText(lore.sidor[0]) === text && lore.sidor[0].titel === 'Kollektivet' && lore.sidor[0].skrev === 'henric', 'a lore page keeps exactly what was typed, with who and when');
   const sedd = lore.sidor[0].skapad;
-  await S.skapaLager(Object.assign(Object.create(a), { vem: async () => ({ id: 'liv', namn: 'Liv' }) }), { nu: NU, nyttId: ID })
-    .andraLoresida(id, 'Kollektivet', 'Livs version.');
-  const svar = await lager.andraLoresida(id, 'Kollektivet', 'Henrics version.', sedd);
+  // Henric on the phone saves the page while it is open on the desktop too.
+  await S.skapaLager(a, { nu: NU, nyttId: ID }).andraLoresida(id, 'Kollektivet', 'Från telefonen.');
+  const svar = await lager.andraLoresida(id, 'Kollektivet', 'Från datorn.', sedd);
   lore = await lager.lasLore();
-  ok(svar.krockade && R.loreText(lore.sidor[0]) === 'Henrics version.' && lore.sidor[0].versioner.some((v) => v.text.join('\n') === 'Livs version.'),
-    'two people saving the same page: the later is shown, the other is kept among the versions, and it is said');
+  ok(svar.krockade && R.loreText(lore.sidor[0]) === 'Från datorn.' && lore.sidor[0].versioner.some((v) => v.text.join('\n') === 'Från telefonen.'),
+    'the same page saved from two places: the later is shown, the other is kept among the versions, and it is said');
+  const livs = S.skapaLager(Object.assign(Object.create(a), { vem: async () => ({ id: 'liv', namn: 'Liv' }) }), { nu: NU, nyttId: ID });
+  const fore = a.text('lore');
+  ok(await rejectsKod(livs.andraLoresida(id, 'Kollektivet', 'Livs version.'), 'inte-din') && a.text('lore') === fore,
+    'someone else\'s page cannot be changed: Liv gets a no and the file is untouched');
+  ok(await rejectsKod(livs.taBortLoresida(id), 'inte-din') && a.text('lore') === fore, 'nor removed');
   await lager.taBortLoresida(id);
   lore = await lager.lasLore();
-  ok(lore.sidor[0].borta && R.loreText(lore.sidor[0]) === 'Henrics version.', 'removing a page hides it and keeps it');
+  ok(lore.sidor[0].borta && R.loreText(lore.sidor[0]) === 'Från datorn.', 'removing a page hides it and keeps it');
+  ok(await rejectsKod(livs.hamtaTillbakaLoresida(id), 'inte-din'), 'and only its writer brings it back');
+  await lager.hamtaTillbakaLoresida(id);
+  ok(!(await lager.lasLore()).sidor[0].borta, 'which the writer can');
   ok(throwsKod(() => R.lasLore('[1,2'), 'trasig'), 'a broken lore file is an error, not an empty list');
+}
+
+// --- 5a. The markdown reader (world book, HELD's lore) -------------------------------
+// Run in a child with a tiny stand-in for the browser's document, and a time
+// limit, so a reader that loops forever fails the check instead of the run.
+{
+  const prog = `
+    const nod = (tag) => ({ tag, barn: [], append(...b) { for (const x of b) { if (x == null) continue; if (typeof x === 'string') this.barn.push({ tag: '#text', text: x }); else if (x.tag === '#frag') this.barn.push(...x.barn); else this.barn.push(x); } }, get lastChild() { return this.barn.at(-1) || null; } });
+    globalThis.document = { createElement: nod, createDocumentFragment: () => nod('#frag'), createTextNode: (text) => ({ tag: '#text', text }) };
+    const { renderMd } = await import(${JSON.stringify(pathToFileURL(join(DIR, 'md.js')).href)});
+    const lankar = (n, ut = []) => { if (n.tag === 'a') ut.push(n.href); for (const b of n.barn || []) lankar(b, ut); return ut; };
+    const text = (n) => n.tag === '#text' ? n.text : (n.barn || []).map(text).join('');
+    const pipa = renderMd('| inte en tabell\\nfortsätter\\n\\n|ensam');
+    const l = lankar(renderMd('[a](https://x.se) [b](//ond.se) [c](/\\\\ond.se) [d](#rubrik) [e](./sida.md) [f](../upp.md) [g](javascript:alert(1)) [h](/rot)'));
+    process.stdout.write(JSON.stringify({ pipa: text(pipa), lankar: l }));
+  `;
+  const r = spawnSync('node', ['--input-type=module', '-e', prog], { encoding: 'utf8', timeout: 10000 });
+  let ut = null;
+  try { ut = JSON.parse(r.stdout); } catch { ut = null; }
+  ok(r.status === 0 && ut && ut.pipa.includes('inte en tabell') && ut.pipa.includes('ensam'), 'markdown: a "|" line that is no table is read as text, without hanging');
+  ok(ut && JSON.stringify(ut.lankar) === JSON.stringify(['https://x.se', '#rubrik', './sida.md', '../upp.md']),
+    `markdown: links go only to http(s), a heading or a file beside it (${ut && ut.lankar.join(' ')})`);
+}
+
+// --- 5b. Finding the right one of two identical lines -----------------------------
+
+{
+  const t = '# Glimt, episod 1: Prov\n\nA.\n\n---\n\n## 0. A\n\n> Hej.\n>\n> A.\n>\n> Hej.\n>\n> B.\n\n## 1. B\n\n> Annat.\n\n---\n\n## Bilaga\n';
+  const m = M.tolka(t);
+  const [forsta, andra] = repliker(m).filter((r) => r.kropp === 'Hej.');
+  const a = M.ankareFor(m, andra.i);
+  ok(a.n === 1 && a.fore === 'A.' && a.efter === 'B.', 'an anchor carries the lines just before and after');
+  // Someone puts one more "Hej." first in the scene, outside the room.
+  const t2 = t.replace('## 0. A\n\n> Hej.', '## 0. A\n\n> Hej.\n>\n> Ny.\n>\n> Hej.');
+  const m2 = M.tolka(t2);
+  const ratt = repliker(m2).filter((r) => r.kropp === 'Hej.').find((r) => m2.rader[r.i + 2].innehall === 'B.');
+  ok(M.hitta(m2, a, { strikt: true }) === ratt.i, 'a twin added above: the neighbours still find the line that was meant');
+  ok(M.hitta(m2, { scen: a.scen, text: a.text, n: a.n }, { strikt: true }) !== ratt.i, 'control: by position alone it would have been the wrong twin');
+  const ut = M.andra(t2, a, 'Hej igen.');
+  ok(ut.text.split('\n')[ratt.i] === '> Hej igen.' && diffLines(t2, ut.text).length === 1, 'and the edit lands on that line only');
+  // The first twin is removed: the second is the only "Hej." left, its n is stale.
+  const t3 = t.replace('> Hej.\n>\n> A.', '> A.');
+  const m3 = M.tolka(t3);
+  ok(M.hitta(m3, a, { strikt: true }) === repliker(m3).find((r) => r.kropp === 'Hej.').i, 'the other twin removed: the line is still found');
+  // Both neighbours changed and two identical lines: strict says no rather than guess.
+  const t4 = t2.replace('> A.', '> X.').replace('> B.', '> Y.').replace('> Ny.', '> Z.');
+  ok(M.hitta(M.tolka(t4), a, { strikt: true }) === -1, 'twins whose neighbours all changed: strict finding refuses to guess');
+  // A line moved to another scene is not found there.
+  const t5 = t.replace('> Hej.\n>\n> B.', '> B.').replace('> Annat.', '> Annat.\n>\n> Hej.');
+  const m5 = M.tolka(t5);
+  ok(M.hitta(m5, a) !== repliker(m5).find((r) => r.scen === '1' && r.kropp === 'Hej.').i, 'a line is never looked for in another scene');
+  ok(M.hitta(m, forsta && M.ankareFor(m, forsta.i), { strikt: true }) === forsta.i, 'the first twin is found as itself');
+}
+
+// Who wrote a line is never taken from a line in another scene.
+{
+  const t = '# Glimt, episod 1: Prov\n\nA.\n\n---\n\n## 0. A\n\n> Ett.\n>\n> Två.\n\n## 1. B\n\n> Tre.\n\n---\n\n## Bilaga\n';
+  const a = minnesAdapter({ 'manus:1': t, 'grund:1': JSON.stringify({ rader: ['Ett.', 'Två.', 'Tre.'] }) });
+  const lager = S.skapaLager(a, { nu: NU, nyttId: ID });
+  let ep = await lager.lasEpisod('1');
+  await lager.andraRad('1', M.ankareFor(ep.manus, repliker(ep.manus)[0].i), 'Henrics rad.');
+  // Outside the room the line is moved to scene 1.
+  a.utifran('manus:1', a.text('manus:1').replace('> Henrics rad.\n>\n', '').replace('> Tre.', '> Tre.\n>\n> Henrics rad.'));
+  ep = await lager.lasEpisod('1');
+  const flyttad = repliker(ep.manus).find((r) => r.kropp === 'Henrics rad.');
+  const skrev = R.vy(ep.manus, ep.rum, ep.grund).rader.get(flyttad.i).skrev;
+  ok(flyttad.scen === '1' && skrev.vem === null && skrev.hur === 'utanfor', 'a line moved to another scene outside the room is not credited to anyone');
+}
+
+// --- 5c. Notes that wait, a lost answer, and a proposal that is already the text ----
+
+{
+  const m = M.tolka(EP[1]);
+  const rad = repliker(m)[3];
+  const annan = repliker(m)[9];
+  const minne = { data: null, las() { return this.data ? JSON.parse(this.data) : null; }, skriv(v) { this.data = JSON.stringify(v); } };
+  const a = nyttRum();
+  let natet = false;
+  a.fore = (p) => { if (p === 'rum:1' && !natet) throw new TypeError('Failed to fetch'); };
+  const l1 = S.skapaLager(a, { nu: NU, nyttId: ID, ko: minne });
+  ok(await rejectsKod(l1.andraRad('1', M.ankareFor(m, rad.i), 'Sparad, anteckningen väntar.'), 'halvt'), 'the note does not get through: said so');
+  ok(minne.las() && minne.las().length === 1 && minne.las()[0].typ === 'andrad', 'the waiting note is kept in the browser, as plain data');
+  // The page is reloaded while the network is still away.
+  const l2 = S.skapaLager(a, { nu: NU, nyttId: ID, ko: minne });
+  ok(l2.vantar.length === 1, 'after a reload the note still waits');
+  const manusFore = a.text('manus:1');
+  ok(await rejectsKod(l2.foresla('1', M.ankareFor(m, annan.i), 'Ett förslag.'), 'efterslapar') && !a.store.has('rum:1') && a.text('manus:1') === manusFore,
+    'nothing new is saved while an older note waits, and nothing is written');
+  ok(await rejectsKod(l2.andraRad('1', M.ankareFor(m, annan.i), 'Ny text.'), 'efterslapar') && a.text('manus:1') === manusFore,
+    'not even the manuscript');
+  natet = true;
+  await l2.foresla('1', M.ankareFor(m, annan.i), 'Ett förslag.');
+  const ep = await l2.lasEpisod('1');
+  const vy = R.vy(ep.manus, ep.rum, null);
+  ok(vy.rader.get(rad.i).skrev.vem === 'henric' && ep.rum.forslag.length === 1 && minne.las().length === 0,
+    'with the network back, the old note goes first and then the new one: both are there, the queue is empty');
+  ok(ep.rum.logg.findIndex((x) => x.vad === 'andrade') === 0, 'the waiting note was saved before the proposal');
+
+  // Pressing save again on the same edit sends the note.
+  const b = nyttRum();
+  let natB = false;
+  b.fore = (p) => { if (p === 'rum:1' && !natB) throw new TypeError('Failed to fetch'); };
+  const lb = S.skapaLager(b, { nu: NU, nyttId: ID });
+  await rejectsKod(lb.andraRad('1', M.ankareFor(m, rad.i), 'Igen.'), 'halvt');
+  natB = true;
+  await lb.andraRad('1', M.ankareFor(M.tolka(b.text('manus:1')), rad.i), 'Igen.');
+  const epb = await lb.lasEpisod('1');
+  ok(R.vy(epb.manus, epb.rum, null).rader.get(rad.i).skrev.vem === 'henric' && epb.rum.rader.length === 1, 'saving the same text again records the note, once');
+
+  // A note whose proposal is gone by the time it is sent is dropped, and the queue moves on.
+  const c = nyttRum();
+  const lc = S.skapaLager(c, { nu: NU, nyttId: ID, ko: { las: () => [{ typ: 'steg', nr: '1', fore: EP[1], efter: EP[1], i: rad.i, skift: null, vem: 'henric', nar: NU(), foreKropp: rad.kropp, steg: [{ typ: 'inlagt', id: 'finns-inte' }] }], skriv() {} } });
+  await lc.kommentera('1', M.ankareFor(m, rad.i), 'Går fram ändå.');
+  ok(lc.vantar.length === 0 && JSON.parse(c.text('rum:1')).kommentarer.length === 1, 'a note that can no longer apply is dropped, not stuck');
+
+  // The write went through but the answer was lost on the way back.
+  const d = nyttRum();
+  let svaret = true;
+  d.efter = (p) => { if (p === 'manus:1' && svaret) { svaret = false; throw new TypeError('Failed to fetch'); } };
+  const ld = S.skapaLager(d, { nu: NU, nyttId: ID });
+  await ld.andraRad('1', M.ankareFor(m, rad.i), 'Svaret kom bort.');
+  const epd = await ld.lasEpisod('1');
+  ok(!svaret && d.text('manus:1').split('\n')[rad.i] === '> Svaret kom bort.' && R.vy(epd.manus, epd.rum, null).rader.get(rad.i).skrev.vem === 'henric',
+    'a lost answer after a write that went through: read back, seen as saved, and the note follows');
+
+  // A proposal whose words are already the line: laid in, logged, text untouched.
+  const e = nyttRum();
+  const le = S.skapaLager(e, { nu: NU, nyttId: ID });
+  await le.foresla('1', M.ankareFor(m, rad.i), rad.kropp);
+  const id = JSON.parse(e.text('rum:1')).forslag[0].id;
+  await le.laggInForslag('1', id);
+  const rume = JSON.parse(e.text('rum:1'));
+  ok(e.text('manus:1') === EP[1] && rume.forslag[0].lage === 'inlagt' && rume.logg.some((x) => x.vad === 'lade-in-forslag'),
+    'a proposal that says what the line already says: marked as laid in and logged, the file untouched');
+}
+
+// --- 5d. Demi in the room ------------------------------------------------------------
+
+{
+  const a = nyttRum();
+  a.store.set('grund:1', { text: await grundFor(1), version: 1 });
+  const som = (vem) => S.skapaLager(Object.assign(Object.create(a), { vem: async () => ({ id: vem, namn: D.PERSONER[vem].namn }) }), { nu: NU, nyttId: ID });
+  const henric = S.skapaLager(a, { nu: NU, nyttId: ID });
+  const liv = som('liv');
+  const demi = som('demi');
+  const m = M.tolka(EP[1]);
+  const rad = repliker(m).find((r) => r.kropp.startsWith('Så. Nu är du tydlig.'));
+  const ank = M.ankareFor(m, rad.i);
+  ok(R.arAI('demi') && !R.arAI('henric') && !R.arAI('liv'), 'Demi is an AI in the room; Henric and Liv are not');
+
+  // Demi writes its own posts.
+  await demi.foresla('1', ank, 'Så. Nu hör jag dig tydligt.');
+  const kid = await demi.kommentera('1', ank, 'Pausen före kan vara längre.', 'paus');
+  await demi.nyLoresida('Slingan', 'Den surrar.');
+  let rum = JSON.parse(a.text('rum:1'));
+  ok(rum.forslag[0].skrev === 'demi' && rum.kommentarer[0].skrev === 'demi' && JSON.parse(a.text('lore')).sidor[0].skrev === 'demi',
+    'Demi can propose, comment and write a lore page, each marked as Demi\'s');
+  ok(a.text('manus:1') === EP[1], 'none of it touches the manuscript');
+
+  // Demi never decides.
+  const manus0 = a.text('manus:1');
+  const rum0 = a.text('rum:1');
+  for (const [vad, p] of [
+    ['change a line', demi.andraRad('1', ank, 'Demi skriver om.')],
+    ['add a line', demi.nyRad('1', { efter: ank }, 'Ny.')],
+    ['strike a line', demi.strykRad('1', ank)],
+    ['say whose a line is', demi.sattNamn('1', ank, 'demi')],
+    ['say yes', demi.sagJa('1', rum.forslag[0].id)],
+    ['lay a proposal in', demi.laggInForslag('1', rum.forslag[0].id)],
+  ]) ok(await rejectsKod(p, 'bara-manniskor'), `Demi cannot ${vad}`);
+  ok(a.text('manus:1') === manus0 && a.text('rum:1') === rum0, 'and the files are untouched by all of it');
+
+  // Nobody changes someone else's words.
+  const hid = await henric.kommentera('1', ank, 'Henrics kommentar.');
+  await liv.foresla('1', ank, 'Livs förslag.');
+  await henric.nyLoresida('Huset', 'Henrics sida.');
+  rum = JSON.parse(a.text('rum:1'));
+  const livsF = rum.forslag.find((f) => f.skrev === 'liv').id;
+  const demisF = rum.forslag.find((f) => f.skrev === 'demi').id;
+  const lore = JSON.parse(a.text('lore')).sidor;
+  const hSida = lore.find((x) => x.skrev === 'henric').id;
+  const dSida = lore.find((x) => x.skrev === 'demi').id;
+  const fore = [a.text('rum:1'), a.text('lore')];
+  for (const [vad, p] of [
+    ['Demi removes Henric\'s comment', demi.taBortKommentar('1', hid)],
+    ['Demi withdraws Liv\'s proposal', demi.draUndanForslag('1', livsF)],
+    ['Demi changes Henric\'s lore page', demi.andraLoresida(hSida, 'Huset', 'Demis text.')],
+    ['Demi removes Henric\'s lore page', demi.taBortLoresida(hSida)],
+    ['Demi marks Henric\'s comment done', demi.kommentarKlar('1', hid)],
+    ['Henric removes Demi\'s comment', henric.taBortKommentar('1', kid)],
+    ['Henric withdraws Demi\'s proposal', henric.draUndanForslag('1', demisF)],
+    ['Henric changes Demi\'s lore page', henric.andraLoresida(dSida, 'Slingan', 'Henrics text.')],
+    ['Liv removes Henric\'s comment', liv.taBortKommentar('1', hid)],
+  ]) ok(await rejectsKod(p, 'inte-din'), `refused: ${vad}`);
+  ok(a.text('rum:1') === fore[0] && a.text('lore') === fore[1], 'and nothing was written');
+  await henric.kommentarKlar('1', kid);
+  ok(JSON.parse(a.text('rum:1')).kommentarer.find((k) => k.id === kid).klar.av === 'henric', 'a person can mark Demi\'s comment done: a status, not its words');
+  await demi.draUndanForslag('1', demisF);
+  ok(JSON.parse(a.text('rum:1')).forslag.find((f) => f.id === demisF).lage === 'undan', 'Demi withdraws its own proposal');
+
+  // A person lays in Demi's words: the line is Demi's, laid in by Henric.
+  await demi.foresla('1', ank, 'Så. Nu hör jag dig.');
+  const nyF = JSON.parse(a.text('rum:1')).forslag.at(-1).id;
+  await henric.sagJa('1', nyF);
+  await henric.laggInForslag('1', nyF);
+  const ep = await henric.lasEpisod('1');
+  const sk = R.vy(ep.manus, ep.rum, ep.grund).rader.get(rad.i).skrev;
+  ok(a.text('manus:1').split('\n')[rad.i] === '> Så. Nu hör jag dig.' && sk.vem === 'demi' && sk.av === 'henric' && sk.hur === 'forslag',
+    'Henric lays in Demi\'s proposal: the words are Demi\'s, the act is Henric\'s');
+
+  // Asking Demi, and Demi answering in the thread.
+  const fraga = await henric.kommentera('1', ank, 'Demi, varför pausen?', null, { till: 'demi' });
+  let e2 = await henric.lasEpisod('1');
+  let v2 = R.vy(e2.manus, e2.rum, e2.grund);
+  ok(v2.vantar.has(fraga) && R.vantarPa(e2.rum, 'demi').length === 1, 'a comment to Demi waits for an answer');
+  const svar = await demi.svara('1', fraga, 'För att hon lyssnar.');
+  e2 = await henric.lasEpisod('1');
+  v2 = R.vy(e2.manus, e2.rum, e2.grund);
+  const s1 = e2.rum.kommentarer.find((k) => k.id === svar);
+  ok(!v2.vantar.has(fraga) && v2.svar.get(fraga).map((k) => k.id).join() === svar && s1.svarPa === fraga && s1.mal.text === ank.text,
+    'Demi answers in the thread: no longer waiting, the answer hangs under the question');
+  ok(!v2.rader.get(rad.i).kommentarer.some((k) => k.id === svar), 'a reply is shown in its thread, not as a comment of its own');
+  const foljd = await henric.svara('1', svar, 'Och efter?', { till: 'demi' });
+  e2 = await henric.lasEpisod('1');
+  ok(e2.rum.kommentarer.find((k) => k.id === foljd).svarPa === fraga && R.vantarPa(e2.rum, 'demi').map((k) => k.id).join() === foljd,
+    'a reply to a reply joins the same thread, and a new question to Demi waits again');
+  await henric.kommentarKlar('1', fraga);
+  e2 = await henric.lasEpisod('1');
+  ok(R.vantarPa(e2.rum, 'demi').length === 0, 'a thread marked done waits for nobody');
+  const pSvar = await liv.svara('1', livsF, 'Jag menar så här.');
+  e2 = await henric.lasEpisod('1');
+  ok(R.vy(e2.manus, e2.rum, e2.grund).svar.get(livsF)[0].id === pSvar, 'a proposal can be answered too');
+  ok(await rejectsKod(henric.svara('1', 'finns-inte', 'x'), 'saknas'), 'answering something that is gone is refused');
+
+  // Hiding Demi: a setting per person, kept in a small file.
+  ok((await henric.lasInstallningar()).doljDemi === false && (await liv.lasInstallningar()).doljDemi === true,
+    'by default Henric sees Demi\'s posts and Liv does not');
+  await henric.sattInstallning('doljDemi', true);
+  ok((await henric.lasInstallningar()).doljDemi === true && (await liv.lasInstallningar()).doljDemi === true, 'Henric hides them for himself');
+  await liv.sattInstallning('doljDemi', false);
+  ok((await liv.lasInstallningar()).doljDemi === false && (await henric.lasInstallningar()).doljDemi === true, 'each person\'s choice is their own');
+  ok(await rejectsKod(henric.sattInstallning('allt', true), 'okand'), 'an unknown setting is refused');
+}
+
+// --- 5e. The manuscript as it is now, against the baseline of the recorded draft ----
+// Draft 3 rewrote much of episode 1 outside the room. Lines it changed must read
+// as changed outside the room, never as Henric's; lines it kept stay Demi's.
+{
+  const g = R.lasGrund(JSON.stringify({ rader: repliker(M.tolka(EP[1])).map((r) => r.innehall) }));
+  const nu = M.tolka(NU_EP[1]);
+  const vy = R.vy(nu, R.tomtRum('1'), g);
+  const rader = repliker(nu);
+  const utanfor = rader.filter((r) => vy.rader.get(r.i).skrev.hur === 'utanfor');
+  const demis = rader.filter((r) => vy.rader.get(r.i).skrev.vem === 'demi');
+  ok(rader.every((r) => vy.rader.get(r.i).skrev.vem === null || vy.rader.get(r.i).skrev.vem === 'demi'),
+    'the file rewritten outside the room: no line is credited to Henric or Liv');
+  ok(utanfor.length > 0 && utanfor.every((r) => !g.has(r.innehall)) && demis.every((r) => g.has(r.innehall)),
+    `changed lines read "ändrad utanför rummet" (${utanfor.length}), unchanged ones stay Demi's (${demis.length})`);
 }
 
 // --- 6. The portal's real file code ---------------------------------------------
@@ -453,7 +735,8 @@ async function provserver(rot, extra = []) {
   const glimt = join(rot, 'projects/motionstory/stories/glimt');
   mkdirSync(glimt, { recursive: true });
   mkdirSync(join(rot, 'data/glimt-rummet'), { recursive: true });
-  for (const f of ['episod-1.md', 'episod-2.md', 'episod-1.json', 'varld.md']) copyFileSync(join(REPO, 'stories/glimt', f), join(glimt, f));
+  for (const f of ['episod-1.json', 'varld.md']) copyFileSync(join(REPO, 'stories/glimt', f), join(glimt, f));
+  for (const n of [1, 2]) writeFileSync(join(glimt, `episod-${n}.md`), EP[n]);
   const { p, url } = await provserver(rot);
   try {
     // A browser sends Origin on its own; node has to be told.
