@@ -1,23 +1,25 @@
 # Glimt, episod 1: Det är när du går
 
-Utkast 2, 2026-10-07. Skrivet efter besluten samma dag (`varld.md`), och rättat efter en oberoende granskning. Ersätter kapitel 1 som första möte: Vega är nu arbetare åt Företaget, och det vandraren gör har en verkan från första kvällen.
+Utkast 3, 2026-10-08. Skrivet om efter Henrics första promenad (version 25) och hans fyra intryck samma morgon. Vad som ändrats sedan utkast 2 står sist.
 
-**Vad episoden ska göra:** Vega och vandraren möts. Vandraren ska förstå tre saker utan att någon förklarar dem: hon hör bara steg, hon hörs bara när du går, och dina steg gömmer henne.
+**Vad episoden ska göra:** Vega och vandraren möts. Vandraren ska förstå tre saker utan att någon förklarar dem: hon ser glimtar av din värld men hör dig aldrig, hon hörs bara när du går, och dina steg gömmer henne.
 
-**Bågen:** hon pratar ut i tomma luften, får ett svar, och använder sin första frihet till något litet. Hon står still. Hon rör vid ett träd. Hon sätter sig på marken.
+**Bågen:** hon pratar ut i tomma luften, får ett svar, och använder sin första frihet till något litet. Hon står still. Hon rör vid ett träd. Hon sätter sig på marken och ser, för första gången, en bit av din himmel.
 
-**Stil:** som kapitel 1. Nära och talspråklig, en person i en dålig telefonlinje. En regel från andra sidan i sagoton, i scen 3. Hon säger "här" och "hos dig", aldrig vilket år det är och aldrig var "här" ligger. Hon beskriver aldrig det vandraren ser.
+**Stil:** som kapitel 1. Nära och talspråklig, en person i en dålig telefonlinje. En regel från andra sidan i sagoton, i scen 3. Hon säger "här" och "hos dig", aldrig vilket år det är och aldrig var "här" ligger. Hon beskriver bara det hon kan se av din värld: ljuset, vädret, hur du rör dig och det kartan har nära dig. Aldrig människor, bilar eller saker.
 
-**Riktlängd:** cirka elva minuter. Ungefär fem minuters tal. Inget i episoden kräver fart, så den går lika bra att gå som att springa.
+**Riktlängd:** cirka tio minuter. Ungefär fyra och en halv minuts tal. Inget i episoden kräver fart, så den går lika bra att gå som att springa.
 
 **Logiken, så att scenerna håller ihop:**
-- Arbetarna har en snäcka i örat som läser deras steg. När vandraren går läser den vandrarens steg i stället för hennes, och Företaget ser en arbetare på sin runda, vad hon än gör. Snäckan hör inte heller vad hon säger så länge vandraren går.
-- När vandraren står still läser den hennes egna steg. Tar hon dem där hon inte får gå tänds lampan.
-- Står hon också still finns inga steg att läsa. Det håller i en halv minut, sedan frågar snäckan vad hon håller på med. Därför är ett kort stopp ofarligt när hon går sin runda som vanligt (scen 2) och när hon sitter still (scen 4), men farligt när hon rör sig där hon inte får vara (scen 3 och 5).
+- Vega ser glimtar av vandrarens värld: rörelsen (går, springer, står), ljuset, vädret och det kartan har nära vandraren. Suddigt, i kanten, aldrig människor eller föremål. Inget ljud går över. Hon vet alltså när vandraren går och står, men hör aldrig vad vandraren säger. Vandraren svarar henne bara med att stanna.
+- Arbetarna har en snäcka i örat som räknar deras steg. När vandraren går räknar den vandrarens steg i stället för hennes, och Företaget ser en arbetare på sin runda, vad hon än gör. Snäckan hör inte heller vad hon säger så länge vandraren går.
+- När vandraren står still räknar den hennes egna steg. Tar hon dem där hon inte får gå tänds lampan.
+- Står hon också still finns inga steg att räkna. Det håller i en halv minut, sedan frågar snäckan vad hon håller på med. Därför är ett kort stopp ofarligt när hon går sin runda som vanligt (scen 2) och när hon sitter still (scen 4), men farligt när hon rör sig där hon inte får vara (scen 3 och början av scen 5).
 - Rösten blir alltid dov när vandraren står still. Då hörs i stället hennes sida: slingans surr, en ton, en platt röst.
+- Hennes steg hörs bara när de betyder något: när hon stannar, kliver av gruset eller skyndar tillbaka. Annars bara surret, svagt.
 - Reserv i alla scener: står vandraren still längre än en halv minut medan hon också står still, frågar snäckan "Vega. Du står still. Behöver du hjälp?". Hon svarar "Nej tack. Jag vilar." och berättelsen går vidare när vandraren går.
 
-**Röster:** Vega. Snäckan (platt, syntetisk, ett par repliker). En lojalist (kvinna, vänlig på fel sätt, en replik). Den andra rösten (viskar slutordet, samma som i kapitel 1).
+**Röster:** Vega. Snäckan (platt, syntetisk, ett par repliker). Lojalisten och den andra rösten är strukna ur episod 1.
 
 Varianter i hakparentes väljs av telefonen: `[ljust]`, `[mörkt]`, `[regn]`, `[torrt]`, `[gång]`, `[löpning]`, och landmärket ur kartan: `[bro]`, `[vatten]`, `[skog]`, `[berg]`, `[kyrkogård]`.
 
@@ -30,11 +32,11 @@ Varianter i hakparentes väljs av telefonen: `[ljust]`, `[mörkt]`, `[regn]`, `[
 >
 > ...sju, åtta, nio, tio... nej. Nej, de där är inte mina.
 >
-> (närmare) Det är någon som går. Det går någon här, och det är inte jag.
+> (närmare) Det är någon som går. Inte här. Någon annanstans, men jag ser det. Som en skugga som rör sig i kanten av allt.
 >
-> (rakt till dig, snabbt) Hallå? Nej, stanna inte! Gå, snälla, gå. Det är när du går jag hör dig.
+> (rakt till dig, snabbt) Hallå? Nej, stanna inte! Gå, snälla, gå. Det är när du går jag ser dig.
 >
-> Jag vet inte vem du är. Jag vet inte om du hör det här. Jag hör steg, det är allt. Rakt in i örat, där det bara brukar vara... nej. Det tar vi sen.
+> Jag vet inte vem du är. Jag vet inte om du hör det här. Från dig hör jag ingenting, inte ett ljud. Jag ser bara att du går.
 >
 > Fortsätt gå, om du kan. Jag pratar så länge.
 
@@ -50,23 +52,23 @@ Varianter i hakparentes väljs av telefonen: `[ljust]`, `[mörkt]`, `[regn]`, `[
 >
 > Jag går också. Det gör alla här, efter skiftet. Slingan runt, fyrtio minuter. Hälsofrämjande rörelse, det står på väggen. (torrt) Vi är väldigt friska.
 >
-> Vi har en snäcka i örat, allihop. Den läser hur vi går. Går man för sakta säger den till. Går man fel säger den till. Det enda den aldrig har sagt är att det går någon annan här inne.
+> Vi har en snäcka i örat, allihop. Den räknar våra steg. Går man för sakta säger den till. Går man fel säger den till. Det enda den aldrig har sagt är att det går någon annan här inne.
 >
-> Men det gör det. Du går här inne. Fast du inte är här.
+> Men det gör det. Något går här inne, och jag ser det. Fast du inte är här.
 
 ## 2. Frågan
 *Trigger: kontakten stark, runt minut två och en halv. Hon väntar tjugo sekunder på ett stopp. Hon går sin runda som vanligt, så stoppet är ofarligt. Rösten blir dov medan vandraren står.*
 
-> Jag måste få veta en sak, annars blir jag tokig. Jag har pratat för mig själv här länge. Jag vet hur det låter när ingen lyssnar. Det här låter inte så.
+> Jag måste få veta en sak, annars blir jag tokig. Jag har pratat för mig själv här länge. Jag vet hur det känns när ingen lyssnar. Det här känns inte så.
 >
 > Så. Om det finns någon där. Om du hör vad jag säger. Stanna. Bara ett par sekunder, sen går du igen.
 >
 > (väntar)
 >
 > **Ja, vandraren stannar:**
-> (dovt, långt borta) ...det blev tyst. Du stannade.
+> (dovt, långt borta) ...det står still. Du stannade.
 >
-> (vandraren går igen, rösten tillbaka, andfådd fast hon inte har sprungit) Du stannade när jag bad om det. Du hör mig. Det finns en människa i mitt öra som... okej. Okej. Jag behöver gå en bit utan att säga något nu.
+> (vandraren går igen, rösten tillbaka, andfådd fast hon inte har sprungit) Du stannade när jag bad om det. Du hör mig. Det finns en människa där ute som... okej. Okej. Jag behöver gå en bit utan att säga något nu.
 >
 > **Nej, vandraren går vidare:**
 > Nej. Nej, det är klart. Du är steg, inte öron. (kort skratt som inte håller) Jag pratar ändå. Det har aldrig hindrat mig förut.
@@ -78,7 +80,7 @@ Varianter i hakparentes väljs av telefonen: `[ljust]`, `[mörkt]`, `[regn]`, `[
 >
 > Så nu provar jag något dumt. Litet, men dumt. Fortsätt gå, om du kan.
 >
-> (hennes steg, som hörts svagt under rösten, stannar)
+> (ett par steg på grus, sedan tyst)
 >
 > Jag står still.
 >
@@ -125,69 +127,61 @@ Varianter i hakparentes väljs av telefonen: `[ljust]`, `[mörkt]`, `[regn]`, `[
 *Stannar vandraren av sig själv medan hon går mellan träden spelas samma gren, från tonen och framåt.*
 
 ## 4. Himlen
-*Trigger: kontakten stark, runt minut sex. Hon sitter still under trädet, så ett kort stopp är ofarligt här. Ljus och väder väljs vid start. Landmärket kommer ur kartan, inom några hundra meter från vandraren, annars slumpat.*
+*Trigger: kontakten stark, runt minut sex. Hon sitter still under trädet, så ett kort stopp är ofarligt här. Ljus och väder väljs vid start. Landmärket kommer ur kartan, inom några hundra meter från vandraren, annars slumpat. Första gången hon ser något mer än att du rör dig.*
 
-> Jag sitter ner nu. Under plastträdet. Bara så du vet vad dina steg går till.
+> Jag sitter ner nu. Under plastträdet. Och när jag sitter still ser jag mer av dig. Inte dig. Det runt omkring.
 >
-> [mörkt] Det är mörkt hos dig. Fråga inte hur jag vet. Här är det alltid kväll men aldrig mörkt. De säger att det är lugnande.
-> [ljust] Det är ljust hos dig. Fråga inte hur jag vet. Här är det alltid kväll. De säger att det är lugnande.
+> [mörkt] Det är mörkt hos dig. Här är det alltid kväll men aldrig mörkt. De säger att det är lugnande.
+> [ljust] Det är ljust hos dig. Det bländar i kanten. Här är det alltid kväll. De säger att det är lugnande.
 >
 > [mörkt] Har ni stjärnor? Här ser man aldrig en enda. Jag har inte sett en stjärna sen jag kom.
 > [ljust] Har ni sol? En riktig, som bränns? Vi har en lampa som heter Dagsljus. Den gör så gott den kan.
 >
-> [regn] Och det regnar hos dig. Här har vattnet varit vatten väldigt många gånger. Hos dig faller det bara. Rakt ner, på vem som helst.
+> [regn] Och det regnar hos dig. Det ligger som ett brus över allting. Här har vattnet varit vatten väldigt många gånger. Hos dig faller det bara. Rakt ner, på vem som helst.
 > [torrt] Och det är torrt hos dig. Här regnar det aldrig. Det vore slöseri.
 >
-> Slingan är byggd efter ett riktigt ställe, säger de. Så att vi ska känna oss hemma.
+> Och det finns något nära dig.
 >
-> [bro] Det finns en bro här. Den går över ingenting. Någon ritade av bron och glömde ån.
-> [vatten] Det finns vatten här. Det låter som vatten i alla fall. Jag har hittat högtalaren.
-> [skog] Det finns skog här, längst bort. Platt som en tavla, men det susar i den. Det har de fått till.
-> [berg] Det finns en höjd här. Man får inte gå upp på den. Jag tror inte att den håller.
-> [kyrkogård] Det finns en kyrkogård här. Utan gravar. Någon tyckte väl att den var fin.
+> [bro] En bro. Jag ser den suddigt, som ett blyertsstreck. (paus) Vi har en bro här också. Den går över ingenting. Någon ritade av bron och glömde ån.
+> [vatten] Vatten. Det blänker. (paus) Vi har vatten här också. Det låter som vatten i alla fall. Jag har hittat högtalaren.
+> [skog] Skog, tät. (paus) Vi har skog här också, längst bort. Platt som en tavla, men det susar i den. Det har de fått till.
+> [berg] En höjd. (paus) Vi har en höjd här också. Man får inte gå upp på den. Jag tror inte att den håller.
+> [kyrkogård] En kyrkogård. (paus) Vi har en kyrkogård här också. Utan gravar. Någon tyckte väl att den var fin.
 >
-> Finns det en sådan där du går? (paus) Nej. Svara inte. Det ser ut som här, men det är inte här. Det får vara så ett tag till.
+> (tyst en stund) Slingan är byggd efter ett riktigt ställe, säger de. Så att vi ska känna oss hemma.
+>
+> Det ser ut som där du är. Men det är inte där du är. (paus) Det får vara så ett tag till.
 
-## 5. Någon kommer
-*Trigger: runt minut åtta. Hon är fortfarande av gruset och måste tillbaka innan någon ser henne. Ett stopp tänder lampan.*
+## 5. Klockan
+*Trigger: runt minut åtta, när vandraren går. Hon sitter fortfarande under trädet och måste upp på gruset innan skiftet kommer runt kröken. Ett stopp tänder lampan tills hon är på gruset. Sedan går hon in, och resten är ofarligt. Slutet spelas på vandrarens eget stopp: när avståndet till starten är under ungefär 300 meter, efter minut tio, eller vid ett stopp längre än 30 sekunder efter minut nio. Rösten får tona bort.*
 
-> (hon reser sig hastigt) Tyst. ... Det sa jag till mig själv.
+> (en klocka på hennes sida, dov) Där är klockan. Slingan stänger.
 >
-> Det kommer någon på slingan. Jag känner igen gången. Hon går som om gruset vore hennes. Hon är en av dem som skriver upp. Inte snäckan, en människa. Det är värre.
+> (hon reser sig hastigt) Om en minut kommer hela skiftet runt kröken, och jag sitter under ett träd. Gå nu, om du kan. Inte stanna, inte just nu.
 >
-> Jag måste tillbaka på gruset innan hon kommer runt kröken. Gå nu, om du kan. Inte stanna, inte just nu.
+> (hennes steg, snabba, mjukt underlag, sedan grus. Långt bort, många andra steg)
 >
-> (hennes steg, snabba, mjukt underlag, sedan grus. Andra steg närmar sig, jämna och hårda)
->
-> (knappt hörbart) ...gå, gå, gå...
+> (knappt hörbart) ...gå, gå...
 >
 > **Vandraren går hela vägen:**
-> [gång] (stegen passerar. En kvinnoröst, vänlig på fel sätt: "God kväll, Vega. Du går fint i kväll.")
-> [löpning] (stegen passerar. En kvinnoröst, vänlig på fel sätt: "God kväll, Vega. Vilken fart du har i kväll.")
->
-> [gång] (lång utandning när stegen dött bort) Du går fint i kväll. (härmar, torrt) Jag har stått som en stolpe, klappat ett träd och suttit på marken. Jag går fint i kväll.
-> [löpning] (lång utandning när stegen dött bort) Vilken fart. (torrt) Jag har stått som en stolpe, klappat ett träd och suttit på marken. Vilken fart jag har.
+> (lång utandning) På gruset. En arbetare på sin runda, det är allt de ser. (torrt) Jag har stått som en stolpe, klappat ett träd och suttit på marken. Och ingen såg något.
 >
 > **Vandraren stannar:**
-> (tonen. Den platta rösten: "Avvikelse. Steg utanför sträckan." De andra stegen stannar. Kvinnorösten: "Är allt som det ska, Vega?")
+> (rösten sjunker undan. Tonen. Den platta rösten: "Avvikelse. Steg utanför sträckan.")
 >
-> (Vega, dovt, tillgjort lätt) En sten i skon.
+> (dovt) ...nej. Inte nu.
 >
-> (vandraren går igen, rösten tillbaka, låg) Hon skrev upp det. Jag såg det, hon skriver upp allt. En sten i skon. Det får jag höra mer om.
-
-## 6. Klockan
-*Trigger: avståndet till starten krymper och är under ungefär 300 meter, eller minut tio och en halv, eller ett stopp längre än 30 sekunder efter minut tio. Hon är på gruset och på väg in, så det sista stoppet är ofarligt. Rösten får tona bort på vandrarens eget stopp.*
-
-> (en klocka på hennes sida, dov) Där är klockan. Slingan stänger, jag måste in.
+> (vandraren går igen, rösten tillbaka, låg) Jag hann upp. Men den skrev upp det. En avvikelse. Det får jag höra mer om.
 >
-> [på väg tillbaka] Du är på väg hem. Det hörs, stegen blir bestämda. Man går annorlunda när man vet vart man ska.
+> **Alla:**
+> [på väg tillbaka] Du är på väg hem. Det syns, du går rakare. Man går annorlunda när man vet vart man ska.
 >
 > **Vandraren har stannat på hennes begäran någon gång i kväll:**
 > Jag vet inte vad du är. Men du hör mig, och du stannade när jag bad om det. Det är mer än jag vet om de flesta här.
 >
 > Jag vet en sak till om dig, och det är att du går. Så du får heta Vandraren.
 >
-> Jag heter Vega. Det hörde du redan, men jag ville säga det själv.
+> Jag heter Vega. Om du undrade.
 >
 > **Vandraren har aldrig stannat på begäran:**
 > Jag vet inte vad du är. Ett fel i snäckan, kanske. Eller någon som är ute och går och inte har en aning om vad den gjorde i kväll.
@@ -198,7 +192,7 @@ Varianter i hakparentes väljs av telefonen: `[ljust]`, `[mörkt]`, `[regn]`, `[
 >
 > *Ja:* (dovt) ...där. (tillbaka, skrattar) Hela kvällen! Du har hört mig hela kvällen. Och jag som har pratat om plastträd.
 >
-> Du går, det är det jag vet om dig. Så du får heta Vandraren. Jag heter Vega. Det hörde du redan, men jag ville säga det själv.
+> Du går, det är det jag vet om dig. Så du får heta Vandraren. Jag heter Vega. Om du undrade.
 >
 > *Nej:* Nej. Okej. Då är du steg. Det räcker långt, det har jag sett i kväll.
 >
@@ -209,11 +203,11 @@ Varianter i hakparentes väljs av telefonen: `[ljust]`, `[mörkt]`, `[regn]`, `[
 >
 > (paus) Nu kanske jag kan det.
 >
+> En sak till. Hos dig finns det stjärnor, ibland. Gå ut någon natt när det är klart. Jag vill veta om jag ser en.
+>
 > Kom tillbaka och gå. Om du vill. Jag klarar mig annars, det har jag gjort länge. Men kom.
 >
-> (vandraren stannar. Rösten sjunker undan, surret kommer fram. Sedan, mycket svagt, en annan röst. Inte Vega och inte den platta:)
->
-> ...jag hör dig också.
+> (vandraren stannar. Rösten sjunker undan, surret kommer fram. Under surret, en sekund, något till: ett andetag, eller en ton som inte hör till slingan. Inga ord. Sedan bara surret.)
 
 ---
 
@@ -221,31 +215,42 @@ Varianter i hakparentes väljs av telefonen: `[ljust]`, `[mörkt]`, `[regn]`, `[
 
 | Scen | Mekanik | Läget ute |
 |---|---|---|
-| 0 | Kontakten byggs från lågt. Kroken inom en halv minut. | Har fungerat (12/9). Testet Kontakten väntar. |
-| 1 | Gång eller löpning läses vid start. | Har fungerat. |
-| 2 | Stanna för ja. | Bara läst på gps (ja efter cirka 12 s). Testet väntar. |
-| 3 | Dov röst vid stopp, och hennes sida som hörs i stället. | Dov röst har fungerat. Hennes sida är ny och ska byggas. |
-| 4 | Ljus, väder och landmärke ur kartan. | Ljus och väder har fungerat. Kartan har ny reservserver, oprovad ute. |
-| 5 | Stopp som fel i ett skarpt läge. | Stoppet lästes efter 0,3 s med stegräknaren. Lätt följd: Företagets misstanke stiger ett steg. |
-| 6 | "Tillbaka" ur avståndet till starten. Slut på vandrarens eget stopp. | Har fungerat i kapitel 1. |
+| 0 | Kontakten byggs från lågt. Kroken inom en halv minut. | Fungerade i version 25. |
+| 1 | Gång eller löpning läses vid start. | Fungerade i version 25. |
+| 2 | Stanna för ja. | Gick i version 25. Testet Stanna för ja väntar. |
+| 3 | Dov röst vid stopp, och hennes sida som hörs i stället. | Gick i version 25. Hennes steg glesas ut i utkast 3. |
+| 4 | Ljus, väder och landmärke ur kartan, nu som det hon ser. | Gick i version 25. |
+| 5 | Stopp som fel i ett skarpt läge, sedan "tillbaka" ur avståndet till starten och slut på vandrarens eget stopp. | Båda delarna gick i version 25, då som två scener. |
 
-**Följer med till episod 2:** om vandraren stannat på hennes begäran någon gång (scen 2, 3 eller 6), och om lampan tändes när lojalisten kom (scen 5).
+**Följer med till episod 2:** om vandraren stannat på hennes begäran någon gång (scen 2, 3 eller 5), och om lampan tändes när klockan ringt (scen 5). Episod 2 behöver alltså lojalistens första möte, och dess repliker där Vega "hör" vandraren ska ses över.
 
 ## Planterat
 
 | Vad | Var | Tanke |
 |---|---|---|
 | "Fast du inte är här" | 1 | Avståndet mellan världarna. Hon vet inte än att det också är tid. |
-| Slingan är en kopia av ett riktigt ställe, och landmärket finns nära vandraren | 4 | Hennes slinga är byggd efter platsen där vandraren går. Bekräftas senare. |
-| Stjärnorna hon aldrig ser | 4 | Hennes namn. Sägs inte. |
-| "Hon skriver upp allt" | 5 | Företagets misstanke, mätaren mellan episoderna. |
-| De som viskar | 6 | Kollektivet. Episod 2. |
-| "...jag hör dig också" | 6 | Någon mer hör stegen. Vem bestäms senare. |
+| Det hon ser nära dig finns också hos henne, sämre | 4 | Slingan är en kopia av platsen där vandraren går. Bekräftas senare. |
+| Stjärnorna hon aldrig ser, och "gå ut någon natt när det är klart" | 4, 5 | Hennes namn, som aldrig sägs. En kväll längre fram när hon kanske ser en. |
+| "Den skrev upp det" | 5 | Företagets misstanke, mätaren mellan episoderna. |
+| De som viskar | 5 | Kollektivet. Episod 2. |
+| Något under surret | 5 | Det finns något annat. Ingen av dem vet vad. Kan bli väsendet, eller de som öppnade kopplingen, eller inget av dem. Bestäms inte nu. |
 
 ## Nytt som jag hittat på och som du får stryka
 
-- Snäckan: arbetarnas öronsnäcka, som läser stegen och säger till. Där hör hon vandraren.
+- Snäckan: arbetarnas öronsnäcka, som räknar stegen och säger till.
 - Slingan som Företagets hälsopromenad efter skiftet (förslaget om promenadslingan fanns i världsboken).
 - Lampan, tonen och den platta rösten som tecknet på att hon syns.
 - Fyra år: hur länge hon varit där.
 - Att hon själv ger vandraren namnet Vandraren.
+- Hur glimtarna ser ut för henne: en skugga i kanten, ett blyertsstreck, ett brus. Att hon ser mer när hon sitter still.
+- Stjärnkroken i slutet.
+- Det som hörs under surret allra sist.
+
+## Ändrat i utkast 3
+
+Efter Henrics fyra intryck från promenaden 8 oktober:
+
+1. **Hon ser, hon hör inte.** Vega ser glimtar av vandrarens värld i stället för att höra stegen. Inget ljud går över, därför kan hon inte höra vandraren prata. Ändrat i scen 0, 1, 2, 4 och 5. Scen 4 är nu första gången hon ser något mer än rörelsen.
+2. **Inget kommer för tidigt.** Lojalisten är struken; klockan och resten av skiftet räcker som hot. Den andra rösten är struken; i stället hörs något under surret, utan ord. Scen 5 och 6 är ihopslagna till en, så episoden är en scen kortare.
+3. **Färre steg.** Hennes steg hörs bara när de betyder något.
+4. **Kopplingens ursprung är dold lore** (en okänd rebellgrupp, se världsboken). Inget i episoden pekar dit.
