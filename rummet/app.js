@@ -1,34 +1,36 @@
-// Manusrummet: the page. Everything it shows is built from elements and text
-// nodes, so a person's words never pass through innerHTML. Saving goes through
-// lager.js, which reads the file fresh and finds its line again before it
-// changes anything. Nothing here writes text a person did not type or press.
+// Manusrummet: the page. A document is open in the editor (redigerare.js)
+// and saved by lager.js, which reads the file fresh, merges per paragraph and
+// writes with the version it read. Everything the page draws is built from
+// elements and text nodes, so a person's words never pass through innerHTML.
 
 import { portalAdapter, valjAdapter, EPISODER, PERSONER } from './data.js';
-import { skapaLager } from './lager.js';
-import { ankareFor, hitta, tecken, kroppDelar, byggKropp, provaKropp } from './manus.js';
+import { skapaLager, slagFor } from './lager.js';
+import * as D from './dok.js';
+import * as A from './anteckn.js';
+import * as K from './katalog.js';
+import { skapaRedigerare, STILAR_SCEN, STILAR_TEXT, arStil } from './redigerare.js';
+import { tolkaInnehall } from './manus.js';
 import { ljudFor, stycketid } from './ljud.js';
-import { vy, GALLER, loreText, arAI } from './rum.js';
-import { renderMd, renderText, inline } from './md.js';
+import { renderMd } from './md.js';
 
 const $ = (id) => document.getElementById(id);
-const main = $('rum');
+const inne = $('inne');
+// The sheet's content; a part that is not there (null) is skipped.
+const fyll = (...delar) => inne.replaceChildren(...delar.flat().filter((x) => x != null && x !== false));
 
 const S = {
   adapter: null,
   lager: null,
   jag: null,
+  inst: { doljDemi: false, visaVem: true, besok: {} },
   rutt: null,
-  ep: null, // lager.lasEpisod()
-  v: null, // rum.vy() for ep
-  oppen: null, // { i, ankare } an open line, { scen } an open scene, { nyI } after a save
-  form: null, // { typ, ... } the form inside what is open
-  upptagen: false,
+  vy: null, // the open view; for a document { dok, dokument, red, ... }
+  katalog: null,
   lore: null,
-  utkast: new Set(),
-  inst: { doljDemi: false }, // this person's own settings (lager.lasInstallningar)
+  ljud: null,
 };
 
-// --- Small helpers ----------------------------------------------------------------
+// --- Small helpers -------------------------------------------------------------------
 
 function h(tag, props, ...barn) {
   const e = document.createElement(tag);
@@ -37,6 +39,7 @@ function h(tag, props, ...barn) {
       if (v == null || v === false) continue;
       if (k === 'class') e.className = v;
       else if (k === 'value') e.value = v;
+      else if (k === 'checked') e.checked = !!v;
       else if (k.startsWith('on') && typeof v === 'function') e.addEventListener(k.slice(2), v);
       else e.setAttribute(k, v === true ? '' : String(v));
     }
@@ -48,8 +51,20 @@ function h(tag, props, ...barn) {
   return e;
 }
 
-let faltNr = 0;
-const nyttFaltId = () => `falt-${++faltNr}`;
+const svg = (d) => {
+  const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  s.setAttribute('viewBox', '0 0 20 20');
+  s.setAttribute('aria-hidden', 'true');
+  const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  p.setAttribute('d', d);
+  s.append(p);
+  return s;
+};
+const IKON = {
+  angra: 'M7.5 4.5 3.5 8.5l4 4M4 8.5h7.5a4.5 4.5 0 0 1 0 9H9',
+  gorom: 'M12.5 4.5l4 4-4 4M16 8.5H8.5a4.5 4.5 0 0 0 0 9H11',
+  stang: 'M5 5l10 10M15 5 5 15',
+};
 
 const MANADER = ['jan', 'feb', 'mars', 'apr', 'maj', 'juni', 'juli', 'aug', 'sep', 'okt', 'nov', 'dec'];
 function datum(nar) {
@@ -59,123 +74,98 @@ function datum(nar) {
   const ar = d.getFullYear() !== new Date().getFullYear() ? ` ${d.getFullYear()}` : '';
   return `${d.getDate()} ${MANADER[d.getMonth()]}${ar} ${String(d.getHours()).padStart(2, '0')}.${String(d.getMinutes()).padStart(2, '0')}`;
 }
-const tid = (nar) => (nar ? ` ${datum(nar)}` : '');
-const namn = (id) => (id && PERSONER[id] ? PERSONER[id].namn : id || 'okänd');
-const gen = (n) => (/[sxz]$/i.test(n) ? n : `${n}s`);
-const storBokstav = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
+const namn = (id) => A.namnFor(id);
+const arAI = A.arAI;
+const nu = () => new Date().toISOString();
+const kanSkriva = () => !!(S.adapter && S.adapter.kanSkriva && S.jag);
+const mig = () => (S.jag ? S.jag.id : null);
+const dold = (vem) => !!(S.inst.doljDemi && arAI(vem));
+const kortText = (s, n = 90) => (s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s);
+const lugn = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const bred = () => window.matchMedia('(min-width: 62.01rem)').matches;
+
 function lista(ord) {
   if (ord.length < 2) return ord.join('');
   return `${ord.slice(0, -1).join(', ')} och ${ord[ord.length - 1]}`;
 }
 
-const kanSkriva = () => !!(S.adapter && S.adapter.kanSkriva);
-const kan = () => kanSkriva() && !(S.ep && S.ep.rumFel);
+// A person, as a dot and a name. Demi is marked as an AI everywhere.
+const prick = (vem) => h('span', { class: `av ${vem === 'henric' ? 'h' : vem === 'liv' ? 'l' : vem === 'demi' ? 'd' : 'x'}`, 'aria-hidden': 'true' });
+const avsandare = (vem) => h('span', { class: 'vem-namn' }, prick(vem), namn(vem), arAI(vem) ? h('span', { class: 'ai', title: `${namn(vem)} är en AI, inte en människa.` }, 'AI') : null);
 
-// Demi is an AI. Its posts are marked everywhere, and each person can hide
-// them for themselves.
-const dold = (vem) => !!(S.inst.doljDemi && arAI(vem));
-const synliga = (lista) => lista.filter((x) => !dold(x.skrev));
-const mitt = (post) => !!(S.jag && post.skrev === S.jag.id);
-function avsandare(vem) {
-  return h('span', { class: `av${arAI(vem) ? ' ai' : ''}` }, namn(vem),
-    arAI(vem) ? h('span', { class: 'ai-markor', title: `${namn(vem)} är en AI, inte en människa.` }, 'AI') : null);
-}
-const namnText = (vem) => (arAI(vem) ? `${namn(vem)} (AI)` : namn(vem));
-
-function autosize(t) {
-  t.style.height = 'auto';
-  t.style.height = `${t.scrollHeight + 2}px`;
-}
-
-// --- Status line --------------------------------------------------------------------
+// --- Status ----------------------------------------------------------------------------
 
 let statusTimer = null;
-function status(text, typ = 'info', { kvar = false } = {}) {
+function status(text, typ = 'info', { kvar = false, knapp = null } = {}) {
   const el = $('status');
   clearTimeout(statusTimer);
   el.className = `status ${typ}`;
-  el.replaceChildren(h('span', null, text));
-  if (typ === 'fel') el.append(h('button', { type: 'button', onclick: () => { el.hidden = true; } }, 'Stäng'));
+  el.replaceChildren(h('span', null, text), knapp, h('button', { type: 'button', class: 'stang', 'aria-label': 'Stäng', onclick: () => { el.hidden = true; } }, svg(IKON.stang)));
   el.hidden = false;
-  if (!kvar) statusTimer = setTimeout(() => { el.hidden = true; }, typ === 'fel' ? 8000 : 2600);
+  if (!kvar) statusTimer = setTimeout(() => { el.hidden = true; }, typ === 'fel' ? 9000 : 3200);
 }
 
 function felText(e) {
   if (!e) return 'Något gick fel.';
-  if (e.name === 'TypeError') return 'Portalen svarar inte just nu. Texten finns kvar här; försök igen om en stund.';
-  if (e.kod === 'hittas-inte') {
-    return 'Repliken står inte längre så i manuset: någon har ändrat den medan du skrev. Din text finns kvar här.';
+  // fetch says a network failure with a TypeError; any other TypeError is a
+  // fault in the room itself and must not be dressed up as the portal's.
+  if (e.name === 'TypeError' && /fetch|network|load failed/i.test(e.message || '')) {
+    return 'Portalen svarar inte just nu. Det du skrev finns kvar här och sparas när den svarar igen.';
+  }
+  if (e.name === 'TypeError' || e.name === 'ReferenceError' || e.name === 'RangeError') {
+    console.error(e);
+    return `Något gick fel i rummet (${e.message}). Ladda om sidan; det du skrev finns kvar.`;
   }
   return e.message || 'Något gick fel.';
 }
 
-// --- Text you have typed but not saved -------------------------------------------------
-// Kept in the browser until it is saved or thrown away, so a reload, a lost
-// connection or a line someone else changed never takes the words with it.
+// The save state in the top bar.
+function ritaLage() {
+  const el = $('lage');
+  const V = S.vy;
+  if (!V || !V.dokument || !kanSkriva()) {
+    el.replaceChildren();
+    el.className = 'lage-text';
+    return;
+  }
+  const { lage, felet } = V.dokument;
+  const text = lage === 'fel' ? 'Inte sparat' : lage === 'sparat' ? 'Sparat' : 'Sparar …';
+  el.className = `lage-text ${lage === 'fel' ? 'fel' : lage === 'sparat' ? 'sparat' : 'sparar'}`;
+  if (lage === 'fel') {
+    el.replaceChildren(h('button', {
+      type: 'button',
+      onclick: () => status(`${felText(felet)} Det du skrev finns kvar här.`, 'fel', {
+        kvar: true,
+        knapp: h('button', { type: 'button', class: 'knapp liten', onclick: () => { V.dokument.spara().catch(() => {}); } }, 'Försök igen'),
+      }),
+    }, text));
+  } else {
+    el.replaceChildren(text);
+  }
+}
 
-const UTKAST = 'glimt-rummet';
-const utkastPrefix = (del) => `${UTKAST}|${S.adapter.rot || S.adapter.namn}|${del}|`;
-const utkastNyckel = (del, typ, mal) => `${utkastPrefix(del)}${typ}|${mal}`;
-function lasUtkast(k) {
-  try {
-    const v = localStorage.getItem(k);
-    return v ? JSON.parse(v) : null;
-  } catch {
-    return null;
-  }
-}
-function skrivUtkast(k, v) {
-  try {
-    localStorage.setItem(k, JSON.stringify({ ...v, sparat: new Date().toISOString() }));
-    S.utkast.add(k);
-  } catch {
-    // Storage full or blocked: the form still holds the text.
-  }
-}
-function slangUtkast(k) {
-  try {
-    localStorage.removeItem(k);
-  } catch {
-    // nothing to do
-  }
-  S.utkast.delete(k);
-}
-function allaUtkast(prefix) {
-  const ut = [];
-  try {
-    for (let n = 0; n < localStorage.length; n++) {
-      const k = localStorage.key(n);
-      if (k && k.startsWith(prefix)) ut.push(k);
-    }
-  } catch {
-    // no storage
-  }
-  return ut;
-}
-const RADFORMER = ['andra', 'foresla', 'kommentera', 'ny'];
-const TYPNAMN = {
-  andra: 'Ändring', foresla: 'Förslag', kommentera: 'Kommentar', ny: 'Ny replik efter',
-  'kommentera-scen': 'Kommentar', 'foresla-scen': 'Förslag', 'ny-forst': 'Ny replik',
-};
-// Keyed by scene, text and position only: the neighbours an anchor carries
-// change when a nearby line is edited, and the draft must still be found.
-const radNyckel = (typ, ankare) => utkastNyckel(`e${S.ep.nr}`, typ, JSON.stringify({ scen: ankare.scen, text: ankare.text, n: ankare.n }));
-const harUtkast = (typ, ankare) => S.utkast.has(radNyckel(typ, ankare));
-
-// --- Sound ------------------------------------------------------------------------------
-// One player for the page. A line can be several paragraphs, sometimes in
-// different clips; they play one after the other, each from where it starts
-// in its clip to where the next paragraph starts.
+// --- Sound -------------------------------------------------------------------------------
+// One player for the page. A line can be several recorded paragraphs, in one
+// clip or several; they play one after the other.
 
 const ljud = new Audio();
 ljud.preload = 'none';
 let spelar = null;
 
-function spela(i, delar, knapp) {
-  const samma = spelar && spelar.i === i;
+const kroppFor = (p) => (p.typ === 'regi' ? `(${p.text})` : p.typ === 'variant' ? p.text : tolkaInnehall(p.text).kropp || '');
+const ljudCache = new Map();
+function ljudLage(p) {
+  if (!S.ljud || !['replik', 'variant', 'regi'].includes(p.typ)) return { lage: 'tyst', delar: [] };
+  const k = kroppFor(p);
+  if (!ljudCache.has(k)) ljudCache.set(k, ljudFor(k, S.ljud));
+  return ljudCache.get(k);
+}
+
+function spela(id, delar, knapp) {
+  const samma = spelar && spelar.id === id;
   stoppa();
   if (samma) return;
-  spelar = { i, delar, k: 0, knapp, till: null, byter: false, slutad: -1 };
+  spelar = { id, delar, k: 0, knapp, till: null, byter: false, slutad: -1 };
   knapp.classList.add('spelar');
   knapp.setAttribute('aria-label', 'Stoppa');
   nastaDel();
@@ -186,15 +176,12 @@ function nastaDel() {
   if (!s) return;
   if (s.k >= s.delar.length) { stoppa(); return; }
   const del = s.delar[s.k++];
-  const t = stycketid(S.ep.ljud, del) || { fran: 0, till: null };
+  const t = stycketid(S.ljud, del) || { fran: 0, till: null };
   s.fran = t.fran;
   s.till = t.till;
   s.byter = true;
-  const fragment = `#t=${t.fran.toFixed(2)}${t.till != null ? `,${t.till.toFixed(2)}` : ''}`;
-  ljud.src = S.adapter.ljudUrl(S.ep.ljud.id, del.id) + fragment;
-  ljud.play().then(() => {
-    if (spelar === s) s.byter = false;
-  }).catch((e) => {
+  ljud.src = S.adapter.ljudUrl(S.ljud.id, del.id) + `#t=${t.fran.toFixed(2)}${t.till != null ? `,${t.till.toFixed(2)}` : ''}`;
+  ljud.play().then(() => { if (spelar === s) s.byter = false; }).catch((e) => {
     if (spelar !== s || (e && e.name === 'AbortError')) return;
     status('Ljudet gick inte att spela.', 'fel');
     stoppa();
@@ -209,20 +196,14 @@ function delSlut() {
 }
 
 ljud.addEventListener('ended', delSlut);
-// The #t= hint is enough where the server lets the browser jump; elsewhere
-// the start is set by hand once the clip plays.
 ljud.addEventListener('playing', () => {
   const s = spelar;
   if (s && s.fran && ljud.currentTime < s.fran - 0.25) ljud.currentTime = s.fran;
 });
 ljud.addEventListener('timeupdate', () => {
   const s = spelar;
-  if (s && !s.byter && s.till != null && ljud.currentTime >= s.till) {
-    ljud.pause();
-    delSlut();
-  }
+  if (s && !s.byter && s.till != null && ljud.currentTime >= s.till) { ljud.pause(); delSlut(); }
 });
-// The media fragment's end pauses the clip by itself.
 ljud.addEventListener('pause', () => {
   const s = spelar;
   if (s && !s.byter && s.till != null && ljud.currentTime >= s.till - 0.3) delSlut();
@@ -243,60 +224,102 @@ function stoppa() {
   }
 }
 
-// --- Saving -----------------------------------------------------------------------------
-// One save at a time. On success the episode is read again, so what shows is
-// what the file says. On failure the form stays open with the text in it.
+// --- Panel and menu ------------------------------------------------------------------------
+// One panel for everything that needs more room than a button: comments,
+// proposals, history, the mechanic picker. On a wide screen it floats at the
+// right, on a phone it rises from below.
 
-async function gora(fn, { fel = null, nyckel = null, efter = null, vidFel = null, klart = null } = {}) {
-  if (S.upptagen) return undefined;
-  S.upptagen = true;
-  document.body.classList.add('upptagen');
-  status('Sparar …', 'info', { kvar: true });
-  let ut;
-  try {
-    ut = await fn();
-  } catch (e) {
-    S.upptagen = false;
-    document.body.classList.remove('upptagen');
-    if (e && e.kod === 'halvt') {
-      // The manuscript has the text; only the note about it is missing.
-      if (nyckel) slangUtkast(nyckel);
-      S.form = null;
-      if (efter) efter(undefined);
-      status('Texten är sparad i manuset, men anteckningen om vem som skrev den kom inte fram.', 'fel', { kvar: true });
-      await laddaOm();
-      return undefined;
-    }
-    const text = felText(e);
-    if (fel) {
-      fel.replaceChildren(h('p', null, text));
-      const extra = vidFel ? vidFel(e) : null;
-      if (extra) fel.append(extra);
-      status('Det gick inte att spara.', 'fel');
-    } else {
-      status(text, 'fel', { kvar: true });
-    }
-    return undefined;
+let panelFran = null;
+function oppnaPanel(titel, ...innehall) {
+  const p = $('panel');
+  stangMeny();
+  panelFran = document.activeElement;
+  const rubrikId = 'panel-rubrik';
+  p.replaceChildren(
+    h('div', { class: 'panel-topp' },
+      h('h2', { id: rubrikId }, titel),
+      h('button', { type: 'button', class: 'stang', 'aria-label': 'Stäng', onclick: stangPanel }, svg(IKON.stang))),
+    h('div', { class: 'panel-inne' }, ...innehall),
+  );
+  p.setAttribute('aria-labelledby', rubrikId);
+  p.hidden = false;
+  document.body.classList.add('panel-oppen');
+  requestAnimationFrame(() => {
+    const f = p.querySelector('[data-fokus]') || p.querySelector('textarea, input, .panel-inne button');
+    if (f) f.focus({ preventScroll: true });
+  });
+  return p;
+}
+
+function stangPanel({ tillRedigeraren = true } = {}) {
+  const p = $('panel');
+  if (p.hidden) return;
+  p.hidden = true;
+  p.replaceChildren();
+  document.body.classList.remove('panel-oppen');
+  if (tillRedigeraren && S.vy && S.vy.red && kanSkriva()) S.vy.red.fokus();
+  else if (panelFran && panelFran.focus && document.contains(panelFran)) panelFran.focus();
+  panelFran = null;
+}
+
+let menyFran = null;
+function oppnaMeny(knapp, poster, { etikett }) {
+  const m = $('meny');
+  stangMeny();
+  menyFran = knapp;
+  m.replaceChildren(...poster.map((x) => h('button', {
+    type: 'button', role: 'menuitemradio', 'aria-checked': x.vald ? 'true' : 'false', class: x.vald ? 'vald' : null,
+    onclick: () => { stangMeny(false); x.gor(); },
+  }, h('span', null, x.namn), x.tips ? h('kbd', null, x.tips) : null)));
+  m.setAttribute('aria-label', etikett);
+  m.hidden = false;
+  const r = knapp.getBoundingClientRect();
+  const telefon = !window.matchMedia('(min-width: 40.01rem)').matches;
+  m.style.left = `${Math.max(8, Math.min(r.left, window.innerWidth - m.offsetWidth - 8))}px`;
+  if (telefon) {
+    m.style.top = '';
+    m.style.bottom = `${window.innerHeight - r.top + 6}px`;
+  } else {
+    m.style.bottom = '';
+    m.style.top = `${r.bottom + 6}px`;
   }
-  if (nyckel) slangUtkast(nyckel);
-  S.form = null;
-  if (efter) efter(ut);
-  S.upptagen = false;
-  document.body.classList.remove('upptagen');
-  status((klart && klart(ut)) || (ut && ut.reserv
-    ? 'Sparat. Repliken lades sist i scenen, för raden den stod bredvid finns inte kvar.'
-    : 'Sparat.'), 'ok');
-  await laddaOm();
-  return ut;
+  knapp.setAttribute('aria-expanded', 'true');
+  const forsta = m.querySelector('.vald') || m.querySelector('button');
+  if (forsta) forsta.focus();
 }
 
-async function laddaOm() {
-  if (!S.rutt) return;
-  if (S.rutt.vy === 'episod') await laddaEpisod({ behallPlats: true });
-  else await visaVarlden(S.rutt, { tyst: true });
+function stangMeny(fokus = true) {
+  const m = $('meny');
+  if (m.hidden) return;
+  m.hidden = true;
+  m.replaceChildren();
+  if (menyFran) {
+    menyFran.setAttribute('aria-expanded', 'false');
+    if (fokus) menyFran.focus();
+  }
+  menyFran = null;
 }
 
-// --- Routing ------------------------------------------------------------------------------
+$('meny').addEventListener('keydown', (e) => {
+  const knappar = [...$('meny').querySelectorAll('button')];
+  const k = knappar.indexOf(document.activeElement);
+  if (e.key === 'ArrowDown') { e.preventDefault(); knappar[(k + 1) % knappar.length].focus(); }
+  if (e.key === 'ArrowUp') { e.preventDefault(); knappar[(k - 1 + knappar.length) % knappar.length].focus(); }
+  if (e.key === 'Escape') { e.preventDefault(); stangMeny(); }
+  if (e.key === 'Tab') stangMeny(false);
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !$('panel').hidden) { e.preventDefault(); stangPanel(); }
+});
+document.addEventListener('mousedown', (e) => {
+  const m = $('meny');
+  if (!m.hidden && !m.contains(e.target) && e.target !== menyFran) stangMeny(false);
+});
+
+// --- Routing ---------------------------------------------------------------------------------
+// #episod-1 · #episod-2 · #varlden · #varlden/held · #varlden/sidor ·
+// #varlden/sida/<id> · #mekaniker · #mekaniker/<mekanik> · #mekaniker/text
+// A document's address can end in /s/<paragraph id> to open at it.
 
 function lasRutt() {
   let hash;
@@ -305,1134 +328,997 @@ function lasRutt() {
   } catch {
     hash = '';
   }
+  let stycke = null;
+  const s = /^(.*)\/s\/([A-Za-z0-9_-]+)$/.exec(hash);
+  if (s) { hash = s[1]; stycke = s[2]; }
   let m = /^episod-(\d+)$/.exec(hash);
-  if (m && EPISODER.includes(m[1])) return { vy: 'episod', nr: m[1] };
-  if (hash === 'varlden') return { vy: 'varlden', flik: 'varld' };
-  m = /^varlden\/(held|sidor|ny)$/.exec(hash);
-  if (m) return { vy: 'varlden', flik: m[1] };
-  m = /^varlden\/sida\/([A-Za-z0-9-]+)$/.exec(hash);
-  if (m) return { vy: 'varlden', flik: 'sida', id: m[1] };
-  return { vy: 'episod', nr: EPISODER[0] };
+  if (m && EPISODER.includes(m[1])) return { vy: 'dok', dok: m[1], flik: `episod-${m[1]}`, stycke };
+  if (hash === 'varlden') return { vy: 'dok', dok: 'varld', flik: 'varlden', under: 'varld', stycke };
+  if (hash === 'varlden/held') return { vy: 'held', flik: 'varlden', under: 'held' };
+  if (hash === 'varlden/sidor') return { vy: 'sidor', flik: 'varlden', under: 'sidor' };
+  m = /^varlden\/sida\/([A-Za-z0-9_-]+)$/.exec(hash);
+  if (m) return { vy: 'dok', dok: `lore:${m[1]}`, sida: m[1], flik: 'varlden', under: 'sidor', stycke };
+  if (hash === 'mekaniker/text') return { vy: 'dok', dok: 'mekaniker', flik: 'mekaniker', under: 'text', stycke };
+  m = /^mekaniker(?:\/([a-z0-9-]+))?$/.exec(hash);
+  if (m) return { vy: 'katalog', flik: 'mekaniker', under: 'lista', mek: m[1] || null };
+  return { vy: 'dok', dok: EPISODER[0], flik: `episod-${EPISODER[0]}`, stycke };
 }
-const sammaRutt = (a, b) => !!a && !!b && a.vy === b.vy && a.nr === b.nr && a.flik === b.flik && a.id === b.id;
+
+const sammaVy = (a, b) => !!a && !!b && a.vy === b.vy && a.dok === b.dok && a.under === b.under;
 
 function markeraFlik(r) {
-  const aktiv = r.vy === 'episod' ? `episod-${r.nr}` : 'varlden';
-  for (const a of document.querySelectorAll('nav.flikar a[data-flik]')) {
-    if (a.dataset.flik === aktiv) a.setAttribute('aria-current', 'page');
+  for (const a of document.querySelectorAll('.flikar a[data-flik]')) {
+    if (a.dataset.flik === r.flik) a.setAttribute('aria-current', 'page');
     else a.removeAttribute('aria-current');
   }
 }
 
 async function visa() {
   const r = lasRutt();
-  if (sammaRutt(r, S.rutt)) return;
   const forra = S.rutt;
   S.rutt = r;
-  markeraFlik(r);
-  stoppa();
-  S.oppen = null;
-  S.form = null;
-  if (forra && (forra.vy !== r.vy || forra.nr !== r.nr)) window.scrollTo(0, 0);
-  if (r.vy === 'episod') {
-    main.replaceChildren(h('p', { class: 'laddar' }, 'Läser manuset …'));
-    S.ep = null;
-    await laddaEpisod();
-  } else {
-    await visaVarlden(r);
-  }
-}
-
-// --- An episode --------------------------------------------------------------------------
-
-async function laddaEpisod({ behallPlats = false } = {}) {
-  const rutt = S.rutt;
-  const y = window.scrollY;
-  let ep;
-  try {
-    ep = await S.lager.lasEpisod(rutt.nr);
-  } catch (e) {
-    if (behallPlats && S.ep) status(felText(e), 'fel', { kvar: true });
-    else visaLaddfel(e);
+  if (sammaVy(r, forra)) {
+    // Same view: only the place in it changed.
+    if (r.stycke && S.vy && S.vy.red) S.vy.red.ga(r.stycke);
+    if (r.vy === 'katalog' && r.mek) oppnaMekanik(r.mek);
     return;
   }
-  if (S.rutt !== rutt) return;
+  markeraFlik(r);
   stoppa();
-  S.ep = ep;
-  S.v = vy(ep.manus, ep.rum, ep.grund);
-  S.utkast = new Set(allaUtkast(utkastPrefix(`e${ep.nr}`)));
-  // Keep the open line open, found again in the text just read.
-  if (S.oppen && S.oppen.nyI != null) {
-    const r = ep.manus.rader[S.oppen.nyI];
-    S.oppen = r && r.typ === 'replik' && r.scen != null ? { i: r.i, ankare: ankareFor(ep.manus, r.i) } : null;
-  } else if (S.oppen && S.oppen.ankare) {
-    const i = hitta(ep.manus, S.oppen.ankare, { strikt: true });
-    S.oppen = i >= 0 ? { i, ankare: S.oppen.ankare } : null;
-  } else if (S.oppen && S.oppen.scen != null && !ep.manus.scener.some((s) => s.nr === S.oppen.scen)) {
-    S.oppen = null;
-  }
-  if (!S.oppen) S.form = null;
-  ritaEpisod();
-  if (behallPlats) {
-    window.scrollTo(0, y);
-    const text = S.oppen && S.oppen.i != null ? document.querySelector(`#rad-${S.oppen.i} .radtext`) : null;
-    if (text) text.focus({ preventScroll: true });
-  }
+  stangPanel({ tillRedigeraren: false });
+  await stangVy();
+  window.scrollTo(0, 0);
+  if (r.vy === 'dok') await visaDokument(r);
+  else if (r.vy === 'held') await visaHeld(r);
+  else if (r.vy === 'sidor') await visaSidor(r);
+  else if (r.vy === 'katalog') await visaKatalog(r);
 }
 
-function visaLaddfel(e) {
-  main.replaceChildren(h('div', { class: 'band varning' },
-    h('p', null, felText(e)),
-    h('div', { class: 'knappar' }, h('button', { class: 'knapp', type: 'button', onclick: () => { S.rutt = null; visa(); } }, 'Försök igen'))));
+async function stangVy() {
+  const V = S.vy;
+  S.vy = null;
+  ritaVerktyg();
+  ritaLage();
+  if (!V) return;
+  if (V.dokument) {
+    V.dokument.minns();
+    V.dokument.spara().catch(() => {});
+  }
+  if (V.red) V.red.forstor();
 }
 
-// Counts what has been drawn, so a test can wait for the page instead of the clock.
-let ritningar = 0;
-const ritad = () => { main.dataset.ritad = String(++ritningar); };
-
-function ritaEpisod() {
-  const m = S.ep.manus;
-  ritad();
-  main.replaceChildren(...[
-    episodHuvud(),
-    ...m.scener.map(ritaScen),
-    m.bilagor ? h('details', { class: 'om bilagor' },
-      h('summary', null, 'Bilagor till episoden'),
-      h('article', { class: 'md' }, renderMd(m.bilagor))) : null,
-  ].filter(Boolean));
+function underflikar(r) {
+  if (r.flik === 'varlden') {
+    return h('nav', { class: 'underflikar', 'aria-label': 'Världen' },
+      [['varld', 'Världsboken', '#varlden'], ['held', 'HELD', '#varlden/held'], ['sidor', 'Våra sidor', '#varlden/sidor']]
+        .map(([u, t, href]) => h('a', { href, 'aria-current': r.under === u ? 'page' : null }, t)));
+  }
+  if (r.flik === 'mekaniker') {
+    return h('nav', { class: 'underflikar', 'aria-label': 'Mekaniker' },
+      [['lista', 'Katalogen', '#mekaniker'], ['text', 'Redigera texten', '#mekaniker/text']]
+        .map(([u, t, href]) => h('a', { href, 'aria-current': r.under === u ? 'page' : null }, t)));
+  }
+  return null;
 }
 
-function marke(skrev, { dold = false } = {}) {
-  if (!skrev) return null;
-  const etikett = dold ? null : vemText(skrev);
-  const props = (klass) => ({ class: `marke ${klass}`, role: dold ? null : 'img', 'aria-label': etikett, title: etikett, 'aria-hidden': dold ? 'true' : null });
-  if (skrev.vem && PERSONER[skrev.vem]) return h('span', props(skrev.vem), PERSONER[skrev.vem].namn[0]);
-  if (skrev.hur === 'utanfor') return h('span', props('utanfor'), '?');
-  return h('span', props('okant'), '·');
-}
+// --- A document in the editor -------------------------------------------------------------------
 
-function vemText(s) {
-  const n = s.vem ? namn(s.vem) : null;
-  switch (s.hur) {
-    case 'utkast': return 'Demis utkast.';
-    case 'andrade': return `${n} skrev om den${tid(s.nar)}.`;
-    case 'skrev': return `${n} skrev den${tid(s.nar)}.`;
-    case 'forslag': return `${gen(n)} förslag, inlagt i manus av ${namn(s.av)}${tid(s.satt)}.`;
-    case 'tillbaka': return n
-      ? `${gen(n)} text, tagen tillbaka av ${namn(s.av)}${tid(s.satt)}.`
-      : `Tidigare text, tagen tillbaka av ${namn(s.av)}${tid(s.satt)}.`;
-    case 'namn': return `Märkt som ${gen(n)} ord av ${namn(s.av)}${tid(s.satt)}.`;
-    case 'utanfor': return 'Ändrad utanför rummet.';
-    default: return 'Vem som skrev den går inte att säga här.';
-  }
-}
-
-function episodHuvud() {
-  const { ep } = S;
-  const m = ep.manus;
-  const f = document.createDocumentFragment();
-  f.append(
-    h('h2', null, `Episod ${ep.nr}`),
-    h('p', { class: 'ep-titel' }, m.titel),
-  );
-  if (ep.rumFel) {
-    f.append(h('div', { class: 'band varning' }, h('strong', null, 'Inget kan sparas just nu. '), ep.rumFel.message,
-      ' Manuset går att läsa och lyssna på som vanligt.'));
-  }
-  if (kanSkriva() && S.lager.vantar.length) {
-    const visade = S.lager.vantar.map((a) => a.aid);
-    f.append(h('div', { class: 'band varning' },
-      h('p', null, h('strong', null, 'Halvt sparat. '), 'Texten står i manuset, men anteckningen om vem som skrev den kom inte fram. Tills den gör det visas raden som ändrad utanför rummet.'),
-      h('p', { class: 'dov liten' }, 'Slänger du anteckningen står texten kvar i manuset, och du kan säga vems den är.'),
-      h('div', { class: 'knappar' },
-        h('button', { class: 'knapp liten', type: 'button', onclick: () => gora(() => S.lager.forsokIgen()) }, 'Försök igen'),
-        h('button', { class: 'knapp liten', type: 'button', onclick: () => { S.lager.slangVantande(visade); ritaEpisod(); } }, 'Släng anteckningen'))));
-  }
-  if (kanSkriva() && !ep.grund && !ep.rumFel) {
-    f.append(h('div', { class: 'band' }, 'Listan över Demis utkast går inte att läsa, så rummet säger inte vem som skrev de rader som inte ändrats här.'));
-  }
-  if (kanSkriva()) {
-    const forlorat = osparat();
-    if (forlorat) f.append(forlorat);
-  }
-  if (kanSkriva()) {
-    f.append(h('div', { class: 'nyckel' },
-      h('span', null, marke({ vem: 'demi', hur: 'utkast' }, { dold: true }), 'Demis utkast'),
-      h('span', null, marke({ vem: 'henric', hur: 'skrev' }, { dold: true }), 'Henric'),
-      h('span', null, marke({ vem: 'liv', hur: 'skrev' }, { dold: true }), 'Liv'),
-      h('span', null, marke({ vem: null, hur: 'utanfor' }, { dold: true }), 'ändrad utanför rummet'),
-      S.inst.doljDemi ? null : h('span', null, h('span', { class: 'ai-markor', 'aria-hidden': 'true' }, 'AI'), 'Demis kommentarer och förslag')));
-    if (S.inst.doljDemi) {
-      const antal = ep.rum.kommentarer.filter((k) => arAI(k.skrev) && !k.borta).length
-        + ep.rum.forslag.filter((f) => arAI(f.skrev) && f.lage === 'oppet').length;
-      if (antal) f.append(h('p', { class: 'dov liten smal' }, `Demis inlägg är dolda för dig: ${antal === 1 ? 'ett' : antal} i den här episoden.`));
-    }
-  }
-  if (!ep.ljud) {
-    f.append(h('p', { class: 'dov liten smal' }, `Episod ${ep.nr} är inte inspelad än.`));
-  } else {
-    let ej = 0;
-    for (const r of m.rader) if (r.typ === 'replik' && r.scen != null && ljudFor(r.kropp, ep.ljud).lage === 'ej') ej++;
-    f.append(h('p', { class: 'dov liten smal' }, ej
-      ? `Tryck på ringen före en replik för att höra den. ${ej === 1 ? 'En replik har' : `${ej} repliker har`} ändrats sedan inspelningen och är inte inspelade än.`
-      : 'Tryck på ringen före en replik för att höra den.'));
-  }
-  if (m.anteckningar) {
-    f.append(h('details', { class: 'om' }, h('summary', null, 'Om episoden: logiken, rösterna och varianterna'),
-      h('article', { class: 'md' }, renderMd(m.anteckningar))));
-  }
-  f.append(h('ul', { class: 'scenlista', 'aria-label': 'Hoppa till scen' }, m.scener.map((s) => h('li', null,
-    h('button', {
-      type: 'button', title: s.titel, 'aria-label': `Scen ${s.nr}, ${s.titel}`,
-      onclick: () => { const el = $(`scen-${s.nr}`); if (el) el.scrollIntoView({ block: 'start' }); },
-    }, s.nr)))));
-  return f;
-}
-
-// Drafts whose line no longer stands as it did: shown at the top so the words
-// are never lost, even when there is nowhere left to save them.
-function osparat() {
-  const { ep } = S;
-  const prefix = utkastPrefix(`e${ep.nr}`);
-  const kvar = [];
-  for (const k of S.utkast) {
-    if (!k.startsWith(prefix)) continue;
-    const delar = k.slice(prefix.length).split('|');
-    const typ = delar[0];
-    const mal = delar.slice(1).join('|');
-    if (mal.startsWith('scen-')) {
-      if (!ep.manus.scener.some((s) => `scen-${s.nr}` === mal)) kvar.push({ k, typ, ankare: null });
-      continue;
-    }
-    if (mal.startsWith('svar-')) {
-      // A reply whose thread is gone keeps its words here too.
-      const rotId = mal.slice(5);
-      const finns = [...ep.rum.kommentarer, ...ep.rum.forslag].some((x) => x.id === rotId && !x.borta);
-      if (!finns) kvar.push({ k, typ, ankare: null, svar: true });
-      continue;
-    }
-    let ankare;
-    try {
-      ankare = JSON.parse(mal);
-    } catch {
-      continue;
-    }
-    if (hitta(ep.manus, ankare, { strikt: true }) < 0) kvar.push({ k, typ, ankare });
-  }
-  if (!kvar.length) return null;
-  return h('div', { class: 'band varning osparat' },
-    h('p', null, h('strong', null, 'Text som inte blev sparad. '),
-      'Repliken den gällde står inte längre likadant i manuset, så texten ligger kvar här i webbläsaren tills du slänger den.'),
-    kvar.map(({ k, typ, ankare, svar }) => {
-      const v = lasUtkast(k) || {};
-      const text = v.text != null ? v.text : byggKropp({ slag: v.slag || 'vega', ord: v.ord || '', vem: v.vem || '' });
-      const falt = h('textarea', { class: 'falt', readonly: true, rows: '2', value: text, 'aria-label': 'Osparad text' });
-      const kort = h('div', { class: 'kort' },
-        h('p', { class: 'galde' }, svar ? 'Svar i en tråd som inte finns kvar' : [`${TYPNAMN[typ] || 'Text'} till `, ankare ? h('q', null, ankare.text) : 'en scen som inte finns kvar']),
-        falt,
-        h('div', { class: 'knappar' },
-          h('button', {
-            class: 'knapp liten', type: 'button',
-            onclick: () => {
-              falt.select();
-              if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => status('Kopierad.', 'ok'), () => {});
-            },
-          }, 'Kopiera'),
-          h('button', { class: 'knapp liten', type: 'button', onclick: () => { slangUtkast(k); kort.remove(); } }, 'Släng')));
-      return kort;
-    }));
-}
-
-function ritaScen(s) {
-  const sek = h('section', { class: 'scen', id: `scen-${s.nr}`, 'aria-labelledby': `scenrubrik-${s.nr}` },
-    h('h3', { class: 'scen-rubrik', id: `scenrubrik-${s.nr}` }, h('span', { class: 'nr', 'aria-hidden': 'true' }, s.nr), h('span', null, s.titel)));
-  for (const d of s.delar) {
-    if (d.typ === 'citat') sek.append(ritaBlock(d.rader));
-    else if (d.typ === 'trigger') sek.append(h('p', { class: 'trigger' }, h('b', null, 'När'), inline(storBokstav(d.rad.text))));
-    else if (d.typ === 'not') sek.append(h('p', { class: 'not' }, inline(d.rad.text)));
-    else if (d.typ === 'blockrubrik') sek.append(h('p', { class: 'gren-rubrik' }, inline(d.rad.text)));
-    else sek.append(h('p', { class: 'stycke-text' }, inline(d.rad.text || d.rad.ra)));
-  }
-  sek.append(ritaFot(s));
-  return sek;
-}
-
-function ritaBlock(rader) {
-  const block = h('div', { class: 'manus' });
-  let stycke = h('div', { class: 'stycket' });
-  for (const r of rader) {
-    if (r.typ === 'q-tom') {
-      if (stycke.childNodes.length) { block.append(stycke); stycke = h('div', { class: 'stycket' }); }
-      continue;
-    }
-    if (r.typ === 'gren') stycke.append(h('p', { class: 'gren' }, r.rubrik));
-    else if (r.typ === 'gren2') stycke.append(h('p', { class: 'gren gren2' }, r.rubrik));
-    else if (r.typ === 'q-not') stycke.append(h('p', { class: 'q-not' }, inline(r.text)));
-    else if (r.typ === 'replik') stycke.append(ritaRad(r));
-  }
-  if (stycke.childNodes.length) block.append(stycke);
-  return block;
-}
-
-// The words of a line: Vega's warm, direction small, other voices pale.
-function radText(kropp) {
-  const f = document.createDocumentFragment();
-  for (const t of tecken(String(kropp || ''))) {
-    if (t.typ === 'regi') {
-      f.append(h('span', { class: 'regi' }, (t.delar || []).map((d) => (d.typ === 'annan' ? h('span', { class: 'annan' }, d.text) : d.text))));
-    } else if (t.typ === 'annan') {
-      f.append(h('span', { class: 'annan' }, t.text));
-    } else {
-      f.append(t.text);
-    }
-  }
-  return f;
-}
-
-const markerar = () => {
-  const s = window.getSelection ? window.getSelection() : null;
-  return !!(s && !s.isCollapsed && String(s).trim());
+const ARBETSTEXT = {
+  varld: 'Glimts världsbok. Allt här sparas i filen, och alla kan ändra allt.',
+  mekaniker: 'Mekanikkatalogen. Listan under Katalogen läses ur den här texten varje gång.',
 };
 
-function ritaRad(r) {
-  const info = S.v.rader.get(r.i) || { forslag: [], kommentarer: [] };
-  const oppen = !!(S.oppen && S.oppen.i === r.i);
-  const ankare = ankareFor(S.ep.manus, r.i);
-  const lj = S.ep.ljud ? ljudFor(r.kropp, S.ep.ljud) : null;
-  const spel = h('div', { class: 'spel' });
-  if (lj && lj.lage === 'inspelad') spel.append(spelKnapp(r, lj));
-
-  const om = [];
-  if (lj && lj.lage === 'ej') om.push(h('span', { class: 'ej' }, 'inte inspelad än'));
-  if (kanSkriva() && info.skrev && info.skrev.hur === 'utanfor') om.push(h('span', { class: 'utanfor' }, 'ändrad utanför rummet'));
-  if (kanSkriva() && RADFORMER.some((t) => harUtkast(t, ankare))) om.push(h('span', { class: 'osparad' }, 'osparad text'));
-  const innehall = [
-    r.etikett ? h('span', { class: 'etikett' }, r.etikett) : null,
-    r.variant ? h('span', { class: 'var' }, r.variant) : null,
-    radText(r.kropp),
-    om.length ? h('span', { class: 'radinfo' }, om) : null,
-  ];
-  const text = kanSkriva()
-    ? h('div', {
-      class: 'radtext', role: 'button', tabindex: '0', 'aria-expanded': String(oppen),
-      onclick: () => { if (!markerar()) vaxlaRad(r.i); },
-      onkeydown: (ev) => { if (ev.target === ev.currentTarget && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); vaxlaRad(r.i); } },
-    }, innehall)
-    : h('div', { class: 'radtext' }, innehall);
-
-  const sida = h('div', { class: 'sida' });
-  for (const f of synliga(info.forslag)) if (visaForslag(f)) sida.append(forslagKort(f, { rad: r }));
-  sida.append(...kommentarer(synliga(info.kommentarer), { rad: r }));
-  if (oppen) sida.append(verktyg(r, info, ankare));
-
-  return h('div', { class: `rad${oppen ? ' oppen' : ''}`, id: `rad-${r.i}` },
-    spel, text, h('div', { class: 'vem' }, kanSkriva() ? marke(info.skrev) : null), sida);
-}
-
-function spelKnapp(r, lj) {
-  const igang = !!(spelar && spelar.i === r.i);
-  const b = h('button', { class: `spela${igang ? ' spelar' : ''}`, type: 'button', 'aria-label': igang ? 'Stoppa' : 'Lyssna' });
-  b.addEventListener('click', () => spela(r.i, lj.delar, b));
-  if (igang) spelar.knapp = b;
-  return b;
-}
-
-// --- Opening a line or a scene -------------------------------------------------------------
-
-const samma = (a, b) => !!a && !!b && (a.i != null ? a.i === b.i : (b.i == null && a.scen === b.scen));
-
-function ritaOm(o) {
-  if (!o || !S.ep) return;
-  if (o.i != null) {
-    const gammal = $(`rad-${o.i}`);
-    const r = S.ep.manus.rader[o.i];
-    if (gammal && r) gammal.replaceWith(ritaRad(r));
-  } else if (o.scen != null) {
-    const gammal = $(`fot-${o.scen}`);
-    const s = S.ep.manus.scener.find((x) => x.nr === o.scen);
-    if (gammal && s) gammal.replaceWith(ritaFot(s));
-  }
-}
-
-function oppna(o, form = null) {
-  const forra = S.oppen;
-  S.oppen = o;
-  S.form = form;
-  if (forra && !samma(forra, o)) ritaOm(forra);
-  if (o) ritaOm(o);
-  if (form) fokusera();
-}
-
-function vaxlaRad(i) {
-  if (S.upptagen) return;
-  if (S.oppen && S.oppen.i === i) oppna(null);
-  else oppna({ i, ankare: ankareFor(S.ep.manus, i) });
-}
-
-function sattForm(form) {
-  S.form = form;
-  ritaOm(S.oppen);
-  fokusera();
-}
-
-function stangForm() {
-  S.form = null;
-  ritaOm(S.oppen);
-  if (S.oppen && S.oppen.i != null) {
-    const t = document.querySelector(`#rad-${S.oppen.i} .radtext`);
-    if (t) t.focus({ preventScroll: true });
-  }
-}
-
-function fokusera() {
-  requestAnimationFrame(() => {
-    const plats = S.oppen && (S.oppen.i != null ? $(`rad-${S.oppen.i}`) : $(`fot-${S.oppen.scen}`));
-    if (!plats) return;
-    for (const t of plats.querySelectorAll('textarea')) autosize(t);
-    const falt = plats.querySelector('form textarea:not([readonly]), form input, .bekrafta .knapp');
-    if (falt) {
-      falt.focus({ preventScroll: true });
-      falt.scrollIntoView({ block: 'nearest' });
-      if (falt.tagName === 'TEXTAREA') falt.setSelectionRange(falt.value.length, falt.value.length);
-    }
-  });
-}
-
-const ctxOppen = (rad, scen) => (rad ? { i: rad.i, ankare: ankareFor(S.ep.manus, rad.i) } : { scen });
-
-// --- The tools of an open line -------------------------------------------------------------
-
-function verktyg(r, info, ankare) {
-  const skrev = info.skrev || { hur: 'okant', tidigare: [] };
-  const p = h('div', { class: 'verktyg' });
-  p.append(h('p', { class: 'vemrad' }, vemText(skrev)));
-  if (!kan()) return p;
-  const radform = S.form && ['andra', 'foresla', 'kommentera', 'ny', 'stryk'].includes(S.form.typ);
-  if (radform) {
-    p.append(radForm(r, ankare));
-    return p;
-  }
-  if (skrev.hur === 'utanfor') p.append(namnVal(ankare));
-  if (skrev.tidigare && skrev.tidigare.length) p.append(tidigareLista(ankare, skrev.tidigare));
-  const knapp = (text, typ) => h('button', { class: 'knapp liten', type: 'button', onclick: () => sattForm({ typ }) },
-    harUtkast(typ, ankare) ? `${text} · osparat` : text);
-  p.append(h('div', { class: 'knappar' },
-    knapp('Ändra', 'andra'),
-    knapp('Föreslå', 'foresla'),
-    knapp('Kommentera', 'kommentera'),
-    knapp('Ny replik efter', 'ny'),
-    r.variant || r.etikett ? null : knapp('Stryk', 'stryk')));
-  return p;
-}
-
-function namnVal(ankare) {
-  return h('div', { class: 'bekrafta lugn' },
-    h('p', null, 'Texten har ändrats utanför rummet. Vems ord är det?'),
-    h('div', { class: 'knappar' }, Object.entries(PERSONER).map(([id, p]) => h('button', {
-      class: 'knapp liten', type: 'button',
-      onclick: () => gora(() => S.lager.sattNamn(S.ep.nr, ankare, id)),
-    }, namnText(id)))));
-}
-
-function tidigareLista(ankare, tidigare) {
-  return h('details', { class: 'tidigare' },
-    h('summary', null, `Tidigare text (${tidigare.length})`),
-    h('ol', null, [...tidigare].reverse().map((t) => h('li', null,
-      h('p', { class: 'tidigare-text' }, radText(t.kropp)),
-      h('p', { class: 'meta' }, t.skrev === 'demi' && !t.nar ? 'Demis utkast' : t.skrev ? `${namnText(t.skrev)}${tid(t.nar)}` : 'ändrad utanför rummet'),
-      h('button', {
-        class: 'knapp liten', type: 'button',
-        onclick: () => gora(() => S.lager.taTillbakaText(S.ep.nr, ankare, t), { efter: (m) => { if (m) S.oppen = { nyI: m.i }; } }),
-      }, 'Ta tillbaka den här')))));
-}
-
-function radForm(r, ankare) {
-  const nr = S.ep.nr;
-  const typ = S.form.typ;
-  const nyckel = radNyckel(typ, ankare);
-  if (typ === 'andra') {
-    return ordForm({
-      rubrik: 'Ändra repliken', start: r.kropp, rad: r, nyckel, knapp: 'Spara i manus', jamfor: true,
-      spara: (k) => S.lager.andraRad(nr, ankare, k),
-      efter: (m) => { if (m) S.oppen = { nyI: m.i }; },
-      vidFel: (e, k) => (e.kod === 'hittas-inte' ? h('div', { class: 'knappar' },
-        h('button', {
-          class: 'knapp liten', type: 'button',
-          onclick: (ev) => gora(() => S.lager.foresla(nr, ankare, k), { nyckel, fel: ev.currentTarget.closest('.fel') }),
-        }, 'Lägg det som förslag i stället'),
-        h('button', { class: 'knapp liten', type: 'button', onclick: () => laddaOm() }, 'Läs in manuset igen')) : null),
-    });
-  }
-  if (typ === 'foresla') {
-    return ordForm({
-      rubrik: 'Föreslå en ny text. Den läggs bredvid repliken, och manuset ändras först när någon trycker Lägg in i manus.',
-      start: r.kropp, rad: r, nyckel, knapp: 'Lägg förslaget',
-      krav: (k) => (k === r.kropp ? 'Förslaget är samma som texten som står.' : true),
-      spara: (k) => S.lager.foresla(nr, ankare, k),
-    });
-  }
-  if (typ === 'ny') {
-    return ordForm({
-      rubrik: 'Ny replik, som ett eget stycke efter det här', start: '', rad: null, nyckel, knapp: 'Lägg till i manus',
-      spara: (k) => S.lager.nyRad(nr, { efter: ankare }, k),
-      efter: (m) => { if (m) S.oppen = { nyI: m.i }; },
-    });
-  }
-  if (typ === 'kommentera') {
-    return kommentarForm({
-      rubrik: 'Kommentar till repliken', nyckel, knapp: 'Spara kommentaren', medTill: true,
-      spara: (text, galler, till) => S.lager.kommentera(nr, ankare, text, galler, { till }),
-    });
-  }
-  return bekrafta({
-    text: 'Stryka repliken ur manuset? Den läggs under Struket sist i scenen och går att lägga tillbaka.',
-    ja: 'Stryk', fara: true,
-    gor: (fel) => gora(() => S.lager.strykRad(nr, ankare), { fel, efter: () => { S.oppen = null; } }),
-  });
-}
-
-const SLAG = [['vega', 'Vega talar'], ['regi', 'Regi och ljud'], ['annan', 'En annan röst']];
-const HJALP = {
-  vega: 'Det Vega säger. Inom parentes blir det regi eller ljud, inom citattecken en annan röst.',
-  regi: 'Hur något sägs, eller det som hörs runt henne. Rummet sätter parenteserna.',
-  annan: 'Vems röst, och vad den säger. Rummet sätter parentesen och citattecknen.',
-};
-
-// A line's words. The room keeps the format (the "> ", a variant's tag, the
-// parentheses of a direction); the person writes the words, and they are
-// saved exactly as typed.
-function ordForm({ rubrik, start, rad, nyckel, knapp, spara, efter = null, vidFel = null, krav = null, jamfor = false }) {
-  const utkast = lasUtkast(nyckel);
-  const d = utkast
-    ? { slag: utkast.slag || 'vega', ord: utkast.ord || '', vem: utkast.vem || '' }
-    : { vem: '', ...kroppDelar(start || '') };
-  let slag = d.slag;
-  const ordId = nyttFaltId();
-  const vemId = nyttFaltId();
-  const ordFalt = h('textarea', { class: 'falt manusfalt', id: ordId, rows: '2', value: d.ord, enterkeyhint: 'done', 'aria-describedby': `${ordId}-hjalp` });
-  const vemFalt = h('input', { class: 'falt', id: vemId, type: 'text', value: d.vem || '', autocomplete: 'off', placeholder: 'till exempel lojalisten' });
-  const vemRad = h('div', null, h('label', { class: 'etikett-falt', for: vemId }, 'Vems röst'), vemFalt);
-  const ordEtikett = h('label', { class: 'etikett-falt', for: ordId });
-  const hjalp = h('p', { class: 'hjalp', id: `${ordId}-hjalp` });
-  const fel = h('div', { class: 'fel', role: 'alert' });
-  const kropp = () => byggKropp({ slag, ord: ordFalt.value, vem: vemFalt.value });
-  const minns = () => {
-    if (!ordFalt.value && !vemFalt.value) slangUtkast(nyckel);
-    else if (start && kropp() === start) slangUtkast(nyckel);
-    else skrivUtkast(nyckel, { slag, ord: ordFalt.value, vem: vemFalt.value });
+async function visaDokument(r) {
+  fyll(underflikar(r), h('p', { class: 'laddar' }, 'Läser …'));
+  const arEpisod = EPISODER.includes(r.dok);
+  const V = {
+    rutt: r, dok: r.dok, arEpisod, slag: slagFor(r.dok), dokument: null, red: null, sedan: null, notRitad: null, karta: null,
   };
-  const val = SLAG.map(([s, t]) => h('button', {
-    type: 'button',
-    onclick: () => { slag = s; uppdatera(); minns(); ordFalt.focus(); },
-  }, t));
-  function uppdatera() {
-    val.forEach((b, n) => b.setAttribute('aria-pressed', String(SLAG[n][0] === slag)));
-    vemRad.hidden = slag !== 'annan';
-    hjalp.textContent = HJALP[slag];
-    ordEtikett.textContent = { vega: 'Det hon säger', regi: 'Regin', annan: 'Det rösten säger' }[slag];
-    ordFalt.classList.toggle('regi', slag === 'regi');
+  S.vy = V;
+  let start;
+  let sida = null;
+  try {
+    if (r.sida) {
+      S.lore = await S.lager.lasLore();
+      sida = S.lore.sidor.find((x) => x.id === r.sida) || null;
+      if (!sida) throw new Error('Sidan finns inte.');
+    }
+    V.dokument = await S.lager.dokument(r.dok, { ritad: () => dokumentRitat(V) });
+    const [l, kat, ljudet] = await Promise.all([
+      V.dokument.ladda(),
+      S.katalog ? Promise.resolve(S.katalog) : S.lager.katalog().catch(() => null),
+      arEpisod ? S.lager.ljud(r.dok).catch(() => null) : Promise.resolve(null),
+    ]);
+    start = l;
+    S.katalog = kat;
+    S.ljud = ljudet;
+    ljudCache.clear();
+  } catch (e) {
+    if (S.vy !== V) return;
+    fyll(underflikar(r), h('div', { class: 'band varning' }, felText(e)));
+    return;
   }
-  const form = h('form', { class: 'form', novalidate: true },
-    h('p', { class: 'form-rubrik' }, rubrik),
-    utkast ? h('p', { class: 'utkast-not' }, 'Här är texten du skrev förra gången men inte sparade.') : null,
-    h('div', { class: 'val', role: 'group', 'aria-label': 'Vad raden är' }, val),
-    vemRad,
-    ordEtikett,
-    ordFalt, hjalp, fel,
-    h('div', { class: 'knappar' },
-      h('button', { class: 'knapp huvud', type: 'submit' }, knapp),
-      h('button', { class: 'knapp', type: 'button', onclick: () => { slangUtkast(nyckel); stangForm(); } }, 'Avbryt')));
-  form.addEventListener('input', minns);
-  ordFalt.addEventListener('input', () => autosize(ordFalt));
-  // A line is one line in the file: Enter saves instead of breaking it.
-  ordFalt.addEventListener('keydown', (ev) => {
-    if (ev.key !== 'Enter' || ev.isComposing) return;
-    ev.preventDefault();
-    if (ev.shiftKey) fel.replaceChildren(h('p', null, 'En replik är en rad. Ska det bli två, spara den här och lägg till en ny efter.'));
-    else form.requestSubmit();
-  });
-  form.addEventListener('submit', async (ev) => {
-    ev.preventDefault();
-    fel.replaceChildren();
-    const sag = (t) => fel.replaceChildren(h('p', null, t));
-    if (!ordFalt.value.trim()) { sag('Det finns ingen text än.'); return; }
-    if (slag === 'annan' && !vemFalt.value.trim()) { sag('Skriv vems röst det är.'); vemFalt.focus(); return; }
-    const k = kropp();
-    try {
-      provaKropp(k, rad || {});
-    } catch (e) {
-      sag(e.message);
-      return;
-    }
-    if (krav) {
-      const svar = krav(k);
-      if (svar !== true) { sag(svar); return; }
-    }
-    if (jamfor && rad && k === rad.kropp) {
-      slangUtkast(nyckel);
-      stangForm();
-      status('Ingen ändring att spara.');
-      return;
-    }
-    await gora(() => spara(k), { fel, nyckel, efter, vidFel: vidFel ? (e) => vidFel(e, k) : null });
-  });
-  uppdatera();
-  return form;
-}
-
-// Asking Demi is offered to people who see Demi's posts.
-const kanFragaDemi = () => !!(S.jag && !arAI(S.jag.id) && !S.inst.doljDemi);
-
-// A comment, a reply, or a proposal for a whole scene: free text, kept exactly.
-function kommentarForm({ rubrik, nyckel, knapp, spara, medGaller = true, hjalpText = null, etikett = null, medTill = false, tillForval = false }) {
-  const utkast = lasUtkast(nyckel);
-  let galler = utkast ? utkast.galler || null : null;
-  const visaTill = medTill && kanFragaDemi();
-  let till = visaTill && (utkast ? utkast.till === 'demi' : tillForval) ? 'demi' : null;
-  const id = nyttFaltId();
-  const falt = h('textarea', { class: 'falt', id, rows: '3', value: utkast ? utkast.text || '' : '' });
-  const fel = h('div', { class: 'fel', role: 'alert' });
-  const minns = () => {
-    if (!falt.value) slangUtkast(nyckel);
-    else skrivUtkast(nyckel, { text: falt.value, galler, till });
-  };
-  const tillHjalp = h('p', { class: 'hjalp' });
-  const tillKnapp = h('button', {
-    type: 'button', class: 'till-knapp',
-    onclick: () => { till = till ? null : 'demi'; visaTillLage(); minns(); },
-  }, 'Fråga Demi');
-  function visaTillLage() {
-    tillKnapp.setAttribute('aria-pressed', String(till === 'demi'));
-    tillHjalp.textContent = till
-      ? 'Demi svarar här i tråden nästa gång Demi läser rummet. Demi är en AI.'
-      : 'Tryck om du vill ha svar från Demi.';
-  }
-  const nycklar = Object.keys(GALLER);
-  const val = nycklar.map((g) => h('button', {
-    type: 'button', 'aria-pressed': String(g === galler),
-    onclick: () => {
-      galler = galler === g ? null : g;
-      val.forEach((b, n) => b.setAttribute('aria-pressed', String(nycklar[n] === galler)));
-      minns();
+  if (S.vy !== V) return;
+  V.sedan = sedanSist(r.dok);
+  const mount = h('div', { class: 'redigerare' });
+  const delar = [underflikar(r)];
+  if (sida) delar.push(loreHuvud(sida));
+  else if (ARBETSTEXT[r.dok]) delar.push(h('p', { class: 'kalla' }, ARBETSTEXT[r.dok]));
+  V.notis = h('div', { class: 'notis' });
+  delar.push(V.notis, mount);
+  fyll(...delar);
+  let andradTimer = null;
+  V.red = skapaRedigerare({
+    plats: mount,
+    paras: start.paras,
+    slag: V.slag,
+    kanSkriva: kanSkriva(),
+    katalog: S.katalog,
+    etikett: arEpisod ? `Episod ${r.dok}` : r.dok === 'varld' ? 'Världsboken' : r.dok === 'mekaniker' ? 'Mekanikkatalogen' : 'Loresidan',
+    nyttId: D.nyttId,
+    // The waiting copy in the browser is written at most every quarter
+    // second while someone types; on leaving it is written at once.
+    andrat: () => {
+      if (andradTimer) return;
+      andradTimer = setTimeout(() => { andradTimer = null; if (S.vy === V) V.dokument.andrat(); }, 250);
     },
-  }, storBokstav(GALLER[g])));
-  const form = h('form', { class: 'form', novalidate: true },
-    h('p', { class: 'form-rubrik' }, rubrik),
-    utkast ? h('p', { class: 'utkast-not' }, 'Här är texten du skrev förra gången men inte sparade.') : null,
-    medGaller ? h('p', { class: 'hjalp' }, 'Gäller det något särskilt? Välj om du vill.') : null,
-    medGaller ? h('div', { class: 'val', role: 'group', 'aria-label': 'Vad kommentaren gäller' }, val) : null,
-    h('label', { class: 'etikett-falt', for: id }, etikett || (medGaller ? 'Kommentaren' : 'Förslaget')),
-    falt,
-    hjalpText ? h('p', { class: 'hjalp' }, hjalpText) : null,
-    visaTill ? h('div', { class: 'val till' }, tillKnapp) : null,
-    visaTill ? tillHjalp : null,
-    fel,
-    h('div', { class: 'knappar' },
-      h('button', { class: 'knapp huvud', type: 'submit' }, knapp),
-      h('button', { class: 'knapp', type: 'button', onclick: () => { slangUtkast(nyckel); stangForm(); } }, 'Avbryt')));
-  form.addEventListener('input', minns);
-  falt.addEventListener('input', () => autosize(falt));
-  form.addEventListener('submit', async (ev) => {
-    ev.preventDefault();
-    fel.replaceChildren();
-    if (!falt.value.trim()) { fel.replaceChildren(h('p', null, 'Skriv något först.')); return; }
-    await gora(() => spara(falt.value, galler, visaTill ? till : null), { fel, nyckel });
+    flyttat: () => ritaVerktyg(),
+    rita: (vy, p, info) => ritaStycke(V, vy, p, info),
+    ritat: () => planeraKomLayout(),
+    klick: (e, vy) => klickIStycke(V, e, vy),
   });
-  if (visaTill) visaTillLage();
-  return form;
+  V.flush = () => {
+    if (andradTimer) { clearTimeout(andradTimer); andradTimer = null; V.dokument.andrat(); }
+  };
+  if (kanSkriva()) V.dokument.koppla(V.red);
+  ritaVerktyg();
+  ritaLage();
+  ritaNotis(V);
+  if (start.vantande) status('Här är det du skrev förra gången men som inte hann sparas. Det sparas nu.', 'info', { kvar: true });
+  if (V.dokument.notFel) status(`Historiken och kommentarerna går inte att läsa just nu: ${felText(V.dokument.notFel)}`, 'fel', { kvar: true });
+  if (r.stycke) requestAnimationFrame(() => V.red.ga(r.stycke, { fokus: false }));
+  markeraBesok(r.dok);
 }
 
-function bekrafta({ text, ja, fara = false, gor, avbryt = stangForm }) {
-  const fel = h('div', { class: 'fel', role: 'alert' });
-  return h('div', { class: `bekrafta${fara ? '' : ' lugn'}` },
-    h('p', null, text), fel,
-    h('div', { class: 'knappar' },
-      h('button', { class: `knapp ${fara ? 'fara' : 'huvud'}`, type: 'button', onclick: () => gor(fel) }, ja),
-      h('button', { class: 'knapp', type: 'button', onclick: () => avbryt() }, 'Avbryt')));
+function dokumentRitat(V) {
+  if (S.vy !== V) return;
+  ritaLage();
+  if (V.red && V.dokument.not !== V.notRitad) {
+    V.notRitad = V.dokument.not;
+    V.karta = null;
+    V.red.ritaOm();
+    ritaNotis(V);
+  }
 }
 
-// --- Proposals and comments --------------------------------------------------------------
+// What each paragraph has beside it: open comments, proposals and krockar,
+// also those whose paragraph is gone (they show at the one it stood after).
+// red: the editor, also while it is being built (V.red is set after).
+function notKarta(V, red = V.red) {
+  if (V.karta && V.karta.not === V.dokument.not && V.karta.ver === S.ver) return V.karta;
+  const not = V.dokument.not;
+  const alla = red.stycken();
+  const finns = new Set(alla.map((p) => p.id));
+  const har = (id) => finns.has(id);
+  const ut = new Map();
+  const till = (id, slag, x) => {
+    const hem = A.hem(not, id, har) || (alla[0] && alla[0].id);
+    if (!ut.has(hem)) ut.set(hem, { kommentarer: [], forslag: [], krockar: [] });
+    ut.get(hem)[slag].push(x);
+  };
+  for (const k of not.kommentarer) {
+    if (k.svarPa || k.borta || k.klar || dold(k.skrev)) continue;
+    till(k.stycke, 'kommentarer', k);
+  }
+  for (const f of not.forslag) {
+    if (f.lage !== 'oppet' || dold(f.skrev)) continue;
+    till(f.stycke, 'forslag', f);
+  }
+  for (const k of not.krockar) {
+    if (k.lage !== 'oppen') continue;
+    till(k.stycke, 'krockar', k);
+  }
+  V.karta = { not, ver: S.ver, karta: ut };
+  return V.karta;
+}
 
-// Open proposals, and decided ones that people talked about: their thread
-// stays readable after the proposal was laid in or withdrawn.
-const visaForslag = (f) => f.lage === 'oppet' || synliga(S.v.svar.get(f.id) || []).length > 0;
+S.ver = 0;
 
-function forslagKort(f, { rad = null, scen = null, galde = null } = {}) {
-  const nr = S.ep.nr;
-  const scenNiva = f.mal.text == null;
-  if (f.lage !== 'oppet') {
-    return h('div', { class: `kort forslag stangd${arAI(f.skrev) ? ' fran-ai' : ''}` },
-      h('p', { class: 'kort-huvud' }, h('span', { class: 'slag' }, 'Förslag'), ' ', avsandare(f.skrev), tid(f.nar),
-        h('span', { class: 'lage' }, f.lage === 'inlagt' ? `inlagt i manus av ${namn(f.inlagt && f.inlagt.av)}` : 'draget undan')),
-      galde,
-      scenNiva ? h('div', { class: 'kort-text' }, renderText(f.kropp)) : h('p', { class: 'kort-manus' }, radText(f.kropp)),
-      trad(f, { rad, scen }));
-  }
-  const kort = h('div', { class: `kort forslag${arAI(f.skrev) ? ' fran-ai' : ''}` },
-    h('p', { class: 'kort-huvud' }, h('span', { class: 'slag' }, scenNiva ? 'Förslag för scenen' : 'Förslag'), ' ', avsandare(f.skrev), tid(f.nar)),
-    galde,
-    scenNiva ? h('div', { class: 'kort-text' }, renderText(f.kropp)) : h('p', { class: 'kort-manus' }, radText(f.kropp)));
-  const ja = (f.ja || []).map((j) => namn(j.vem));
-  kort.append(h('p', { class: 'ja' }, ja.length ? `Ja från ${lista(ja)}.` : 'Ingen har sagt ja än.'));
-  if (f.togsTillbaka) {
-    kort.append(h('p', { class: 'meta' }, `Har legat i manus. ${namn(f.togsTillbaka.av)} tog tillbaka den tidigare texten${tid(f.togsTillbaka.nar)}.`));
-  }
-  if (!kan()) {
-    kort.append(trad(f, { rad, scen, galde }));
-    return kort;
-  }
-  if (S.form && S.form.typ === 'lagg-in' && S.form.id === f.id) {
-    kort.append(bekrafta({
-      text: scenNiva
-        ? 'Markera förslaget som inlagt? Rummet ändrar inget i manuset; det här är för när ni har gjort ändringen själva.'
-        : `Byta repliken mot ${gen(namn(f.skrev))} förslag? Det loggas att du gjorde det, och texten som står nu går att ta tillbaka.`,
-      ja: scenNiva ? 'Markera som inlagt' : 'Lägg in i manus',
-      gor: (fel) => gora(() => S.lager.laggInForslag(nr, f.id), { fel, efter: (m) => { if (m && m.i != null) S.oppen = { nyI: m.i }; } }),
+// --- One paragraph's margin, comments and notes ---
+
+function ritaStycke(V, vy, p, info) {
+  if (S.vy !== V) return;
+  const dokument = V.dokument;
+  const red = vy.red;
+  const marg = [];
+  if (p.typ !== 'linje' && S.inst.visaVem && kanSkriva()) {
+    const v = dokument.vemSkrev(p);
+    const nytt = V.sedan && v.nar && v.vem !== mig() && String(v.nar) > V.sedan;
+    const titel = v.hur === 'osparat' ? 'Du, inte sparat än'
+      : v.hur === 'utkast' ? 'Demi (AI), första utkastet'
+        : !v.vem ? (v.hur === 'utanfor' ? 'Ändrat utanför rummet' : 'Okänt vem som skrev')
+          : `${namn(v.vem)}${arAI(v.vem) ? ' (AI)' : ''}${v.av && v.av !== v.vem ? `, lagt in av ${namn(v.av)}` : ''}${v.nar ? `, ${datum(v.nar)}` : ''}`;
+    marg.push(h('button', {
+      type: 'button', class: `av ${v.vem === 'henric' ? 'h' : v.vem === 'liv' ? 'l' : v.vem === 'demi' ? 'd' : 'x'}${nytt ? ' nytt' : ''}${v.hur === 'osparat' ? ' osparat' : ''}`,
+      title: `${titel}. Tryck för historiken.`, 'aria-label': `${titel}. Visa historiken.`, 'data-gor': 'historik',
     }));
-    return kort;
   }
-  const harJa = !!(S.jag && (f.ja || []).some((j) => j.vem === S.jag.id));
-  kort.append(h('div', { class: 'knappar' },
-    h('button', { class: 'knapp liten', type: 'button', onclick: () => gora(() => S.lager.sagJa(nr, f.id, !harJa)) }, harJa ? 'Ta tillbaka mitt ja' : 'Säg ja'),
-    galde ? null : h('button', {
-      class: 'knapp liten', type: 'button',
-      onclick: () => oppna(ctxOppen(rad, scen), { typ: 'lagg-in', id: f.id }),
-    }, scenNiva ? 'Markera som inlagt' : 'Lägg in i manus'),
-    mitt(f)
-      ? h('button', { class: 'knapp liten', type: 'button', onclick: () => gora(() => S.lager.draUndanForslag(nr, f.id)) }, 'Dra undan')
-      : null));
-  kort.append(trad(f, { rad, scen, galde }));
-  return kort;
-}
-
-function kommentarer(alla, ctx) {
-  const oppna = alla.filter((k) => !k.klar);
-  const klara = alla.filter((k) => k.klar);
-  const ut = oppna.map((k) => kommentarKort(k, ctx));
-  if (klara.length) {
-    ut.push(h('details', { class: 'klara' },
-      h('summary', null, klara.length === 1 ? '1 klar kommentar' : `${klara.length} klara kommentarer`),
-      klara.map((k) => kommentarKort(k, ctx))));
+  if (V.arEpisod && info.iScen) {
+    const lj = ljudLage(p);
+    if (lj.lage === 'inspelad') {
+      marg.push(h('button', { type: 'button', class: 'ring', 'aria-label': 'Lyssna', title: 'Lyssna', 'data-gor': 'lyssna' }));
+    } else if (lj.lage === 'ej') {
+      marg.push(h('span', { class: 'ring ny', title: 'Inte inspelad än', role: 'img', 'aria-label': 'Inte inspelad än' }));
+    }
   }
-  return ut;
-}
+  vy.marg.replaceChildren(...marg);
 
-function kommentarKort(k, { rad = null, scen = null, galde = null } = {}) {
-  const nr = S.ep.nr;
-  const kort = h('div', { class: `kort kommentar${k.klar ? ' klar' : ''}${arAI(k.skrev) ? ' fran-ai' : ''}` },
-    h('p', { class: 'kort-huvud' }, h('span', { class: 'slag' }, 'Kommentar'), ' ', avsandare(k.skrev), tid(k.nar),
-      k.galler ? h('span', { class: 'galler' }, GALLER[k.galler] || k.galler) : null,
-      tillText(k)),
-    galde,
-    h('div', { class: 'kort-text' }, renderText(k.text)),
-    k.klar ? h('p', { class: 'meta' }, `Klar, sa ${namn(k.klar.av)}${tid(k.klar.nar)}.`) : null);
-  if (!kan()) {
-    kort.append(trad(k, { rad, scen, galde }));
-    return kort;
-  }
-  if (S.form && S.form.typ === 'ta-bort' && S.form.id === k.id) {
-    kort.append(bekrafta({
-      text: 'Ta bort kommentaren? Den försvinner ur rummet men står kvar i anteckningsfilen.',
-      ja: 'Ta bort', fara: true,
-      gor: (fel) => gora(() => S.lager.taBortKommentar(nr, k.id), { fel }),
-    }));
-    return kort;
-  }
-  // A first post others have answered stays: removing it would hide their replies.
-  const andraSvar = (S.v.svar.get(k.id) || []).some((x) => x.skrev !== k.skrev);
-  kort.append(h('div', { class: 'knappar' },
-    h('button', { class: 'knapp liten', type: 'button', onclick: () => gora(() => S.lager.kommentarKlar(nr, k.id, !k.klar)) }, k.klar ? 'Inte klar' : 'Klar'),
-    mitt(k) && !andraSvar
-      ? h('button', { class: 'knapp liten', type: 'button', onclick: () => oppna(ctxOppen(rad, scen), { typ: 'ta-bort', id: k.id }) }, 'Ta bort')
-      : null));
-  kort.append(trad(k, { rad, scen, galde }));
-  return kort;
-}
-
-const tillText = (post) => (post.till ? h('span', { class: `till-text${arAI(post.till) ? ' ai' : ''}` }, `till ${namn(post.till)}`) : null);
-
-// The replies under a comment or a proposal, whether Demi has been asked and
-// not answered yet, and a way to answer.
-function trad(rot, { rad = null, scen = null } = {}) {
-  const nr = S.ep.nr;
-  const alla = (S.v.svar.get(rot.id) || []);
-  const svar = synliga(alla);
-  const ut = h('div', { class: `trad${svar.length ? '' : ' utan-svar'}` });
-  for (const k of svar) {
-    const el = h('div', { class: `svar${arAI(k.skrev) ? ' fran-ai' : ''}`, id: `svar-${k.id}` },
-      h('p', { class: 'kort-huvud' }, avsandare(k.skrev), tid(k.nar), tillText(k)),
-      h('div', { class: 'kort-text' }, renderText(k.text)));
-    if (kan() && mitt(k)) {
-      if (S.form && S.form.typ === 'ta-bort' && S.form.id === k.id) {
-        el.append(bekrafta({
-          text: 'Ta bort svaret? Det försvinner ur tråden men står kvar i anteckningsfilen.',
-          ja: 'Ta bort', fara: true,
-          gor: (fel) => gora(() => S.lager.taBortKommentar(nr, k.id), { fel }),
-        }));
-      } else {
-        el.append(h('div', { class: 'knappar' }, h('button', {
-          class: 'knapp liten tyst', type: 'button',
-          onclick: () => oppna(ctxOppen(rad, scen), { typ: 'ta-bort', id: k.id }),
-        }, 'Ta bort')));
+  // A mechanic: the catalogue's warning, and a request waiting for Demi.
+  if (p.typ === 'mekanik' && vy.extra) {
+    const extra = [];
+    if (K.arNyMekanik(p.text)) {
+      const svarat = A.demiHarSvarat(dokument.not, p.id, p.text);
+      extra.push(h('span', { class: `vantar${svarat ? ' svarat' : ''}` }, svarat ? 'Demi har svarat i kommentaren' : 'Ny mekanik: väntar på Demi'));
+    }
+    if (S.katalog) {
+      const per = new Map();
+      for (const x of K.hittaNamn(p.text, S.katalog)) {
+        for (const v of K.varsel(x.mekanik, S.katalog) || []) {
+          const nyckel = `${v.ord}\u0001${v.text}`;
+          if (!per.has(nyckel)) per.set(nyckel, { ...v, namn: [] });
+          if (!per.get(nyckel).namn.includes(v.namn)) per.get(nyckel).namn.push(v.namn);
+        }
+      }
+      for (const v of per.values()) {
+        extra.push(h('span', { class: `varsel ${K.klassFor(v.ord)}` }, `${v.ord}: ${lista(v.namn)}. ${v.text}`));
       }
     }
-    ut.append(el);
+    vy.extra.replaceChildren(...extra);
   }
-  if (!S.inst.doljDemi && [rot, ...alla].some((x) => S.v.vantar.has(x.id))) {
-    ut.append(h('p', { class: 'vantar' }, 'Väntar på svar från Demi.'));
+  // The title: which document and which draft.
+  if (p.typ === 'rubrik' && vy.extra) {
+    let under = '';
+    if (V.arEpisod) {
+      const andra = red.stycken()[1];
+      const m = andra && /^Utkast (\d+)/i.exec(andra.text);
+      under = `Episod ${V.dok}${m ? `, utkast ${m[1]}` : ''}`;
+    } else if (V.dok === 'varld') under = 'Världsboken';
+    else if (V.dok === 'mekaniker') under = 'Mekanikerna';
+    vy.extra.replaceChildren(under);
   }
-  if (kan() && !rot.borta && !rot.klar && (rot.lage == null || rot.lage === 'oppet')) {
-    const nyckel = utkastNyckel(`e${nr}`, 'svar', `svar-${rot.id}`);
-    if (S.form && S.form.typ === 'svara' && S.form.id === rot.id) {
-      const sista = svar.length ? svar[svar.length - 1] : rot;
-      ut.append(kommentarForm({
-        rubrik: `Svar till ${namn(sista.skrev)}`, nyckel, knapp: 'Svara', medGaller: false, etikett: 'Svaret',
-        medTill: true, tillForval: arAI(sista.skrev),
-        spara: (text, _g, till) => S.lager.svara(nr, rot.id, text, { till }),
-      }));
-    } else {
-      ut.append(h('div', { class: 'knappar' }, h('button', {
-        class: 'knapp liten tyst', type: 'button',
-        onclick: () => oppna(ctxOppen(rad, scen), { typ: 'svara', id: rot.id }),
-      }, S.utkast.has(nyckel) ? 'Svara · osparat' : 'Svara')));
-    }
+  if (p.typ === 'variant' && vy.etikett) vy.etikett.disabled = !kanSkriva();
+
+  // Under the paragraph: why it is not saved, if it is not.
+  const under = [];
+  const fel = p.typ === 'linje' ? null : D.fel(p, info.iScen) || (dokument.hallna.get(p.id) === 'form' ? 'form' : null);
+  if (fel && fel !== 'tom' && kanSkriva()) {
+    under.push(h('p', { class: 'hallen', role: 'note' }, `Inte sparat: ${D.FELTEXT[fel]}`));
+  } else if (fel === 'tom' && kanSkriva() && V.dokument.bas.some((b) => b.id === p.id)) {
+    under.push(h('p', { class: 'hallen', role: 'note' }, 'Tomt. Den gamla texten står kvar i filen tills du skriver något nytt eller tar bort stycket.'));
   }
-  return ut.childNodes.length ? ut : null;
+  vy.under.replaceChildren(...under);
+
+  // Comments, proposals and krockar in the margin.
+  const kom = [];
+  const x = kanSkriva() ? notKarta(V, red).karta.get(p.id) : null;
+  if (x) {
+    for (const k of x.krockar) kom.push(krockKort(V, k, p));
+    for (const f of x.forslag) kom.push(forslagKort(V, f, p));
+    for (const k of x.kommentarer) kom.push(kommentarKort(V, k, p));
+  }
+  vy.kom.replaceChildren(...kom);
+  vy.dom.classList.toggle('har-kom', kom.length > 0);
 }
 
-// --- The end of a scene: notes on the whole scene, notes whose line is gone,
-// struck lines, and the scene's own tools.
+// Comments never push the text: on a wide screen they hang in the right
+// margin, moved down only as far as needed not to cover each other.
+let komLayout = 0;
+function planeraKomLayout() {
+  if (komLayout) return;
+  komLayout = requestAnimationFrame(() => { komLayout = 0; layoutKom(); });
+}
+function layoutKom() {
+  const V = S.vy;
+  if (!V || !V.red) return;
+  const alla = [...inne.querySelectorAll('.st > .kom')];
+  if (!bred()) {
+    for (const k of alla) k.style.transform = '';
+    return;
+  }
+  const matt = alla.filter((k) => k.childElementCount).map((k) => ({ k, top: k.parentElement.offsetTop, hojd: k.offsetHeight }));
+  let botten = -Infinity;
+  for (const m of matt) {
+    const flytt = Math.max(0, botten - m.top);
+    m.k.style.transform = flytt ? `translateY(${flytt}px)` : '';
+    botten = m.top + flytt + m.hojd + 8;
+  }
+}
+window.addEventListener('resize', planeraKomLayout);
 
-const SCENFORMER = ['kommentera-scen', 'foresla-scen', 'ny-forst'];
-
-function ritaFot(s) {
-  const nr = S.ep.nr;
-  const sv = S.v.scener.get(s.nr) || { forslag: [], kommentarer: [], losa: [], strukna: [] };
-  const oppen = !!(S.oppen && S.oppen.i == null && S.oppen.scen === s.nr);
-  const fot = h('div', { class: 'scenfot', id: `fot-${s.nr}` });
-
-  const forslag = synliga(sv.forslag).filter(visaForslag);
-  const scenKommentarer = synliga(sv.kommentarer);
-  if (forslag.length || scenKommentarer.length) {
-    fot.append(h('h4', null, 'Om hela scenen'));
-    for (const f of forslag) fot.append(forslagKort(f, { scen: s.nr }));
-    fot.append(...kommentarer(scenKommentarer, { scen: s.nr }));
+function klickIStycke(V, e, vy) {
+  const t = e.target;
+  const p = V.red.stycken().find((x) => x.id === vy.node.attrs.id);
+  if (!p) return false;
+  const bricka = t.closest && t.closest('.bricka');
+  if (bricka && bricka.dataset.mek) {
+    visaBricka(bricka.dataset.mek);
+    return false;
   }
-  const losa = sv.losa.filter((x) => !dold(x.post.skrev) && (x.slag === 'kommentarer' || visaForslag(x.post)));
-  if (losa.length) {
-    fot.append(h('h4', null, 'Gällde en replik som inte står så längre'));
-    for (const { slag, post } of losa) {
-      const galde = h('p', { class: 'galde' }, post.mal.struken ? 'Gällde den strukna repliken ' : 'Gällde ', h('q', null, post.mal.text));
-      fot.append(slag === 'forslag' ? forslagKort(post, { scen: s.nr, galde }) : kommentarKort(post, { scen: s.nr, galde }));
-    }
-  }
-  if (sv.strukna.length) {
-    fot.append(h('h4', null, 'Struket'));
-    for (const st of sv.strukna) {
-      fot.append(h('div', { class: 'kort struken' },
-        h('p', { class: 'tidigare-text' }, radText(st.innehall)),
-        h('p', { class: 'meta' }, `Struken av ${namn(st.strok && st.strok.av)}${tid(st.strok && st.strok.nar)}.${st.skrev ? ` Skriven av ${namn(st.skrev)}.` : ''}`),
-        kan() ? h('div', { class: 'knappar' }, h('button', {
-          class: 'knapp liten', type: 'button',
-          onclick: () => gora(() => S.lager.laggTillbakaRad(nr, st.id), { efter: (m) => { if (m) S.oppen = { nyI: m.i }; } }),
-        }, 'Lägg tillbaka')) : null));
-    }
-  }
-  if (kan()) {
-    if (oppen && S.form && SCENFORMER.includes(S.form.typ)) {
-      fot.append(h('div', { class: 'verktyg' }, scenForm(s)));
-    } else {
-      const knapp = (text, typ) => h('button', {
-        class: 'knapp liten', type: 'button',
-        onclick: () => oppna({ scen: s.nr }, { typ }),
-      }, S.utkast.has(utkastNyckel(`e${nr}`, typ, `scen-${s.nr}`)) ? `${text} · osparat` : text);
-      fot.append(h('div', { class: 'knappar scenverktyg', role: 'group', 'aria-label': `Scen ${s.nr}` },
-        knapp('Kommentera scenen', 'kommentera-scen'),
-        knapp('Förslag för scenen', 'foresla-scen'),
-        s.delar.some((d) => d.typ === 'citat') ? knapp('Ny replik först i scenen', 'ny-forst') : null));
-    }
-  }
-  return fot;
+  const gor = t.closest && t.closest('[data-gor]');
+  if (!gor) return false;
+  e.preventDefault();
+  if (gor.dataset.gor === 'historik') visaHistorik(V, p.id);
+  else if (gor.dataset.gor === 'lyssna') {
+    const lj = ljudLage(p);
+    if (lj.lage === 'inspelad') spela(p.id, lj.delar, gor);
+  } else if (gor.dataset.gor === 'etikett' && kanSkriva()) valjEtikett(V, p.id);
+  return true;
 }
 
-function scenForm(s) {
-  const nr = S.ep.nr;
-  const nyckel = utkastNyckel(`e${nr}`, S.form.typ, `scen-${s.nr}`);
-  if (S.form.typ === 'kommentera-scen') {
-    return kommentarForm({
-      rubrik: `Kommentar till scen ${s.nr}, ${s.titel}`, nyckel, knapp: 'Spara kommentaren', medTill: true,
-      spara: (text, galler, till) => S.lager.kommentera(nr, { scen: s.nr }, text, galler, { till }),
-    });
-  }
-  if (S.form.typ === 'foresla-scen') {
-    return kommentarForm({
-      rubrik: `Förslag för scen ${s.nr}, ${s.titel}`, nyckel, knapp: 'Lägg förslaget', medGaller: false,
-      hjalpText: 'Ett förslag om scenen som helhet. Det läggs här och ändrar inget i manuset.',
-      spara: (text) => S.lager.foresla(nr, { scen: s.nr }, text),
-    });
-  }
-  return ordForm({
-    rubrik: 'Ny replik, först i scenen', start: '', rad: null, nyckel, knapp: 'Lägg till i manus',
-    spara: (k) => S.lager.nyRad(nr, { forst: { scen: s.nr, block: 0 } }, k),
-    efter: (m) => { if (m) S.oppen = { nyI: m.i }; },
-  });
+// --- Cards in the margin ---
+
+function kortHuvud(vem, nar, extra = null) {
+  return h('b', null, avsandare(vem), nar ? h('span', { class: 'nar' }, datum(nar)) : null, extra);
 }
 
-// --- The world: the world book, HELD's lore, and pages people write ----------------------------
+function kommentarKort(V, k, p) {
+  const svar = A.trad(V.dokument.not, k.id).filter((x) => !dold(x.skrev));
+  const egen = k.skrev === mig();
+  const galdeAnnat = k.galde != null && k.galde !== p.text && k.stycke === p.id;
+  return h('div', { class: `kort${arAI(k.skrev) ? ' ai' : ''}` },
+    kortHuvud(k.skrev, k.nar, k.till ? h('span', { class: 'till' }, `till ${namn(k.till)}`) : null),
+    galdeAnnat ? h('span', { class: 'galde' }, `Om: «${kortText(k.galde, 70)}»`) : null,
+    k.stycke !== p.id ? h('span', { class: 'galde' }, `Om ett stycke som är borttaget${k.galde ? `: «${kortText(k.galde, 60)}»` : ''}`) : null,
+    h('span', { class: 'kort-text' }, k.text),
+    svar.map((s) => h('div', { class: `svar${arAI(s.skrev) ? ' ai' : ''}` }, kortHuvud(s.skrev, s.nar), h('span', { class: 'kort-text' }, s.text))),
+    kanSkriva() ? h('span', { class: 'val' },
+      h('button', { type: 'button', onclick: () => skrivKommentar(V, p, { svarPa: k }) }, 'Svara'),
+      h('button', { type: 'button', onclick: () => anteckna(V, 'klar', { id: k.id, vem: mig(), nar: nu() }, 'Markerad som klar.') }, 'Klar'),
+      egen ? h('button', { type: 'button', onclick: () => skrivKommentar(V, p, { andra: k }) }, 'Ändra') : null,
+      h('button', { type: 'button', onclick: () => anteckna(V, 'ta-bort', { id: k.id, vem: mig(), nar: nu() }, 'Kommentaren är borttagen. Den finns kvar under Historik.') }, 'Ta bort')) : null);
+}
 
-const senast = (s) => (s.andrad && s.andrad.nar) || s.skapad || '';
-const metaSida = (s) => [avsandare(s.skrev), tid(s.skapad),
-  s.andrad ? `, ändrad${s.andrad.av !== s.skrev ? ` av ${namn(s.andrad.av)}` : ''}${tid(s.andrad.nar)}` : ''];
+function forslagKort(V, f, p) {
+  const andrat = f.galde != null && f.galde !== p.text && f.stycke === p.id;
+  const somNytt = f.stycke !== p.id || f.los;
+  return h('div', { class: `kort${arAI(f.skrev) ? ' ai' : ''}` },
+    kortHuvud(f.skrev, f.nar),
+    f.fri ? 'Om scenen:' : somNytt ? 'Förslag på ett nytt stycke här:' : 'Förslag i stället:',
+    h('span', { class: 'forslag' }, f.text),
+    andrat ? h('span', { class: 'galde' }, 'Stycket har ändrats sedan förslaget skrevs.') : null,
+    kanSkriva() ? h('span', { class: 'val' },
+      f.fri ? null : h('button', { type: 'button', onclick: () => laggIn(V, f, p, somNytt) }, 'Lägg in'),
+      h('button', { type: 'button', onclick: () => anteckna(V, 'forslag-lage', { id: f.id, lage: 'avfard', vem: mig(), nar: nu() }, 'Förslaget är avfärdat. Det finns kvar under Historik.') }, f.fri ? 'Klar' : 'Avfärda'),
+      h('button', { type: 'button', onclick: () => skrivKommentar(V, p, { svarPa: f }) }, 'Svara')) : null);
+}
 
-async function visaVarlden(r, { tyst = false, hamta = true } = {}) {
-  if (!tyst) main.replaceChildren(h('p', { class: 'laddar' }, 'Läser …'));
-  const y = window.scrollY;
-  const flikar = h('nav', { class: 'underflikar', 'aria-label': 'Världen' },
-    [['varld', 'Världsboken', '#varlden'], ['held', 'HELD', '#varlden/held'], ['sidor', 'Våra sidor', '#varlden/sidor']].map(([f, t, href]) => {
-      const aktiv = r.flik === f || (f === 'sidor' && (r.flik === 'sida' || r.flik === 'ny'));
-      return h('a', { href, 'aria-current': aktiv ? 'page' : null }, t);
-    }));
-  let inne;
+// A Swedish genitive: Henrics, Livs, but Demis stays Demis.
+const gen = (n) => (/[sxz]$/i.test(n) ? n : `${n}s`);
+
+function krockText(k) {
+  const mot = k.mot ? namn(k.mot) : null;
+  const iTexten = mot ? `I texten står nu ${gen(mot)} version.` : 'I texten står nu den version som sparades sist.';
+  if (!k.vem) return `Stycket ändrades utanför rummet medan ${mot || 'någon'} skrev i det. ${iTexten} Den andra versionen var:`;
+  const vem = `${namn(k.vem)}${arAI(k.vem) ? ' (AI)' : ''}`;
+  if (k.vem === k.mot) return `Samma stycke ändrades i två fönster samtidigt. ${iTexten} Den andra versionen var:`;
+  return `${vem} ändrade samma stycke samtidigt${mot ? ` som ${mot}` : ''}. ${iTexten} ${gen(namn(k.vem))} version var:`;
+}
+
+function krockKort(V, k, p) {
+  return h('div', { class: 'kort krock', role: 'note' },
+    h('b', null, 'Två ändringar möttes'),
+    h('span', { class: 'kort-text' }, krockText(k)),
+    h('span', { class: 'forslag' }, k.text),
+    kanSkriva() ? h('span', { class: 'val' },
+      h('button', { type: 'button', onclick: () => anvandVersion(V, p.id, k, { hur: 'krock', vem: k.vem, krock: k.id }) }, 'Använd den här'),
+      h('button', { type: 'button', onclick: () => anteckna(V, 'krock-lage', { id: k.id, lage: 'behallen', vem: mig(), nar: nu() }, 'Texten står kvar som den är. Den andra versionen finns under Historik.') }, 'Behåll texten')) : null);
+}
+
+// A note (comment, done, removed, proposal, krock settled): written at once
+// if it can be, otherwise it waits in the browser and is sent later.
+async function anteckna(V, slag, args, klart) {
   try {
-    if (r.flik === 'varld' || r.flik === 'held') {
-      inne = await loreDokument(r.flik);
-    } else {
-      if (hamta || !S.lore) S.lore = await S.lager.lasLore();
-      inne = r.flik === 'sida' ? loreSida(r.id) : loreLista(r.flik === 'ny');
-    }
+    const ok = await V.dokument.anteckna(slag, args);
+    status(ok ? klart : 'Sparat här. Det skickas när portalen svarar.', ok ? 'ok' : 'fel');
   } catch (e) {
-    inne = h('div', { class: 'band varning' }, felText(e));
+    status(felText(e), 'fel');
+  }
+  dokumentRitat(V);
+  if (V.red) V.red.ritaOm();
+}
+
+// Text from someone (a proposal, an earlier version, the other side of a
+// krock) goes in as a change of the paragraph, in the undo history, and
+// the save records whose words they are.
+function anvandVersion(V, id, x, avsikt) {
+  const p = { typ: x.typ || 'replik', attrs: D.rensaAttrs(x.typ || 'replik', x.attrs), text: x.text };
+  V.dokument.avsikt(id, { nyckel: D.nyckel(p), ...avsikt });
+  V.red.ersattStycke(id, p);
+  status('Inlagt. Det sparas om en stund, och går att ångra.', 'ok');
+}
+
+function laggIn(V, f, p, somNytt) {
+  if (somNytt) {
+    const id = D.nyttId();
+    const ny = { id, typ: f.typ, attrs: D.rensaAttrs(f.typ, f.attrs), text: f.text };
+    V.dokument.avsikt(id, { nyckel: D.nyckel(ny), hur: 'forslag', vem: f.skrev, forslag: f.id });
+    V.red.infogaStycke(p.id, ny);
+    status('Förslaget är inlagt som ett nytt stycke.', 'ok');
+    return;
+  }
+  anvandVersion(V, p.id, f, { hur: 'forslag', vem: f.skrev, forslag: f.id });
+}
+
+// --- Writing a comment or a proposal ---
+
+const utkastNyckel = (V, x) => `glimt-rummet|${S.adapter.rot || S.adapter.namn}|kommentar|${V.dok}|${x}`;
+const lasUtkast = (k) => { try { return localStorage.getItem(k) || ''; } catch { return ''; } };
+const skrivUtkast = (k, v) => { try { if (v) localStorage.setItem(k, v); else localStorage.removeItem(k); } catch { /* the field still has it */ } };
+
+function skrivKommentar(V, p, { svarPa = null, andra = null, forslag = false } = {}) {
+  if (!kanSkriva()) return;
+  const nyckel = utkastNyckel(V, `${forslag ? 'forslag' : andra ? `andra-${andra.id}` : svarPa ? `svar-${svarPa.id}` : 'ny'}|${p.id}`);
+  const forval = andra ? andra.text : forslag ? p.text : '';
+  const text = h('textarea', { class: 'falt', rows: forslag ? 4 : 3, 'data-fokus': true, 'aria-label': forslag ? 'Förslaget' : 'Kommentaren' });
+  text.value = lasUtkast(nyckel) || forval;
+  const fragaDemi = h('input', { type: 'checkbox', id: 'fraga-demi' });
+  const fel = h('p', { class: 'fel', role: 'alert' });
+  text.addEventListener('input', () => skrivUtkast(nyckel, text.value !== forval ? text.value : ''));
+  const titel = forslag ? 'Föreslå i stället' : andra ? 'Ändra din kommentar' : svarPa ? 'Svara' : 'Kommentera';
+  const skicka = async (ev) => {
+    ev.preventDefault();
+    const t = text.value;
+    if (!t.trim()) { fel.textContent = 'Skriv något först.'; return; }
+    let slag;
+    let args;
+    if (forslag) {
+      if (t === p.text) { fel.textContent = 'Förslaget är samma som texten. Ändra något först.'; return; }
+      if (/[\n\r]/.test(t)) { fel.textContent = 'Ett stycke är en rad. Skriv förslaget utan radbrytning.'; return; }
+      slag = 'forslag';
+      args = { id: D.nyttId(), stycke: p.id, galde: p.text, text: t, typ: p.typ, attrs: p.attrs, vem: mig(), nar: nu() };
+    } else if (andra) {
+      slag = 'andra-kommentar';
+      args = { id: andra.id, text: t, vem: mig(), nar: nu() };
+    } else {
+      slag = 'kommentar';
+      args = { id: D.nyttId(), stycke: p.id, galde: p.text, text: t, vem: mig(), nar: nu(), svarPa: svarPa ? svarPa.id : null, till: fragaDemi.checked ? 'demi' : null };
+    }
+    skrivUtkast(nyckel, '');
+    stangPanel();
+    await anteckna(V, slag, args, forslag ? 'Förslaget ligger vid stycket.' : 'Kommentaren är sparad.');
+  };
+  oppnaPanel(titel,
+    h('p', { class: 'om' }, svarPa ? `Svar till ${namn(svarPa.skrev)}: «${kortText(svarPa.text, 80)}»` : `Om: «${kortText(p.text || '(tomt stycke)', 90)}»`),
+    h('form', { class: 'form', onsubmit: skicka },
+      text,
+      forslag ? h('p', { class: 'hjalp' }, 'Förslaget ligger vid stycket tills någon lägger in det eller avfärdar det. Texten ändras inte förrän dess.') : null,
+      !forslag && !andra && !arAI(mig()) ? h('label', { class: 'kryss', for: 'fraga-demi' }, fragaDemi, 'Be Demi svara') : null,
+      fel,
+      h('div', { class: 'knappar' },
+        h('button', { type: 'submit', class: 'knapp huvud' }, forslag ? 'Lägg förslaget' : andra ? 'Spara' : 'Skicka'),
+        h('button', { type: 'button', class: 'knapp', onclick: () => stangPanel() }, 'Avbryt'))));
+}
+
+// --- History ---
+
+const HUR = {
+  utkast: 'första utkastet', utanfor: 'ändrat utanför rummet', skrev: 'skrev', andrade: 'ändrade',
+  forslag: 'förslag', tillbaka: 'tog tillbaka', krock: 'mötte en annan ändring, står inte i texten',
+};
+
+function visaHistorik(V, id = null) {
+  const not = V.dokument.not;
+  const stycken = V.red.stycken();
+  const finns = new Set(stycken.map((p) => p.id));
+  const markor = V.red.markor();
+  const p = stycken.find((x) => x.id === (id || (markor && markor.p.id)));
+  const delar = [];
+  if (p) {
+    const lista = A.historikFor(not, p.id).filter((e) => !e.borta);
+    const nuNyckel = D.nyckel(p);
+    const versioner = [...lista].reverse();
+    const v = V.dokument.vemSkrev(p);
+    delar.push(h('section', { class: 'avsnitt' },
+      h('h3', null, 'Det här stycket'),
+      h('p', { class: 'version nu' }, h('span', { class: 'meta' }, v.vem ? avsandare(v.vem) : (v.hur === 'osparat' ? 'Du, inte sparat än' : HUR[v.hur] || 'Okänt'), v.nar ? ` ${datum(v.nar)}` : '', ' · står i texten nu'), h('span', { class: 'text-version' }, p.text || '(tomt)')),
+      versioner.filter((e) => D.nyckel(e) !== nuNyckel || e.hur === 'krock').map((e) => h('div', { class: `version${e.hur === 'krock' ? ' krockad' : ''}` },
+        h('span', { class: 'meta' }, e.vem ? avsandare(e.vem) : 'Okänt vem', ` ${HUR[e.hur] || e.hur}`, e.av && e.av !== e.vem ? `, av ${namn(e.av)}` : '', e.nar ? `, ${datum(e.nar)}` : ''),
+        h('span', { class: 'text-version' }, e.text),
+        kanSkriva() ? h('button', { type: 'button', class: 'knapp liten', onclick: () => { stangPanel(); anvandVersion(V, p.id, e, { hur: 'tillbaka', vem: e.vem }); } }, 'Ta tillbaka den här') : null)),
+      versioner.length <= 1 && !versioner.some((e) => D.nyckel(e) !== nuNyckel) ? h('p', { class: 'dov' }, 'Inga tidigare versioner.') : null));
+    // Comments and proposals that are done, removed, laid in or dismissed.
+    const stangda = [
+      ...not.kommentarer.filter((k) => k.stycke === p.id && !k.svarPa && (k.klar || k.borta)),
+      ...not.forslag.filter((f) => f.stycke === p.id && f.lage !== 'oppet'),
+    ];
+    if (stangda.length) {
+      delar.push(h('section', { class: 'avsnitt' }, h('h3', null, 'Klara och borttagna'),
+        stangda.map((x) => h('div', { class: 'version' },
+          h('span', { class: 'meta' }, avsandare(x.skrev), ` ${x.lage ? (x.lage === 'inlagt' ? 'förslag, inlagt' : 'förslag, avfärdat') : x.borta ? 'kommentar, borttagen' : 'kommentar, klar'}`, x.nar ? `, ${datum(x.nar)}` : ''),
+          h('span', { class: 'text-version' }, x.text),
+          kanSkriva() ? h('button', {
+            type: 'button', class: 'knapp liten',
+            onclick: () => {
+              stangPanel();
+              if (x.lage) anteckna(V, 'forslag-lage', { id: x.id, lage: 'oppet', vem: mig(), nar: nu() }, 'Förslaget är öppet igen.');
+              else if (x.borta) anteckna(V, 'ta-bort', { id: x.id, vem: mig(), nar: nu(), tillbaka: true }, 'Kommentaren är tillbaka.');
+              else anteckna(V, 'klar', { id: x.id, vem: mig(), nar: nu(), klar: false }, 'Kommentaren är öppen igen.');
+            },
+          }, x.lage ? 'Öppna igen' : x.borta ? 'Lägg tillbaka' : 'Öppna igen') : null))));
+    }
+  }
+  // Since last time.
+  const sedan = sedanLista(V);
+  delar.push(h('section', { class: 'avsnitt' },
+    h('h3', null, V.sedan ? `Sedan du var här ${datum(V.sedan)}` : 'Senaste ändringarna'),
+    sedan.length ? h('ul', { class: 'handelser' }, sedan.slice(0, 40).map((x) => h('li', null,
+      h('button', { type: 'button', class: 'lank', onclick: () => { stangPanel({ tillRedigeraren: false }); V.red.ga(finns.has(x.stycke) ? x.stycke : A.hem(not, x.stycke, (i) => finns.has(i)) || stycken[0].id); } },
+        avsandare(x.vem), ` ${HANDELSE[x.slag] || x.slag} `, h('span', { class: 'dov' }, datum(x.nar))),
+      x.text ? h('span', { class: 'utdrag' }, kortText(x.text, 120)) : null))) : h('p', { class: 'dov' }, V.sedan ? 'Inget nytt från någon annan.' : 'Inget ännu.')));
+  // Removed paragraphs.
+  const borta = A.borttagna(not, (i) => finns.has(i));
+  if (borta.length) {
+    delar.push(h('section', { class: 'avsnitt' }, h('h3', null, `Borttagna stycken (${borta.length})`),
+      borta.slice(0, 60).map((b) => h('div', { class: 'version' },
+        h('span', { class: 'meta' }, 'Borttaget av ', b.borta.vem ? avsandare(b.borta.vem) : 'okänd', b.borta.nar ? `, ${datum(b.borta.nar)}` : ''),
+        h('span', { class: 'text-version' }, b.sista.text),
+        kanSkriva() ? h('button', { type: 'button', class: 'knapp liten', onclick: () => { stangPanel(); laggTillbaka(V, b); } }, 'Lägg tillbaka') : null))));
+  }
+  oppnaPanel('Historik', ...delar);
+}
+
+const HANDELSE = {
+  andrade: 'ändrade', skrev: 'skrev', strok: 'tog bort', forslag: 'föreslog', kommentar: 'kommenterade', svar: 'svarade',
+  tillbaka: 'tog tillbaka', krock: 'ändrade samtidigt',
+};
+
+function sedanLista(V) {
+  const jag = mig();
+  return A.handelser(V.dokument.not).filter((x) => x.vem !== jag && !dold(x.vem) && (!V.sedan || String(x.nar) > V.sedan));
+}
+
+function laggTillbaka(V, b) {
+  const finns = new Set(V.red.stycken().map((p) => p.id));
+  const efter = A.hem(V.dokument.not, b.borta.efter, (i) => finns.has(i));
+  const p = { id: b.id, typ: b.sista.typ, attrs: D.rensaAttrs(b.sista.typ, b.sista.attrs), text: b.sista.text };
+  V.dokument.avsikt(b.id, { nyckel: D.nyckel(p), hur: 'tillbaka', vem: b.sista.vem });
+  V.red.infogaStycke(efter, p);
+  V.red.ga(b.id);
+  status('Stycket är tillbaka. Det går att ångra.', 'ok');
+}
+
+// --- Since last time ---
+
+function sedanSist(dok) {
+  const k = `glimt-rummet|sedan|${dok}`;
+  try {
+    const sparad = sessionStorage.getItem(k);
+    if (sparad != null) return sparad || null;
+    const v = (S.inst.besok && S.inst.besok[dok]) || '';
+    sessionStorage.setItem(k, v);
+    return v || null;
+  } catch {
+    return (S.inst.besok && S.inst.besok[dok]) || null;
+  }
+}
+
+function markeraBesok(dok) {
+  if (!kanSkriva()) return;
+  S.lager.sattInstallning('besok', { dok, nar: nu() }).then((i) => { S.inst = i; }).catch(() => {});
+}
+
+function ritaNotis(V) {
+  if (!V.notis) return;
+  const delar = [];
+  const n = kanSkriva() ? sedanLista(V).length : 0;
+  if (n && V.sedan) {
+    delar.push(h('p', { class: 'sedan' }, `${n === 1 ? 'En sak' : `${n} saker`} har hänt sedan du var här sist. `,
+      h('button', { type: 'button', class: 'lank', onclick: () => visaHistorik(V) }, 'Visa')));
+  }
+  const vantar = V.dokument.ko().length;
+  if (vantar) delar.push(h('p', { class: 'sedan' }, 'Anteckningar om vem som skrev väntar i webbläsaren och skickas så fort det går.'));
+  V.notis.replaceChildren(...delar);
+}
+
+// --- Mechanics in a scene ---
+
+function visaBricka(mekId) {
+  const k = S.katalog && S.katalog.mekaniker.find((x) => x.id === mekId);
+  if (!k) return;
+  oppnaPanel(k.namn, mekanikDetaljer(k, { lank: true }));
+}
+
+function omdomeMarke(k) {
+  return h('span', { class: `omdome ${K.klassFor(k.omdome)}` }, h('i', { 'aria-hidden': 'true' }), k.omdome || 'Inget omdöme');
+}
+
+function mekanikDetaljer(k, { lank = false, anvands = null } = {}) {
+  const v = K.varsel(k, S.katalog) || [];
+  return h('div', { class: 'mekanik-detaljer' },
+    h('p', { class: 'mek-rad' }, omdomeMarke(k), k.grupp ? h('span', { class: 'dov' }, ` · ${k.grupp}`) : null),
+    k.du ? h('p', null, h('strong', null, 'Du gör: '), k.du) : null,
+    k.berattelse ? h('p', null, h('strong', null, 'I berättelsen: '), k.berattelse) : null,
+    k.omdomeText ? h('p', null, h('strong', null, 'Omdöme: '), k.omdomeText) : null,
+    k.tank ? h('p', null, h('strong', null, 'Tänk på: '), k.tank) : null,
+    k.varianter.length ? h('p', null, h('strong', null, 'Varianter: '), k.varianter.join(', ')) : null,
+    v.map((x) => h('p', { class: `varsel ${K.klassFor(x.ord)}` }, `${x.ord}: ${x.text}`)),
+    anvands,
+    lank ? h('p', null, h('a', { href: `#mekaniker/${k.id}`, onclick: () => stangPanel({ tillRedigeraren: false }) }, 'Visa i katalogen')) : null);
+}
+
+function infogaMekanik(V) {
+  if (!S.katalog || !S.katalog.mekaniker.length) { status('Katalogen gick inte att läsa.', 'fel'); return; }
+  const m = V.red.markor();
+  if (!m || !m.iScen) { status('Ställ markören i en scen först. Mekaniker hör till scenerna.', 'info'); return; }
+  const sok = h('input', { type: 'search', class: 'falt', placeholder: 'Sök bland mekanikerna', 'aria-label': 'Sök bland mekanikerna', 'data-fokus': true, autocomplete: 'off' });
+  const ut = h('div', { class: 'mek-lista', role: 'list' });
+  const rita = () => {
+    const traffar = K.sok(S.katalog, sok.value);
+    const grupper = new Map();
+    for (const k of traffar) {
+      if (!grupper.has(k.grupp)) grupper.set(k.grupp, []);
+      grupper.get(k.grupp).push(k);
+    }
+    ut.replaceChildren(...[...grupper].map(([g, ks]) => h('div', { class: 'grupp' }, h('h3', null, g || 'Övrigt'),
+      ks.map((k) => h('button', {
+        type: 'button', class: 'mek-val', role: 'listitem',
+        onclick: () => {
+          stangPanel({ tillRedigeraren: false });
+          const r = V.red.infogaMekanik(k.namn);
+          if (!r.ok) { status(r.fel, 'info'); return; }
+          status(`${k.namn} står nu i scenens mekanik${r.grenar ? ', och scenen har fått två tomma grenar att skriva i' : ''}.`, 'ok');
+        },
+      }, h('span', { class: 'mek-namn' }, h('i', { class: `prick-omdome ${K.klassFor(k.omdome)}`, 'aria-hidden': 'true' }), k.namn, h('span', { class: 'dov' }, ` ${k.omdome || ''}`)),
+      k.du ? h('span', { class: 'mek-du' }, `Du ${kortText(k.du, 110)}`) : null)))));
+    if (!traffar.length) ut.replaceChildren(h('p', { class: 'dov' }, 'Ingen mekanik passar. Skriv den med egna ord i scenens mekanik, och börja med Ny mekanik:, så svarar Demi.'));
+  };
+  sok.addEventListener('input', rita);
+  rita();
+  oppnaPanel(`Infoga mekanik i scen ${m.scen || ''}`.trim(), h('p', { class: 'hjalp' }, 'Namnet läggs sist i scenens mekanik. Har scenen inga grenar får den två tomma.'), sok, ut);
+}
+
+function valjEtikett(V, id) {
+  const p = V.red.stycken().find((x) => x.id === id);
+  if (!p) return;
+  const nu0 = p.typ === 'variant' ? p.attrs.etikett : '';
+  const val = S.katalog ? K.varianter(S.katalog) : [];
+  const perMek = new Map();
+  for (const v of val) {
+    if (!perMek.has(v.mekanik.namn)) perMek.set(v.mekanik.namn, []);
+    perMek.get(v.mekanik.namn).push(v.etikett);
+  }
+  const egen = h('input', { type: 'text', class: 'falt', 'aria-label': 'Egen etikett', placeholder: 'Egen etikett', autocomplete: 'off' });
+  const fel = h('p', { class: 'fel', role: 'alert' });
+  const satt = (e) => {
+    if (!e.trim()) { fel.textContent = 'Skriv en etikett.'; return; }
+    if (/[\]\n\r]/.test(e)) { fel.textContent = D.FELTEXT.etikett; return; }
+    stangPanel();
+    V.red.sattEtikett(id, e.trim());
+  };
+  oppnaPanel('Etikett för varianten',
+    h('p', { class: 'hjalp' }, 'Telefonen väljer raden när det här stämmer. Etiketterna kommer ur katalogen.'),
+    [...perMek].map(([mek, ets]) => h('div', { class: 'etikett-grupp' }, h('h3', null, mek),
+      h('div', { class: 'etiketter' }, ets.map((e) => h('button', { type: 'button', class: `etikett-val${e === nu0 ? ' vald' : ''}`, 'aria-pressed': e === nu0 ? 'true' : 'false', 'data-fokus': e === nu0 ? true : null, onclick: () => satt(e) }, e))))),
+    h('form', { class: 'form rad-form', onsubmit: (ev) => { ev.preventDefault(); satt(egen.value); } }, egen, h('button', { type: 'submit', class: 'knapp' }, 'Använd')),
+    fel);
+}
+
+// --- The toolbar --------------------------------------------------------------------------------
+
+function ritaVerktyg() {
+  const t = $('verktyg');
+  const V = S.vy;
+  if (!V || !V.red || !kanSkriva()) {
+    t.hidden = true;
+    document.body.classList.remove('med-verktyg');
+    return;
+  }
+  t.hidden = false;
+  document.body.classList.add('med-verktyg');
+  const m = V.red.markor();
+  const stil = m ? m.stil : '';
+  if (!t.firstChild) byggVerktyg(t);
+  t.querySelector('.typval span').textContent = stil || 'Stil';
+  t.querySelector('[data-gor="infoga"]').hidden = !V.arEpisod;
+  t.querySelector('[data-gor="etikett"]').hidden = !(m && m.p.typ === 'variant');
+  const ets = t.querySelector('[data-gor="etikett"]');
+  if (m && m.p.typ === 'variant') ets.textContent = m.p.attrs.etikett ? `Etikett: ${m.p.attrs.etikett}` : 'Välj etikett';
+  t.querySelector('.skilje.mek').hidden = !V.arEpisod && !(m && m.p.typ === 'variant');
+}
+
+function byggVerktyg(t) {
+  const knapp = (gor, text, extra = {}) => h('button', { type: 'button', 'data-gor': gor, ...extra }, text);
+  t.replaceChildren(
+    h('button', { type: 'button', class: 'typval', 'data-gor': 'stil', 'aria-haspopup': 'menu', 'aria-expanded': 'false', title: 'Styckets stil' }, h('span', null, 'Stil')),
+    h('span', { class: 'skilje mek' }),
+    knapp('infoga', 'Infoga mekanik'),
+    knapp('etikett', 'Etikett'),
+    h('span', { class: 'skilje' }),
+    knapp('kommentera', 'Kommentera'),
+    knapp('foresla', 'Föreslå'),
+    knapp('historik', 'Historik'),
+    h('span', { class: 'skilje' }),
+    h('button', { type: 'button', 'data-gor': 'angra', class: 'ikon', 'aria-label': 'Ångra', title: 'Ångra (Ctrl+Z)' }, svg(IKON.angra)),
+    h('button', { type: 'button', 'data-gor': 'gorom', class: 'ikon', 'aria-label': 'Gör om', title: 'Gör om (Ctrl+Y)' }, svg(IKON.gorom)),
+    h('span', { class: 'vem', 'aria-hidden': 'true' }, h('span', { class: 'h' }, h('i'), 'Henric'), h('span', { class: 'l' }, h('i'), 'Liv'), h('span', { class: 'd' }, h('i'), 'Demi')),
+  );
+}
+
+// The editor keeps the cursor while a tool is pressed.
+$('verktyg').addEventListener('mousedown', (e) => {
+  if (e.target.closest('button')) e.preventDefault();
+});
+$('verktyg').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-gor]');
+  const V = S.vy;
+  if (!b || !V || !V.red) return;
+  const m = V.red.markor();
+  const gor = b.dataset.gor;
+  if (gor === 'stil') {
+    const stilar = m && m.iScen ? STILAR_SCEN : STILAR_TEXT;
+    oppnaMeny(b, stilar.map((s, k) => ({ namn: s.namn, tips: `Ctrl+Shift+${k + 1}`, vald: !!(m && arStil(s, m.p)), gor: () => { V.red.sattStil(s); if (s.typ === 'variant' && m && m.p.typ !== 'variant') valjEtikett(V, m.p.id); } })), { etikett: 'Styckets stil' });
+  } else if (gor === 'infoga') infogaMekanik(V);
+  else if (gor === 'etikett' && m) valjEtikett(V, m.p.id);
+  else if (gor === 'kommentera' && m) skrivKommentar(V, m.p);
+  else if (gor === 'foresla' && m) skrivKommentar(V, m.p, { forslag: true });
+  else if (gor === 'historik') visaHistorik(V);
+  else if (gor === 'angra') V.red.angra();
+  else if (gor === 'gorom') V.red.gorOm();
+});
+
+// On a phone the toolbar sits right above the keyboard. Chrome on Android
+// does that by itself with interactive-widget=resizes-content; elsewhere the
+// visual viewport says where the keyboard begins.
+if (window.visualViewport) {
+  const vv = window.visualViewport;
+  const flytta = () => {
+    const under = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+    document.documentElement.style.setProperty('--tangentbord', `${under}px`);
+  };
+  vv.addEventListener('resize', flytta);
+  vv.addEventListener('scroll', flytta);
+}
+
+// --- The world: HELD's lore and the pages we write -------------------------------------------
+
+async function visaHeld(r) {
+  fyll(underflikar(r), h('p', { class: 'laddar' }, 'Läser …'));
+  let text = null;
+  try {
+    text = await S.lager.lasText('held');
+  } catch {
+    text = null;
   }
   if (S.rutt !== r) return;
-  ritad();
-  main.replaceChildren(h('h2', null, 'Världen'), flikar, inne);
-  if (tyst) window.scrollTo(0, y);
-  if (S.form || r.flik === 'ny') {
-    requestAnimationFrame(() => {
-      for (const t of main.querySelectorAll('textarea')) autosize(t);
-      const f = main.querySelector('form input, form textarea, .bekrafta .knapp');
-      if (f) f.focus({ preventScroll: true });
-    });
-  }
+  fyll(underflikar(r),
+    h('p', { class: 'kalla' }, 'HELD:s gemensamma lore, Henrics ord. Den läses här och ändras i HELD-projektet.'),
+    text == null ? h('p', { class: 'dov' }, 'HELD:s lore går bara att läsa i portalen.') : h('article', { class: 'md' }, renderMd(text)));
 }
 
-const ritaVarldenIgen = () => visaVarlden(S.rutt, { tyst: true, hamta: false });
-
-async function loreDokument(flik) {
-  const text = await S.lager.lasText(flik === 'varld' ? 'varld' : 'held');
-  if (text == null) {
-    return h('p', { class: 'dov smal' }, flik === 'held' ? 'HELD:s lore går bara att läsa i portalen.' : 'Världsboken gick inte att hitta.');
+async function visaSidor(r) {
+  fyll(underflikar(r), h('p', { class: 'laddar' }, 'Läser …'));
+  try {
+    S.lore = await S.lager.lasLore();
+  } catch (e) {
+    if (S.rutt === r) fyll(underflikar(r), h('div', { class: 'band varning' }, felText(e)));
+    return;
   }
-  return h('div', { class: 'smal' },
-    h('p', { class: 'kalla' }, flik === 'varld'
-      ? 'Glimts världsbok (varld.md). Den läses här; egna tillägg skriver ni under Våra sidor.'
-      : 'HELD:s gemensamma lore (LORE.md i HELD-projektet). Den läses här; egna tillägg skriver ni under Våra sidor.'),
-    h('article', { class: 'md' }, renderMd(text)));
-}
-
-function loreLista(nySida) {
-  const sidor = S.lore.sidor;
-  const doldaSidor = sidor.filter((s) => !s.borta && dold(s.skrev)).length;
-  const aktiva = synliga(sidor.filter((s) => !s.borta)).sort((a, b) => String(senast(b)).localeCompare(String(senast(a))));
-  // Only the one who wrote a page can bring it back, so only theirs are listed.
-  const borta = sidor.filter((s) => s.borta && mitt(s));
-  const ut = h('div', { class: 'smal' },
-    h('p', { class: 'kalla' }, 'Lore ni skriver själva: personer, platser, regler, sådant som inte står i världsboken än.'));
-  if (kanSkriva()) {
-    if (nySida) ut.append(loreForm({}));
-    else ut.append(h('p', null, h('a', { class: 'knapp huvud', href: '#varlden/ny' }, 'Skriv en ny sida')));
-  }
-  if (aktiva.length) {
-    ut.append(h('ul', { class: 'sidlista' }, aktiva.map((s) => {
-      const forsta = loreText(s).split('\n').find((x) => x.trim()) || '';
-      return h('li', { class: arAI(s.skrev) ? 'fran-ai' : null }, h('a', { href: `#varlden/sida/${s.id}` },
-        h('span', { class: 'titel' }, s.titel),
-        h('span', { class: 'meta' }, metaSida(s)),
-        forsta ? h('span', { class: 'utdrag' }, forsta) : null));
-    })));
-  } else if (!nySida) {
-    ut.append(h('p', { class: 'dov' }, 'Inga sidor än.'));
-  }
-  if (doldaSidor) {
-    ut.append(h('p', { class: 'dov liten' }, `${doldaSidor === 1 ? 'En sida' : `${doldaSidor} sidor`} av Demi är dolda för dig.`));
-  }
-  if (borta.length) {
-    ut.append(h('details', { class: 'versioner' },
-      h('summary', null, `Dina borttagna sidor (${borta.length})`),
-      borta.map((s) => h('div', { class: 'version' },
-        h('p', { class: 'tidigare-text' }, s.titel),
-        h('p', { class: 'meta' }, `Borttagen av ${namn(s.borta.av)}${tid(s.borta.nar)}.`),
-        kanSkriva() ? h('button', { class: 'knapp liten', type: 'button', onclick: () => gora(() => S.lager.hamtaTillbakaLoresida(s.id)) }, 'Hämta tillbaka') : null))));
-  }
-  return ut;
-}
-
-function loreSida(id) {
-  const s = S.lore.sidor.find((x) => x.id === id);
-  const ut = h('div', { class: 'smal' }, h('p', null, h('a', { href: '#varlden/sidor' }, 'Alla sidor')));
-  if (!s) {
-    ut.append(h('p', { class: 'dov' }, 'Sidan finns inte.'));
-    return ut;
-  }
-  if (dold(s.skrev)) {
-    ut.append(h('p', { class: 'dov' }, 'Sidan är skriven av Demi, och Demis inlägg är dolda för dig. Du kan visa dem igen med knappen Demis inlägg högst upp.'));
-    return ut;
-  }
-  if (s.borta) {
-    ut.append(h('div', { class: 'band varning' }, `Sidan är borttagen av ${namn(s.borta.av)}${tid(s.borta.nar)}. `,
-      kanSkriva() && mitt(s) ? h('button', { class: 'knapp liten', type: 'button', onclick: () => gora(() => S.lager.hamtaTillbakaLoresida(s.id)) }, 'Hämta tillbaka') : null));
-  }
-  if (S.form && S.form.typ === 'andra-sida' && S.form.id === id) {
-    ut.append(loreForm({ sida: s, sedd: S.form.sedd }));
-    return ut;
-  }
-  ut.append(h('article', { class: `lore-sida${arAI(s.skrev) ? ' fran-ai' : ''}` },
-    h('h3', { class: 'sida-titel' }, s.titel),
-    h('p', { class: 'meta' }, metaSida(s)),
-    h('div', { class: 'sida-text' }, renderText(loreText(s)))));
-  if (kanSkriva() && !s.borta && !mitt(s)) {
-    ut.append(h('p', { class: 'dov liten' }, `Bara ${namn(s.skrev)} kan ändra sidan. Har du något att lägga till, skriv en egen sida.`));
-  }
-  if (kanSkriva() && !s.borta && mitt(s)) {
-    if (S.form && S.form.typ === 'ta-bort-sida') {
-      ut.append(bekrafta({
-        text: 'Ta bort sidan? Den går att hämta tillbaka under Borttagna sidor.',
-        ja: 'Ta bort', fara: true,
-        avbryt: () => { S.form = null; ritaVarldenIgen(); },
-        gor: (fel) => gora(() => S.lager.taBortLoresida(id), { fel, efter: () => { location.hash = '#varlden/sidor'; S.rutt = lasRutt(); } }),
-      }));
-    } else {
-      ut.append(h('div', { class: 'knappar' },
-        h('button', { class: 'knapp', type: 'button', onclick: () => { S.form = { typ: 'andra-sida', id, sedd: senast(s) }; ritaVarldenIgen(); } }, 'Ändra'),
-        h('button', { class: 'knapp', type: 'button', onclick: () => { S.form = { typ: 'ta-bort-sida' }; ritaVarldenIgen(); } }, 'Ta bort')));
+  if (S.rutt !== r) return;
+  const senast = (s) => (s.titelAndrad && s.titelAndrad.nar) || s.skapad || '';
+  const synliga = S.lore.sidor.filter((s) => !s.borta && !dold(s.skrev)).sort((a, b) => String(senast(b)).localeCompare(String(senast(a))));
+  const doldaN = S.lore.sidor.filter((s) => !s.borta && dold(s.skrev)).length;
+  const borta = S.lore.sidor.filter((s) => s.borta);
+  const ny = async () => {
+    try {
+      const id = await S.lager.nyLoresida('Ny sida');
+      location.hash = `#varlden/sida/${id}`;
+    } catch (e) {
+      status(felText(e), 'fel');
     }
-  }
-  if (s.versioner && s.versioner.length) {
-    ut.append(h('details', { class: 'versioner' },
-      h('summary', null, `Tidigare versioner (${s.versioner.length})`),
-      [...s.versioner].reverse().map((v) => h('div', { class: 'version' },
-        h('p', { class: 'tidigare-text' }, v.titel),
-        h('p', { class: 'meta' }, `${namn(v.av)}${tid(v.nar)}`),
-        h('div', null, renderText((v.text || []).join('\n')))))));
-  }
-  return ut;
+  };
+  fyll(underflikar(r),
+    h('p', { class: 'kalla' }, 'Lore vi skriver själva: personer, platser, regler, sådant som inte står i världsboken än. Alla kan ändra allt.'),
+    kanSkriva() ? h('p', null, h('button', { type: 'button', class: 'knapp huvud', onclick: ny }, 'Skriv en ny sida')) : null,
+    synliga.length ? h('ul', { class: 'sidlista' }, synliga.map((s) => {
+      const forsta = A.loreText(s).split('\n').find((x) => x.trim()) || '';
+      return h('li', null, h('a', { href: `#varlden/sida/${s.id}` },
+        h('span', { class: 'sid-titel' }, s.titel),
+        h('span', { class: 'meta' }, avsandare(s.skrev), s.skapad ? ` ${datum(s.skapad)}` : ''),
+        forsta ? h('span', { class: 'utdrag' }, kortText(forsta, 140)) : null));
+    })) : h('p', { class: 'dov' }, 'Inga sidor än.'),
+    doldaN ? h('p', { class: 'dov liten' }, `${doldaN === 1 ? 'En sida' : `${doldaN} sidor`} av Demi är dolda för dig.`) : null,
+    borta.length ? h('details', { class: 'borttagna' }, h('summary', null, `Borttagna sidor (${borta.length})`),
+      borta.map((s) => h('div', { class: 'version' }, h('span', { class: 'text-version' }, s.titel),
+        h('span', { class: 'meta' }, `Borttagen av ${namn(s.borta.av)} ${datum(s.borta.nar)}`),
+        kanSkriva() ? h('button', { type: 'button', class: 'knapp liten', onclick: async () => { await S.lager.taBortLoresida(s.id, true); visaSidor(r); } }, 'Hämta tillbaka') : null))) : null);
 }
 
-function loreForm({ sida = null, sedd = null }) {
-  const nyckel = utkastNyckel('lore', 'sida', sida ? sida.id : 'ny');
-  const utkast = lasUtkast(nyckel);
-  const titelId = nyttFaltId();
-  const textId = nyttFaltId();
-  const titel = h('input', { class: 'falt titelfalt', id: titelId, type: 'text', value: utkast ? utkast.titel || '' : sida ? sida.titel : '', autocomplete: 'off' });
-  const text = h('textarea', { class: 'falt lorefalt', id: textId, value: utkast ? utkast.text || '' : sida ? loreText(sida) : '' });
-  const fel = h('div', { class: 'fel', role: 'alert' });
-  const minns = () => {
-    if (!titel.value && !text.value) slangUtkast(nyckel);
-    else skrivUtkast(nyckel, { titel: titel.value, text: text.value });
+function loreHuvud(sida) {
+  const titel = h('input', { type: 'text', class: 'sidtitel', value: sida.titel, 'aria-label': 'Sidans titel', autocomplete: 'off', readonly: kanSkriva() ? null : true });
+  let sparad = sida.titel;
+  const spara = async () => {
+    const t = titel.value.trim();
+    if (!t || t === sparad) { if (!t) titel.value = sparad; return; }
+    try {
+      await S.lager.loreTitel(sida.id, t);
+      sparad = t;
+      status('Titeln är sparad.', 'ok');
+    } catch (e) {
+      status(felText(e), 'fel');
+    }
   };
-  const avbryt = () => {
-    slangUtkast(nyckel);
-    S.form = null;
-    if (sida) ritaVarldenIgen();
-    else location.hash = '#varlden/sidor';
+  titel.addEventListener('change', spara);
+  titel.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); titel.blur(); if (S.vy && S.vy.red) S.vy.red.fokus(); } });
+  const taBort = async () => {
+    try {
+      await S.lager.taBortLoresida(sida.id);
+      status('Sidan är borttagen. Den går att hämta tillbaka under Våra sidor.', 'ok');
+      location.hash = '#varlden/sidor';
+    } catch (e) {
+      status(felText(e), 'fel');
+    }
   };
-  const form = h('form', { class: 'form', novalidate: true },
-    h('p', { class: 'form-rubrik' }, sida ? 'Ändra sidan' : 'Ny sida'),
-    utkast ? h('p', { class: 'utkast-not' }, 'Här är texten du skrev förra gången men inte sparade.') : null,
-    h('label', { class: 'etikett-falt', for: titelId }, 'Titel'), titel,
-    h('label', { class: 'etikett-falt', for: textId }, 'Text'), text,
-    h('p', { class: 'hjalp' }, 'Skriv fritt. En tom rad blir ett nytt stycke. Texten sparas precis som du skriver den.'),
-    fel,
-    h('div', { class: 'knappar' },
-      h('button', { class: 'knapp huvud', type: 'submit' }, 'Spara sidan'),
-      h('button', { class: 'knapp', type: 'button', onclick: avbryt }, 'Avbryt')));
-  form.addEventListener('input', minns);
-  text.addEventListener('input', () => autosize(text));
-  form.addEventListener('submit', async (ev) => {
-    ev.preventDefault();
-    fel.replaceChildren();
-    if (!titel.value.trim()) { fel.replaceChildren(h('p', null, 'Sidan behöver en titel.')); titel.focus(); return; }
-    if (sida) {
-      await gora(() => S.lager.andraLoresida(sida.id, titel.value, text.value, sedd), {
-        fel, nyckel,
-        klart: (ut) => (ut && ut.krockade
-          ? 'Sparat. Någon annan sparade sidan medan du skrev; deras text ligger under Tidigare versioner.'
-          : null),
-      });
-    } else {
-      await gora(() => S.lager.nyLoresida(titel.value, text.value), {
-        fel, nyckel,
-        efter: (nyId) => { if (nyId) { location.hash = `#varlden/sida/${nyId}`; S.rutt = lasRutt(); } },
-      });
+  return h('div', { class: 'lore-huvud' },
+    h('p', null, h('a', { href: '#varlden/sidor' }, 'Alla sidor')),
+    titel,
+    h('p', { class: 'meta' }, 'Skriven av ', avsandare(sida.skrev), sida.skapad ? ` ${datum(sida.skapad)}` : '',
+      kanSkriva() ? h('button', { type: 'button', class: 'lank fara', onclick: taBort }, 'Ta bort sidan') : null));
+}
+
+// --- The mechanics, as a list ---------------------------------------------------------------------
+
+async function visaKatalog(r) {
+  fyll(underflikar(r), h('p', { class: 'laddar' }, 'Läser katalogen …'));
+  let kat;
+  try {
+    kat = await S.lager.katalog();
+  } catch (e) {
+    if (S.rutt === r) fyll(underflikar(r), h('div', { class: 'band varning' }, felText(e)));
+    return;
+  }
+  if (S.rutt !== r) return;
+  S.katalog = kat;
+  const V = { rutt: r, katalog: kat, anvands: null };
+  S.vy = V;
+  const sok = h('input', { type: 'search', class: 'falt', placeholder: 'Sök på namn, vad du gör eller omdöme', 'aria-label': 'Sök bland mekanikerna', autocomplete: 'off' });
+  const ut = h('div', { class: 'katalog' });
+  const antal = (o) => kat.mekaniker.filter((k) => k.omdome === o).length;
+  const forklaring = h('p', { class: 'omdomen' }, [...K.OMDOMEN, null].map((o) => {
+    const n = o ? antal(o) : kat.mekaniker.filter((k) => !k.omdome).length;
+    if (!n) return null;
+    return h('span', { class: `omdome ${K.klassFor(o)}`, title: o ? kat.betydelse[o] || '' : 'Omdömet börjar inte med något av de fem orden.' }, h('i', { 'aria-hidden': 'true' }), `${o || 'Inget omdöme'} ${n}`);
+  }));
+  const rita = () => {
+    const traffar = K.sok(kat, sok.value);
+    const grupper = new Map();
+    for (const k of traffar) {
+      if (!grupper.has(k.grupp)) grupper.set(k.grupp, []);
+      grupper.get(k.grupp).push(k);
+    }
+    ut.replaceChildren(...[...grupper].map(([g, ks]) => h('section', { class: 'grupp' }, h('h2', null, g || 'Övrigt'),
+      ks.map((k) => {
+        const d = h('details', { class: 'mekanik-post', id: `mek-${k.id}` },
+          h('summary', null, h('span', { class: 'mek-namn' }, k.namn), omdomeMarke(k), k.du ? h('span', { class: 'mek-du' }, `Du ${k.du}`) : null),
+          mekanikDetaljer(k, { anvands: anvandsI(V, k) }));
+        return d;
+      }))));
+    if (!traffar.length) ut.replaceChildren(h('p', { class: 'dov' }, 'Ingen mekanik passar sökningen.'));
+    if (r.mek) oppnaMekanik(r.mek);
+  };
+  sok.addEventListener('input', rita);
+  fyll(underflikar(r),
+    h('p', { class: 'kalla' }, 'Allt vandraren kan göra och telefonen kan läsa, ur katalogen. Listan läses ur filen varje gång; ändra den under Redigera texten.'),
+    sok, forklaring, ut);
+  rita();
+  // Where each mechanic is used: read the episodes, then draw again.
+  hamtaAnvandning(kat).then((a) => {
+    if (S.vy !== V) return;
+    V.anvands = a;
+    for (const k of kat.mekaniker) {
+      const plats = document.getElementById(`anv-${k.id}`);
+      if (plats) plats.replaceWith(anvandsI(V, k));
     }
   });
-  return form;
 }
 
-// --- Start ----------------------------------------------------------------------------------
-
-const lasTider = () => fetch(new URL('./ljudtider.json', import.meta.url)).then((r) => (r.ok ? r.json() : null));
-
-function visaInloggning() {
-  main.replaceChildren(h('section', { class: 'smal' },
-    h('h2', null, 'Logga in först'),
-    h('p', null, 'Manusrummet läser och sparar genom portalen, och portalen känner inte igen dig just nu.'),
-    h('p', null, h('a', { class: 'knapp huvud', href: '/' }, 'Öppna portalen')),
-    h('p', { class: 'dov' }, 'Logga in där och kom sedan tillbaka hit.')));
+function oppnaMekanik(id) {
+  const d = document.getElementById(`mek-${id}`);
+  if (!d) return;
+  d.open = true;
+  d.scrollIntoView({ block: 'start', behavior: lugn() ? 'auto' : 'smooth' });
+  d.querySelector('summary').focus({ preventScroll: true });
 }
+
+async function hamtaAnvandning(kat) {
+  const ut = new Map();
+  for (const nr of EPISODER) {
+    let d;
+    try {
+      d = await S.lager.lasDokument(nr);
+    } catch {
+      d = null;
+    }
+    if (!d) continue;
+    const scener = D.scenerFor(d.paras, D.SLAG_EPISOD);
+    const titlar = new Map();
+    d.paras.forEach((p, k) => {
+      if (p.typ === 'scen' && scener[k]) titlar.set(scener[k], p.text);
+      if (p.typ !== 'mekanik' || !scener[k]) return;
+      for (const x of K.hittaNamn(p.text, kat)) {
+        if (!ut.has(x.mekanik.id)) ut.set(x.mekanik.id, []);
+        const lista = ut.get(x.mekanik.id);
+        if (!lista.some((y) => y.nr === nr && y.scen === scener[k])) lista.push({ nr, scen: scener[k], titel: titlar.get(scener[k]) || scener[k], stycke: p.id });
+      }
+    });
+  }
+  return ut;
+}
+
+function anvandsI(V, k) {
+  const plats = h('div', { class: 'anvands', id: `anv-${k.id}` });
+  if (!V.anvands) {
+    plats.append(h('p', { class: 'dov' }, 'Letar i episoderna …'));
+    return plats;
+  }
+  const lista = V.anvands.get(k.id) || [];
+  plats.append(h('h3', null, 'Används i'),
+    lista.length ? h('ul', null, lista.map((x) => h('li', null, h('a', { href: `#episod-${x.nr}/s/${x.stycke}` }, `Episod ${x.nr}, scen ${x.titel}`))))
+      : h('p', { class: 'dov' }, 'Ingen scen nämner den än.'));
+  return plats;
+}
+
+// --- Who is here, and their own settings ----------------------------------------------------------
 
 function ritaJag() {
   const jag = $('jag');
   if (!S.jag) {
-    jag.replaceChildren('Bara läsning');
+    jag.hidden = true;
     return;
   }
-  const visas = !S.inst.doljDemi;
-  jag.replaceChildren(
-    h('span', { class: 'du' }, `Du är ${S.jag.namn}`),
-    arAI(S.jag.id) ? null : h('button', {
-      type: 'button', class: 'brytare', role: 'switch', 'aria-checked': String(visas),
-      title: visas ? 'Demis inlägg visas. Tryck för att dölja dem, bara för dig.' : 'Demis inlägg är dolda för dig. Tryck för att visa dem.',
-      onclick: vaxlaDemi,
-    }, h('span', { class: 'spar', 'aria-hidden': 'true' }), 'Demis inlägg'));
+  jag.hidden = false;
+  jag.textContent = S.jag.namn[0];
+  jag.className = `jag ${S.jag.id === 'liv' ? 'l' : S.jag.id === 'demi' ? 'd' : 'h'}`;
+  jag.title = `Du är ${S.jag.namn}`;
 }
 
-let sparInst = false;
-async function vaxlaDemi() {
-  if (sparInst) return;
-  sparInst = true;
-  const fore = S.inst.doljDemi;
-  S.inst = { ...S.inst, doljDemi: !fore };
-  ritaJag();
-  ritaVyIgen();
+$('jag').addEventListener('click', () => {
+  const b = $('jag');
+  const brytare = (nyckel, text, pa) => h('label', { class: 'brytare' },
+    h('input', { type: 'checkbox', role: 'switch', checked: pa, onchange: (e) => sattInst(nyckel, e.target.checked) }), h('span', { class: 'spar', 'aria-hidden': 'true' }), text);
+  oppnaPanel(`Du är ${S.jag.namn}`,
+    h('p', { class: 'hjalp' }, 'Inställningarna gäller bara dig.'),
+    brytare('visaVem', 'Visa vem som skrev, med en prick i marginalen', S.inst.visaVem),
+    arAI(S.jag.id) ? null : brytare('doljDemi', 'Visa Demis kommentarer och förslag', !S.inst.doljDemi),
+    h('p', { class: 'hjalp' }, 'Prickarna: ', h('span', { class: 'vem-namn' }, prick('henric'), 'Henric'), ' ', h('span', { class: 'vem-namn' }, prick('liv'), 'Liv'), ' ', h('span', { class: 'vem-namn' }, prick('demi'), 'Demi, en AI')),
+    S.adapter.rot === 'prov' ? h('p', { class: 'hjalp' }, 'Du är i provläget. Allt här är kopior.') : null);
+  b.setAttribute('aria-expanded', 'true');
+});
+
+async function sattInst(nyckel, pa) {
+  const varde = nyckel === 'doljDemi' ? !pa : pa;
+  const fore = S.inst;
+  S.inst = { ...S.inst, [nyckel]: varde };
+  ritaOmAllt();
   try {
-    S.inst = await S.lager.sattInstallning('doljDemi', !fore);
-    status(S.inst.doljDemi ? 'Demis inlägg är dolda för dig.' : 'Demis inlägg visas.', 'ok');
+    S.inst = await S.lager.sattInstallning(nyckel, varde);
   } catch (e) {
-    S.inst = { ...S.inst, doljDemi: fore };
+    S.inst = fore;
     status(`Inställningen sparades inte. ${felText(e)}`, 'fel');
+    ritaOmAllt();
   }
-  sparInst = false;
-  ritaJag();
-  ritaVyIgen();
 }
 
-function ritaVyIgen() {
-  if (!S.rutt) return;
-  const y = window.scrollY;
-  if (S.rutt.vy === 'episod') {
-    if (!S.ep) return;
-    S.form = null;
-    ritaEpisod();
-    window.scrollTo(0, y);
-  } else {
-    ritaVarldenIgen();
-  }
+function ritaOmAllt() {
+  S.ver += 1;
+  const V = S.vy;
+  if (V && V.red) {
+    V.karta = null;
+    V.red.ritaOm();
+    ritaNotis(V);
+  } else if (S.rutt && S.rutt.vy === 'sidor') visaSidor(S.rutt);
 }
 
 function ritaRam() {
-  const iPortalen = location.pathname.includes('/uploads/');
-  $('tillbaka').hidden = !iPortalen;
   ritaJag();
   const band = $('band');
   band.replaceChildren();
@@ -1444,12 +1330,66 @@ function ritaRam() {
   }
 }
 
+function visaInloggning() {
+  fyll(h('section', { class: 'smal' },
+    h('h2', null, 'Logga in först'),
+    h('p', null, 'Manusrummet läser och sparar genom portalen, och portalen känner inte igen dig just nu.'),
+    h('p', null, h('a', { class: 'knapp huvud', href: '/' }, 'Öppna portalen')),
+    h('p', { class: 'dov' }, 'Logga in där och kom sedan tillbaka hit.')));
+}
+
+// --- Reading what others did, and saving on the way out ---------------------------------------
+
+let tick = 0;
+async function lyssna() {
+  tick += 1;
+  const V = S.vy;
+  if (document.visibilityState !== 'visible' || !V || !V.dokument || !kanSkriva()) return;
+  if (tick % 8 === 0) V.dokument.lever();
+  try {
+    if (tick % 15 === 0 && V.red && V.arEpisod) {
+      const kat = await S.lager.katalog();
+      if (S.vy === V && JSON.stringify(kat.mekaniker.map((k) => [k.namn, k.omdome])) !== JSON.stringify((S.katalog ? S.katalog.mekaniker : []).map((k) => [k.namn, k.omdome]))) {
+        S.katalog = kat;
+        V.red.ritaOm({ katalog: kat });
+      }
+    }
+    const andrat = await V.dokument.hamta();
+    if (andrat && S.vy === V) dokumentRitat(V);
+  } catch {
+    // The next tick tries again; the save state says if something is wrong.
+  }
+}
+
+function sparaNu() {
+  const V = S.vy;
+  if (!V || !V.dokument) return;
+  if (V.flush) V.flush();
+  V.dokument.minns();
+  if (V.dokument.harOsparat()) V.dokument.spara().catch(() => {});
+}
+
+// --- Start -------------------------------------------------------------------------------------------
+
+const lasTider = () => fetch(new URL('./ljudtider.json', import.meta.url)).then((r) => (r.ok ? r.json() : null));
+
+function flikId() {
+  try {
+    let f = sessionStorage.getItem('glimt-rummet|flik');
+    if (!f) {
+      f = D.nyttId();
+      sessionStorage.setItem('glimt-rummet|flik', f);
+    }
+    return f;
+  } catch {
+    return D.nyttId();
+  }
+}
+
 async function start() {
   const sida = location.href;
   let adapter;
   if (location.pathname.includes('/uploads/')) {
-    // Inside the portal the files are always the portal's; without a login
-    // there is nothing to fall back to.
     adapter = portalAdapter({ rot: new URL(sida).searchParams.get('rot') === 'prov' ? 'prov' : 'skarp' });
     if (!(await adapter.finns())) {
       visaInloggning();
@@ -1459,33 +1399,40 @@ async function start() {
     adapter = await valjAdapter({ sida });
   }
   S.adapter = adapter;
-  // Notes that wait for a manuscript change are kept in the browser, so a
-  // reload does not lose them.
-  const koNyckel = `${UTKAST}|${adapter.rot || adapter.namn}|vantar`;
-  const ko = {
-    las: () => JSON.parse(localStorage.getItem(koNyckel) || '[]'),
-    skriv: (lista) => {
-      if (lista.length) localStorage.setItem(koNyckel, JSON.stringify(lista));
-      else localStorage.removeItem(koNyckel);
-    },
-  };
-  S.lager = skapaLager(adapter, { lasTider, ko });
+  let lagring = null;
+  try {
+    lagring = window.localStorage;
+  } catch {
+    lagring = null;
+  }
+  S.lager = skapaLager(adapter, {
+    lasTider,
+    lagring,
+    flik: flikId(),
+    klocka: { setTimeout: (f, ms) => setTimeout(f, ms), clearTimeout: (t) => clearTimeout(t) },
+  });
   S.jag = await S.lager.vem();
   try {
     S.inst = await S.lager.lasInstallningar();
   } catch {
-    S.inst = { doljDemi: !!(S.jag && PERSONER[S.jag.id] && PERSONER[S.jag.id].doljDemi) };
+    S.inst = { doljDemi: !!(S.jag && PERSONER[S.jag.id] && PERSONER[S.jag.id].doljDemi), visaVem: true, besok: {} };
   }
   ritaRam();
   window.addEventListener('hashchange', () => { visa(); });
-  // Back in the tab: read the manuscript again, unless someone is mid-sentence.
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState !== 'visible' || S.upptagen || S.form || spelar) return;
-    if (S.rutt && S.rutt.vy === 'episod' && S.ep) laddaEpisod({ behallPlats: true });
+    if (document.visibilityState === 'hidden') sparaNu();
+    else lyssna();
   });
+  window.addEventListener('pagehide', sparaNu);
+  window.addEventListener('beforeunload', (e) => {
+    sparaNu();
+    const V = S.vy;
+    if (V && V.dokument && V.dokument.lage === 'sparar') e.preventDefault();
+  });
+  setInterval(lyssna, 4000);
   await visa();
 }
 
 start().catch((e) => {
-  main.replaceChildren(h('div', { class: 'band varning' }, felText(e)));
+  fyll(h('div', { class: 'band varning' }, felText(e)));
 });

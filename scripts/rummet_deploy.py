@@ -30,7 +30,11 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 SRC = REPO / "rummet"
 UT = Path.home() / "generalassistant" / "data" / "uploads" / "glimt-rummet"
-FILES = ["manus.js", "data.js", "ljud.js", "rum.js", "lager.js", "md.js", "app.js", "rummet.css", "ljudtider.json"]
+FILES = ["manus.js", "data.js", "ljud.js", "dok.js", "katalog.js", "anteckn.js", "lager.js", "pm.js", "redigerare.js",
+         "md.js", "app.js", "rummet.css", "ljudtider.json"]
+# Copied as they are, under their own names: the footer's logo, and the
+# editor bundle's licence, which travels with pm.js.
+EXTRAS = ["held-logo.svg", "pm-LICENSE.txt"]
 MANIFEST = "bygge.json"
 OURS = re.compile(r"^(?:%s)\.[0-9a-f]{10}\.(?:js|css|json)$" % "|".join(re.escape(Path(f).stem) for f in FILES))
 
@@ -99,6 +103,8 @@ def deploy(ut: Path) -> str:
     for name, data in out.items():
         if name != "index.html" and not (ut / name).exists():
             write_atomic(ut / name, data)
+    for name in EXTRAS:
+        write_atomic(ut / name, (SRC / name).read_bytes())
     write_atomic(ut / "index.html", out["index.html"])
     current = sorted(n for n in out if n != "index.html")
     write_atomic(mf, (json.dumps({

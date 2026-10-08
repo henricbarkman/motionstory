@@ -1,93 +1,101 @@
 #!/usr/bin/env python3
-"""Write the room's baseline: which manuscript lines are Demi's drafts.
+"""Write the room's baseline: which paragraphs are Demi's drafts.
 
-The room (rummet/) marks every line with who wrote it. A line nobody has
-touched in the room is Demi's if its text stood in the manuscript at one of
-the commits named here; any other text was changed outside the room and is
-shown that way until someone says whose it is. Only name a commit whose
-manuscript text is Demi's own draft (1e54ffc is the start: episodes 1 and 2
-as Demi wrote them). After Demi writes a new draft, run this again with that
-commit added; the earlier ones stay in the file.
+The room (rummet/) marks every paragraph with who last wrote it. A paragraph
+nobody has touched in the room is Demi's if it stood, word for word, in the
+file at one of the commits named here; any other text was changed outside the
+room and is shown that way. Only name a commit whose text is Demi's own draft.
+After Demi writes a new draft, run this again with that commit added; the
+earlier ones stay in the file.
 
-    python3 scripts/rummet_grund.py                       # 1e54ffc, episodes 1 and 2
+    python3 scripts/rummet_grund.py                       # the start commits below
     python3 scripts/rummet_grund.py --commit abc1234      # add a later draft of Demi's
-    python3 scripts/rummet_grund.py --prov                # the sandbox the room's tests use
+    python3 scripts/rummet_grund.py --prov --nollstall    # the sandbox the room's tests use
 
-Writes ~/generalassistant/data/glimt-rummet/grund/episod-N.json, outside this
-public repo. --prov also lays fresh copies of the manuscript, its recordings
-list, the world book and HELD's lore in data/glimt-rummet/prov/, so the room
-can be tried against the real portal (rummet/?rot=prov) without touching the
-manuscript. The sandbox ignores itself in git.
+Writes ~/generalassistant/data/glimt-rummet/grund/<dok>.json for the episodes,
+the world book and the mechanics catalogue, outside this public repo. Each
+holds "stycken": the paragraphs as whole md lines, read with rummet/dok.js
+through node, the same reading the room does. Lines from the first version's
+baseline ("rader", the inside of the quote lines) are kept as "> " lines.
 
-The lines are read with rummet/manus.js through node, the same reading the
-room does.
+--prov lays fresh copies of the episodes, their recordings lists, the world
+book, the catalogue and HELD's lore in data/glimt-rummet/prov/manus/, so the
+room can be tried against the real portal (rummet/?rot=prov) without touching
+the real files. --nollstall also removes the sandbox's notes, lore pages and
+settings. The sandbox ignores itself in git.
 """
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import subprocess
 import sys
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 GA = Path.home() / "generalassistant"
 UT = GA / "data" / "glimt-rummet"
 LIVE = GA / "projects" / "motionstory"
-START = "1e54ffc"
 EPISODER = ("1", "2")
+# The first commit where each document is Demi's own draft.
+START = {"1": "1e54ffc", "2": "1e54ffc", "varld": "f0fd543", "mekaniker": "0ca4994"}
+FIL = {"1": "episod-1.md", "2": "episod-2.md", "varld": "varld.md", "mekaniker": "mekaniker.md"}
+OM = "Stycken som är Demis utkast. Skrivs av scripts/rummet_grund.py i motionstory, aldrig av rummet."
 
-READ_LINES = """
-import { tolka } from %s;
+READ_PARAS = """
+import * as D from %s;
 let text = '';
 process.stdin.setEncoding('utf8');
 for await (const bit of process.stdin) text += bit;
-const m = tolka(text);
-const ut = m.rader.filter((r) => r.typ === 'replik' && r.scen != null).map((r) => r.innehall);
+const slag = process.env.SLAG === 'episod' ? D.SLAG_EPISOD : D.SLAG_FRI;
+const ut = D.tolka(text, slag).paras.filter((p) => p.typ !== 'linje' && p.text.trim()).map((p) => D.skrivRad(p));
 process.stdout.write(JSON.stringify(ut));
 """
 
 
-def lines_of(text: str) -> list[str]:
-    js = READ_LINES % json.dumps((REPO / "rummet" / "manus.js").as_uri())
-    out = subprocess.run(["node", "--input-type=module", "-e", js], input=text,
+def paras_of(text: str, dok: str) -> list[str]:
+    js = READ_PARAS % json.dumps((REPO / "rummet" / "dok.js").as_uri())
+    env = {**os.environ, "SLAG": "episod" if dok in EPISODER else "fri"}
+    out = subprocess.run(["node", "--input-type=module", "-e", js], input=text, env=env,
                          capture_output=True, text=True, check=True)
     return json.loads(out.stdout)
 
 
-def at_commit(commit: str, episode: str) -> str | None:
-    r = subprocess.run(["git", "-C", str(REPO), "show", f"{commit}:stories/glimt/episod-{episode}.md"],
+def at_commit(commit: str, dok: str) -> str | None:
+    r = subprocess.run(["git", "-C", str(REPO), "show", f"{commit}:stories/glimt/{FIL[dok]}"],
                        capture_output=True, text=True)
     return r.stdout if r.returncode == 0 else None
 
 
-def write_baseline(folder: Path, commits: list[str]) -> None:
+def namn(dok: str) -> str:
+    return f"episod-{dok}" if dok in EPISODER else dok
+
+
+def write_baseline(folder: Path, extra: list[str]) -> None:
     (folder / "grund").mkdir(parents=True, exist_ok=True)
-    for ep in EPISODER:
-        path = folder / "grund" / f"episod-{ep}.json"
-        old = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"fran": [], "rader": []}
-        lines = list(old.get("rader", []))
+    for dok in FIL:
+        path = folder / "grund" / f"{namn(dok)}.json"
+        old = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+        stycken = list(old.get("stycken", [])) + [f"> {r}" for r in old.get("rader", [])]
         sources = list(old.get("fran", []))
-        for c in commits:
-            text = at_commit(c, ep)
+        # The commits named before stay: their paragraphs are read again.
+        for c in dict.fromkeys([START[dok], *sources, *extra]):
+            text = at_commit(c, dok)
             if text is None:
-                print(f"episod {ep}: not in {c}, skipped")
                 continue
-            for line in lines_of(text):
-                if line not in lines:
-                    lines.append(line)
+            for line in paras_of(text, dok):
+                if line not in stycken:
+                    stycken.append(line)
             if c not in sources:
                 sources.append(c)
-        data = {
-            "om": "Rader som är Demis utkast. Skrivs av scripts/rummet_grund.py i motionstory, aldrig av rummet.",
-            "fran": sources,
-            "skriven": datetime.now(UTC).isoformat(timespec="seconds"),
-            "rader": lines,
-        }
+        seen: set[str] = set()
+        stycken = [s for s in stycken if not (s in seen or seen.add(s))]
+        data = {"om": OM, "fran": sources, "skriven": datetime.now(UTC).isoformat(timespec="seconds"), "stycken": stycken}
         path.write_text(json.dumps(data, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
-        print(f"episod {ep}: {len(lines)} lines from {', '.join(sources)} -> {path}")
+        print(f"{dok}: {len(stycken)} paragraphs from {', '.join(sources)} -> {path}")
 
 
 def make_sandbox() -> Path:
@@ -99,7 +107,8 @@ def make_sandbox() -> Path:
         shutil.copyfile(glimt / f"episod-{ep}.md", prov / "manus" / f"episod-{ep}.md")
         if (glimt / f"episod-{ep}.json").exists():
             shutil.copyfile(glimt / f"episod-{ep}.json", prov / "manus" / f"episod-{ep}.json")
-    shutil.copyfile(glimt / "varld.md", prov / "manus" / "varld.md")
+    for f in ("varld.md", "mekaniker.md"):
+        shutil.copyfile(glimt / f, prov / "manus" / f)
     held = GA / "projects" / "held" / "universe" / "LORE.md"
     if held.exists():
         shutil.copyfile(held, prov / "manus" / "held-lore.md")
@@ -107,22 +116,22 @@ def make_sandbox() -> Path:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Write the room's baseline of Demi's draft lines.")
+    ap = argparse.ArgumentParser(description="Write the room's baseline of Demi's draft paragraphs.")
     ap.add_argument("--commit", action="append", default=[], help="a later commit of Demi's draft (repeatable)")
     ap.add_argument("--prov", action="store_true", help="set up the test sandbox instead")
-    ap.add_argument("--nollstall", action="store_true", help="with --prov: also remove the sandbox's notes and lore")
+    ap.add_argument("--nollstall", action="store_true", help="with --prov: also remove the sandbox's notes, lore and settings")
     args = ap.parse_args()
-    commits = [START, *args.commit]
     if args.prov:
         prov = make_sandbox()
         if args.nollstall:
-            for name in ("episod-1.json", "episod-2.json", "lore.json"):
+            for name in ("episod-1.json", "episod-2.json", "varld.json", "mekaniker.json", "lore.json",
+                         "installningar.json", "demi-sett.json", "demi-vantande.json"):
                 (prov / name).unlink(missing_ok=True)
             shutil.rmtree(prov / "grund", ignore_errors=True)
-        write_baseline(prov, commits)
+        write_baseline(prov, args.commit)
         print(f"sandbox ready: {prov}")
         return 0
-    write_baseline(UT, commits)
+    write_baseline(UT, args.commit)
     return 0
 
 

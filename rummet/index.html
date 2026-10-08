@@ -2,43 +2,38 @@
 <html lang="sv">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content">
 <meta name="robots" content="noindex">
 <meta name="rummet-bygge" content="lokal">
 <title>Glimt: manusrummet</title>
-<meta name="theme-color" content="#152E43">
+<meta name="theme-color" content="#120f24">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..700;1,400&family=Spectral:ital,wght@1,300;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..700;1,400..600&family=Spectral:ital,wght@0,400;0,500;1,400&family=Syne:wght@600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="rummet.css">
 <script type="module" src="app.js"></script>
 </head>
 <body>
-<div class="sidhuvud">
-  <header class="inne">
-    <h1>Manusrummet</h1>
-    <p class="lead">Glimt som manus. Här läser, lyssnar och skriver vi, och det som sparas står i manuset.</p>
-    <p class="tillbaka" id="tillbaka" hidden><a href="../glimt-plan/index.html">Till planen och läget</a></p>
-  </header>
-</div>
-<nav class="flikar" aria-label="Episoder och världen">
-  <div class="inne bred">
-    <ul>
-      <li><a href="#episod-1" data-flik="episod-1">Episod 1</a></li>
-      <li><a href="#episod-2" data-flik="episod-2">Episod 2</a></li>
-      <li><a href="#varlden" data-flik="varlden">Världen</a></li>
-    </ul>
-    <span class="jag" id="jag"></span>
-  </div>
-</nav>
-<div class="inne bred" id="band"></div>
-<main class="inne bred" id="rum">
-  <p class="laddar">Läser manuset …</p>
+<div id="band"></div>
+<header class="topp">
+  <a class="marke" href="#episod-1"><b>Glimt</b><span>manusrummet</span></a>
+  <nav class="flikar" aria-label="Dokument">
+    <a href="#episod-1" data-flik="episod-1">Episod 1</a>
+    <a href="#episod-2" data-flik="episod-2">Episod 2</a>
+    <a href="#varlden" data-flik="varlden">Världen</a>
+    <a href="#mekaniker" data-flik="mekaniker">Mekaniker</a>
+  </nav>
+  <div class="lage"><span class="lage-text" id="lage" aria-live="polite"></span><button type="button" class="jag" id="jag" aria-haspopup="dialog" hidden></button></div>
+</header>
+<div class="verktyg" id="verktyg" role="toolbar" aria-label="Stycke" hidden></div>
+<main class="blad" id="rum">
+  <div class="sken"></div><div class="sken"></div>
+  <div id="inne"><p class="laddar">Läser manuset …</p></div>
 </main>
-<footer class="inne">
-  <p>Manuset är <code>stories/glimt/episod-N.md</code> i motionstory. Förslag, kommentarer, vem som skrev vad och loresidorna sparas för sig, utanför det publika repot.</p>
-</footer>
+<footer class="fot"><span>Glimt hör till samma värld som</span><img src="held-logo.svg" alt="HELD"></footer>
+<div class="panel" id="panel" role="dialog" hidden></div>
+<div class="meny" id="meny" role="menu" hidden></div>
 <div class="status" id="status" role="status" aria-live="polite" hidden></div>
-<noscript><p class="inne">Manusrummet behöver JavaScript.</p></noscript>
+<noscript><p class="band">Manusrummet behöver JavaScript.</p></noscript>
 </body>
 </html>

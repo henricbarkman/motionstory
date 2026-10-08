@@ -1,915 +1,541 @@
 #!/usr/bin/env node
-// Checks the room (rummet/): reading and writing the real manuscripts byte
-// for byte, the line-by-line edits, recorded sound per line, who wrote what,
-// proposals that never change the text by themselves, and saves that meet a
-// file someone else changed in between. The last part runs the portal's own
-// file code (scripts/dashboard/files.py) behind scripts/rummet_provserver.py.
+// Checks the room (rummet/), version 2: every file read and written back byte
+// for byte, the paragraph kinds and what may be saved, finding paragraphs
+// again after others changed the file, the merge per paragraph, the history,
+// comments and proposals, the mechanics catalogue and its chips, recorded
+// sound per paragraph, and saving through the store: two windows, a file
+// changed in between, a lost write, unsaved text kept in the browser. The
+// last part runs the portal's own file code (scripts/dashboard/files.py)
+// behind scripts/rummet_provserver.py.
 //
 //   node scripts/test_rummet.mjs
 //   RUMMET_DIR=/some/copy/ node scripts/test_rummet.mjs    # a mutated copy, for mutation tests
 //
 // Never writes to stories/: every write goes to memory or to a temp folder.
 
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { readFileSync, mkdtempSync, mkdirSync, copyFileSync, writeFileSync, rmSync, statSync, utimesSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { spawn, spawnSync } from 'node:child_process';
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DIR = process.env.RUMMET_DIR || join(REPO, 'rummet');
 const imp = (f) => import(pathToFileURL(join(DIR, f)).href);
-const M = await imp('manus.js');
+const Dk = await imp('dok.js');
+const K = await imp('katalog.js');
+const A = await imp('anteckn.js');
 const L = await imp('ljud.js');
-const R = await imp('rum.js');
+const M = await imp('manus.js');
 const D = await imp('data.js');
 const S = await imp('lager.js');
 
 let failures = 0;
-const check = (ok, what) => { if (!ok || process.env.VERBOSE) console.log(`${ok ? 'ok  ' : 'FAIL'}  ${what}`); if (!ok) failures++; };
 let checks = 0;
-const ok = (cond, what) => { checks++; check(cond, what); };
+const ok = (cond, what) => {
+  checks++;
+  if (!cond || process.env.VERBOSE) console.log(`${cond ? 'ok  ' : 'FAIL'}  ${what}`);
+  if (!cond) failures++;
+};
 const throwsKod = (fn, kod) => { try { fn(); return false; } catch (e) { return e.kod === kod; } };
-async function rejectsKod(p, kod) { try { await p; return false; } catch (e) { return e.kod === kod || e.name === kod; } }
 
-// The checks that name particular lines and clips read episode 1 as it was
-// recorded (commit ece9bb0, the text episod-1.json was made from). The files
-// as they stand now are read too, for everything that must hold for any
-// manuscript.
-const INSPELAD = 'ece9bb0';
-const vidCommit = (c, f) => execFileSync('git', ['-C', REPO, 'show', `${c}:${f}`], { encoding: 'utf8' });
-const EP = {
-  1: vidCommit(INSPELAD, 'stories/glimt/episod-1.md'),
-  2: vidCommit(INSPELAD, 'stories/glimt/episod-2.md'),
+const las = (f) => readFileSync(join(REPO, f), 'utf8');
+const FIL = {
+  1: las('stories/glimt/episod-1.md'),
+  2: las('stories/glimt/episod-2.md'),
+  varld: las('stories/glimt/varld.md'),
+  mekaniker: las('stories/glimt/mekaniker.md'),
 };
-const NU_EP = {
-  1: readFileSync(join(REPO, 'stories/glimt/episod-1.md'), 'utf8'),
-  2: readFileSync(join(REPO, 'stories/glimt/episod-2.md'), 'utf8'),
-};
-const JSON1 = readFileSync(join(REPO, 'stories/glimt/episod-1.json'), 'utf8');
-const TIDER = JSON.parse(readFileSync(join(REPO, 'rummet/ljudtider.json'), 'utf8'));
+const SLAG = { 1: 'episod', 2: 'episod', varld: 'fri', mekaniker: 'fri' };
+// Episode 1 as it was recorded (the text episod-1.json was made from).
+const INSPELAD = execFileSync('git', ['-C', REPO, 'show', 'ece9bb0:stories/glimt/episod-1.md'], { encoding: 'utf8' });
+const JSON1 = las('stories/glimt/episod-1.json');
+const TIDER = JSON.parse(las('rummet/ljudtider.json'));
 
-const diffLines = (a, b) => {
-  const x = a.split('\n');
-  const y = b.split('\n');
-  if (x.length !== y.length) return null;
+const rader = (t) => t.split('\n');
+const diffRader = (a, b) => {
+  const x = rader(a);
+  const y = rader(b);
   const ut = [];
-  for (let k = 0; k < x.length; k++) if (x[k] !== y[k]) ut.push(k);
+  for (let k = 0; k < Math.max(x.length, y.length); k++) if (x[k] !== y[k]) ut.push(k);
   return ut;
 };
-// b is a with `antal` lines inserted at `vid`.
-const insattVid = (a, b, vid, antal) => {
-  const x = a.split('\n');
-  const y = b.split('\n');
-  return y.length === x.length + antal
-    && x.slice(0, vid).every((r, k) => r === y[k])
-    && x.slice(vid).every((r, k) => r === y[k + vid + antal]);
-};
-const repliker = (m) => m.rader.filter((r) => r.typ === 'replik' && r.scen != null);
 
-// --- 1. Reading and writing the real manuscripts -------------------------------
+// --- 1. Every file back byte for byte -----------------------------------------------
 
-const UPPLAGOR = [
-  ...[1, 2].map((n) => ({ n, namn: `episod ${n} (${INSPELAD})`, text: EP[n], scener: 7, rader: 80 })),
-  ...[1, 2].map((n) => ({ n, namn: `episod ${n} (now)`, text: NU_EP[n], scener: 5, rader: 50 })),
-];
-for (const { n, namn, text, scener, rader } of UPPLAGOR) {
-  const m = M.tolka(text);
-  ok(M.skriv(m) === text, `${namn}: read and written back is the same file, byte for byte`);
-  ok(m.episod === String(n) && m.scener.length >= scener, `${namn}: title and ${m.scener.length} scenes found`);
-  const r = repliker(m);
-  ok(r.length > rader, `${namn}: ${r.length} lines people can edit`);
-
-  let enRad = 0;
-  let tillbaka = 0;
-  let ankare = 0;
-  let strukna = 0;
-  let vagrade = 0;
-  let lagda = 0;
-  for (const rad of r) {
-    const a = M.ankareFor(m, rad.i);
-    if (M.hitta(m, a, { strikt: true }) === rad.i) ankare++;
-    const ny = `${rad.kropp} ändrad`;
-    const ut = M.andra(text, a, ny);
-    const d = diffLines(text, ut.text);
-    if (d && d.length === 1 && d[0] === rad.i && ut.text.split('\n')[rad.i] === rad.ra.replace(rad.kropp, '') + ny) enRad++;
-    const atert = M.andra(ut.text, M.ankareFor(M.tolka(ut.text), rad.i), rad.kropp);
-    if (atert.text === text) tillbaka++;
-    try {
-      const s = M.stryk(text, a);
-      const igen = M.laggTillbaka(s.text, s.struken);
-      if (igen.text === text && !igen.reserv) strukna++;
-    } catch (e) {
-      if (e.kod === 'variant' || e.kod === 'sista-i-blocket') vagrade++;
-      else throw e;
-    }
-    const t = M.laggTill(text, { efter: a }, 'En ny replik.');
-    const efter = M.tolka(t.text);
-    if (efter.rader[t.i].typ === 'replik' && efter.rader[t.i].kropp === 'En ny replik.' && efter.rader[t.i].scen === rad.scen
-        && insattVid(text, t.text, t.i - 1, 2) && M.skriv(efter) === t.text) lagda++;
-  }
-  ok(ankare === r.length, `${namn}: every line is found again by its anchor (${ankare}/${r.length})`);
-  ok(enRad === r.length, `${namn}: changing a line changes exactly that one line (${enRad}/${r.length})`);
-  ok(tillbaka === r.length, `${namn}: changing it back gives the original file (${tillbaka}/${r.length})`);
-  ok(strukna + vagrade === r.length && strukna > r.length / 2,
-    `${namn}: striking and putting back gives the original file (${strukna}; ${vagrade} refused: variants and lone lines)`);
-  ok(lagda === r.length, `${namn}: adding after a line inserts exactly ">" and the new line (${lagda}/${r.length})`);
+for (const [namn, text] of Object.entries(FIL)) {
+  const d = Dk.tolka(text, SLAG[namn]);
+  ok(Dk.skriv(d) === text, `${namn}: read and written back without a change, byte for byte`);
+  ok(d.paras.every((p) => Dk.skrivRad(p) === p.raw), `${namn}: every line would be written exactly so even if it had been retyped`);
+  const omr = Dk.scenomrade(d.paras.map((p) => p.typ), SLAG[namn]);
+  ok(d.paras.every((p, k) => Dk.fel(p, omr[k]) === null), `${namn}: every paragraph as it stands can be saved`);
+  const j = Dk.justera(d.paras, null);
+  const igen = Dk.justera(Dk.tolka(text, SLAG[namn]).paras, null);
+  ok(j.every((p, k) => p.id === igen[k].id) && new Set(j.map((p) => p.id)).size === j.length, `${namn}: two windows give the same paragraphs the same ids`);
+  ok(Dk.lasesSom(text, d.paras, SLAG[namn]), `${namn}: the whole-file check accepts the file as it is`);
+}
+{
+  const d = Dk.tolka('rad ett\nrad två', 'fri');
+  ok(Dk.skriv(d) === 'rad ett\nrad två', 'a text without a last newline stays without one');
 }
 
-// Identical lines: only the one pointed at changes.
+// --- 2. Paragraph kinds --------------------------------------------------------------
+
 {
-  const t = '# Glimt, episod 9: Prov\n\nAnteckning.\n\n---\n\n## 0. A\n\n> (väntar)\n>\n> Hej.\n>\n> (väntar)\n>\n> Hej.\n\n---\n\n## Bilaga\n';
-  const m = M.tolka(t);
-  const andra = repliker(m).filter((r) => r.kropp === 'Hej.')[1];
-  const a = M.ankareFor(m, andra.i);
-  ok(a.n === 1, 'twin lines: the second one is anchored as the second');
-  const ut = M.andra(t, a, 'Hej igen.');
-  ok(JSON.stringify(diffLines(t, ut.text)) === JSON.stringify([andra.i]), 'twin lines: only the second one changes');
-  ok(M.hitta(m, { scen: '0', text: 'Hej.', n: 5 }, { strikt: true }) === -1, 'a sixth twin that does not exist is not found when it matters');
-  ok(throwsKod(() => M.andra(t, { scen: '0', text: 'Finns inte.', n: 0 }, 'x'), 'hittas-inte'), 'a line that is gone is reported, not guessed');
+  const d = Dk.tolka(FIL[1], 'episod');
+  const typer = (t) => d.paras.filter((p) => p.typ === t);
+  ok(typer('scen').length === 6 && typer('mekanik').length === 6, 'episode 1: six scenes, six Mekanik paragraphs');
+  ok(typer('variant').every((p) => p.attrs.etikett) && typer('variant').length === 15, 'episode 1: fifteen variants, each with its label');
+  const t = d.paras[0];
+  ok(t.typ === 'rubrik' && t.attrs.prefix === 'Glimt, episod 1: ' && !t.text.startsWith('Glimt'), 'the title is written without its "Glimt, episod 1:" prefix, which stays');
+  const ja = typer('gren').find((p) => p.raw.startsWith('> **'));
+  ok(ja && Dk.skrivRad({ ...ja, text: 'Ny gren:' }) === '> **Ny gren:**', 'a branch keeps its marks: people write only the words');
+  const v = typer('variant')[0];
+  ok(Dk.skrivRad({ ...v, text: 'Ny text.' }) === `> [${v.attrs.etikett}] Ny text.`, 'a variant keeps its label');
+  const m = typer('mekanik')[0];
+  ok(Dk.skrivRad({ ...m, text: 'Stanna för ja.' }) === '*Trigger: Stanna för ja.*', 'a Mekanik paragraph is a Trigger line in the file');
+  ok(Dk.skrivRad({ typ: 'regi', attrs: {}, text: 'dovt' }) === '> (dovt)', 'direction: the room writes the parentheses');
+  // Things that would read back as something else are held, not written.
+  const fel = (p, iScen = true) => Dk.fel({ attrs: {}, ...p }, iScen);
+  ok(fel({ typ: 'replik', text: '[mörkt] smyger' }) === 'form', 'a line typed as "[x] ..." in a Replik is held: it would turn into a variant');
+  ok(fel({ typ: 'replik', text: '(hela repliken i parentes)' }) === 'form', 'a Replik in parentheses is held: it would read as direction');
+  ok(fel({ typ: 'regi', text: 'a) och (b' }) === 'regi', 'direction whose parenthesis closes in the middle is held');
+  ok(fel({ typ: 'variant', attrs: { etikett: '' }, text: 'x' }) === 'utan-etikett', 'a variant without a label is held');
+  ok(fel({ typ: 'scen', text: 'Trädet' }) === 'scen', 'a scene heading without its number is held');
+  ok(fel({ typ: 'replik', text: 'x' }, false) === 'utanfor-scen', 'a Replik outside the scenes is held');
+  ok(fel({ typ: 'stycke', attrs: { form: 'fri' }, text: '   ' }) === 'tom', 'an empty paragraph is not saved');
+  ok(fel({ typ: 'stycke', attrs: { form: 'fri' }, text: '## inte en rubrik' }) === 'form', 'text that starts like a heading is held in a plain paragraph');
+  ok(fel({ typ: 'replik', text: 'Helt vanlig replik, med (regi) i mitten.' }) === null, 'an ordinary Replik with direction inside is fine');
 }
 
-// The format is kept by the room: words that would read as something else are refused.
+// --- 3. Finding paragraphs again ---------------------------------------------------------
+
 {
-  const m = M.tolka(EP[1]);
-  const vanlig = repliker(m).find((r) => !r.variant && !r.etikett && M.kroppDelar(r.kropp).slag === 'vega');
-  const variant = repliker(m).find((r) => r.variant);
-  const a = M.ankareFor(m, vanlig.i);
-  for (const [text, kod] of [
-    ['[ljust] Det är ljust.', 'krock-format'], ['**Ja, vandraren stannar:**', 'krock-format'],
-    ['*Gren:*', 'krock-format'], ['*bara kursiv*', 'krock-format'], ['*Ja:* svar', 'krock-format'],
-    ['två\nrader', 'flera-rader'], ['', 'tom'], ['   ', 'tom'],
-  ]) ok(throwsKod(() => M.andra(EP[1], a, text), kod), `refused for a plain line: ${JSON.stringify(text)} (${kod})`);
-  ok(M.andra(EP[1], a, 'Hon säger (paus) något "annat".').text !== EP[1], 'parentheses and quotes inside the words are allowed');
-  const kant = M.andra(EP[1], a, 'Med mellanslag efter. ');
-  ok(kant.text.split('\n')[vanlig.i] === `> Med mellanslag efter. ` && M.tolka(kant.text).rader[vanlig.i].kropp === 'Med mellanslag efter. ',
-    'a space at the end is saved exactly as typed, and reads back the same');
-  ok(M.skriv(M.tolka(kant.text)) === kant.text, 'a line with a trailing space still roundtrips');
-  const va = M.andra(EP[1], M.ankareFor(m, variant.i), 'Ny text.');
-  ok(va.text.split('\n')[variant.i] === `> [${variant.variant}] Ny text.`, 'a variant keeps its tag: people write only the words');
-  ok(M.byggKropp({ slag: 'regi', ord: 'dovt' }) === '(dovt)' && M.kroppDelar('(dovt)').slag === 'regi', 'direction: the room adds the parentheses');
-  ok(M.byggKropp({ slag: 'annan', vem: 'lojalisten', ord: 'Vad ordentligt.' }) === '(lojalisten) "Vad ordentligt."', 'another voice: the room adds the format');
-  ok(throwsKod(() => M.stryk(EP[1], M.ankareFor(m, variant.i)), 'variant'), 'a variant line is not struck in the room');
+  const fore = Dk.justera(Dk.tolka(FIL[1], 'episod').paras, null);
+  const skugga = Dk.skuggaFor(fore);
+  const raa = rader(FIL[1]);
+  const i = raa.findIndex((r) => r.startsWith('> Jag vet inte vem du är'));
+  raa[i] = '> Jag vet inte vem du är. Jag vet inte om du hör mig.';
+  raa.splice(i - 1, 0, '> En helt ny rad.', '>');
+  raa.splice(3, 1);
+  const efter = Dk.justera(Dk.tolka(raa.join('\n'), 'episod').paras, skugga);
+  const id = fore.find((p) => p.raw.startsWith('> Jag vet inte vem du är')).id;
+  ok(efter.find((p) => p.text.startsWith('Jag vet inte vem du är. Jag vet inte om du hör mig.')).id === id, 'a rewritten line keeps its id when others moved around it');
+  const kvar = fore.filter((p) => efter.some((q) => q.raw === p.raw));
+  ok(kvar.every((p) => efter.find((q) => q.raw === p.raw && q.id === p.id)), 'every untouched line keeps its id');
+  ok(!fore.some((p) => p.id === efter.find((q) => q.text === 'En helt ny rad.').id), 'a new line gets a new id');
 }
 
-// --- 2. Recorded sound per line --------------------------------------------------
+// --- 4. Merging per paragraph ----------------------------------------------------------------
 
 {
-  const m = M.tolka(EP[1]);
+  const P = (id, text, typ = 'replik') => ({ id, typ, attrs: {}, text });
+  const bas = [P('a', 'Ett.'), P('b', 'Två.'), P('c', 'Tre.')];
+  let r = Dk.sammanfoga(bas, [P('a', 'Ett!'), P('b', 'Två.'), P('c', 'Tre.')], [P('a', 'Ett.'), P('b', 'Två?'), P('c', 'Tre.')]);
+  ok(r.paras.map((p) => p.text).join(' ') === 'Ett! Två? Tre.' && !r.krockar.length, 'two people changing different paragraphs: both changes stay');
+  r = Dk.sammanfoga(bas, [P('a', 'Min.'), P('b', 'Två.'), P('c', 'Tre.')], [P('a', 'Din.'), P('b', 'Två.'), P('c', 'Tre.')]);
+  ok(r.paras[0].text === 'Min.' && r.krockar.length === 1 && r.krockar[0].fjarr.text === 'Din.', 'the same paragraph changed by two: the one saving now goes in the text, the other is kept as a krock');
+  r = Dk.sammanfoga(bas, [P('a', 'Ett.'), P('c', 'Tre.')], [P('a', 'Ett.'), P('b', 'Två, ändrad.'), P('c', 'Tre.')]);
+  ok(r.paras.map((p) => p.text).join(' ') === 'Ett. Två, ändrad. Tre.', 'removed here while changed there: it stays');
+  r = Dk.sammanfoga(bas, [P('a', 'Ett.'), P('b', 'Två, min.'), P('c', 'Tre.')], [P('a', 'Ett.'), P('c', 'Tre.')]);
+  ok(r.paras.map((p) => p.text).join(' ') === 'Ett. Två, min. Tre.', 'changed here while removed there: it stays');
+  r = Dk.sammanfoga(bas, [P('a', 'Ett.'), P('c', 'Tre.')], [P('a', 'Ett.'), P('b', 'Två.'), P('c', 'Tre.')]);
+  ok(r.paras.map((p) => p.text).join(' ') === 'Ett. Tre.', 'removed here, untouched there: removed');
+  r = Dk.sammanfoga(bas, [P('a', 'Ett.'), P('n', 'Ny.'), P('b', 'Två.'), P('c', 'Tre.')], [P('x', 'Först.'), P('a', 'Ett.'), P('b', 'Två.'), P('c', 'Tre.')]);
+  ok(r.paras.map((p) => p.id).join('') === 'xanbc', 'new paragraphs from both sides land where they were written');
+  r = Dk.sammanfoga(bas, [P('c', 'Tre.'), P('a', 'Ett.'), P('b', 'Två.')], [P('a', 'Ett.'), P('b', 'Två!'), P('c', 'Tre.')]);
+  ok(r.paras.map((p) => p.id + p.text).join(' ') === 'cTre. aEtt. bTvå!', 'a paragraph moved here keeps its new place, and the other change comes along');
+  // A race between two windows that both named the same new line.
+  const byt = Dk.namnbyten(new Map([['f1', P('f1', 'Samma.')]]), [P('f1', 'Samma.')], [P('f2', 'Samma.')]);
+  ok(byt.get('f1') === 'f2', 'two ids for the same line: the editor takes the file\'s');
+}
+
+// --- 5. The mechanics catalogue ---------------------------------------------------------------
+
+const KAT = K.tolkaKatalog(FIL.mekaniker);
+{
+  const namn = (n) => KAT.mekaniker.find((k) => k.namn === n);
+  ok(KAT.mekaniker.filter((k) => !k.ide).length === (FIL.mekaniker.match(/^### /gm) || []).length, `every "###" in the file is a mechanic (${KAT.mekaniker.length} with the two ideas)`);
+  ok(namn('Stanna för ja').omdome === 'Osäker' && namn('Kontakten').omdome === 'Håller' && namn('Tjuvlyssning').omdome === 'Idé', 'verdicts read from the file');
+  ok(namn('Minnet mellan episoderna').omdome === null, 'a mechanic whose verdict is no verdict word gets none (not a guess)');
+  const v = K.varianter(KAT).map((x) => x.etikett).sort().join(',');
+  ok(v === ['bro', 'berg', 'gång', 'kyrkogård', 'ljust', 'löpning', 'mörkt', 'regn', 'skog', 'torrt', 'vatten'].sort().join(','), 'the variant labels come from the catalogue');
+  // Hand count of the chips (2026-10-08): the catalogue's names in the Mekanik paragraphs.
+  //   episode 1: Kontakten at lines 29, 44, 60, 77, 130; lampan at 77, 156 = 7
+  //   episode 2: Kontakten at 33, 51 (twice), 121; fortare at 121, 283 (twice); lampan at 89 = 8
+  const brickor = (t) => Dk.tolka(t, 'episod').paras.filter((p) => p.typ === 'mekanik').flatMap((p) => K.hittaNamn(p.text, KAT).map((h) => `${p.rad + 1}:${h.mekanik.namn}`));
+  ok(brickor(FIL[1]).join(' ') === '29:Kontakten 44:Kontakten 60:Kontakten 77:Kontakten 77:Farligt stopp (lampan) 130:Kontakten 156:Farligt stopp (lampan)', 'episode 1: the chips are exactly the hand count');
+  ok(brickor(FIL[2]).join(' ') === '33:Kontakten 51:Kontakten 51:Kontakten 89:Farligt stopp (lampan) 121:Kontakten 121:Fortare 283:Fortare 283:Fortare', 'episode 2: the chips are exactly the hand count');
+  ok(!K.hittaNamn('vandraren går i sin egen takt och hittar hem', KAT).some((h) => h.mekanik.namn === 'Takten'), 'no chip for "takt" (not the name Takten)');
+  ok(K.hittaNamn('Hon knackar två gånger', KAT).map((h) => h.mekanik.namn).join() === 'Hon knackar', 'the longest name wins');
+  ok(K.hittaNamn('Kontaktens styrka', KAT).length === 1 && K.hittaNamn('kontaktlös', KAT).length === 0, 'simple inflection, never a word that only starts like a name');
+  const w = K.varsel(namn('Stanna för ja'), KAT);
+  ok(w && w[0].ord === 'Osäker' && /lätta följder/.test(w[0].text), 'Osäker gets the quiet line from the catalogue\'s own rule');
+  ok(K.varsel(namn('Kontakten'), KAT) === null, 'Håller gets no line');
+  ok(K.arNyMekanik('**Ny mekanik:** hoppa') && K.arNyMekanik('Ny mekanik: hoppa') && !K.arNyMekanik('runt minut två'), '"Ny mekanik:" first in a Mekanik paragraph is a request to Demi');
+  const egen = K.tolkaKatalog('## Grupp\n\n### Hoppet\n**Du gör:** hoppar.\n**Omdöme:** Oprövad. Ny.\n');
+  ok(egen.mekaniker.length === 1 && egen.mekaniker[0].omdome === 'Oprövad', 'a new "###" in the file is a new mechanic: nothing is hardcoded');
+}
+
+// --- 6. Recorded sound per paragraph -------------------------------------------------------------
+
+{
   const ljud = L.tolkaLjud(JSON1, TIDER);
+  const d = Dk.tolka(INSPELAD, 'episod');
+  const kropp = (p) => (p.typ === 'regi' ? `(${p.text})` : p.typ === 'variant' ? p.text : M.tolkaInnehall(p.text).kropp);
+  const talade = d.paras.filter((p) => ['replik', 'variant', 'regi'].includes(p.typ));
   const lagen = { tyst: 0, inspelad: 0, ej: 0 };
-  const anvanda = new Set();
-  for (const r of repliker(m)) {
-    const l = L.ljudFor(r.kropp, ljud);
-    lagen[l.lage]++;
-    l.delar.forEach((d) => anvanda.add(d.id));
-  }
-  ok(lagen.ej === 0 && lagen.inspelad >= 70, `episod 1: every spoken line has its recording (${lagen.inspelad} recorded, ${lagen.tyst} silent, ${lagen.ej} missing)`);
-  ok(anvanda.size >= 48, `episod 1: ${anvanda.size} of 50 clips are reached from the manuscript (the two reserve lines are not in a scene)`);
-  const rad = repliker(m).find((r) => r.kropp.startsWith('Jag vet inte vem du är.'));
-  ok(L.ljudFor(rad.kropp, ljud).lage === 'inspelad', 'a line that is the fourth paragraph of a clip is recorded');
-  ok(L.ljudFor(rad.kropp.replace('vem du är', 'vad du är'), ljud).lage === 'ej', 'change one word and it is not recorded any more');
-  ok(L.ljudFor('(hon räknar under andan. Slingans surr)', ljud).lage === 'tyst', 'a line of direction only has nothing to play');
-  const del = L.ljudFor(rad.kropp, ljud).delar[0];
-  const t = L.stycketid(ljud, del);
-  ok(del.id === 's0' && t.matt && t.fran > 20 && t.till > t.fran, `the paragraph is played from its measured start (${t.fran} to ${t.till} s)`);
-  const lojal = repliker(m).find((r) => r.kropp.includes('"God kväll, Vega. Du går fint i kväll."'));
-  ok(L.ljudFor(lojal.kropp, ljud).delar.map((d) => d.id).join() === 's5-hon-walk', 'another voice inside a direction plays that voice');
-  const ingen = L.ljudFor('Nej. Okej.', null);
-  ok(ingen.lage === 'ej', 'an episode without recordings: nothing plays');
+  for (const p of talade) lagen[L.ljudFor(kropp(p), ljud).lage]++;
+  ok(lagen.ej === 0 && lagen.inspelad >= 70, `episode 1 as recorded: every spoken paragraph has its recording (${lagen.inspelad} recorded, ${lagen.tyst} silent)`);
+  const p = talade.find((x) => x.text.startsWith('Jag vet inte vem du är.'));
+  ok(L.ljudFor(kropp({ ...p, text: p.text.replace('vem du är', 'vad du är') }), ljud).lage === 'ej', 'change one word and it is not recorded any more');
 }
 
-// --- 3. The room's own notes, through the store, in memory ----------------------
+// --- 7. The first version's notes move over ----------------------------------------------------
+
+{
+  const m1 = M.tolka(FIL[1]);
+  const i = m1.rader.findIndex((r) => r.typ === 'replik' && r.scen != null);
+  const j = m1.rader.findIndex((r, k) => k > i + 4 && r.typ === 'replik' && r.scen != null);
+  const v1 = {
+    format: 1, episod: '1',
+    rader: [{ mal: M.ankareFor(m1, i), skrev: 'henric', nar: '2026-10-08T07:00:00Z', hur: 'andrade', tidigare: [{ kropp: 'Förut.', skrev: 'demi', nar: null }] }],
+    forslag: [{ id: 'f1', mal: M.ankareFor(m1, j), kropp: 'Ett förslag.', skrev: 'liv', nar: '2026-10-08T07:01:00Z', ja: [], lage: 'oppet' },
+      { id: 'f2', mal: { scen: '1' }, kropp: 'Om hela scenen.', skrev: 'henric', nar: '2026-10-08T07:02:00Z', ja: [], lage: 'oppet' }],
+    kommentarer: [{ id: 'k1', mal: M.ankareFor(m1, j), text: 'Tempot?', galler: 'tempo', skrev: 'henric', nar: '2026-10-08T07:03:00Z', till: 'demi' },
+      { id: 'k2', mal: M.ankareFor(m1, j), text: 'Svar.', skrev: 'demi', nar: '2026-10-08T07:04:00Z', svarPa: 'k1' }],
+    strukna: [{ id: 's1', scen: '1', innehall: 'En struken rad.', granne: M.ankareFor(m1, i), skrev: 'liv', skrevNar: '2026-10-08T06:00:00Z', tidigare: [], strok: { av: 'henric', nar: '2026-10-08T07:05:00Z' } }],
+    logg: [],
+  };
+  const not = A.oppna(JSON.stringify(v1), '1', FIL[1], 'episod');
+  const paras = Dk.justera(Dk.tolka(FIL[1], 'episod').paras, not.stycken);
+  const pi = paras.find((p) => p.rad === i);
+  const pj = paras.find((p) => p.rad === j);
+  ok(not.format === 2 && not.fore && not.fore.format === 1, 'a first-version file is moved over, and kept whole under "fore"');
+  ok(A.vemSkrev(not, pi.id, pi, null).vem === 'henric', 'who wrote a line follows it to its paragraph');
+  ok(A.historikFor(not, pi.id)[0].text === 'Förut.' && A.historikFor(not, pi.id)[0].vem === 'demi', 'the earlier text is in the paragraph\'s history');
+  const f1 = not.forslag.find((f) => f.id === 'f1');
+  ok(f1.stycke === pj.id && f1.text.endsWith('Ett förslag.') && f1.galde === pj.text, 'a proposal lands on its paragraph, as a whole new version of it');
+  ok(not.forslag.find((f) => f.id === 'f2').fri && not.forslag.find((f) => f.id === 'f2').stycke, 'a proposal on a whole scene lands on the scene heading');
+  ok(not.kommentarer.every((k) => k.stycke === pj.id) && A.vantarPa(not, 'demi').length === 0, 'comments and replies land on their paragraph; Demi\'s answer counts');
+  const borta = A.borttagna(not, (id) => paras.some((p) => p.id === id));
+  ok(borta.length === 1 && borta[0].sista.text === 'En struken rad.' && borta[0].borta.efter === pi.id, 'a struck line is a removed paragraph in the history, with its place');
+  ok(throwsKod(() => A.lasAnteckning('{ trasig', '1'), 'trasig'), 'a broken notes file is an error, never an empty room');
+}
+
+// --- 8. Comments and proposals: anyone can do anything, nobody's words are rewritten ------------
+
+{
+  let not = A.tomAnteckning('1');
+  not = A.nyKommentar(not, { id: 'k', stycke: 'p', galde: 'x', text: 'Hej.', vem: 'liv', nar: 't1' });
+  ok(A.nyKommentar(not, { id: 'k', stycke: 'p', text: 'Hej.', vem: 'liv', nar: 't1' }) === not, 'the same comment sent twice goes in once');
+  not = A.kommentarKlar(not, { id: 'k', vem: 'henric', nar: 't2' });
+  ok(not.kommentarer[0].klar.av === 'henric', 'anyone can mark someone else\'s comment done');
+  not = A.taBortKommentar(not, { id: 'k', vem: 'demi', nar: 't3' });
+  ok(not.kommentarer.length === 1 && not.kommentarer[0].borta.av === 'demi', 'anyone can remove a comment, and it stays in the file');
+  ok(throwsKod(() => A.andraKommentar(not, { id: 'k', text: 'Ändrad.', vem: 'henric', nar: 't4' }), 'inte-din'), 'nobody rewrites someone else\'s comment');
+  not = A.nyttForslag(not, { id: 'f', stycke: 'p', galde: 'x', text: 'Y', typ: 'replik', attrs: {}, vem: 'demi', nar: 't5' });
+  not = A.forslagLage(not, { id: 'f', lage: 'avfard', vem: 'liv', nar: 't6' });
+  ok(not.forslag[0].lage === 'avfard' && not.forslag[0].avfard.av === 'liv', 'anyone can dismiss a proposal');
+  const s1 = '**Ny mekanik:** hoppa';
+  ok(!A.demiHarSvarat(not, 'm', s1), 'a new-mechanic request waits for Demi');
+  not = A.nyKommentar(not, { id: 'd', stycke: 'm', galde: s1, text: 'Går att bygga.', vem: 'demi', nar: 't7' });
+  ok(A.demiHarSvarat(not, 'm', s1) && !A.demiHarSvarat(not, 'm', '**Ny mekanik:** något annat'), 'Demi\'s comment answers it, until the request changes');
+}
+
+// --- 9. Saving through the store -------------------------------------------------------------------
 
 const NU = (() => { let t = Date.parse('2026-10-08T08:00:00Z'); return () => new Date((t += 60000)).toISOString(); })();
 let idn = 0;
-const ID = () => `id${++idn}`;
+const ID = () => `n${++idn}`;
 
-function minnesAdapter(filer, vem = 'henric') {
+// Files in memory. Two adapters on the same files are two people.
+function minne(filer) {
   let klocka = 1;
-  const store = new Map(Object.entries(filer).map(([k, t]) => [k, { text: t, version: 1 }]));
+  return { klocka: () => ++klocka, store: new Map(Object.entries(filer).map(([k, t]) => [k, { text: t, version: 1 }])) };
+}
+function adapterFor(m, vem = 'henric') {
   const a = {
-    namn: 'minne', kanSkriva: true, store, fore: null, skrivningar: [],
+    namn: 'minne', rot: 'test', kanSkriva: true, skrivningar: [], fore: null, efterSkriv: null,
     async vem() { return { id: vem, namn: vem }; },
-    async las(p) { const f = store.get(p); return f ? { text: f.text, version: f.version } : null; },
+    async las(p) { const f = m.store.get(p); return f ? { text: f.text, version: f.version } : null; },
     async skriv(p, text, version) {
       if (a.fore) await a.fore(p);
-      const f = store.get(p);
-      if (f && f.version !== version) throw new D.Krock(f.version);
-      klocka += 1;
-      store.set(p, { text, version: klocka });
+      const f = m.store.get(p);
+      if ((f ? f.version : 0) !== (version == null ? 0 : version)) throw new D.Krock(f ? f.version : null);
+      const v = m.klocka();
+      m.store.set(p, { text, version: v });
       a.skrivningar.push(p);
-      if (a.efter) await a.efter(p);
-      return { version: klocka };
+      if (a.efterSkriv) await a.efterSkriv(p);
+      return { version: v };
     },
-    utifran(p, text) { klocka += 1; store.set(p, { text, version: klocka }); },
-    text: (p) => (store.get(p) || {}).text,
   };
   return a;
 }
+const utifran = (m, p, text) => m.store.set(p, { text, version: m.klocka() });
+const text = (m, p) => (m.store.get(p) || {}).text;
 
-async function grundFor(n) {
-  const m = M.tolka(EP[n]);
-  return JSON.stringify({ rader: repliker(m).map((r) => r.innehall) });
+// An editor that is only a list.
+function redigerare(paras) {
+  let lista = paras.map((p) => ({ ...p }));
+  let pin = null;
+  return {
+    stycken: () => lista.map((p) => ({ ...p, attrs: { ...p.attrs } })),
+    laser: () => pin,
+    tillampa(ops) {
+      for (const o of ops) {
+        const k = lista.findIndex((p) => p.id === o.id);
+        if (o.op === 'ersatt' && k >= 0) lista[k] = { ...o.p, id: o.id };
+        else if (o.op === 'infoga') {
+          const e = o.efter == null ? -1 : lista.findIndex((p) => p.id === o.efter);
+          lista.splice(e + 1, 0, { ...o.p });
+        } else if (o.op === 'ta-bort' && k >= 0) lista.splice(k, 1);
+        else if (o.op === 'attrs' && k >= 0) Object.assign(lista[k], { raw: o.raw, orig: o.orig, sep: o.sep });
+        else if (o.op === 'byt-id' && k >= 0) lista[k].id = o.till;
+      }
+    },
+    // What a person does:
+    skriv(id, nyText) { lista.find((p) => p.id === id).text = nyText; },
+    typ(id, typ, attrs = {}) { Object.assign(lista.find((p) => p.id === id), { typ, attrs }); },
+    ny(efterId, p) { const e = lista.findIndex((x) => x.id === efterId); lista.splice(e + 1, 0, { id: ID(), attrs: {}, raw: null, orig: null, sep: null, ...p }); return lista[e + 1].id; },
+    bort(id) { lista = lista.filter((p) => p.id !== id); },
+    pinna(id) { pin = id; },
+    hitta: (f) => lista.find(f),
+  };
 }
 
-function nyttRum(vem) {
-  return minnesAdapter({ 'manus:1': EP[1], 'manus:2': EP[2], 'ljud:1': JSON1 }, vem);
+function lagring() {
+  const m = new Map();
+  return {
+    getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k),
+    key: (n) => [...m.keys()][n] || null, get length() { return m.size; }, m,
+  };
+}
+
+async function oppna(adapter, dok, { lager = null, flik = 'f1' } = {}) {
+  const l = S.skapaLager(adapter, { nu: NU, nyttId: ID, lagring: lager, flik });
+  const d = await l.dokument(dok);
+  const { paras } = await d.ladda();
+  const ed = redigerare(paras);
+  d.koppla(ed);
+  return { d, ed, l };
+}
+
+const GRUND1 = JSON.stringify({ stycken: rader(FIL[1]).filter((r) => r.startsWith('> ')) });
+const replik = (ed, borjan) => ed.hitta((p) => p.typ === 'replik' && p.text.startsWith(borjan));
+
+{
+  // One person, one paragraph.
+  const m = minne({ 'manus:1': FIL[1], 'grund:1': GRUND1 });
+  const a = adapterFor(m);
+  const { d, ed } = await oppna(a, '1');
+  await d.spara();
+  ok(a.skrivningar.length === 0, 'nothing changed, nothing written');
+  const p = replik(ed, 'Jag vet inte vem du är');
+  const radNr = rader(FIL[1]).indexOf(p.raw);
+  ed.skriv(p.id, 'Jag vet inte vem du är. Nu ändrad.');
+  await d.spara();
+  ok(JSON.stringify(diffRader(FIL[1], text(m, 'manus:1'))) === JSON.stringify([radNr]), 'one paragraph changed: exactly that line changed in the file');
+  const not = JSON.parse(text(m, 'rum:1'));
+  const h = not.historik[p.id];
+  ok(h.length === 2 && h[0].vem === 'demi' && h[0].hur === 'utkast' && h[1].vem === 'henric', 'the history: Demi\'s draft, then Henric\'s change');
+  ok(d.vemSkrev(ed.hitta((x) => x.id === p.id)).vem === 'henric' && d.lage === 'sparat', 'the margin says Henric, and the status says saved');
+  ed.skriv(p.id, 'Jag vet inte vem du är. Ändrad igen.');
+  await d.spara();
+  ok(JSON.parse(text(m, 'rum:1')).historik[p.id].length === 2, 'typing on for a while is one version in the history, not one per save');
+
+  // Enter: a new paragraph; then removed.
+  const ny = ed.ny(p.id, { typ: 'replik', text: 'En ny replik.' });
+  await d.spara();
+  const efter = rader(text(m, 'manus:1'));
+  const k = efter.indexOf('> Jag vet inte vem du är. Ändrad igen.');
+  ok(efter[k + 1] === '>' && efter[k + 2] === '> En ny replik.', 'a new Replik is written as a quote line with the separator the file uses');
+  ed.bort(ny);
+  await d.spara();
+  ok(!text(m, 'manus:1').includes('En ny replik.') && JSON.parse(text(m, 'rum:1')).historik[ny].at(-1).borta, 'a removed paragraph leaves the file, and its history says so');
+  ok(diffRader(FIL[1], text(m, 'manus:1')).length === 1, 'and the file around it is as before');
+
+  // Held: a variant without a label is not written.
+  const v = ed.hitta((x) => x.typ === 'variant');
+  ed.typ(v.id, 'variant', { etikett: '' });
+  await d.spara();
+  ok(text(m, 'manus:1').includes(v.raw) && d.hallna.get(v.id) === 'utan-etikett', 'a paragraph that would break the format is held, the file keeps the old line');
 }
 
 {
-  const a = nyttRum();
-  a.store.set('grund:1', { text: await grundFor(1), version: 1 });
-  const lager = S.skapaLager(a, { nu: NU, nyttId: ID });
-  let ep = await lager.lasEpisod('1');
-  const vy0 = R.vy(ep.manus, ep.rum, ep.grund);
-  const alla = repliker(ep.manus);
-  ok(alla.every((r) => vy0.rader.get(r.i).skrev.vem === 'demi'), 'untouched: every line in episode 1 is marked as Demi\'s draft');
+  // Two windows, different paragraphs.
+  const m = minne({ 'manus:1': FIL[1], 'grund:1': GRUND1 });
+  const h = await oppna(adapterFor(m, 'henric'), '1');
+  const l = await oppna(adapterFor(m, 'liv'), '1');
+  const ph = replik(h.ed, 'Jag vet inte vem du är');
+  const pl = replik(l.ed, 'Fortsätt gå');
+  h.ed.skriv(ph.id, 'Henrics rad.');
+  l.ed.skriv(pl.id, 'Livs rad.');
+  await h.d.spara();
+  await l.d.spara();
+  const t = text(m, 'manus:1');
+  ok(t.includes('> Henrics rad.') && t.includes('> Livs rad.') && diffRader(FIL[1], t).length === 2, 'two windows, different paragraphs: both changes in the file, nothing else');
+  await h.d.hamta();
+  ok(h.ed.hitta((p) => p.id === pl.id).text === 'Livs rad.', 'the other window brings in the change when it reads again');
+  const not = JSON.parse(text(m, 'rum:1'));
+  ok(not.historik[ph.id].at(-1).vem === 'henric' && not.historik[pl.id].at(-1).vem === 'liv', 'each change is in the history under the one who made it');
 
-  // Edit a line: exactly one line changes, and it is Henric's now.
-  const rad = alla.find((r) => r.kropp.startsWith('Fortsätt gå, om du kan. Jag pratar så länge.'));
-  const ank = M.ankareFor(ep.manus, rad.i);
-  await lager.andraRad('1', ank, 'Fortsätt gå. Jag pratar så länge.');
-  const efter = a.text('manus:1');
-  ok(JSON.stringify(diffLines(EP[1], efter)) === JSON.stringify([rad.i]), 'store: an edit changes exactly one line in the manuscript');
-  ep = await lager.lasEpisod('1');
-  let vy = R.vy(ep.manus, ep.rum, ep.grund);
-  const s = vy.rader.get(rad.i).skrev;
-  ok(s.vem === 'henric' && s.hur === 'andrade' && s.tidigare.length === 1 && s.tidigare[0].skrev === 'demi', 'the edited line is Henric\'s, and Demi\'s text is kept as the earlier one');
-  ok(L.ljudFor(ep.manus.rader[rad.i].kropp, ep.ljud).lage === 'ej', 'the edited line is not recorded any more');
-
-  // Henric changes another line in the file panel: not anyone's until named.
-  const annan = alla.find((r) => r.kropp.startsWith('Så. Nu är du tydlig.'));
-  const raa = a.text('manus:1').split('\n');
-  raa[annan.i] = '> Så. Nu hör jag dig.';
-  a.utifran('manus:1', raa.join('\n'));
-  ep = await lager.lasEpisod('1');
-  vy = R.vy(ep.manus, ep.rum, ep.grund);
-  ok(vy.rader.get(annan.i).skrev.vem === null && vy.rader.get(annan.i).skrev.hur === 'utanfor', 'text changed outside the room is nobody\'s until someone says');
-  ok(vy.rader.get(rad.i).skrev.vem === 'henric', 'the change outside did not move the room\'s own record');
-  // The line Henric edited in the room is changed again in the file panel:
-  // the room's record no longer says this text, so it is not his any more.
-  const raa2 = a.text('manus:1').split('\n');
-  const hans = raa2[rad.i];
-  raa2[rad.i] = '> Någon annan skrev om den.';
-  a.utifran('manus:1', raa2.join('\n'));
-  ep = await lager.lasEpisod('1');
-  ok(R.vy(ep.manus, ep.rum, ep.grund).rader.get(rad.i).skrev.vem === null, 'a room-edited line changed again outside the room is not credited to the room\'s writer');
-  raa2[rad.i] = hans;
-  a.utifran('manus:1', raa2.join('\n'));
-  ep = await lager.lasEpisod('1');
-  vy = R.vy(ep.manus, ep.rum, ep.grund);
-  await lager.sattNamn('1', M.ankareFor(ep.manus, annan.i), 'henric');
-  ep = await lager.lasEpisod('1');
-  vy = R.vy(ep.manus, ep.rum, ep.grund);
-  ok(vy.rader.get(annan.i).skrev.vem === 'henric' && vy.rader.get(annan.i).skrev.hur === 'namn', 'naming it makes it Henric\'s');
-
-  // A proposal lies beside the line and does not change the text.
-  const forslagsrad = alla.find((r) => r.kropp.startsWith('Men det gör det.'));
-  const fAnk = M.ankareFor(ep.manus, forslagsrad.i);
-  const fore = a.text('manus:1');
-  const livsLager = S.skapaLager(Object.assign(Object.create(a), { vem: async () => ({ id: 'liv', namn: 'Liv' }) }), { nu: NU, nyttId: ID });
-  await livsLager.foresla('1', fAnk, 'Men det gör det. Du går här.');
-  ok(a.text('manus:1') === fore, 'a proposal never changes the manuscript by itself');
-  ep = await lager.lasEpisod('1');
-  vy = R.vy(ep.manus, ep.rum, ep.grund);
-  const f = vy.rader.get(forslagsrad.i).forslag[0];
-  ok(f && f.skrev === 'liv' && f.lage === 'oppet', 'the proposal lies beside the line, with who wrote it');
-  await lager.sagJa('1', f.id);
-  ok(a.text('manus:1') === fore, 'saying yes does not change the manuscript either');
-  ep = await lager.lasEpisod('1');
-  ok(ep.rum.forslag[0].ja.map((j) => j.vem).join() === 'henric', 'who said yes is kept');
-
-  // "Lägg in i manus": an explicit act, logged with name and time.
-  await lager.laggInForslag('1', f.id);
-  const inlagd = a.text('manus:1');
-  ok(JSON.stringify(diffLines(fore, inlagd)) === JSON.stringify([forslagsrad.i])
-    && inlagd.split('\n')[forslagsrad.i] === '> Men det gör det. Du går här.', 'laying it in changes exactly that line, to the proposed words');
-  ep = await lager.lasEpisod('1');
-  vy = R.vy(ep.manus, ep.rum, ep.grund);
-  const sk = vy.rader.get(forslagsrad.i).skrev;
-  ok(sk.vem === 'liv' && sk.av === 'henric' && sk.hur === 'forslag', 'the line is Liv\'s words, laid in by Henric');
-  const logg = ep.rum.logg.find((x) => x.vad === 'lade-in-forslag');
-  ok(logg && logg.vem === 'henric' && /^2026-10-08T/.test(logg.nar) && logg.av === 'liv', 'the log says who laid it in, when, and whose it was');
-  ok(sk.tidigare.at(-1).kropp === forslagsrad.kropp && sk.tidigare.at(-1).skrev === 'demi', 'the old text is kept');
-
-  // The old text back: the file is as it was, and the proposal is open again.
-  await lager.taTillbakaText('1', M.ankareFor(ep.manus, forslagsrad.i), sk.tidigare.at(-1));
-  ok(a.text('manus:1') === fore, 'taking the old text back gives the file as it was');
-  ep = await lager.lasEpisod('1');
-  vy = R.vy(ep.manus, ep.rum, ep.grund);
-  ok(vy.rader.get(forslagsrad.i).skrev.vem === 'demi' && ep.rum.forslag[0].lage === 'oppet', 'the line is Demi\'s again and the proposal lies open beside it');
-
-  // Comments: on a line, on a scene, about what is not text.
-  await lager.kommentera('1', M.ankareFor(ep.manus, forslagsrad.i), 'Längre paus före.', 'paus');
-  await lager.kommentera('1', { scen: '3', text: null }, 'Lampan kommer för fort.', 'nar');
-  ok(a.text('manus:1') === fore, 'comments never change the manuscript');
-  ep = await lager.lasEpisod('1');
-  vy = R.vy(ep.manus, ep.rum, ep.grund);
-  ok(vy.rader.get(forslagsrad.i).kommentarer[0].galler === 'paus' && vy.scener.get('3').kommentarer[0].galler === 'nar', 'a comment can be about the pause or about when something happens');
-
-  // A comment on a line stays on it when the line is edited, and notes on a
-  // twin further down follow when the first twin's text changes.
-  {
-    const kom = repliker(ep.manus).find((r) => r.kropp.startsWith('Jag går också.'));
-    await lager.kommentera('1', M.ankareFor(ep.manus, kom.i), 'Mer torrt.', null);
-    await lager.andraRad('1', M.ankareFor(ep.manus, kom.i), 'Jag går också, varje kväll.');
-    const e2 = await lager.lasEpisod('1');
-    const v2 = R.vy(e2.manus, e2.rum, e2.grund);
-    ok(v2.rader.get(kom.i).kommentarer.length === 1 && v2.scener.get('1').losa.length === 0, 'a comment stays on its line when the line is edited in the room');
-    await lager.andraRad('1', M.ankareFor(e2.manus, kom.i), kom.kropp);
-  }
-  {
-    const t = '# Glimt, episod 1: Prov\n\nA.\n\n---\n\n## 0. A\n\n> Hej.\n>\n> Mitt.\n>\n> Hej.\n\n---\n\n## Bilaga\n';
-    const tw = minnesAdapter({ 'manus:1': t });
-    const lt = S.skapaLager(tw, { nu: NU, nyttId: ID });
-    let e3 = await lt.lasEpisod('1');
-    const [forsta, andra] = repliker(e3.manus).filter((r) => r.kropp === 'Hej.');
-    await lt.kommentera('1', M.ankareFor(e3.manus, andra.i), 'Om den andra.', null);
-    await lt.andraRad('1', M.ankareFor(e3.manus, forsta.i), 'Hallå.');
-    e3 = await lt.lasEpisod('1');
-    const v3 = R.vy(e3.manus, e3.rum, null);
-    ok(v3.rader.get(andra.i).kommentarer.length === 1 && v3.rader.get(forsta.i).kommentarer.length === 0,
-      'twin lines: a note on the second stays on the second when the first one changes');
-  }
-
-  // Strike: notes go with the struck line, and come back with it.
-  const strykes = alla.find((r) => r.kropp.startsWith('Men det gör det.'));
-  await lager.strykRad('1', M.ankareFor(ep.manus, strykes.i));
-  ep = await lager.lasEpisod('1');
-  vy = R.vy(ep.manus, ep.rum, ep.grund);
-  ok(!ep.text.includes('> Men det gör det. Du går här inne.') && ep.rum.strukna.length === 1, 'struck: the line is out and kept in the list');
-  ok(vy.scener.get('1').losa.length === 2, 'the notes on the struck line are kept, beside the scene');
-  await lager.laggTillbakaRad('1', ep.rum.strukna[0].id);
-  ok(a.text('manus:1') === fore, 'putting it back gives the file as it was');
-  ep = await lager.lasEpisod('1');
-  vy = R.vy(ep.manus, ep.rum, ep.grund);
-  ok(vy.rader.get(strykes.i).forslag.length === 1 && vy.rader.get(strykes.i).kommentarer.length === 1, 'and the notes are on the line again');
-
-  // A new line.
-  await lager.nyRad('1', { efter: M.ankareFor(ep.manus, strykes.i) }, 'En helt ny replik.');
-  ep = await lager.lasEpisod('1');
-  vy = R.vy(ep.manus, ep.rum, ep.grund);
-  const ny = repliker(ep.manus).find((r) => r.kropp === 'En helt ny replik.');
-  ok(ny && vy.rader.get(ny.i).skrev.vem === 'henric' && vy.rader.get(ny.i).skrev.hur === 'skrev', 'a new line is Henric\'s');
-  ok(vy.rader.get(strykes.i).forslag.length === 1 && vy.rader.get(strykes.i).kommentarer.length === 1 && vy.rader.get(ny.i).forslag.length === 0,
-    'notes on other lines stay where they were');
+  // The same paragraph.
+  h.ed.skriv(ph.id, 'Henric igen.');
+  l.ed.skriv(ph.id, 'Liv här.');
+  await h.d.spara();
+  await l.d.spara();
+  const t2 = text(m, 'manus:1');
+  const not2 = JSON.parse(text(m, 'rum:1'));
+  const kr = not2.krockar.find((k) => k.stycke === ph.id);
+  ok(t2.includes('> Liv här.') && kr && kr.text === 'Henric igen.' && kr.vem === 'henric', 'the same paragraph: Liv\'s save is in the text, Henric\'s version is kept at the paragraph');
+  ok(not2.historik[ph.id].some((e) => e.text === 'Henric igen.') && not2.historik[ph.id].some((e) => e.text === 'Liv här.'), 'and both versions are in the history');
+  await h.d.hamta();
+  ok(h.ed.hitta((p) => p.id === ph.id).text === 'Liv här.', 'Henric\'s window shows the text as it is in the file');
 }
 
-// --- 4. Saves that meet a changed file --------------------------------------------
+{
+  // The file changed outside the room while someone types.
+  const m = minne({ 'manus:1': FIL[1] });
+  const h = await oppna(adapterFor(m), '1');
+  const p = replik(h.ed, 'Jag vet inte vem du är');
+  h.ed.skriv(p.id, 'I rummet.');
+  const raa = rader(FIL[1]);
+  const i = raa.findIndex((r) => r.startsWith('> Fortsätt gå'));
+  raa[i] = '> Ändrad i filpanelen.';
+  utifran(m, 'manus:1', raa.join('\n'));
+  await h.d.spara();
+  const t = text(m, 'manus:1');
+  ok(t.includes('> I rummet.') && t.includes('> Ändrad i filpanelen.') && diffRader(FIL[1], t).length === 2, 'a change in the file panel meanwhile: both are kept');
+  ok(h.ed.stycken().some((x) => x.text === 'Ändrad i filpanelen.'), 'and the room shows the file panel\'s change');
+
+  // The cursor is in a paragraph that changes in the file: it is left alone until the cursor leaves.
+  const q = replik(h.ed, 'I rummet.');
+  h.ed.pinna(q.id);
+  const r2 = rader(text(m, 'manus:1'));
+  r2[r2.indexOf('> I rummet.')] = '> Utifrån igen.';
+  utifran(m, 'manus:1', r2.join('\n'));
+  await h.d.hamta();
+  ok(h.ed.hitta((x) => x.id === q.id).text === 'I rummet.', 'the paragraph with the cursor is not changed under it');
+  h.ed.pinna(null);
+  utifran(m, 'manus:1', r2.join('\n'));
+  await h.d.hamta();
+  ok(h.ed.hitta((x) => x.text === 'Utifrån igen.'), 'when the cursor has left, the change comes in');
+}
 
 {
-  // Someone changes another line between our read and our write.
-  const a = nyttRum();
-  const lager = S.skapaLager(a, { nu: NU, nyttId: ID });
-  const m = M.tolka(EP[1]);
-  const var1 = repliker(m)[3];
-  const var2 = repliker(m)[20];
+  // A write meets a Krock: someone saved between the read and the write.
+  const m = minne({ 'manus:1': FIL[1] });
+  const a = adapterFor(m);
+  const h = await oppna(a, '1');
+  const p = replik(h.ed, 'Jag vet inte vem du är');
+  h.ed.skriv(p.id, 'Min ändring.');
+  let gang = 0;
+  a.fore = async (plats) => {
+    if (plats !== 'manus:1' || gang++) return;
+    const raa = rader(text(m, 'manus:1'));
+    raa[raa.findIndex((r) => r.startsWith('> Fortsätt gå'))] = '> Emellan.';
+    utifran(m, 'manus:1', raa.join('\n'));
+  };
+  await h.d.spara();
+  const t = text(m, 'manus:1');
+  ok(gang >= 2 && t.includes('> Min ändring.') && t.includes('> Emellan.'), 'a file changed between read and write: the save starts over and both are kept');
+}
+
+{
+  // The answer to a write is lost after the file was written.
+  const m = minne({ 'manus:1': FIL[1] });
+  const a = adapterFor(m);
+  const h = await oppna(a, '1');
+  const p = replik(h.ed, 'Jag vet inte vem du är');
+  h.ed.skriv(p.id, 'Svaret försvann.');
   let forsta = true;
-  a.fore = (p) => {
-    if (p === 'manus:1' && forsta) {
-      forsta = false;
-      const raa = a.text('manus:1').split('\n');
-      raa[var2.i] = '> Demi skrev det här under tiden.';
-      a.utifran('manus:1', raa.join('\n'));
-    }
-  };
-  await lager.andraRad('1', M.ankareFor(m, var1.i), 'Min ändring.');
-  const t = a.text('manus:1').split('\n');
-  ok(t[var1.i] === '> Min ändring.' && t[var2.i] === '> Demi skrev det här under tiden.', 'a 409 in between: the save starts over and both changes are kept');
-  ok(diffLines(EP[1], a.text('manus:1')).length === 2, 'and nothing else in the file changed');
-
-  // Someone changes the very line we are saving: we stop, their text stays.
-  const b = nyttRum();
-  const lb = S.skapaLager(b, { nu: NU, nyttId: ID });
-  let gang = true;
-  b.fore = (p) => {
-    if (p === 'manus:1' && gang) {
-      gang = false;
-      const raa = b.text('manus:1').split('\n');
-      raa[var1.i] = '> Henric skrev det här i filpanelen.';
-      b.utifran('manus:1', raa.join('\n'));
-    }
-  };
-  ok(await rejectsKod(lb.andraRad('1', M.ankareFor(m, var1.i), 'Min ändring.'), 'hittas-inte'), 'the same line changed in between: the save stops and says so');
-  ok(b.text('manus:1').split('\n')[var1.i] === '> Henric skrev det här i filpanelen.' && diffLines(EP[1], b.text('manus:1')).length === 1, 'and the other person\'s text is untouched');
-  ok(!b.store.has('rum:1'), 'and nothing is noted about a change that was not made');
-
-  // A file that keeps changing: give up after a few tries, write nothing.
-  const c = nyttRum();
-  const lc = S.skapaLager(c, { nu: NU, nyttId: ID });
-  let varv = 0;
-  c.fore = (p) => { if (p === 'manus:1') { varv++; c.utifran('manus:1', c.text('manus:1')); } };
-  ok(await rejectsKod(lc.andraRad('1', M.ankareFor(m, var1.i), 'x'), 'upptagen') && c.text('manus:1') === EP[1] && varv === 6,
-    'a file that changes on every try: stop after six, the text untouched');
-
-  // A broken notes file: nothing is written, not even the manuscript.
-  const d = nyttRum();
-  d.store.set('rum:1', { text: '{ trasig', version: 1 });
-  const ld = S.skapaLager(d, { nu: NU, nyttId: ID });
-  ok(await rejectsKod(ld.andraRad('1', M.ankareFor(m, var1.i), 'x'), 'trasig') && d.text('manus:1') === EP[1] && d.text('rum:1') === '{ trasig',
-    'a broken notes file stops the save before anything is written');
-  ok(await rejectsKod(ld.foresla('1', M.ankareFor(m, var1.i), 'x'), 'trasig') && d.text('rum:1') === '{ trasig', 'and is never overwritten with an empty room');
-  const epd = await ld.lasEpisod('1');
-  ok(epd.rumFel && epd.rumFel.kod === 'trasig', 'reading tells the room the notes could not be read');
-
-  // The manuscript is saved but the note fails: said so, and sent later.
-  const e = nyttRum();
-  const le = S.skapaLager(e, { nu: NU, nyttId: ID });
-  let natet = false;
-  e.fore = (p) => { if (p === 'rum:1' && !natet) throw new Error('nätet borta'); };
-  ok(await rejectsKod(le.andraRad('1', M.ankareFor(m, var1.i), 'Sparad ändå.'), 'halvt') && e.text('manus:1').split('\n')[var1.i] === '> Sparad ändå.',
-    'the text is saved even when the note about it does not get through');
-  natet = true;
-  await le.forsokIgen();
-  const epe = await le.lasEpisod('1');
-  ok(R.vy(epe.manus, epe.rum, null).rader.get(var1.i).skrev.vem === 'henric', 'trying again sends the note: the line is Henric\'s');
-
-  // Read-only: nothing can be written.
-  const ro = S.skapaLager({ ...nyttRum(), kanSkriva: false, vem: async () => null });
-  ok(await rejectsKod(ro.andraRad('1', M.ankareFor(m, var1.i), 'x'), 'laslage'), 'read-only: a save is refused');
+  a.efterSkriv = async (plats) => { if (plats === 'manus:1' && forsta) { forsta = false; throw new Error('nätet'); } };
+  let fel = null;
+  try { await h.d.spara(); } catch (e) { fel = e; }
+  a.efterSkriv = null;
+  await h.d.spara();
+  const t = text(m, 'manus:1');
+  if (process.env.DBG) console.log('lost', String(fel), t.split('Svaret försvann.').length, diffRader(FIL[1], t));
+  ok(fel && t.split('Svaret försvann.').length === 2 && diffRader(FIL[1], t).length === 1, 'a lost answer: the next save sees the line is in, and writes it once');
 }
-
-// --- 5. Lore pages ---------------------------------------------------------------
 
 {
-  const a = minnesAdapter({});
-  const lager = S.skapaLager(a, { nu: NU, nyttId: ID });
-  const text = 'Rör sig i Huset.\n\nIngen vet <b>vem</b> & varför.  ';
-  const id = await lager.nyLoresida('Kollektivet', text);
-  let lore = await lager.lasLore();
-  ok(R.loreText(lore.sidor[0]) === text && lore.sidor[0].titel === 'Kollektivet' && lore.sidor[0].skrev === 'henric', 'a lore page keeps exactly what was typed, with who and when');
-  const sedd = lore.sidor[0].skapad;
-  // Henric on the phone saves the page while it is open on the desktop too.
-  await S.skapaLager(a, { nu: NU, nyttId: ID }).andraLoresida(id, 'Kollektivet', 'Från telefonen.');
-  const svar = await lager.andraLoresida(id, 'Kollektivet', 'Från datorn.', sedd);
-  lore = await lager.lasLore();
-  ok(svar.krockade && R.loreText(lore.sidor[0]) === 'Från datorn.' && lore.sidor[0].versioner.some((v) => v.text.join('\n') === 'Från telefonen.'),
-    'the same page saved from two places: the later is shown, the other is kept among the versions, and it is said');
-  const livs = S.skapaLager(Object.assign(Object.create(a), { vem: async () => ({ id: 'liv', namn: 'Liv' }) }), { nu: NU, nyttId: ID });
-  const fore = a.text('lore');
-  ok(await rejectsKod(livs.andraLoresida(id, 'Kollektivet', 'Livs version.'), 'inte-din') && a.text('lore') === fore,
-    'someone else\'s page cannot be changed: Liv gets a no and the file is untouched');
-  ok(await rejectsKod(livs.taBortLoresida(id), 'inte-din') && a.text('lore') === fore, 'nor removed');
-  await lager.taBortLoresida(id);
-  lore = await lager.lasLore();
-  ok(lore.sidor[0].borta && R.loreText(lore.sidor[0]) === 'Från datorn.', 'removing a page hides it and keeps it');
-  ok(await rejectsKod(livs.hamtaTillbakaLoresida(id), 'inte-din'), 'and only its writer brings it back');
-  await lager.hamtaTillbakaLoresida(id);
-  ok(!(await lager.lasLore()).sidor[0].borta, 'which the writer can');
-  ok(throwsKod(() => R.lasLore('[1,2'), 'trasig'), 'a broken lore file is an error, not an empty list');
+  // The notes do not get through: they wait in the browser, and go in once.
+  const m = minne({ 'manus:1': FIL[1] });
+  const a = adapterFor(m);
+  const lg = lagring();
+  const h = await oppna(a, '1', { lager: lg });
+  const p = replik(h.ed, 'Jag vet inte vem du är');
+  h.ed.skriv(p.id, 'Anteckningen väntar.');
+  const skriv = a.skriv;
+  a.skriv = async (plats, t, v) => { if (plats === 'rum:1') throw new Error('nere'); return skriv(plats, t, v); };
+  await h.d.spara();
+  ok(text(m, 'manus:1').includes('Anteckningen väntar.') && !text(m, 'rum:1') && h.d.ko().length === 1 && h.d.lage === 'fel', 'text saved, the note about it waits in the browser and the status says so');
+  a.skriv = skriv;
+  await h.d.spara();
+  const not = JSON.parse(text(m, 'rum:1'));
+  ok(h.d.ko().length === 0 && not.historik[p.id].at(-1).text === 'Anteckningen väntar.', 'next time it goes in');
+  const igen = A.tillampa(not, { id: not.gjort[0], poster: [{ id: p.id, post: { text: 'x', typ: 'replik', attrs: {}, vem: 'henric', nar: 'z' } }] });
+  ok(igen === not, 'the same save applied twice changes nothing');
 }
-
-// --- 5a. The markdown reader (world book, HELD's lore) -------------------------------
-// Run in a child with a tiny stand-in for the browser's document, and a time
-// limit, so a reader that loops forever fails the check instead of the run.
-{
-  const prog = `
-    const nod = (tag) => ({ tag, barn: [], append(...b) { for (const x of b) { if (x == null) continue; if (typeof x === 'string') this.barn.push({ tag: '#text', text: x }); else if (x.tag === '#frag') this.barn.push(...x.barn); else this.barn.push(x); } }, get lastChild() { return this.barn.at(-1) || null; } });
-    globalThis.document = { createElement: nod, createDocumentFragment: () => nod('#frag'), createTextNode: (text) => ({ tag: '#text', text }) };
-    const { renderMd } = await import(${JSON.stringify(pathToFileURL(join(DIR, 'md.js')).href)});
-    const lankar = (n, ut = []) => { if (n.tag === 'a') ut.push(n.href); for (const b of n.barn || []) lankar(b, ut); return ut; };
-    const text = (n) => n.tag === '#text' ? n.text : (n.barn || []).map(text).join('');
-    const pipa = renderMd('| inte en tabell\\nfortsätter\\n\\n|ensam');
-    const l = lankar(renderMd('[a](https://x.se) [b](//ond.se) [c](/\\\\ond.se) [d](#rubrik) [e](./sida.md) [f](../upp.md) [g](javascript:alert(1)) [h](/rot)'));
-    process.stdout.write(JSON.stringify({ pipa: text(pipa), lankar: l }));
-  `;
-  const r = spawnSync('node', ['--input-type=module', '-e', prog], { encoding: 'utf8', timeout: 10000 });
-  let ut = null;
-  try { ut = JSON.parse(r.stdout); } catch { ut = null; }
-  ok(r.status === 0 && ut && ut.pipa.includes('inte en tabell') && ut.pipa.includes('ensam'), 'markdown: a "|" line that is no table is read as text, without hanging');
-  ok(ut && JSON.stringify(ut.lankar) === JSON.stringify(['https://x.se', '#rubrik', './sida.md', '../upp.md']),
-    `markdown: links go only to http(s), a heading or a file beside it (${ut && ut.lankar.join(' ')})`);
-}
-
-// --- 5b. Finding the right one of two identical lines -----------------------------
 
 {
-  const t = '# Glimt, episod 1: Prov\n\nA.\n\n---\n\n## 0. A\n\n> Hej.\n>\n> A.\n>\n> Hej.\n>\n> B.\n\n## 1. B\n\n> Annat.\n\n---\n\n## Bilaga\n';
-  const m = M.tolka(t);
-  const [forsta, andra] = repliker(m).filter((r) => r.kropp === 'Hej.');
-  const a = M.ankareFor(m, andra.i);
-  ok(a.n === 1 && a.fore === 'A.' && a.efter === 'B.', 'an anchor carries the lines just before and after');
-  // Someone puts one more "Hej." first in the scene, outside the room.
-  const t2 = t.replace('## 0. A\n\n> Hej.', '## 0. A\n\n> Hej.\n>\n> Ny.\n>\n> Hej.');
-  const m2 = M.tolka(t2);
-  const ratt = repliker(m2).filter((r) => r.kropp === 'Hej.').find((r) => m2.rader[r.i + 2].innehall === 'B.');
-  ok(M.hitta(m2, a, { strikt: true }) === ratt.i, 'a twin added above: the neighbours still find the line that was meant');
-  ok(M.hitta(m2, { scen: a.scen, text: a.text, n: a.n }, { strikt: true }) !== ratt.i, 'control: by position alone it would have been the wrong twin');
-  const ut = M.andra(t2, a, 'Hej igen.');
-  ok(ut.text.split('\n')[ratt.i] === '> Hej igen.' && diffLines(t2, ut.text).length === 1, 'and the edit lands on that line only');
-  // The first twin is removed: the second is the only "Hej." left, its n is stale.
-  const t3 = t.replace('> Hej.\n>\n> A.', '> A.');
-  const m3 = M.tolka(t3);
-  ok(M.hitta(m3, a, { strikt: true }) === repliker(m3).find((r) => r.kropp === 'Hej.').i, 'the other twin removed: the line is still found');
-  // Both neighbours changed and two identical lines: strict says no rather than guess.
-  const t4 = t2.replace('> A.', '> X.').replace('> B.', '> Y.').replace('> Ny.', '> Z.');
-  ok(M.hitta(M.tolka(t4), a, { strikt: true }) === -1, 'twins whose neighbours all changed: strict finding refuses to guess');
-  // A line moved to another scene is not found there.
-  const t5 = t.replace('> Hej.\n>\n> B.', '> B.').replace('> Annat.', '> Annat.\n>\n> Hej.');
-  const m5 = M.tolka(t5);
-  ok(M.hitta(m5, a) !== repliker(m5).find((r) => r.scen === '1' && r.kropp === 'Hej.').i, 'a line is never looked for in another scene');
-  ok(M.hitta(m, forsta && M.ankareFor(m, forsta.i), { strikt: true }) === forsta.i, 'the first twin is found as itself');
+  // Unsaved text survives a reload.
+  const m = minne({ 'manus:1': FIL[1] });
+  const a = adapterFor(m);
+  const lg = lagring();
+  const h = await oppna(a, '1', { lager: lg });
+  const p = replik(h.ed, 'Jag vet inte vem du är');
+  h.ed.skriv(p.id, 'Inte sparad än.');
+  h.d.andrat();
+  ok(!text(m, 'manus:1').includes('Inte sparad än.'), 'typed, not yet saved');
+  const raa = rader(FIL[1]);
+  raa[raa.findIndex((r) => r.startsWith('> Fortsätt gå'))] = '> Medan fönstret var stängt.';
+  utifran(m, 'manus:1', raa.join('\n'));
+  const h2 = await oppna(a, '1', { lager: lg });
+  ok(h2.ed.hitta((x) => x.text === 'Inte sparad än.'), 'after a reload the unsaved text is there');
+  await h2.d.spara();
+  const t = text(m, 'manus:1');
+  ok(t.includes('> Inte sparad än.') && t.includes('> Medan fönstret var stängt.') && diffRader(FIL[1], t).length === 2, 'and it is saved together with what happened in the file meanwhile');
+  ok(!lg.m.has(h2.d.nyckelOsparat), 'once saved, nothing waits in the browser');
 }
-
-// Who wrote a line is never taken from a line in another scene.
-{
-  const t = '# Glimt, episod 1: Prov\n\nA.\n\n---\n\n## 0. A\n\n> Ett.\n>\n> Två.\n\n## 1. B\n\n> Tre.\n\n---\n\n## Bilaga\n';
-  const a = minnesAdapter({ 'manus:1': t, 'grund:1': JSON.stringify({ rader: ['Ett.', 'Två.', 'Tre.'] }) });
-  const lager = S.skapaLager(a, { nu: NU, nyttId: ID });
-  let ep = await lager.lasEpisod('1');
-  await lager.andraRad('1', M.ankareFor(ep.manus, repliker(ep.manus)[0].i), 'Henrics rad.');
-  // Outside the room the line is moved to scene 1.
-  a.utifran('manus:1', a.text('manus:1').replace('> Henrics rad.\n>\n', '').replace('> Tre.', '> Tre.\n>\n> Henrics rad.'));
-  ep = await lager.lasEpisod('1');
-  const flyttad = repliker(ep.manus).find((r) => r.kropp === 'Henrics rad.');
-  const skrev = R.vy(ep.manus, ep.rum, ep.grund).rader.get(flyttad.i).skrev;
-  ok(flyttad.scen === '1' && skrev.vem === null && skrev.hur === 'utanfor', 'a line moved to another scene outside the room is not credited to anyone');
-}
-
-// --- 5c. Notes that wait, a lost answer, and a proposal that is already the text ----
 
 {
-  const m = M.tolka(EP[1]);
-  const rad = repliker(m)[3];
-  const annan = repliker(m)[9];
-  const minne = { data: null, las() { return this.data ? JSON.parse(this.data) : null; }, skriv(v) { this.data = JSON.stringify(v); } };
-  const a = nyttRum();
-  let natet = false;
-  a.fore = (p) => { if (p === 'rum:1' && !natet) throw new TypeError('Failed to fetch'); };
-  const l1 = S.skapaLager(a, { nu: NU, nyttId: ID, ko: minne });
-  ok(await rejectsKod(l1.andraRad('1', M.ankareFor(m, rad.i), 'Sparad, anteckningen väntar.'), 'halvt'), 'the note does not get through: said so');
-  ok(minne.las() && minne.las().length === 1 && minne.las()[0].typ === 'andrad', 'the waiting note is kept in the browser, as plain data');
-  // The page is reloaded while the network is still away.
-  const l2 = S.skapaLager(a, { nu: NU, nyttId: ID, ko: minne });
-  ok(l2.vantar.length === 1, 'after a reload the note still waits');
-  const manusFore = a.text('manus:1');
-  ok(await rejectsKod(l2.foresla('1', M.ankareFor(m, annan.i), 'Ett förslag.'), 'efterslapar') && !a.store.has('rum:1') && a.text('manus:1') === manusFore,
-    'nothing new is saved while an older note waits, and nothing is written');
-  ok(await rejectsKod(l2.andraRad('1', M.ankareFor(m, annan.i), 'Ny text.'), 'efterslapar') && a.text('manus:1') === manusFore,
-    'not even the manuscript');
-  natet = true;
-  await l2.foresla('1', M.ankareFor(m, annan.i), 'Ett förslag.');
-  const ep = await l2.lasEpisod('1');
-  const vy = R.vy(ep.manus, ep.rum, null);
-  ok(vy.rader.get(rad.i).skrev.vem === 'henric' && ep.rum.forslag.length === 1 && minne.las().length === 0,
-    'with the network back, the old note goes first and then the new one: both are there, the queue is empty');
-  ok(ep.rum.logg.findIndex((x) => x.vad === 'andrade') === 0, 'the waiting note was saved before the proposal');
-
-  // Pressing save again on the same edit sends the note.
-  const b = nyttRum();
-  let natB = false;
-  b.fore = (p) => { if (p === 'rum:1' && !natB) throw new TypeError('Failed to fetch'); };
-  const lb = S.skapaLager(b, { nu: NU, nyttId: ID });
-  await rejectsKod(lb.andraRad('1', M.ankareFor(m, rad.i), 'Igen.'), 'halvt');
-  natB = true;
-  await lb.andraRad('1', M.ankareFor(M.tolka(b.text('manus:1')), rad.i), 'Igen.');
-  const epb = await lb.lasEpisod('1');
-  ok(R.vy(epb.manus, epb.rum, null).rader.get(rad.i).skrev.vem === 'henric' && epb.rum.rader.length === 1, 'saving the same text again records the note, once');
-
-  // A note whose proposal is gone by the time it is sent is dropped, and the queue moves on.
-  const c = nyttRum();
-  const gammal = { typ: 'steg', nr: '1', fore: EP[1], efter: EP[1], i: rad.i, skift: null, vem: 'henric', nar: NU(), foreKropp: rad.kropp, steg: [{ typ: 'inlagt', id: 'finns-inte' }] };
-  const lc = S.skapaLager(c, { nu: NU, nyttId: ID, ko: { las: () => [gammal], skriv() {} } });
-  await lc.kommentera('1', M.ankareFor(m, rad.i), 'Går fram ändå.');
-  ok(lc.vantar.length === 0 && JSON.parse(c.text('rum:1')).kommentarer.length === 1, 'a note that can no longer apply is dropped, not stuck');
-
-  // The write went through but the answer was lost on the way back.
-  const d = nyttRum();
-  let svaret = true;
-  d.efter = (p) => { if (p === 'manus:1' && svaret) { svaret = false; throw new TypeError('Failed to fetch'); } };
-  const ld = S.skapaLager(d, { nu: NU, nyttId: ID });
-  await ld.andraRad('1', M.ankareFor(m, rad.i), 'Svaret kom bort.');
-  const epd = await ld.lasEpisod('1');
-  ok(!svaret && d.text('manus:1').split('\n')[rad.i] === '> Svaret kom bort.' && R.vy(epd.manus, epd.rum, null).rader.get(rad.i).skrev.vem === 'henric',
-    'a lost answer after a write that went through: read back, seen as saved, and the note follows');
-
-  // A proposal whose words are already the line: laid in, logged, text untouched.
-  const e = nyttRum();
-  const le = S.skapaLager(e, { nu: NU, nyttId: ID });
-  await le.foresla('1', M.ankareFor(m, rad.i), rad.kropp);
-  const id = JSON.parse(e.text('rum:1')).forslag[0].id;
-  await le.laggInForslag('1', id);
-  const rume = JSON.parse(e.text('rum:1'));
-  ok(e.text('manus:1') === EP[1] && rume.forslag[0].lage === 'inlagt' && rume.logg.some((x) => x.vad === 'lade-in-forslag'),
-    'a proposal that says what the line already says: marked as laid in and logged, the file untouched');
+  // Proposals laid in, an earlier version taken back.
+  const m = minne({ 'manus:1': FIL[1], 'grund:1': GRUND1 });
+  const h = await oppna(adapterFor(m), '1');
+  const p = { ...replik(h.ed, 'Jag vet inte vem du är') };
+  await h.d.anteckna('forslag', { id: 'f1', stycke: p.id, galde: p.text, text: 'Demis förslag.', typ: 'replik', attrs: {}, vem: 'demi', nar: NU() });
+  h.ed.skriv(p.id, 'Demis förslag.');
+  h.d.avsikt(p.id, { nyckel: Dk.nyckel({ ...p, text: 'Demis förslag.' }), hur: 'forslag', vem: 'demi', forslag: 'f1' });
+  await h.d.spara();
+  const not = JSON.parse(text(m, 'rum:1'));
+  const sista = not.historik[p.id].at(-1);
+  ok(sista.vem === 'demi' && sista.av === 'henric' && sista.hur === 'forslag' && not.forslag[0].lage === 'inlagt', 'a proposal laid in: Demi\'s words, laid in by Henric, the proposal marked');
+  h.ed.skriv(p.id, p.text);
+  h.d.avsikt(p.id, { nyckel: Dk.nyckel(p), hur: 'tillbaka', vem: 'demi' });
+  await h.d.spara();
+  ok(text(m, 'manus:1') === FIL[1], 'taking back the earlier version gives the file exactly as it was');
 }
-
-// --- 5d. Demi in the room ------------------------------------------------------------
 
 {
-  const a = nyttRum();
-  a.store.set('grund:1', { text: await grundFor(1), version: 1 });
-  const som = (vem) => S.skapaLager(Object.assign(Object.create(a), { vem: async () => ({ id: vem, namn: D.PERSONER[vem].namn }) }), { nu: NU, nyttId: ID });
-  const henric = S.skapaLager(a, { nu: NU, nyttId: ID });
-  const liv = som('liv');
-  const demi = som('demi');
-  const m = M.tolka(EP[1]);
-  const rad = repliker(m).find((r) => r.kropp.startsWith('Så. Nu är du tydlig.'));
-  const ank = M.ankareFor(m, rad.i);
-  ok(R.arAI('demi') && !R.arAI('henric') && !R.arAI('liv'), 'Demi is an AI in the room; Henric and Liv are not');
-
-  // Demi writes its own posts.
-  await demi.foresla('1', ank, 'Så. Nu hör jag dig tydligt.');
-  const kid = await demi.kommentera('1', ank, 'Pausen före kan vara längre.', 'paus');
-  await demi.nyLoresida('Slingan', 'Den surrar.');
-  let rum = JSON.parse(a.text('rum:1'));
-  ok(rum.forslag[0].skrev === 'demi' && rum.kommentarer[0].skrev === 'demi' && JSON.parse(a.text('lore')).sidor[0].skrev === 'demi',
-    'Demi can propose, comment and write a lore page, each marked as Demi\'s');
-  ok(a.text('manus:1') === EP[1], 'none of it touches the manuscript');
-
-  // Demi never decides.
-  const manus0 = a.text('manus:1');
-  const rum0 = a.text('rum:1');
-  for (const [vad, p] of [
-    ['change a line', demi.andraRad('1', ank, 'Demi skriver om.')],
-    ['add a line', demi.nyRad('1', { efter: ank }, 'Ny.')],
-    ['strike a line', demi.strykRad('1', ank)],
-    ['say whose a line is', demi.sattNamn('1', ank, 'demi')],
-    ['say yes', demi.sagJa('1', rum.forslag[0].id)],
-    ['lay a proposal in', demi.laggInForslag('1', rum.forslag[0].id)],
-  ]) ok(await rejectsKod(p, 'bara-manniskor'), `Demi cannot ${vad}`);
-  ok(a.text('manus:1') === manus0 && a.text('rum:1') === rum0, 'and the files are untouched by all of it');
-  // The notes' own rules say the same, without the store in front of them.
-  {
-    const r0 = JSON.parse(rum0);
-    const fid = r0.forslag[0].id;
-    const allt = { manusFore: m, manusEfter: m, karta: (i) => i, manus: m, i: rad.i, id: fid, skrev: 'demi', vem: 'demi', nar: NU(), grund: null, struken: {} };
-    for (const fn of ['efterAndrad', 'efterTillagd', 'efterStruken', 'efterTillbakalagd', 'sattNamn', 'sagJa', 'forslagInlagt', 'forslagOppnatIgen']) {
-      ok(throwsKod(() => R[fn](r0, allt), 'bara-manniskor'), `rum.js: ${fn} is for people only`);
-    }
-  }
-
-  // Nobody changes someone else's words.
-  const hid = await henric.kommentera('1', ank, 'Henrics kommentar.');
-  await liv.foresla('1', ank, 'Livs förslag.');
-  await henric.nyLoresida('Huset', 'Henrics sida.');
-  rum = JSON.parse(a.text('rum:1'));
-  const livsF = rum.forslag.find((f) => f.skrev === 'liv').id;
-  const demisF = rum.forslag.find((f) => f.skrev === 'demi').id;
-  const lore = JSON.parse(a.text('lore')).sidor;
-  const hSida = lore.find((x) => x.skrev === 'henric').id;
-  const dSida = lore.find((x) => x.skrev === 'demi').id;
-  const fore = [a.text('rum:1'), a.text('lore')];
-  for (const [vad, p] of [
-    ['Demi removes Henric\'s comment', demi.taBortKommentar('1', hid)],
-    ['Demi withdraws Liv\'s proposal', demi.draUndanForslag('1', livsF)],
-    ['Demi changes Henric\'s lore page', demi.andraLoresida(hSida, 'Huset', 'Demis text.')],
-    ['Demi removes Henric\'s lore page', demi.taBortLoresida(hSida)],
-    ['Demi marks Henric\'s comment done', demi.kommentarKlar('1', hid)],
-    ['Henric removes Demi\'s comment', henric.taBortKommentar('1', kid)],
-    ['Henric withdraws Demi\'s proposal', henric.draUndanForslag('1', demisF)],
-    ['Henric changes Demi\'s lore page', henric.andraLoresida(dSida, 'Slingan', 'Henrics text.')],
-    ['Liv removes Henric\'s comment', liv.taBortKommentar('1', hid)],
-  ]) ok(await rejectsKod(p, 'inte-din'), `refused: ${vad}`);
-  ok(a.text('rum:1') === fore[0] && a.text('lore') === fore[1], 'and nothing was written');
-  await henric.kommentarKlar('1', kid);
-  ok(JSON.parse(a.text('rum:1')).kommentarer.find((k) => k.id === kid).klar.av === 'henric', 'a person can mark Demi\'s comment done: a status, not its words');
-  await demi.draUndanForslag('1', demisF);
-  ok(JSON.parse(a.text('rum:1')).forslag.find((f) => f.id === demisF).lage === 'undan', 'Demi withdraws its own proposal');
-
-  // A person lays in Demi's words: the line is Demi's, laid in by Henric.
-  await demi.foresla('1', ank, 'Så. Nu hör jag dig.');
-  const nyF = JSON.parse(a.text('rum:1')).forslag.at(-1).id;
-  await henric.sagJa('1', nyF);
-  await henric.laggInForslag('1', nyF);
-  const ep = await henric.lasEpisod('1');
-  const sk = R.vy(ep.manus, ep.rum, ep.grund).rader.get(rad.i).skrev;
-  ok(a.text('manus:1').split('\n')[rad.i] === '> Så. Nu hör jag dig.' && sk.vem === 'demi' && sk.av === 'henric' && sk.hur === 'forslag',
-    'Henric lays in Demi\'s proposal: the words are Demi\'s, the act is Henric\'s');
-
-  // Asking Demi, and Demi answering in the thread.
-  const fraga = await henric.kommentera('1', ank, 'Demi, varför pausen?', null, { till: 'demi' });
-  let e2 = await henric.lasEpisod('1');
-  let v2 = R.vy(e2.manus, e2.rum, e2.grund);
-  ok(v2.vantar.has(fraga) && R.vantarPa(e2.rum, 'demi').length === 1, 'a comment to Demi waits for an answer');
-  const svar = await demi.svara('1', fraga, 'För att hon lyssnar.');
-  e2 = await henric.lasEpisod('1');
-  v2 = R.vy(e2.manus, e2.rum, e2.grund);
-  const s1 = e2.rum.kommentarer.find((k) => k.id === svar);
-  ok(!v2.vantar.has(fraga) && v2.svar.get(fraga).map((k) => k.id).join() === svar && s1.svarPa === fraga && s1.mal.text === ank.text,
-    'Demi answers in the thread: no longer waiting, the answer hangs under the question');
-  const somEgen = [...v2.rader.values()].flatMap((x) => x.kommentarer)
-    .concat([...v2.scener.values()].flatMap((x) => [...x.kommentarer, ...x.losa.map((l) => l.post)]));
-  ok(somEgen.some((k) => k.id === fraga) && !somEgen.some((k) => k.id === svar), 'a reply is shown in its thread, never as a comment of its own');
-  const foljd = await henric.svara('1', svar, 'Och efter?', { till: 'demi' });
-  e2 = await henric.lasEpisod('1');
-  ok(e2.rum.kommentarer.find((k) => k.id === foljd).svarPa === fraga && R.vantarPa(e2.rum, 'demi').map((k) => k.id).join() === foljd,
-    'a reply to a reply joins the same thread, and a new question to Demi waits again');
-  await henric.kommentarKlar('1', fraga);
-  e2 = await henric.lasEpisod('1');
-  ok(R.vantarPa(e2.rum, 'demi').length === 0, 'a thread marked done waits for nobody');
-  const pSvar = await liv.svara('1', livsF, 'Jag menar så här.');
-  e2 = await henric.lasEpisod('1');
-  ok(R.vy(e2.manus, e2.rum, e2.grund).svar.get(livsF)[0].id === pSvar, 'a proposal can be answered too');
-  ok(await rejectsKod(henric.svara('1', 'finns-inte', 'x'), 'saknas'), 'answering something that is gone is refused');
-
-  // Hiding Demi: a setting per person, kept in a small file.
-  ok((await henric.lasInstallningar()).doljDemi === false && (await liv.lasInstallningar()).doljDemi === true,
-    'by default Henric sees Demi\'s posts and Liv does not');
-  await henric.sattInstallning('doljDemi', true);
-  ok((await henric.lasInstallningar()).doljDemi === true && (await liv.lasInstallningar()).doljDemi === true, 'Henric hides them for himself');
-  await liv.sattInstallning('doljDemi', false);
-  ok((await liv.lasInstallningar()).doljDemi === false && (await henric.lasInstallningar()).doljDemi === true, 'each person\'s choice is their own');
-  ok(await rejectsKod(henric.sattInstallning('allt', true), 'okand'), 'an unknown setting is refused');
+  // A lore page: the same kind of document, inside lore.json.
+  const lore = { format: 1, sidor: [{ id: 's1', titel: 'Vega', text: ['# Vega', '', 'Hon är arbetare.', 'Tredje raden.'], skrev: 'liv', skapad: 't' }] };
+  const m = minne({ lore: JSON.stringify(lore) });
+  const h = await oppna(adapterFor(m), 'lore:s1');
+  const p = h.ed.hitta((x) => x.text === 'Hon är arbetare.');
+  h.ed.skriv(p.id, 'Hon är arbetare på slingan.');
+  await h.d.spara();
+  const ut = JSON.parse(text(m, 'lore'));
+  ok(ut.sidor[0].text.join('\n') === '# Vega\n\nHon är arbetare på slingan.\nTredje raden.', 'a lore page: one line changed, the rest as it was');
+  ok(ut.sidor[0].rum.historik[p.id].at(-1).vem === 'henric', 'and its history is on the page');
 }
 
-// A record of who wrote a line holds only while something ties it to that
-// line: twins whose neighbours all changed are credited to nobody.
-{
-  const t = '# Glimt, episod 1: Prov\n\nA.\n\n---\n\n## 0. A\n\n> A\n>\n> Ja.\n>\n> B\n>\n> Ja.\n>\n> C\n\n---\n\n## Bilaga\n';
-  const m = M.tolka(t);
-  const tva = repliker(m).filter((r) => r.kropp === 'Ja.');
-  const rum = R.tomtRum('1');
-  rum.rader.push({ mal: M.ankareFor(m, tva[1].i), skrev: 'henric', nar: NU(), hur: 'andrade', tidigare: [] });
-  ok(R.skrevRad(m, rum, new Set(), tva[1].i).vem === 'henric' && R.skrevRad(m, rum, new Set(), tva[0].i).vem === null,
-    'twins: the record credits the one Henric wrote, not its twin');
-  const t2 = t.replace('> A\n', '> A2\n').replace('> B\n', '> B2\n').replace('> C\n', '> C2\n');
-  const m2 = M.tolka(t2);
-  const tva2 = repliker(m2).filter((r) => r.kropp === 'Ja.');
-  ok(tva2.every((r) => R.skrevRad(m2, rum, new Set(), r.i).hur === 'utanfor'),
-    'twins whose neighbours all changed outside: credited to nobody, read as changed outside the room');
-}
+// --- 10. The portal's real file code -----------------------------------------------------------------
 
-// --- 5f. Waiting, threads and the queue, under clocks and windows that disagree --
-
-{
-  const m = M.tolka(EP[1]);
-  const rad = repliker(m)[3];
-  const ank = M.ankareFor(m, rad.i);
-  const post = (id, skrev, nar, extra = {}) => ({ id, mal: ank, text: id, galler: null, skrev, nar, ...extra });
-
-  // The order in the file decides, never the clocks.
-  let rum = R.tomtRum('1');
-  rum.kommentarer.push(post('q1', 'henric', '2026-10-08T12:00:00.000Z', { till: 'demi' }));
-  rum.kommentarer.push(post('s1', 'demi', '2026-10-08T11:58:00.000Z', { svarPa: 'q1' })); // the mini-PC is two minutes behind
-  ok(R.vantarPa(rum, 'demi').length === 0, 'clocks: an answer stamped before the question but written after it counts');
-  rum.kommentarer.push(post('q2', 'henric', '2026-10-08T11:57:00.000Z', { svarPa: 'q1', till: 'demi' })); // the phone is behind
-  ok(R.vantarPa(rum, 'demi').map((k) => k.id).join() === 'q2', 'clocks: a new question stamped before the last answer still waits');
-
-  // A thread closed by a decision or by a person waits for nobody; Demi cannot close it.
-  rum = R.tomtRum('1');
-  rum.forslag.push({ id: 'f1', mal: ank, kropp: 'Nytt.', skrev: 'liv', nar: NU(), lage: 'oppet', ja: [] });
-  rum.kommentarer.push(post('q3', 'henric', NU(), { svarPa: 'f1', till: 'demi' }));
-  ok(R.vantarPa(rum, 'demi').length === 1, 'a question on an open proposal waits');
-  rum.forslag[0].lage = 'inlagt';
-  ok(R.vantarPa(rum, 'demi').length === 0, 'a proposal laid in closes its thread');
-  rum = R.tomtRum('1');
-  rum.kommentarer.push(post('d1', 'demi', NU()));
-  rum.kommentarer.push(post('q4', 'henric', NU(), { svarPa: 'd1', till: 'demi' }));
-  rum = R.kommentarKlar(rum, { id: 'd1', vem: 'demi', nar: NU() });
-  ok(R.vantarPa(rum, 'demi').length === 1, 'Demi marking its own comment done does not silence a question to it');
-  rum = R.kommentarKlar(rum, { id: 'd1', vem: 'henric', nar: NU() });
-  ok(throwsKod(() => R.kommentarKlar(rum, { id: 'd1', vem: 'demi', nar: NU(), klar: false }), 'bara-manniskor'),
-    'Demi cannot open a thread a person closed');
-
-  // Removing a first post would hide the others' replies: refused.
-  rum = R.tomtRum('1');
-  rum.kommentarer.push(post('h1', 'henric', NU()));
-  rum.kommentarer.push(post('l1', 'liv', NU(), { svarPa: 'h1' }));
-  ok(throwsKod(() => R.taBortKommentar(rum, { id: 'h1', vem: 'henric', nar: NU() }), 'har-svar'), 'a comment others have answered cannot be removed');
-  rum.kommentarer.push(post('h2', 'henric', NU(), { svarPa: 'h1' }));
-  ok(R.taBortKommentar(rum, { id: 'h2', vem: 'henric', nar: NU() }).kommentarer.find((k) => k.id === 'h2').borta, 'one\'s own reply can be removed');
-
-  // A proposal laid in cannot be withdrawn afterwards.
-  rum = R.tomtRum('1');
-  rum.forslag.push({ id: 'f2', mal: ank, kropp: 'Nytt.', skrev: 'liv', nar: NU(), lage: 'inlagt', ja: [] });
-  ok(throwsKod(() => R.draUndanForslag(rum, { id: 'f2', vem: 'liv', nar: NU() }), 'inte-oppet'), 'a proposal laid in cannot be withdrawn');
-  ok(throwsKod(() => R.nyKommentar(R.tomtRum('1'), { id: 'x', mal: ank, text: 'x', vem: 'henric', nar: NU(), till: 'toString' }), 'okand'),
-    'asking someone who is not in the room is refused');
-
-  // Twins: once only one is left, the first twin's anchor does not land on the second.
-  const t = '# Glimt, episod 1: Prov\n\nA.\n\n---\n\n## 0. A\n\n> A\n>\n> Ja.\n>\n> B\n>\n> Ja.\n>\n> C\n\n---\n\n## Bilaga\n';
-  const tm = M.tolka(t);
-  const forsta = M.ankareFor(tm, repliker(tm).find((r) => r.kropp === 'Ja.').i);
-  const t2 = M.tolka(t.replace('> Ja.\n>\n> B', '> Nej.\n>\n> B'));
-  ok(forsta.tvillingar === 2 && M.hitta(t2, forsta, { strikt: true }) === -1, 'twins: the first one changed, its anchor does not move to the second');
-
-  // Two windows with the same waiting note: it is applied once.
-  let lagring = null;
-  const ko = { las: () => (lagring ? JSON.parse(lagring) : null), skriv: (v) => { lagring = JSON.stringify(v); } };
-  const a = nyttRum();
-  let natet = false;
-  a.fore = (p) => { if (p === 'rum:1' && !natet) throw new TypeError('Failed to fetch'); };
-  const f1 = S.skapaLager(a, { nu: NU, nyttId: ID, ko });
-  await rejectsKod(f1.andraRad('1', ank, 'Två fönster.'), 'halvt');
-  const f2 = S.skapaLager(a, { nu: NU, nyttId: ID, ko });
-  natet = true;
-  ok(f2.vantar.length === 1, 'window 2 loaded the same waiting note');
-  await f1.forsokIgen();
-  await f2.forsokIgen();
-  const rf = JSON.parse(a.text('rum:1'));
-  ok(rf.rader.length === 1 && rf.logg.filter((l) => l.vad === 'andrade').length === 1 && rf.logg[0].avsikt,
-    'two windows send the same note: it is in the file once, marked with its id');
-  // Applying a stored note twice by hand: the second time changes nothing.
-  const tidigare = a.text('rum:1');
-  const gammal = { ...JSON.parse(JSON.stringify(rf.logg[0])) };
-  ok(gammal.avsikt && lagring === '[]', 'the shared list is empty after the note went through');
-  lagring = JSON.stringify([{ typ: 'andrad', nr: '1', fore: EP[1], efter: a.text('manus:1'), i: rad.i, skift: null, vem: 'henric', nar: NU(), aid: gammal.avsikt, post: {} }]);
-  const f3 = S.skapaLager(a, { nu: NU, nyttId: ID, ko });
-  await f3.forsokIgen();
-  ok(a.text('rum:1') === tidigare && lagring === '[]', 'a note already in the file is recognised by its id and not applied again');
-
-  // Junk in the browser's list never blocks saving.
-  lagring = JSON.stringify([null, { typ: 'okand' }, 'x', { typ: 'andrad', nr: 1 }]);
-  const f4 = S.skapaLager(a, { nu: NU, nyttId: ID, ko });
-  ok(f4.vantar.length === 0 && lagring === '[]', 'junk in the stored list is dropped on load');
-  await f4.kommentera('1', ank, 'Går fram.');
-  ok(JSON.parse(a.text('rum:1')).kommentarer.some((k) => k.text === 'Går fram.'), 'and saving goes on');
-  // A note that cannot be applied (its text is not a manuscript) is dropped, not retried forever.
-  lagring = JSON.stringify([{ typ: 'andrad', nr: '1', fore: EP[1], efter: EP[1], i: 99999, skift: null, vem: 'henric', nar: NU(), aid: 'trasig-1', post: {} }]);
-  const f5 = S.skapaLager(a, { nu: NU, nyttId: ID, ko });
-  await f5.kommentera('1', ank, 'Också fram.');
-  ok(lagring === '[]' && JSON.parse(a.text('rum:1')).kommentarer.some((k) => k.text === 'Också fram.'), 'a note that cannot apply is dropped and saving goes on');
-  f5.slangVantande();
-  ok(f5.vantar.length === 0, 'waiting notes can be thrown away');
-
-  // A window opened before another one left a note still waits for that note.
-  let lag2 = null;
-  const ko2 = { las: () => (lag2 ? JSON.parse(lag2) : null), skriv: (v) => { lag2 = JSON.stringify(v); } };
-  const b2 = nyttRum();
-  let natet2 = false;
-  b2.fore = (p) => { if (p === 'rum:1' && !natet2) throw new TypeError('Failed to fetch'); };
-  const tidig = S.skapaLager(b2, { nu: NU, nyttId: ID, ko: ko2 });
-  const sen = S.skapaLager(b2, { nu: NU, nyttId: ID, ko: ko2 });
-  await rejectsKod(sen.andraRad('1', ank, 'Sent fönster.'), 'halvt');
-  ok(await rejectsKod(tidig.kommentera('1', ank, 'Tidigt fönster.'), 'efterslapar'), 'an earlier window does not save past another window\'s waiting note');
-  natet2 = true;
-  await tidig.kommentera('1', ank, 'Tidigt fönster.');
-  const r2 = JSON.parse(b2.text('rum:1'));
-  ok(r2.logg[0].vad === 'andrade' && r2.kommentarer.length === 1 && lag2 === '[]', 'and sends it first when it can');
-
-  // The browser's list is full: the note stays in memory and still goes first.
-  let lag3 = '[]';
-  const ko3 = { las: () => JSON.parse(lag3), skriv: () => { throw new Error('QuotaExceededError'); } };
-  const c3 = nyttRum();
-  let natet3 = false;
-  c3.fore = (p) => { if (p === 'rum:1' && !natet3) throw new TypeError('Failed to fetch'); };
-  const w3 = S.skapaLager(c3, { nu: NU, nyttId: ID, ko: ko3 });
-  await rejectsKod(w3.andraRad('1', ank, 'Fullt i webbläsaren.'), 'halvt');
-  ok(w3.vantar.length === 1 && lag3 === '[]', 'storage full: the note waits in memory');
-  natet3 = true;
-  await w3.kommentera('1', ank, 'Sedan.');
-  const r3 = JSON.parse(c3.text('rum:1'));
-  ok(r3.logg.some((l) => l.vad === 'andrade' && l.avsikt) && r3.kommentarer.length === 1 && w3.vantar.length === 0,
-    'and is sent before the next save, not lost');
-
-  // A hand-edited notes file with junk in its log does not block saving.
-  const d4 = nyttRum();
-  d4.store.set('rum:1', { text: JSON.stringify({ ...R.tomtRum('1'), logg: [null] }), version: 1 });
-  const lag4 = [{ typ: 'andrad', nr: '1', fore: EP[1], efter: EP[1], i: rad.i, skift: null, vem: 'henric', nar: NU(), aid: 'x4', post: {} }];
-  const w4 = S.skapaLager(d4, { nu: NU, nyttId: ID, ko: { las: () => lag4, skriv() {} } });
-  await w4.kommentera('1', ank, 'Trots skräp.');
-  ok(JSON.parse(d4.text('rum:1')).kommentarer.length === 1, 'junk in the log does not block saving');
-
-  // Throwing notes away throws away what the page showed, not a note another
-  // window left in the list meanwhile.
-  let lag5 = null;
-  const ko5 = { las: () => (lag5 ? JSON.parse(lag5) : null), skriv: (v) => { lag5 = JSON.stringify(v); } };
-  const e5 = nyttRum();
-  e5.fore = (p) => { if (p === 'rum:1') throw new TypeError('Failed to fetch'); };
-  const vA = S.skapaLager(e5, { nu: NU, nyttId: ID, ko: ko5 });
-  await rejectsKod(vA.andraRad('1', ank, 'Fönster A.'), 'halvt');
-  const visade = vA.vantar.map((x) => x.aid);
-  lag5 = JSON.stringify([...JSON.parse(lag5), { typ: 'andrad', nr: '1', fore: EP[1], efter: EP[1], i: rad.i, skift: null, vem: 'henric', nar: NU(), aid: 'fran-b', post: {} }]);
-  vA.slangVantande(visade);
-  ok(JSON.stringify(JSON.parse(lag5).map((x) => x.aid)) === '["fran-b"]' && vA.vantar.length === 1,
-    'throwing away keeps a note another window left meanwhile');
-
-  // A note only this window holds, merged with the list: oldest goes first.
-  let lag6 = '[]';
-  const ko6 = { las: () => JSON.parse(lag6), skriv: () => { throw new Error('QuotaExceededError'); } };
-  const c6 = nyttRum();
-  c6.fore = (p) => { if (p === 'rum:1') throw new TypeError('Failed to fetch'); };
-  const w6 = S.skapaLager(c6, { nu: NU, nyttId: ID, ko: ko6 });
-  await rejectsKod(w6.andraRad('1', ank, 'Första ändringen.'), 'halvt');
-  const egen = w6.vantar[0].aid;
-  lag6 = JSON.stringify([{ typ: 'andrad', nr: '1', fore: EP[1], efter: EP[1], i: rad.i, skift: null, vem: 'henric', nar: NU(), aid: 'senare', post: {} }]);
-  w6.slangVantande([]);
-  ok(JSON.stringify(w6.vantar.map((x) => x.aid)) === JSON.stringify([egen, 'senare']), 'merged notes are kept oldest first');
-}
-
-// --- 5e. The manuscript as it is now, against the baseline of the recorded draft ----
-// Draft 3 rewrote much of episode 1 outside the room. Lines it changed must read
-// as changed outside the room, never as Henric's; lines it kept stay Demi's.
-{
-  const g = R.lasGrund(JSON.stringify({ rader: repliker(M.tolka(EP[1])).map((r) => r.innehall) }));
-  const nu = M.tolka(NU_EP[1]);
-  const vy = R.vy(nu, R.tomtRum('1'), g);
-  const rader = repliker(nu);
-  const utanfor = rader.filter((r) => vy.rader.get(r.i).skrev.hur === 'utanfor');
-  const demis = rader.filter((r) => vy.rader.get(r.i).skrev.vem === 'demi');
-  ok(rader.every((r) => vy.rader.get(r.i).skrev.vem === null || vy.rader.get(r.i).skrev.vem === 'demi'),
-    'the file rewritten outside the room: no line is credited to Henric or Liv');
-  ok(utanfor.length > 0 && utanfor.every((r) => !g.has(r.innehall)) && demis.every((r) => g.has(r.innehall)),
-    `changed lines read "ändrad utanför rummet" (${utanfor.length}), unchanged ones stay Demi's (${demis.length})`);
-}
-
-// --- 6. The portal's real file code ---------------------------------------------
-
-async function provserver(rot, extra = []) {
-  const p = spawn('python3', [join(REPO, 'scripts/rummet_provserver.py'), '--rot', rot, ...extra], { stdio: ['ignore', 'pipe', 'inherit'] });
+async function provserver(rot) {
+  const p = spawn('python3', [join(REPO, 'scripts/rummet_provserver.py'), '--rot', rot], { stdio: ['ignore', 'pipe', 'inherit'] });
   const url = await new Promise((res, rej) => {
     p.stdout.once('data', (b) => res(String(b).trim()));
     p.once('exit', (c) => rej(new Error(`provserver exited ${c}`)));
@@ -922,58 +548,40 @@ async function provserver(rot, extra = []) {
   const glimt = join(rot, 'projects/motionstory/stories/glimt');
   mkdirSync(glimt, { recursive: true });
   mkdirSync(join(rot, 'data/glimt-rummet'), { recursive: true });
-  for (const f of ['episod-1.json', 'varld.md']) copyFileSync(join(REPO, 'stories/glimt', f), join(glimt, f));
-  for (const n of [1, 2]) writeFileSync(join(glimt, `episod-${n}.md`), EP[n]);
+  for (const f of ['episod-1.json', 'varld.md', 'mekaniker.md', 'episod-1.md', 'episod-2.md']) copyFileSync(join(REPO, 'stories/glimt', f), join(glimt, f));
   const { p, url } = await provserver(rot);
   try {
-    // A browser sends Origin on its own; node has to be told.
     const fetch2 = (u, o = {}) => fetch(new URL(u, url), { ...o, headers: { ...(o.headers || {}), Origin: url.replace(/\/$/, '') } });
-    const adapter = D.portalAdapter({ fetch: fetch2 });
-    ok(await adapter.finns(), 'portal: the file API answers');
     const filen = join(glimt, 'episod-1.md');
-    const m = M.tolka(EP[1]);
-    const r1 = repliker(m)[5];
-    const r2 = repliker(m)[40];
-    const lager = S.skapaLager(adapter, { nu: NU, nyttId: ID });
-    ok(await adapter.las('rum:1') === null, 'portal: a notes file that does not exist yet reads as missing');
-
-    // Henric saves in the file panel between our read and our write.
     let forsta = true;
-    const skrivenFetch = async (u, o = {}) => {
+    // Henric saves in the file panel between our read and our write.
+    const mellan = async (u, o = {}) => {
       if (forsta && o.method === 'POST' && JSON.parse(o.body).path.endsWith('episod-1.md')) {
         forsta = false;
         const raa = readFileSync(filen, 'utf8').split('\n');
-        raa[r2.i] = '> Ändrad i filpanelen.';
+        raa[raa.findIndex((r) => r.startsWith('> Fortsätt gå'))] = '> Ändrad i filpanelen.';
         writeFileSync(filen, raa.join('\n'));
         const s = statSync(filen);
         utimesSync(filen, s.atime, new Date(s.mtimeMs + 2000));
       }
       return fetch2(u, o);
     };
-    const lager2 = S.skapaLager(D.portalAdapter({ fetch: skrivenFetch }), { nu: NU, nyttId: ID });
-    await lager2.andraRad('1', M.ankareFor(m, r1.i), 'Ändrad i rummet.');
+    const adapter = D.portalAdapter({ fetch: mellan });
+    ok(await adapter.finns(), 'portal: the file API answers');
+    const h = await oppna(adapter, '1');
+    const q = replik(h.ed, 'Jag vet inte vem du är');
+    h.ed.skriv(q.id, 'Ändrad i rummet.');
+    await h.d.spara();
     const disk = readFileSync(filen, 'utf8');
-    ok(!forsta, 'portal: the file really was changed in between (the 409 path ran)');
-    ok(JSON.stringify(diffLines(EP[1], disk)) === JSON.stringify([r1.i, r2.i].sort((x, y) => x - y))
-      && disk.split('\n')[r1.i] === '> Ändrad i rummet.' && disk.split('\n')[r2.i] === '> Ändrad i filpanelen.',
-    'portal: after a 409 both texts are in the file, and nothing else changed');
+    ok(!forsta && disk.includes('> Ändrad i rummet.') && disk.includes('> Ändrad i filpanelen.') && diffRader(FIL[1], disk).length === 2,
+      'portal: after a 409 both texts are in the file, and nothing else changed');
     const rumDisk = JSON.parse(readFileSync(join(rot, 'data/glimt-rummet/episod-1.json'), 'utf8'));
-    ok(rumDisk.rader.length === 1 && rumDisk.rader[0].skrev === 'henric', 'portal: the note about who wrote it is written as readable JSON');
-
-    // Writing a file believed missing when someone just made it: 409, not overwritten.
-    writeFileSync(join(rot, 'data/glimt-rummet/lore.json'), JSON.stringify({ format: 1, sidor: [{ id: 'x', titel: 'Någons', text: ['Finns redan.'], skrev: 'liv' }] }));
-    let krock = false;
-    try { await adapter.skriv('lore', '{}', null); } catch (e) { krock = e instanceof D.Krock; }
-    ok(krock && readFileSync(join(rot, 'data/glimt-rummet/lore.json'), 'utf8').includes('Finns redan.'), 'portal: a file that appeared in between is not overwritten');
-    await lager.nyLoresida('Min sida', 'Text.');
-    const lore = await lager.lasLore();
-    ok(lore.sidor.length === 2 && lore.sidor[0].titel === 'Någons', 'portal: a new page goes in beside the page already there');
-
-    // A path outside the allowed ones is refused by the server.
+    ok(rumDisk.format === 2 && rumDisk.historik[q.id].at(-1).vem === 'henric', 'portal: the notes are written as readable JSON, format 2');
+    const k = await oppna(D.portalAdapter({ fetch: fetch2 }), 'mekaniker');
+    await k.d.spara();
+    ok(readFileSync(join(glimt, 'mekaniker.md'), 'utf8') === FIL.mekaniker, 'portal: the catalogue opened and saved without a change is the same file');
     const fel = await fetch2(`/api/files/read?path=${encodeURIComponent('/etc/passwd')}`);
     ok(fel.status === 403, 'portal: a path outside the sandbox is refused');
-    const utanOrigin = await fetch(new URL('/api/files/write', url), { method: 'POST', body: JSON.stringify({ path: filen.replace(rot, '/home/henric/generalassistant'), content: 'x' }) });
-    ok(utanOrigin.status === 403 && readFileSync(filen, 'utf8') === disk, 'portal: a write without the page\'s origin is refused');
   } finally {
     p.kill();
     rmSync(rot, { recursive: true, force: true });

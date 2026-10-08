@@ -1,21 +1,23 @@
 #!/usr/bin/env python3
 """The room in a real browser, end to end, on copies of the manuscript.
 
-Builds a sandbox (copies of episodes 1 and 2, the recordings list, the world
-book, HELD's lore, and Demi's baseline written fresh by rummet_grund.py),
-deploys the room into it with rummet_deploy.py, and runs the local portal
-stand-in (rummet_provserver.py, which uses the portal's own files.py for the
-mtime check and the atomic write). Then a phone-sized Chromium does what
-Henric would: listen, change a line, propose, say yes, lay it in, take it
-back, comment, strike and put back, add a line, write a lore page. Between the
-clicks the test changes the files on disk the way the portal's file panel or
-Demi would, and checks that nobody's text is lost and that every other line
-of the manuscript stays byte for byte.
+Builds a sandbox (copies of the episodes, the recordings list, the world book,
+the mechanics catalogue, HELD's lore, and Demi's baseline written fresh by
+rummet_grund.py), deploys the room into it with rummet_deploy.py and runs the
+local portal stand-in (rummet_provserver.py, which uses the portal's own
+files.py for the mtime check and the atomic write). Then Chromium does what a
+writer would, typing for real: write in a paragraph, Enter for a new one,
+change its style, join two, undo, paste several lines, insert a mechanic from
+the catalogue, choose a variant label, ask Demi for a new mechanic, comment,
+propose, take back an earlier version, reload. Two windows change different
+paragraphs and then the same one. Between the clicks the test changes the
+files on disk the way the portal's file panel or Demi would, and checks that
+nobody's text is lost and every other line stays byte for byte.
 
-    ~/generalassistant/.venv/bin/python scripts/test_rummet_browser.py [--skarmar DIR]
+    ~/generalassistant/.venv/bin/python scripts/test_rummet_browser.py [--skarmar DIR] [--bara telefon|bred|tva]
 
 The sound is served from this repo's audio/ instead of the public site.
-Nothing outside the temporary sandbox is read for writing or written.
+Nothing outside the temporary sandbox is written.
 """
 from __future__ import annotations
 
@@ -40,13 +42,14 @@ failures = 0
 checks = 0
 
 
-def ok(cond: bool, what: str) -> None:
+def ok(cond: bool, what: str) -> bool:
     global failures, checks
     checks += 1
     if not cond:
         failures += 1
     if not cond or os.environ.get("VERBOSE"):
         print(f"{'ok  ' if cond else 'FAIL'}  {what}", flush=True)
+    return cond
 
 
 def load(name: str):
@@ -56,35 +59,13 @@ def load(name: str):
     return mod
 
 
-LINES_JS = """
-import { readFileSync, existsSync } from 'node:fs';
-const M = await import(process.env.MANUS_JS);
-const L = await import(process.env.LJUD_JS);
-const text = readFileSync(process.env.FIL, 'utf8');
-const lj = existsSync(process.env.LJUD) ? L.tolkaLjud(readFileSync(process.env.LJUD, 'utf8')) : null;
-const m = M.tolka(text);
-const ut = m.rader.filter((r) => r.typ === 'replik' && r.scen != null).map((r) => {
-  let strykbar = true;
-  try { M.stryk(text, M.ankareFor(m, r.i)); } catch { strykbar = false; }
-  return { i: r.i, scen: r.scen, kropp: r.kropp, variant: r.variant, etikett: r.etikett, strykbar, slag: M.kroppDelar(r.kropp).slag,
-    ljud: lj ? L.ljudFor(r.kropp, lj).lage : null };
-});
-process.stdout.write(JSON.stringify(ut));
-"""
-
-
-def repliker(fil: Path) -> list[dict]:
-    env = {**os.environ, "MANUS_JS": (REPO / "rummet" / "manus.js").as_uri(), "LJUD_JS": (REPO / "rummet" / "ljud.js").as_uri(),
-           "FIL": str(fil), "LJUD": str(fil.with_suffix(".json"))}
-    out = subprocess.run(["node", "--input-type=module", "-e", LINES_JS], capture_output=True, text=True, check=True, env=env)
-    return json.loads(out.stdout)
-
+# --- The sandbox and the server ------------------------------------------------------------
 
 def sandbox() -> tuple[Path, Path]:
     rot = Path(tempfile.mkdtemp(prefix="rummet-browser-"))
     glimt = rot / "projects/motionstory/stories/glimt"
     glimt.mkdir(parents=True)
-    for f in ("episod-1.md", "episod-2.md", "episod-1.json", "varld.md"):
+    for f in ("episod-1.md", "episod-2.md", "episod-1.json", "varld.md", "mekaniker.md"):
         shutil.copyfile(GLIMT / f, glimt / f)
     held = rot / "projects/held/universe"
     held.mkdir(parents=True)
@@ -93,33 +74,23 @@ def sandbox() -> tuple[Path, Path]:
         shutil.copyfile(lore, held / "LORE.md")
     else:
         (held / "LORE.md").write_text("# HELD\n\nEn stand-in för HELD:s lore.\n", encoding="utf-8")
-    load("rummet_grund").write_baseline(rot / "data/glimt-rummet", ["1e54ffc", "f0fd543"])
+    load("rummet_grund").write_baseline(rot / "data/glimt-rummet", ["f0fd543"])
     ut = rot / "uploads"
     load("rummet_deploy").deploy(ut)
     return rot, ut
 
 
-def provserver(rot: Path, ut: Path, api: bool = True) -> tuple[subprocess.Popen, str]:
-    args = [sys.executable, str(REPO / "scripts/rummet_provserver.py"), "--rot", str(rot), "--uploads", str(ut)]
-    if not api:
-        args.append("--utan-api")
-    p = subprocess.Popen(args, stdout=subprocess.PIPE, text=True)
+def provserver(rot: Path, ut: Path) -> tuple[subprocess.Popen, str]:
+    p = subprocess.Popen([sys.executable, str(REPO / "scripts/rummet_provserver.py"), "--rot", str(rot), "--uploads", str(ut)],
+                         stdout=subprocess.PIPE, text=True)
     url = p.stdout.readline().strip().rstrip("/")
     return p, url
 
 
-INIT = """
-const play = HTMLMediaElement.prototype.play;
-HTMLMediaElement.prototype.play = function () { window.__ljud = this; return play.call(this); };
-"""
-
-
 def route_audio(route) -> None:
-    """The public site's recordings, from this repo, with byte ranges as
-    GitHub Pages serves them."""
+    """The public site's recordings, from this repo, with byte ranges."""
     url = route.request.url.split("#")[0]
-    rel = url.split("/motionstory/audio/", 1)[-1]
-    f = REPO / "audio" / rel
+    f = REPO / "audio" / url.split("/motionstory/audio/", 1)[-1]
     if not f.is_file():
         route.fulfill(status=404, body=b"")
         return
@@ -134,425 +105,487 @@ def route_audio(route) -> None:
         "Content-Type": "audio/mpeg", "Accept-Ranges": "bytes", "Content-Range": f"bytes {start}-{end}/{len(data)}"})
 
 
-def ritad(page) -> str:
-    return page.get_attribute("#rum", "data-ritad") or ""
+INIT = """
+const play = HTMLMediaElement.prototype.play;
+HTMLMediaElement.prototype.play = function () { window.__ljud = this; return play.call(this); };
+"""
 
 
-def spara(page, klick) -> list[str] | None:
-    """Click, then wait for the page to be drawn again (a save went through)
-    or for an error. -> None on success, else the error texts."""
-    fore = ritad(page)
-    # An error already on the page is not this save's answer.
-    page.evaluate("for (const p of document.querySelectorAll('.fel p')) p.dataset.gammal = '1'")
-    klick()
-    page.wait_for_function(
-        """n => document.getElementById('rum').dataset.ritad !== n
-           || document.querySelector('.fel p:not([data-gammal])')
-           || document.querySelector('.status.fel:not([hidden])')""",
-        arg=fore, timeout=20000)
-    if ritad(page) != fore:
-        return None
-    return page.locator(".fel p:not([data-gammal]), .status.fel:not([hidden]) span").all_inner_texts() or ["(no redraw)"]
+# --- Reading the files --------------------------------------------------------------------------
+
+ROUNDTRIP_JS = """
+import { readFileSync } from 'node:fs';
+const D = await import(process.env.DOK_JS);
+const text = readFileSync(process.env.FIL, 'utf8');
+const slag = process.env.SLAG === 'episod' ? D.SLAG_EPISOD : D.SLAG_FRI;
+const t = D.tolka(text, slag);
+const paras = D.justera(t.paras, null);
+const fel = [];
+const omr = D.scenomrade(paras.map((p) => p.typ), slag);
+paras.forEach((p, k) => { const f = D.fel(p, omr[k]); if (f && f !== 'tom') fel.push([k, f, p.text]); });
+process.stdout.write(JSON.stringify({ samma: D.skriv({ paras, slut: t.slut }) === text, fel }));
+"""
 
 
-def rad(page, i: int):
-    return page.locator(f"#rad-{i}")
+def formen(fil: Path, episod: bool = True) -> dict:
+    env = {**os.environ, "DOK_JS": (REPO / "rummet" / "dok.js").as_uri(), "FIL": str(fil), "SLAG": "episod" if episod else "fri"}
+    out = subprocess.run(["node", "--input-type=module", "-e", ROUNDTRIP_JS], capture_output=True, text=True, check=True, env=env)
+    return json.loads(out.stdout)
 
 
-def oppna(page, i: int) -> None:
-    if not rad(page, i).locator(".verktyg").count():
-        rad(page, i).locator(".radtext").click()
-    rad(page, i).locator(".verktyg").wait_for()
+def innehall(t: str) -> list[str]:
+    """The file's lines without the separators (empty lines and the bare ">"
+    that keeps a quote block together)."""
+    return [r for r in t.split("\n") if r.strip() not in ("", ">")]
 
 
-def bump(fil: Path) -> None:
-    s = fil.stat()
-    os.utime(fil, (s.st_atime, s.st_mtime + 2))
+def foljd(t: str, *rader: str) -> bool:
+    """The lines stand right after each other, separators aside."""
+    i = innehall(t)
+    n = len(rader)
+    return any(i[k:k + n] == list(rader) for k in range(len(i) - n + 1))
 
 
-def andra_pa_disk(fil: Path, i: int, ny: str) -> None:
-    raa = fil.read_text(encoding="utf-8").split("\n")
-    raa[i] = ny
-    fil.write_text("\n".join(raa), encoding="utf-8")
-    bump(fil)
+def vanta_fil(page, fil: Path, villkor, sek: float = 20) -> bool:
+    slut = time.time() + sek
+    while time.time() < slut:
+        try:
+            if villkor(fil.read_text(encoding="utf-8")):
+                return True
+        except FileNotFoundError:
+            pass
+        page.wait_for_timeout(200)
+    return False
 
 
-def skillnad(a: str, b: str) -> list[int]:
-    x, y = a.split("\n"), b.split("\n")
-    if len(x) != len(y):
-        return [-1]
-    return [k for k in range(len(x)) if x[k] != y[k]]
+def notes(fil: Path) -> dict:
+    try:
+        return json.loads(fil.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {}
 
 
-def demi(rot: Path, *args: str) -> subprocess.CompletedProcess:
-    """Demi's door into the room: scripts/rummet.py on the sandbox."""
+def demi(rot: Path, *args: str, stdin: str | None = None) -> subprocess.CompletedProcess:
     return subprocess.run([sys.executable, str(REPO / "scripts/rummet.py"), "--rot", str(rot), *args],
-                          capture_output=True, text=True, check=False)
+                          capture_output=True, text=True, input=stdin)
+
+
+# --- In the page --------------------------------------------------------------------------------
+
+def stycke_id(page, borjar: str) -> str | None:
+    return page.evaluate("""(b) => {
+      for (const s of document.querySelectorAll('.ProseMirror .st')) {
+        const t = s.querySelector('.text');
+        if (t && t.textContent.startsWith(b)) return s.dataset.id;
+      }
+      return null;
+    }""", borjar)
+
+
+def markor(page, sid: str, var: str = "slut") -> None:
+    """Tap the paragraph, then put the caret at its start or end, as a
+    finger or an arrow key would."""
+    sel = f'.ProseMirror .st[data-id="{sid}"] .text'
+    page.locator(sel).first.scroll_into_view_if_needed()
+    page.locator(sel).first.click()
+    page.evaluate("""([sel, slut]) => {
+      const t = document.querySelector(sel);
+      const r = document.createRange();
+      r.selectNodeContents(t);
+      r.collapse(!slut);
+      const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+    }""", [sel, var == "slut"])
+    page.wait_for_timeout(80)
+
+
+def markera_allt_i(page, sid: str) -> None:
+    sel = f'.ProseMirror .st[data-id="{sid}"] .text'
+    page.locator(sel).first.click()
+    page.evaluate("""(sel) => {
+      const t = document.querySelector(sel);
+      const r = document.createRange(); r.selectNodeContents(t);
+      const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+    }""", sel)
+    page.wait_for_timeout(80)
+
+
+def klistra(page, text: str) -> None:
+    page.evaluate("""(text) => {
+      const dt = new DataTransfer(); dt.setData('text/plain', text);
+      document.querySelector('.ProseMirror').dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+    }""", text)
+
+
+def lage(page) -> str:
+    return page.get_attribute("#lage", "class") or ""
+
+
+def vanta_sparat(page, sek: float = 20) -> bool:
+    page.wait_for_timeout(400)
+    slut = time.time() + sek
+    while time.time() < slut:
+        if "sparat" in lage(page).split():
+            return True
+        page.wait_for_timeout(150)
+    return False
+
+
+def stil(page, namn: str) -> None:
+    page.locator("#verktyg .typval").click()
+    page.locator("#meny button", has_text=namn).first.click()
+    page.wait_for_timeout(120)
+
+
+def verktyg(page, gor: str) -> None:
+    # On a phone the toolbar is one row that scrolls sideways, as in the
+    # sketch: swipe it to the button first.
+    page.evaluate("(g) => document.querySelector(`#verktyg button[data-gor=\"${g}\"]`).scrollIntoView({ inline: 'center', block: 'nearest' })", gor)
+    page.wait_for_timeout(100)
+    page.locator(f'#verktyg button[data-gor="{gor}"]').click()
+    page.wait_for_timeout(150)
+
+
+def oppna(page, url: str, fel: list[str]) -> None:
+    page.goto(url)
+    page.wait_for_selector(".ProseMirror .st", timeout=15000)
+    page.wait_for_timeout(500)
+
+
+# --- The scenarios -----------------------------------------------------------------------------------
+
+def skrivaren(b, url: str, rot: Path, storlek: str, skarmar: Path | None) -> None:
+    """One person writing in episode 1: everything a word processor does."""
+    mobil = storlek == "telefon"
+    ctx = b.new_context(viewport={"width": 390, "height": 844} if mobil else {"width": 1440, "height": 1000},
+                        is_mobile=mobil, has_touch=mobil, device_scale_factor=2 if mobil else 1)
+    ctx.add_init_script(INIT)
+    page = ctx.new_page()
+    page.route(re.compile(r".*/motionstory/audio/.*"), route_audio)
+    fel: list[str] = []
+    page.on("pageerror", lambda e: fel.append(f"pageerror: {e}"))
+    page.on("console", lambda m: fel.append(m.text) if m.type == "error" and "404" not in m.text else None)
+    F = rot / "projects/motionstory/stories/glimt/episod-1.md"
+    N = rot / "data/glimt-rummet/episod-1.json"
+    original = F.read_text(encoding="utf-8")
+    pre = f"[{storlek}]"
+
+    def skarm(namn: str) -> None:
+        if skarmar:
+            page.screenshot(path=str(skarmar / f"{storlek}-{namn}.png"))
+
+    oppna(page, f"{url}/index.html#episod-1", fel)
+    ok(page.locator(".ProseMirror .st").count() > 100, f"{pre} episode 1 is drawn as paragraphs")
+    ok(page.locator(".ProseMirror .bricka").count() == 7, f"{pre} episode 1 has 7 mechanic chips (hand count), not {page.locator('.ProseMirror .bricka').count()}")
+    brickor = page.evaluate("[...document.querySelectorAll('.ProseMirror .bricka')].map((b) => b.textContent.toLowerCase())")
+    ok(sorted(brickor) == sorted(["kontakten"] * 5 + ["lampan"] * 2), f"{pre} the chips are Kontakten x5 and lampan x2: {brickor}")
+    ok(page.locator(".ProseMirror button.ring").count() > 10, f"{pre} recorded lines have a listen ring")
+    ok("sparat" in lage(page), f"{pre} the state says Sparat before anything is typed")
+    ok(page.evaluate("document.documentElement.scrollWidth <= innerWidth"), f"{pre} the page never pans sideways")
+    skarm("01-start")
+
+    # Listen: the ring plays the recording.
+    ring = page.locator(".ProseMirror button.ring").first
+    ring.click()
+    page.wait_for_timeout(700)
+    ok(page.evaluate("!!window.__ljud && !window.__ljud.paused && window.__ljud.src.includes('/audio/glimt/vega/')"), f"{pre} the listen ring plays the recording")
+    ring.click()
+
+    # 1. Type at the end of a paragraph.
+    p1 = stycke_id(page, "Jag måste få veta en sak")
+    markor(page, p1)
+    page.keyboard.type(" Hallå?")
+    rad1 = "> Jag måste få veta en sak, annars blir jag tokig. Jag har pratat för mig själv här länge. Jag vet hur det känns när ingen lyssnar. Det här känns inte så. Hallå?"
+    ok(vanta_fil(page, F, lambda t: rad1 + "\n" in t), f"{pre} typing at the end of a line is saved")
+    ok(vanta_sparat(page), f"{pre} the state says Sparat after the save")
+    ok(page.locator(f'.st[data-id="{p1}"] .ring.ny').count() == 1, f"{pre} a changed line shows the dotted ring (not recorded yet)")
+
+    # 2. Enter makes a new paragraph; in a scene after a line it is a line.
+    page.keyboard.press("Enter")
+    page.keyboard.type("En ny replik från Henric.")
+    ok(vanta_fil(page, F, lambda t: foljd(t, rad1, "> En ny replik från Henric.")), f"{pre} Enter and typing makes a new line right after it")
+    ny = stycke_id(page, "En ny replik från Henric.")
+
+    # 3. Change its style from the toolbar, and back with the keyboard.
+    stil(page, "Regi och ljud")
+    ok(vanta_fil(page, F, lambda t: "> (En ny replik från Henric.)\n" in t), f"{pre} the style menu makes it direction: > (…)")
+    page.keyboard.press("Control+Shift+3")
+    ok(vanta_fil(page, F, lambda t: "> En ny replik från Henric.\n" in t and "> (En ny replik" not in t), f"{pre} Ctrl+Shift+3 makes it a line again")
+
+    # 4. Backspace at the start joins it with the one before; Ctrl+Z undoes.
+    markor(page, ny, "start")
+    page.keyboard.press("Backspace")
+    ok(vanta_fil(page, F, lambda t: "Hallå?En ny replik från Henric.\n" in t and "\n> En ny replik" not in t), f"{pre} Backspace at the start joins two paragraphs")
+    page.keyboard.press("Control+z")
+    ok(vanta_fil(page, F, lambda t: foljd(t, rad1, "> En ny replik från Henric.")), f"{pre} Ctrl+Z splits them again")
+    skarm("02-skrivet")
+
+    # 5. Paste several lines: each becomes a paragraph, (…) becomes direction.
+    ny = stycke_id(page, "En ny replik från Henric.")
+    markor(page, ny)
+    page.keyboard.press("Enter")
+    klistra(page, "Rad ett.\nRad två.\n(paus)")
+    ok(vanta_fil(page, F, lambda t: foljd(t, "> En ny replik från Henric.", "> Rad ett.", "> Rad två.", "> (paus)")), f"{pre} pasting three lines makes three paragraphs, the last one direction")
+
+    # 6. Insert a mechanic from the catalogue into scene 1, which has no branches.
+    s1 = stycke_id(page, "Så. Nu är du tydlig.")
+    markor(page, s1)
+    verktyg(page, "infoga")
+    ok(page.locator("#panel:not([hidden]) .mek-val").count() == 33, f"{pre} the mechanic picker lists the catalogue's 33")
+    page.locator("#panel input[type=search]").fill("stanna")
+    page.wait_for_timeout(150)
+    ok(page.locator("#panel .mek-val").count() >= 1, f"{pre} searching narrows the list")
+    page.locator("#panel .mek-val", has_text="Stanna för ja").first.click()
+    ok(vanta_fil(page, F, lambda t: "*Trigger: kontakten stark första gången, efter ungefär en minut i rörelse. Stanna för ja.*\n" in t), f"{pre} the name is added last in the scene's Mekanik row")
+    mek1 = stycke_id(page, "kontakten stark första gången")
+    ok(page.locator(f'.st[data-id="{mek1}"] .bricka').count() == 2, f"{pre} the row now has two chips")
+    varsel = page.locator(f'.st[data-id="{mek1}"] .varsel').all_inner_texts()
+    ok(any(v.startswith("Osäker: Stanna för ja.") for v in varsel), f"{pre} an Osäker mechanic gives a quiet warning: {varsel}")
+    # Two empty branches came last in the scene, with the caret in the first.
+    page.keyboard.type("Om vandraren stannar:")
+    ok(vanta_fil(page, F, lambda t: foljd(t, "> **Om vandraren stannar:**", "## 2. Frågan") or foljd(t, "> **Om vandraren stannar:**", "---", "## 2. Frågan")), f"{pre} typing in the new branch saves it last in scene 1")
+    tom = page.locator(".ProseMirror .st.gren.tom").count()
+    ok(tom == 1, f"{pre} the second new branch waits, empty, and is not written ({tom})")
+    skarm("03-mekanik")
+
+    # 7. A variant: the style, then a label from the catalogue's list.
+    p2 = stycke_id(page, "Så. Om det finns någon där.")
+    markor(page, p2)
+    stil(page, "Variant")
+    ok(page.locator("#panel:not([hidden]) .etikett-val").count() > 5, f"{pre} the label picker offers the catalogue's labels")
+    page.locator("#panel .etikett-val", has_text=re.compile(r"^mörkt$")).first.click()
+    ok(vanta_fil(page, F, lambda t: "> [mörkt] Så. Om det finns någon där." in t), f"{pre} choosing a label writes the variant: > [mörkt] …")
+
+    # 8. Ask Demi for a new mechanic: a Mekanik row starting "Ny mekanik:".
+    mek2 = stycke_id(page, "kontakten stark, runt minut två och en halv")
+    markera_allt_i(page, mek2)
+    page.keyboard.type("Ny mekanik: vandraren klappar händerna")
+    ok(vanta_fil(page, F, lambda t: "*Trigger: Ny mekanik: vandraren klappar händerna*\n" in t), f"{pre} the request is saved in the Mekanik row")
+    page.wait_for_timeout(300)
+    ok(page.locator(f'.st[data-id="{mek2}"] .vantar').inner_text() == "Ny mekanik: väntar på Demi", f"{pre} the row says it waits for Demi")
+    r = demi(rot, "nytt", "--behall", "--json")
+    ut = json.loads(r.stdout or "{}")
+    forsta = (ut.get("vantar") or [{}])[0]
+    ok(forsta.get("slag") == "ny-mekanik" and (forsta.get("text") or "").startswith("Ny mekanik: vandraren"), f"{pre} rummet.py nytt lists the request first: {r.stdout[:200]} {r.stderr[:200]}")
+    r = demi(rot, "kommentera", "--dok", "1", "--stycke", mek2, "--text", "Det låter som Kroppsmorse. Vill du att den heter så?")
+    ok(r.returncode == 0, f"{pre} Demi answers in a comment at the row: {r.stderr}")
+    ok(json.loads(demi(rot, "nytt", "--behall", "--json").stdout)["vantar"] == [], f"{pre} once Demi has answered, the request no longer waits")
+    page.wait_for_timeout(5200)
+    ok(page.locator(f'.st[data-id="{mek2}"] .vantar.svarat').count() == 1, f"{pre} the row says Demi has answered")
+    ok(page.locator(f'.st[data-id="{mek2}"] .kort.ai').count() == 1, f"{pre} Demi's comment shows at the row, marked AI")
+    skarm("04-ny-mekanik")
+
+    # 9. Comment, mark done; propose and lay it in.
+    markor(page, p1)
+    verktyg(page, "kommentera")
+    page.locator("#panel textarea").fill("Kortare, kanske?")
+    page.locator("#panel button[type=submit]").click()
+    ok(vanta_fil(page, N, lambda t: "Kortare, kanske?" in t), f"{pre} the comment is written to the notes")
+    kort = page.locator(f'.st[data-id="{p1}"] .kom .kort', has_text="Kortare, kanske?")
+    ok(kort.count() == 1, f"{pre} the comment shows at its paragraph")
+    if not mobil:
+        box_t = page.locator(f'.st[data-id="{p1}"] .text').bounding_box()
+        box_k = kort.bounding_box()
+        ok(box_k and box_t and box_k["x"] > box_t["x"] + box_t["width"], f"{pre} on a wide screen the comment sits in the right margin")
+    kort.locator("button", has_text="Klar").click()
+    page.wait_for_timeout(400)
+    ok(kort.count() == 0, f"{pre} a comment marked done leaves the margin")
+    markor(page, p1)
+    verktyg(page, "foresla")
+    page.locator("#panel textarea").fill("Jag måste få veta en sak. Hallå?")
+    page.locator("#panel button[type=submit]").click()
+    page.wait_for_timeout(400)
+    page.locator(f'.st[data-id="{p1}"] .kom .kort button', has_text="Lägg in").click()
+    ok(vanta_fil(page, F, lambda t: "> Jag måste få veta en sak. Hallå?\n" in t), f"{pre} a proposal laid in replaces the paragraph's text")
+
+    # 10. History: take an earlier version back.
+    page.locator(f'.st[data-id="{p1}"] .marg button.av').click()
+    page.wait_for_timeout(200)
+    versioner = page.locator("#panel .version")
+    ok(versioner.count() >= 3, f"{pre} the history lists the paragraph's versions ({versioner.count()})")
+    page.locator("#panel .version", has_text="Det här känns inte så.").filter(has_not_text="Hallå").locator("button", has_text="Ta tillbaka").first.click()
+    ok(vanta_fil(page, F, lambda t: "> Jag måste få veta en sak, annars blir jag tokig. Jag har pratat för mig själv här länge. Jag vet hur det känns när ingen lyssnar. Det här känns inte så.\n" in t),
+       f"{pre} taking back the first version writes it back")
+    h = notes(N).get("historik", {}).get(p1, [])
+    ok(any(e.get("hur") == "tillbaka" for e in h) and any(e.get("hur") == "forslag" for e in h), f"{pre} the history records the proposal and the taking back")
+
+    # 11. Someone else writes in the file meanwhile (the file panel, a new draft from Demi).
+    t = F.read_text(encoding="utf-8")
+    F.write_text(t.replace("> Så. Nu är du tydlig.", "> Så. Nu är du tydlig, du där."), encoding="utf-8")
+    p3 = stycke_id(page, "Jag går också. Det gör alla här")
+    markor(page, p3)
+    page.keyboard.type(" Och du?")
+    ok(vanta_fil(page, F, lambda t: "Vi är väldigt friska. Och du?" in t and "> Så. Nu är du tydlig, du där." in t), f"{pre} an outside change and a typed one both stay")
+    page.wait_for_timeout(4500)
+    ok(page.locator(".ProseMirror .text", has_text="Så. Nu är du tydlig, du där.").count() == 1, f"{pre} the outside change appears in the page")
+    r = demi(rot, "andra", "--dok", "1", "--rad", "Men det gör det. Något går här inne, och jag ser det. Fast du inte är här.", "--text", "Men det gör det. Något går här inne.")
+    ok(r.returncode == 0, f"{pre} Demi changes a line when asked: {r.stderr}")
+    page.wait_for_timeout(4500)
+    pd = stycke_id(page, "Men det gör det. Något går här inne.")
+    ok(pd is not None and page.locator(f'.st[data-id="{pd}"] .marg .av.d').count() == 1, f"{pre} Demi's change shows with Demi's hollow dot")
+
+    # 12. Reload: everything is kept, the empty branch included.
+    page.reload()
+    page.wait_for_selector(".ProseMirror .st")
+    page.wait_for_timeout(800)
+    for bit in ("Rad två.", "Om vandraren stannar:", "Ny mekanik: vandraren klappar händerna", "Vi är väldigt friska. Och du?"):
+        ok(page.locator(".ProseMirror .text", has_text=bit).count() >= 1, f"{pre} after reload the page has «{bit}»")
+    ok(page.locator(".ProseMirror .st.gren.tom").count() == 1, f"{pre} after reload the empty branch is still there")
+    form = formen(F)
+    ok(form["samma"] and not form["fel"], f"{pre} the file reads back as itself, with no paragraph out of form: {form['fel'][:3]}")
+    andrade = [r for r in F.read_text(encoding="utf-8").split("\n") if r not in original.split("\n")]
+    vantat = ("Hallå", "En ny replik", "Rad ett", "Rad två", "(paus)", "Stanna för ja", "Om vandraren stannar", "[mörkt]",
+              "Ny mekanik", "Och du?", "du där.", "Något går här inne.")
+    ok(all(any(v in r for v in vantat) for r in andrade if r.strip()), f"{pre} only the lines the writer touched differ: {[r for r in andrade if r.strip() and not any(v in r for v in vantat)][:3]}")
+    skarm("05-efter-omladdning")
+
+    ok(not fel, f"{pre} no errors in the page: {fel[:3]}")
+    ctx.close()
+
+
+def tva_fonster(b, url: str, rot: Path, skarmar: Path | None) -> None:
+    """Two windows: different paragraphs, then the same one."""
+    F = rot / "projects/motionstory/stories/glimt/episod-2.md"
+    N = rot / "data/glimt-rummet/episod-2.json"
+    sidor = []
+    fel: list[str] = []
+    for _ in range(2):
+        ctx = b.new_context(viewport={"width": 1280, "height": 900})
+        p = ctx.new_page()
+        p.on("pageerror", lambda e: fel.append(str(e)))
+        oppna(p, f"{url}/index.html#episod-2", fel)
+        sidor.append(p)
+    a, bb = sidor
+    ok(a.locator(".ProseMirror .bricka").count() == 8, f"[två] episode 2 has 8 mechanic chips (hand count), not {a.locator('.ProseMirror .bricka').count()}")
+
+    # Different paragraphs at once.
+    rader = [r[2:] for r in F.read_text(encoding="utf-8").split("\n") if r.startswith("> ") and not r.startswith("> (") and not r.startswith("> [") and not r.startswith("> **")]
+    x, y, z = rader[3], rader[8], rader[12]
+    ix, iy, iz = stycke_id(a, x[:30]), stycke_id(a, y[:30]), stycke_id(a, z[:30])
+    markor(a, ix)
+    a.keyboard.type(" (A)")
+    markor(bb, iy)
+    bb.keyboard.type(" (B)")
+    ok(vanta_fil(a, F, lambda t: f"> {x} (A)\n" in t and f"> {y} (B)\n" in t), "[två] two windows changing different paragraphs: both are saved")
+    a.evaluate("document.activeElement && document.activeElement.blur()")
+    bb.evaluate("document.activeElement && document.activeElement.blur()")
+    a.wait_for_timeout(5000)
+    ok(a.locator(".ProseMirror .text", has_text=f"{y} (B)").count() == 1, "[två] window A shows B's change")
+    ok(bb.locator(".ProseMirror .text", has_text=f"{x} (A)").count() == 1, "[två] window B shows A's change")
+
+    # The same paragraph: A saves first, then B. Nothing is lost.
+    markor(a, iz)
+    a.keyboard.type(" A-ändring")
+    markor(bb, iz)
+    bb.keyboard.type(" B-ändring")
+    ok(vanta_fil(a, F, lambda t: f"> {z} B-ändring\n" in t or f"> {z} A-ändring\n" in t, 25), "[två] the same paragraph from two windows: one version is in the text")
+    a.evaluate("document.activeElement && document.activeElement.blur()")
+    bb.evaluate("document.activeElement && document.activeElement.blur()")
+    ok(vanta_fil(a, N, lambda t: any(k.get("lage") == "oppen" for k in json.loads(t).get("krockar", [])), 25), "[två] the other version is recorded as a krock")
+    text = F.read_text(encoding="utf-8")
+    vinnare, andra = ("B-ändring", "A-ändring") if f"> {z} B-ändring\n" in text else ("A-ändring", "B-ändring")
+    kr = [k for k in notes(N)["krockar"] if k.get("lage") == "oppen"]
+    ok(len(kr) == 1 and kr[0]["text"].endswith(andra), f"[två] the krock holds the other version ({andra})")
+    a.wait_for_timeout(5500)
+    for namn, s in (("A", a), ("B", bb)):
+        ok(s.locator(f'.st[data-id="{iz}"] .text').inner_text().endswith(vinnare), f"[två] window {namn} shows the version in the text")
+        ok(s.locator(f'.st[data-id="{iz}"] .kort.krock').count() == 1, f"[två] window {namn} shows the krock at the paragraph")
+    if skarmar:
+        a.locator(f'.st[data-id="{iz}"]').scroll_into_view_if_needed()
+        a.screenshot(path=str(skarmar / "tva-krock.png"))
+    a.locator(f'.st[data-id="{iz}"] .kort.krock button', has_text="Använd den här").click()
+    ok(vanta_fil(a, F, lambda t: f"> {z} {andra}\n" in t), "[två] choosing the other version writes it")
+    ok(vanta_fil(a, N, lambda t: all(k.get("lage") != "oppen" for k in json.loads(t).get("krockar", []))), "[två] the krock is settled")
+    ok(not fel, f"[två] no errors in the pages: {fel[:3]}")
+    for s in sidor:
+        s.context.close()
+
+
+def ovriga(b, url: str, rot: Path, skarmar: Path | None) -> None:
+    """The world book, the catalogue as a list and as text, the round trips."""
+    ctx = b.new_context(viewport={"width": 1440, "height": 1000})
+    page = ctx.new_page()
+    fel: list[str] = []
+    page.on("pageerror", lambda e: fel.append(str(e)))
+    G = rot / "projects/motionstory/stories/glimt"
+    tider = {f: (G / f).stat().st_mtime for f in ("episod-1.md", "episod-2.md", "varld.md", "mekaniker.md")}
+    for vag in ("#episod-2", "#varlden", "#mekaniker/text"):
+        oppna(page, f"{url}/index.html{vag}", fel)
+        page.wait_for_timeout(1500)
+    page.goto(f"{url}/index.html#episod-1")
+    page.wait_for_timeout(1500)
+    ok(all((G / f).stat().st_mtime == t for f, t in tider.items() if f != "episod-1.md"), "[övrigt] opening a document and changing nothing writes nothing")
+
+    # The catalogue as a list.
+    page.goto(f"{url}/index.html#mekaniker")
+    page.wait_for_selector(".mekanik-post")
+    ok(page.locator(".mekanik-post").count() == 33, f"[övrigt] the Mekaniker tab lists 33 mechanics ({page.locator('.mekanik-post').count()})")
+    page.locator("#inne > input[type=search]").fill("knack")
+    page.wait_for_timeout(200)
+    namn = page.locator(".mekanik-post .mek-namn").all_inner_texts()
+    ok({"Knack", "Hon knackar"} <= set(namn) and len(namn) < 6, f"[övrigt] searching filters the list: {namn}")
+    page.locator("#inne > input[type=search]").fill("")
+    page.wait_for_timeout(1500)
+    minnet = page.locator(".mekanik-post").filter(has=page.locator("summary .mek-namn", has_text="Minnet mellan episoderna"))
+    ok(minnet.count() == 1 and minnet.locator("summary .omdome.inget").count() == 1 and page.locator(".mekanik-post summary .omdome.inget").count() == 1, "[övrigt] a mechanic without a verdict word shows as without a verdict")
+    page.goto(f"{url}/index.html#mekaniker/kontakten")
+    page.wait_for_timeout(1800)
+    k = page.locator("#mek-kontakten")
+    ok(k.get_attribute("open") is not None, "[övrigt] #mekaniker/<id> opens that mechanic")
+    lankar = k.locator(".anvands a")
+    ok(lankar.count() >= 4, f"[övrigt] Kontakten lists the scenes that use it ({lankar.count()})")
+    if skarmar:
+        page.screenshot(path=str(skarmar / "bred-katalog.png"))
+    lankar.first.click()
+    page.wait_for_selector(".ProseMirror .st")
+    page.wait_for_timeout(800)
+    ok("/s/" in page.url and page.url.split("#")[1].startswith("episod-"), f"[övrigt] a scene link opens the episode at the paragraph: {page.url}")
+
+    # The world book is edited the same way.
+    V = G / "varld.md"
+    fore = V.read_text(encoding="utf-8")
+    page.goto(f"{url}/index.html#varlden")
+    page.wait_for_selector(".ProseMirror .st")
+    page.wait_for_timeout(500)
+    forsta = page.evaluate("""() => { for (const s of document.querySelectorAll('.ProseMirror .st.stycke')) { const t = s.querySelector('.text'); if (t && t.textContent.length > 40) return [s.dataset.id, t.textContent]; } return null; }""")
+    markor(page, forsta[0])
+    page.keyboard.type(" Tillagt i rummet.")
+    ok(vanta_fil(page, V, lambda t: t != fore), "[övrigt] typing in the world book saves it")
+    efter = V.read_text(encoding="utf-8")
+    skillnad = [(x, y) for x, y in zip(fore.split("\n"), efter.split("\n")) if x != y]
+    ok(len(skillnad) == 1 and skillnad[0][1].endswith("Tillagt i rummet.") and len(fore.split("\n")) == len(efter.split("\n")),
+       f"[övrigt] exactly one line of the world book changed: {skillnad[:2]}")
+    ok(formen(V, episod=False)["samma"], "[övrigt] the world book reads back as itself")
+    if skarmar:
+        page.screenshot(path=str(skarmar / "bred-varlden.png"))
+    ok(not fel, f"[övrigt] no errors: {fel[:3]}")
+    ctx.close()
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--skarmar", type=Path, default=None, help="save screenshots here")
-    args = ap.parse_args()
-    if args.skarmar:
-        args.skarmar.mkdir(parents=True, exist_ok=True)
-
-    def skarm(page, namn: str) -> None:
-        if args.skarmar:
-            page.screenshot(path=str(args.skarmar / f"{namn}.png"))
-
-    rot, ut = sandbox()
-    manus1 = rot / "projects/motionstory/stories/glimt/episod-1.md"
-    rumfil = rot / "data/glimt-rummet/episod-1.json"
-    lorefil = rot / "data/glimt-rummet/lore.json"
-    original = manus1.read_text(encoding="utf-8")
-    alla = repliker(manus1)
-    vega = [r for r in alla if r["slag"] == "vega" and not r["variant"] and not r["etikett"]]
-
-    def valj(scen: str, n: int, strykbar: bool | None = None, inspelad: bool = False) -> dict:
-        kand = [r for r in vega if r["scen"] == scen and (strykbar is None or r["strykbar"] == strykbar)
-                and (not inspelad or r["ljud"] == "inspelad")]
-        return kand[min(n, len(kand) - 1)]
-
-    inspelade = sum(1 for r in alla if r["ljud"] == "inspelad")
-    ej_inspelade = sum(1 for r in alla if r["ljud"] == "ej")
-    L1, L2, L3 = valj("1", 0), valj("1", 2), valj("2", 0)
-    L4, L5, L6 = valj("3", 0), valj("3", 3), valj("4", 0)
-    L7, L8, L9, L10 = valj("5", 1, strykbar=True), valj("5", 6), valj("2", 2), valj("0", 0, inspelad=True)
-    valda = [L1, L2, L3, L4, L5, L6, L7, L8, L9, L10]
-    ok(len({r["i"] for r in valda}) == len(valda), "test setup: ten different lines picked")
-
-    server, url = provserver(rot, ut)
-    server_b, url_b = provserver(rot, ut, api=False)
-    fel_i_sidan: list[str] = []
-    try:
-        with sync_playwright() as p:
-            browser = p.chromium.launch()
-            ctx = browser.new_context(viewport={"width": 412, "height": 915}, device_scale_factor=2, is_mobile=True, has_touch=True)
-            ctx.add_init_script(INIT)
-            page = ctx.new_page()
-            page.on("pageerror", lambda e: fel_i_sidan.append(str(e)))
-            page.route("https://henricbarkman.github.io/**", route_audio)
-            rum_url = f"{url}/uploads/glimt-rummet/index.html"
-
-            # --- Reading --------------------------------------------------------------
-            page.goto(f"{rum_url}#episod-1")
-            page.wait_for_selector(".rad")
-            ok(page.locator(".rad").count() == len(alla), f"episode 1: every line is shown ({page.locator('.rad').count()}/{len(alla)})")
-            ok(page.locator(".vem .marke.demi").count() == len(alla), "episode 1: every line is marked as Demi's draft")
-            ok(page.locator(".spela").count() == inspelade > 0, f"episode 1: every recorded line can be played ({page.locator('.spela').count()}/{inspelade})")
-            ok(page.locator(".radinfo .ej").count() == ej_inspelade,
-               f"episode 1: lines written after the recording read as not recorded yet ({page.locator('.radinfo .ej').count()}/{ej_inspelade})")
-            ok(bool(re.match(r"^[0-9a-f]{10} ", page.get_attribute('meta[name="rummet-bygge"]', "content") or "")), "the deployed page names its build")
-            skarm(page, "01-episod-1")
-
-            # --- Listening ------------------------------------------------------------
-            knapp = rad(page, L10["i"]).locator(".spela")
-            knapp.click()
-            page.wait_for_function("window.__ljud && !window.__ljud.paused && window.__ljud.currentTime > 0.2", timeout=15000)
-            src = page.evaluate("window.__ljud.src")
-            m = re.search(r"#t=([\d.]+)(?:,([\d.]+))?$", src)
-            t = page.evaluate("window.__ljud.currentTime")
-            ok("/audio/glimt/vega/glimt-e1/" in src and m is not None, f"play: the line's clip is fetched from the recordings ({src.rsplit('/', 1)[-1]})")
-            ok(m is not None and t >= float(m.group(1)) - 0.3 and (m.group(2) is None or t < float(m.group(2))),
-               f"play: it starts where the line starts in the clip ({t:.2f}s in {m.group(0) if m else '?'})")
-            ok("spelar" in (knapp.get_attribute("class") or ""), "play: the button shows that it plays")
-            knapp.click()
-            ok(page.evaluate("window.__ljud.paused"), "play: pressing again stops it")
-
-            # --- Changing a line --------------------------------------------------------
-            ny1 = 'Så. Nu hör jag dig <b>tydligt</b> & "klart". '
-            oppna(page, L1["i"])
-            rad(page, L1["i"]).get_by_role("button", name="Ändra", exact=True).click()
-            rad(page, L1["i"]).locator("textarea").fill(ny1)
-            fel = spara(page, lambda: rad(page, L1["i"]).get_by_role("button", name="Spara i manus").click())
-            ok(fel is None, f"edit: saved ({fel})")
-            efter = manus1.read_text(encoding="utf-8")
-            ok(skillnad(original, efter) == [L1["i"]] and efter.split("\n")[L1["i"]] == f"> {ny1}",
-               "edit: exactly that one line changed in the file, and it is exactly what was typed")
-            ok(rad(page, L1["i"]).locator(".marke.henric").count() == 1, "edit: the line is now marked as Henric's")
-            ok(rad(page, L1["i"]).locator(".radinfo .ej").count() == 1, "edit: the changed line reads as not recorded yet")
-            ok(rad(page, L1["i"]).locator(".radtext b").count() == 0 and "<b>tydligt</b>" in rad(page, L1["i"]).locator(".radtext").inner_text(),
-               "edit: text that looks like HTML is shown as text")
-            skarm(page, "02-andrad")
-
-            # --- A proposal, a yes, laid in, taken back ---------------------------------------
-            fore = manus1.read_text(encoding="utf-8")
-            forslag = "Gå som du vill. Din väg går före min, alltid."
-            oppna(page, L2["i"])
-            rad(page, L2["i"]).get_by_role("button", name="Föreslå", exact=True).click()
-            rad(page, L2["i"]).locator("textarea").fill(forslag)
-            fel = spara(page, lambda: rad(page, L2["i"]).get_by_role("button", name="Lägg förslaget").click())
-            ok(fel is None, f"proposal: saved ({fel})")
-            ok(manus1.read_text(encoding="utf-8") == fore, "proposal: the manuscript is not touched by a proposal")
-            kort = rad(page, L2["i"]).locator(".kort.forslag")
-            ok(kort.count() == 1 and forslag in kort.inner_text() and "Henric" in kort.inner_text(), "proposal: it lies beside the line, with who wrote it")
-            fel = spara(page, lambda: rad(page, L2["i"]).get_by_role("button", name="Säg ja").click())
-            ok(fel is None and "Ja från Henric." in rad(page, L2["i"]).locator(".kort.forslag").inner_text(), "proposal: saying yes shows who said it")
-            rad(page, L2["i"]).get_by_role("button", name="Lägg in i manus").click()
-            bekr = rad(page, L2["i"]).locator(".bekrafta")
-            ok(bekr.count() == 1, "proposal: laying it in asks first")
-            skarm(page, "03-lagg-in")
-            fel = spara(page, lambda: bekr.get_by_role("button", name="Lägg in i manus").click())
-            efter = manus1.read_text(encoding="utf-8")
-            ok(fel is None and skillnad(fore, efter) == [L2["i"]] and efter.split("\n")[L2["i"]] == f"> {forslag}",
-               "proposal: laid in, exactly that line now has the proposed words")
-            oppna(page, L2["i"])
-            vemrad = rad(page, L2["i"]).locator(".vemrad").inner_text()
-            ok("förslag, inlagt i manus av Henric" in vemrad, f"proposal: the line says whose proposal it was and who laid it in ({vemrad})")
-            logg = json.loads(rumfil.read_text(encoding="utf-8"))["logg"]
-            ok(any(x.get("vad") == "lade-in-forslag" and x.get("vem") == "henric" and x.get("nar") for x in logg), "proposal: the log has who laid it in and when")
-            rad(page, L2["i"]).locator("details.tidigare summary").click()
-            fel = spara(page, lambda: rad(page, L2["i"]).get_by_role("button", name="Ta tillbaka den här").click())
-            ok(fel is None and manus1.read_text(encoding="utf-8") == fore, "proposal: the old text can be taken back, and the file is as before")
-            ok(rad(page, L2["i"]).locator(".marke.demi").count() == 1, "proposal: taken back, the line is Demi's again")
-            ok(rad(page, L2["i"]).locator(".kort.forslag").count() == 1, "proposal: taken back, the proposal lies open beside the line again")
-
-            # --- Comments ------------------------------------------------------------------------
-            kommentar = '<img src=x onerror="window.__xss=1"> för snabbt här'
-            oppna(page, L3["i"])
-            rad(page, L3["i"]).get_by_role("button", name="Kommentera", exact=True).click()
-            rad(page, L3["i"]).get_by_role("button", name="Tempot").click()
-            rad(page, L3["i"]).locator("textarea").fill(kommentar)
-            fel = spara(page, lambda: rad(page, L3["i"]).get_by_role("button", name="Spara kommentaren").click())
-            k = rad(page, L3["i"]).locator(".kort.kommentar")
-            ok(fel is None and k.count() == 1 and "tempot" in k.inner_text(), "comment: saved on the line, about the tempo")
-            ok(k.locator("img").count() == 0 and kommentar in k.inner_text() and page.evaluate("window.__xss") is None,
-               "comment: HTML in a comment is shown as text and never runs")
-            fot = page.locator("#fot-2")
-            fot.get_by_role("button", name="Kommentera scenen").click()
-            fot.get_by_role("button", name="Pausen").click()
-            fot.locator("textarea").fill("Pausen före frågan kan vara längre.")
-            fel = spara(page, lambda: page.locator("#fot-2").get_by_role("button", name="Spara kommentaren").click())
-            ok(fel is None and "Pausen före frågan" in page.locator("#fot-2").inner_text(), "comment: a comment on a whole scene")
-
-            # --- Someone else saves while Henric types ---------------------------------------------
-            fore = manus1.read_text(encoding="utf-8")
-            oppna(page, L4["i"])
-            rad(page, L4["i"]).get_by_role("button", name="Ändra", exact=True).click()
-            rad(page, L4["i"]).locator("textarea").fill("Henrics rad, skriven i rummet.")
-            andra_pa_disk(manus1, L5["i"], "> Demis rad, skriven i filen samtidigt.")
-            fel = spara(page, lambda: rad(page, L4["i"]).get_by_role("button", name="Spara i manus").click())
-            efter = manus1.read_text(encoding="utf-8").split("\n")
-            ok(fel is None and skillnad(fore, "\n".join(efter)) == sorted([L4["i"], L5["i"]])
-               and efter[L4["i"]] == "> Henrics rad, skriven i rummet." and efter[L5["i"]] == "> Demis rad, skriven i filen samtidigt.",
-               "conflict: the file changed in between, both texts are kept and nothing else moved")
-            ok(rad(page, L5["i"]).locator(".marke.utanfor").count() == 1 and "ändrad utanför rummet" in rad(page, L5["i"]).inner_text(),
-               "conflict: the line changed in the file shows as changed outside the room")
-            oppna(page, L5["i"])
-            fel = spara(page, lambda: rad(page, L5["i"]).get_by_role("button", name="Demi (AI)", exact=True).click())
-            ok(fel is None and rad(page, L5["i"]).locator(".marke.demi").count() == 1, "conflict: saying whose words they are takes one press")
-
-            # The same line changed while Henric typed: his words are kept, the file's are not overwritten.
-            oppna(page, L6["i"])
-            rad(page, L6["i"]).get_by_role("button", name="Ändra", exact=True).click()
-            rad(page, L6["i"]).locator("textarea").fill("Min version av repliken.")
-            andra_pa_disk(manus1, L6["i"], "> Någon annans version av repliken.")
-            fore = manus1.read_text(encoding="utf-8")
-            fel = spara(page, lambda: rad(page, L6["i"]).get_by_role("button", name="Spara i manus").click())
-            ok(fel is not None and any("står inte längre så" in f for f in fel), f"same line: the save stops and says why ({fel})")
-            ok(manus1.read_text(encoding="utf-8") == fore, "same line: the other person's text is not overwritten")
-            ok(rad(page, L6["i"]).locator("textarea").input_value() == "Min version av repliken.", "same line: Henric's words are still in the field")
-            fel = spara(page, lambda: rad(page, L6["i"]).get_by_role("button", name="Lägg det som förslag i stället").click())
-            fot = page.locator(f"#fot-{L6['scen']}")
-            ok(fel is None and "Min version av repliken." in fot.inner_text() and "inte står så längre" in fot.inner_text().lower(),
-               f"same line: his words become a proposal at the end of the scene ({fel}; {fot.inner_text()[-300:]!r})")
-
-            # --- Strike and put back ---------------------------------------------------------------------
-            fore = manus1.read_text(encoding="utf-8")
-            oppna(page, L7["i"])
-            rad(page, L7["i"]).get_by_role("button", name="Stryk", exact=True).click()
-            fel = spara(page, lambda: rad(page, L7["i"]).locator(".bekrafta").get_by_role("button", name="Stryk").click())
-            efter = manus1.read_text(encoding="utf-8")
-            ok(fel is None and len(efter.split("\n")) in (len(fore.split("\n")) - 1, len(fore.split("\n")) - 2) and f"> {L7['kropp']}" not in efter.split("\n"),
-               "strike: the line leaves the file")
-            fot = page.locator(f"#fot-{L7['scen']}")
-            ok(L7["kropp"][:20] in fot.inner_text(), "strike: it is listed under Struket")
-            fel = spara(page, lambda: page.locator(f"#fot-{L7['scen']}").get_by_role("button", name="Lägg tillbaka").click())
-            ok(fel is None and manus1.read_text(encoding="utf-8") == fore, "strike: put back, the file is byte for byte as before")
-
-            # --- Enter saves, a draft survives a reload ------------------------------------------------------
-            oppna(page, L9["i"])
-            rad(page, L9["i"]).get_by_role("button", name="Ändra", exact=True).click()
-            rad(page, L9["i"]).locator("textarea").fill("Sparad med Enter.")
-            fel = spara(page, lambda: rad(page, L9["i"]).locator("textarea").press("Enter"))
-            ok(fel is None and manus1.read_text(encoding="utf-8").split("\n")[L9["i"]] == "> Sparad med Enter.", "enter: Enter saves a line instead of breaking it")
-            oppna(page, L10["i"])
-            rad(page, L10["i"]).get_by_role("button", name="Ändra", exact=True).click()
-            rad(page, L10["i"]).locator("textarea").fill("Ett utkast som inte sparades.")
-            page.reload()
-            page.wait_for_selector(".rad")
-            ok("osparad text" in rad(page, L10["i"]).inner_text(), "draft: after a reload the line says there is unsaved text")
-            oppna(page, L10["i"])
-            rad(page, L10["i"]).get_by_role("button", name="Ändra · osparat").click()
-            ok(rad(page, L10["i"]).locator("textarea").input_value() == "Ett utkast som inte sparades.", "draft: the words are back in the field")
-            rad(page, L10["i"]).get_by_role("button", name="Avbryt").click()
-            page.reload()
-            page.wait_for_selector(".rad")
-            ok("osparad text" not in rad(page, L10["i"]).inner_text(), "draft: Avbryt throws it away")
-
-            # --- A new line ------------------------------------------------------------------------------------
-            fore = manus1.read_text(encoding="utf-8")
-            oppna(page, L8["i"])
-            rad(page, L8["i"]).get_by_role("button", name="Ny replik efter").click()
-            rad(page, L8["i"]).locator("textarea").fill("En helt ny replik.")
-            fel = spara(page, lambda: rad(page, L8["i"]).get_by_role("button", name="Lägg till i manus").click())
-            x, y = fore.split("\n"), manus1.read_text(encoding="utf-8").split("\n")
-            j = y.index("> En helt ny replik.") if "> En helt ny replik." in y else -1
-            ok(fel is None and j > 0 and y[j - 1] == ">" and y[:j - 1] + y[j + 1:] == x,
-               "new line: exactly '>' and the new line are added, nothing else moves")
-            ok(page.locator(".rad .marke.henric").count() >= 2, "new line: it is marked as Henric's")
-
-            # --- After a reload everything is still there ----------------------------------------------------------
-            page.reload()
-            page.wait_for_selector(".rad")
-            ok(rad(page, L1["i"]).locator(".marke.henric").count() == 1 and "tydligt" in rad(page, L1["i"]).inner_text(), "reload: the changed line is still Henric's")
-            ok(rad(page, L3["i"]).locator(".kort.kommentar").count() == 1, "reload: the comment is still there")
-            ok(rad(page, L2["i"]).locator(".kort.forslag").count() == 1, "reload: the proposal is still there")
-            skarm(page, "04-efter-omladdning")
-
-            # --- Demi in the room: marked, answerable, never able to change anyone's text ------------------------
-            henrics = json.loads(rumfil.read_text(encoding="utf-8"))["kommentarer"]
-            hk = next(k for k in henrics if k["skrev"] == "henric" and k["mal"].get("text") == L3["kropp"])
-            r1 = demi(rot, "kommentera", "--episod", "1", "--scen", L3["scen"], "--rad", L3["kropp"], "--text", "Jag hör den som en fråga, inte ett svar.")
-            r2 = demi(rot, "svara", "--pa", hk["id"], "--text", "Håller med om tempot.")
-            ok(r1.returncode == 0 and r2.returncode == 0, f"demi: the script posts a comment and a reply ({r1.stderr.strip()}{r2.stderr.strip()})")
-            page.reload()
-            page.wait_for_selector(".rad")
-            dk = rad(page, L3["i"]).locator(".kort.kommentar.fran-ai")
-            ok(dk.count() == 1 and dk.locator(".ai-markor").count() == 1 and "Demi" in dk.locator(".kort-huvud").inner_text(),
-               "demi: Demi's comment is marked as an AI's, on a card of its own")
-            hkort = rad(page, L3["i"]).locator(".kort.kommentar:not(.fran-ai)")
-            ok(hkort.locator(".svar.fran-ai").count() == 1 and hkort.locator(".svar.fran-ai .ai-markor").count() == 1,
-               "demi: Demi's reply hangs under Henric's comment, marked")
-            ok(dk.get_by_role("button", name="Ta bort").count() == 0 and hkort.locator(".svar.fran-ai").get_by_role("button", name="Ta bort").count() == 0,
-               "demi: Henric cannot remove Demi's comment or reply")
-            ok(hkort.locator(".kort-huvud ~ .knappar").get_by_role("button", name="Ta bort").count() == 0
-               and page.locator("#fot-2 .kort.kommentar:not(.fran-ai)").first.get_by_role("button", name="Ta bort").count() == 1,
-               "demi: his own comment can be removed until someone answers it")
-            skarm(page, "08-demi")
-
-            # Henric asks Demi something in the thread; it waits until Demi answers.
-            hkort.get_by_role("button", name="Svara", exact=True).click()
-            tradform = rad(page, L3["i"]).locator(".kort.kommentar:not(.fran-ai) .trad form")
-            tradform.wait_for()
-            ok(tradform.get_by_role("button", name="Fråga Demi").get_attribute("aria-pressed") == "true",
-               "ask: answering Demi asks Demi by default, and it shows")
-            tradform.locator("textarea").fill("Varför en fråga?")
-            fel = spara(page, lambda: tradform.get_by_role("button", name="Svara", exact=True).click())
-            sista = json.loads(rumfil.read_text(encoding="utf-8"))["kommentarer"][-1]
-            ok(fel is None and sista["text"] == "Varför en fråga?" and sista["svarPa"] == hk["id"] and sista["till"] == "demi" and sista["skrev"] == "henric",
-               f"ask: saved as Henric's reply, addressed to Demi ({fel})")
-            hkort = rad(page, L3["i"]).locator(".kort.kommentar:not(.fran-ai)")
-            ok("Väntar på svar från Demi." in hkort.inner_text(), "ask: the thread shows it waits for Demi")
-            nytt = demi(rot, "nytt", "--sedan", "2020-01-01T00:00")
-            ok(nytt.stdout.startswith("Väntar på svar från Demi: 1") and "Varför en fråga?" in nytt.stdout.split("Nytt sedan")[0],
-               "ask: the script lists the question first")
-            demi(rot, "svara", "--pa", sista["id"], "--text", "För att hon inte vet än.")
-            page.reload()
-            page.wait_for_selector(".rad")
-            hkort = rad(page, L3["i"]).locator(".kort.kommentar:not(.fran-ai)")
-            ok("Väntar på svar" not in hkort.inner_text() and "För att hon inte vet än." in hkort.inner_text(), "ask: answered, it no longer waits")
-
-            # Hiding Demi's posts is Henric's own setting, and it stays.
-            brytare = page.get_by_role("switch", name="Demis inlägg")
-            ok(brytare.get_attribute("aria-checked") == "true", "hide: Demi's posts show by default for Henric")
-            brytare.click()
-            page.wait_for_selector(".status.ok:not([hidden])")
-            inst = json.loads((rot / "data/glimt-rummet/installningar.json").read_text(encoding="utf-8"))
-            ok(page.locator("main .fran-ai").count() == 0 and "Demis inlägg är dolda för dig" in page.locator("main").inner_text(),
-               "hide: Demi's comment and replies are gone from the page, and it says so")
-            ok(inst["personer"]["henric"]["doljDemi"] is True and "liv" not in inst["personer"], "hide: saved as Henric's setting only")
-            page.reload()
-            page.wait_for_selector(".rad")
-            ok(page.get_by_role("switch", name="Demis inlägg").get_attribute("aria-checked") == "false" and page.locator("main .fran-ai").count() == 0,
-               "hide: still hidden after a reload")
-            skarm(page, "09-demi-dolt")
-            page.get_by_role("switch", name="Demis inlägg").click()
-            page.wait_for_function("document.querySelectorAll('main .fran-ai').length > 0")
-            ok(rad(page, L3["i"]).locator(".kort.fran-ai").count() == 1, "hide: shown again with one press")
-
-            # --- Episode 2 ------------------------------------------------------------------------------------------
-            page.goto(f"{rum_url}#episod-2")
-            page.wait_for_function("document.querySelector('.ep-titel') && document.querySelector('h2').textContent.includes('2')")
-            page.wait_for_selector(".rad")
-            ok(page.locator(".spela").count() == 0 and "inte inspelad än" in page.locator("main").inner_text(), "episode 2: says it is not recorded yet, no play buttons")
-            ok(page.locator(".vem .marke.demi").count() == page.locator(".rad").count(), "episode 2: every line is Demi's draft")
-
-            # --- The world book and a lore page ----------------------------------------------------------------------
-            page.goto(f"{rum_url}#varlden")
-            page.wait_for_selector("article.md")
-            forsta = next((ln[2:] for ln in (GLIMT / "varld.md").read_text(encoding="utf-8").split("\n") if ln.startswith("## ")), "")
-            ok(bool(forsta) and forsta.strip()[:15] in page.locator("article.md").inner_text(), "world: the world book is shown")
-            page.get_by_role("link", name="HELD").click()
-            page.wait_for_function("document.querySelector('article.md') && location.hash.includes('held')")
-            ok(len(page.locator("article.md").inner_text()) > 50, "world: HELD's lore is shown")
-            page.get_by_role("link", name="Våra sidor").click()
-            page.get_by_role("link", name="Skriv en ny sida").click()
-            page.locator("input.titelfalt").wait_for()
-            text = "Den läser stegen.\n\n<script>window.__xss2=1</script> ska synas som text."
-            page.locator("input.titelfalt").fill("Snäckan")
-            page.locator("textarea.lorefalt").fill(text)
-            fel = spara(page, lambda: page.get_by_role("button", name="Spara sidan").click())
-            page.wait_for_selector(".sida-titel")
-            ok(fel is None and page.locator(".sida-titel").inner_text() == "Snäckan", "lore: a new page is saved and opened")
-            ok(page.locator(".sida-text script").count() == 0 and "<script>" in page.locator(".sida-text").inner_text() and page.evaluate("window.__xss2") is None,
-               "lore: markup in a page is shown as text and never runs")
-            sidor = json.loads(lorefil.read_text(encoding="utf-8"))["sidor"]
-            ok(len(sidor) == 1 and "\n".join(sidor[0]["text"]) == text and sidor[0]["skrev"] == "henric", "lore: the file has exactly what was typed, and who")
-            page.get_by_role("button", name="Ändra").click()
-            page.locator("textarea.lorefalt").fill("Den läser stegen. Andra versionen.")
-            fel = spara(page, lambda: page.get_by_role("button", name="Spara sidan").click())
-            ok(fel is None and "Tidigare versioner (1)" in page.locator("main").inner_text(), "lore: an edit keeps the earlier version")
-            page.reload()
-            page.wait_for_selector(".sida-titel")
-            ok("Andra versionen" in page.locator(".sida-text").inner_text(), "lore: the page is there after a reload")
-            skarm(page, "05-lore")
-            r3 = demi(rot, "lore", "--titel", "Slingan", "--text", "Den surrar lågt i fickan.")
-            page.goto(f"{rum_url}#varlden/sidor")
-            page.wait_for_selector(".sidlista")
-            ok(r3.returncode == 0 and page.locator(".sidlista li.fran-ai .ai-markor").count() == 1, "lore: Demi's page is listed, marked as an AI's")
-            page.locator(".sidlista li.fran-ai a").click()
-            page.wait_for_selector(".sida-titel")
-            ok(page.get_by_role("button", name="Ändra").count() == 0 and page.get_by_role("button", name="Ta bort").count() == 0
-               and "Bara Demi kan ändra sidan." in page.locator("main").inner_text(), "lore: Henric cannot change or remove Demi's page")
-
-            ok(not fel_i_sidan, f"no script errors on the page ({fel_i_sidan})")
-            ctx.close()
-
-            # --- Wide screen, for the eye --------------------------------------------------------------------------
-            if args.skarmar:
-                dator = browser.new_context(viewport={"width": 1440, "height": 900})
-                d = dator.new_page()
-                d.route("https://henricbarkman.github.io/**", route_audio)
-                d.goto(f"{rum_url}#episod-1")
-                d.wait_for_selector(".rad")
-                d.locator(f"#rad-{L3['i']}").scroll_into_view_if_needed()
-                d.locator(f"#rad-{L3['i']} .radtext").click()
-                d.screenshot(path=str(args.skarmar / "06-dator.png"))
-                dator.close()
-
-            # --- Without the portal: read-only, or asked to log in --------------------------------------------------
-            ctx = browser.new_context(viewport={"width": 412, "height": 915}, is_mobile=True, has_touch=True)
-            page = ctx.new_page()
-            page.route("https://henricbarkman.github.io/**", route_audio)
-            page.goto(f"{url_b}/uploads/glimt-rummet/index.html#episod-1")
-            page.wait_for_selector("main h2")
-            ok("logga in först" in page.locator("main").inner_text().lower(), "no login: the portal copy asks to log in instead of showing nothing")
-            page.goto(f"{url_b}/rummet/index.html#episod-1")
-            page.wait_for_selector(".rad")
-            page.locator(".rad .radtext").first.click()
-            ok(page.locator(".verktyg").count() == 0 and page.locator(".spela").count() > 0 and "Här går det att läsa och lyssna" in page.inner_text("body"),
-               "read-only: lines and sound, no tools")
-            skarm(page, "07-las")
-            ctx.close()
-            browser.close()
-    finally:
-        server.kill()
-        server_b.kill()
-        shutil.rmtree(rot, ignore_errors=True)
-
-    print(f"\n{checks - failures}/{checks} checks passed")
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument("--skarmar", type=Path, default=None)
+    ap.add_argument("--bara", choices=("telefon", "bred", "tva", "ovriga"))
+    a = ap.parse_args()
+    if a.skarmar:
+        a.skarmar.mkdir(parents=True, exist_ok=True)
+    with sync_playwright() as p:
+        b = p.chromium.launch()
+        for namn, kor in (("telefon", lambda u, r: skrivaren(b, u, r, "telefon", a.skarmar)),
+                          ("bred", lambda u, r: skrivaren(b, u, r, "bred", a.skarmar)),
+                          ("tva", lambda u, r: tva_fonster(b, u, r, a.skarmar)),
+                          ("ovriga", lambda u, r: ovriga(b, u, r, a.skarmar))):
+            if a.bara and a.bara != namn:
+                continue
+            rot, ut = sandbox()
+            server, url = provserver(rot, ut)
+            try:
+                kor(f"{url}/uploads/glimt-rummet", rot)
+            finally:
+                server.terminate()
+                server.wait()
+                shutil.rmtree(rot, ignore_errors=True)
+        b.close()
+    print(f"{checks - failures}/{checks} checks passed")
     return 1 if failures else 0
 
 
