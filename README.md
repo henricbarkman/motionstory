@@ -37,7 +37,7 @@ Motorn (`glimt/`):
 |---|---|
 | `engine.js` | Tempoband (stilla, gång, löpning över 7 km/h), tempoökning, kontaktmätare, avstånd till start och till ett mål. Ren logik, körs i node. |
 | `chapter1.js`, `chapter2.js` | Kapitlen som rak asynkron kod: varje scen väntar på ett villkor med klockan som reserv. Kapitel 2 har frågor med hållscen och svarsfönster. |
-| `episod1.js` | Episod 1, samma form. Manusets avsnitt Logiken är regelboken: `her.exposed` säger när hennes egna steg skulle avslöja henne, och `lit` är det enda ställe där ett stopp blir lampan. Reserven (båda stilla en halv minut, snäckan frågar) gäller där hon står eller sitter. |
+| `episod1.js` | Episod 1, samma form. Manusets avsnitt Logiken är regelboken: `her.exposed` säger när hennes egna steg skulle avslöja henne, och `lit` är det enda ställe där ett stopp blir lampan. Reserven (båda stilla en halv minut, snäckan frågar) gäller där hon står eller sitter. När hon ber om ett stopp (`ask`) räknas bara ett stopp som börjar efter ordet och kommer ur gång: den som redan stod vid en trottoarkant har inte svarat. |
 | `herside.js` | Hennes sida, ljudet som hörs när rösten blir dov: slingans surr, lampans ton och klockan görs i Web Audio; hennes steg, lojalistens steg och handen mot trädet är ljudeffekter klippta i enskilda steg, så att koden bestämmer takten. Snäckans röst går genom ett filter som gör den tunn och ihålig. |
 | `audio.js` | Web Audio: bädd i loop, riser, Vegas röst genom lågpassfilter och gain som följer kontakten. |
 | `world.js` | Ljus (solhöjd), regn (open-meteo), landmärke inom 400 m med position (Overpass/OSM), alla med fallback. |
@@ -45,7 +45,7 @@ Motorn (`glimt/`):
 
 **Kontakt** är den enda mätaren. Rörelse höjer den, stillhet sänker den (om inte en hållscen pågår), dålig GPS-noggrannhet tar den ner till hälften. Den hörs: vid full kontakt är rösten ren och nära, vid noll är den en dov, avlägsen mumling. Samma inspelning, olika filter.
 
-Simulerad genomkörning av båda kapitlen, fyra vandrarprofiler var, och av episod 1 med femton vandrare som svarar på det hon säger (stannar aldrig, stannar på begäran, stannar självmant, springer, står still genom hennes räkning och så vidare). För episoden kollas vilka grenar som hörs, att lampan bara tänds där den ska, och att det går en halv minut från hennes sista steg till "trettio":
+Simulerad genomkörning av båda kapitlen, fyra vandrarprofiler var, och av episod 1 med tjugosju vandrare som svarar på det hon säger (stannar aldrig, stannar på begäran, stannar självmant, springer, står still genom hennes räkning, står redan vid en trottoarkant när hon frågar, sätter sig i tolv minuter och så vidare). För episoden kollas vilka grenar som hörs, att lampan bara tänds där den ska, och att det går en halv minut från hennes sista steg till "trettio". En vandrare med `seed` får samma skakningar och samma gps varje gång:
 
 ```bash
 node scripts/test_glimt.mjs            # allt
@@ -73,13 +73,14 @@ python3 scripts/render_glimt.py stories/glimt/kapitel-2.json [--force] [--only s
 Episod 1 har fyra röster (`voices` i json-filen, `lineVoices` säger vem som har vilken replik): Vega, den andra rösten, snäckan (Karin, renderad på stabilitet 1,0 för att bli platt) och lojalisten (Elin). Efter en rendering mäts längderna och orden kontrolleras mot manuset med taligenkänning, och ljuden till hennes sida görs och klipps:
 
 ```bash
-python3 scripts/check_glimt_audio.py stories/glimt/episod-1.json --listen   # längder, ord, och var "trettio" faller
+python3 scripts/check_glimt_audio.py stories/glimt/episod-1.json --listen   # längder, ord, och var "trettio" och "stanna" faller
+python3 scripts/check_glimt_audio.py stories/glimt/episod-1.json --listen --cached   # samma, ur sparade transkript (kostar inget)
 python3 scripts/render_side.py stories/glimt/episod-1.json [--force] [--only grus]
 ```
 
 Båda skriver tillbaka i json-filen (`seconds`, `cues`, `sfx.*.slices`), och testerna läser därifrån.
 
-Bädd och riser är Splice-samples som Henric har betalat för, och de är tillfälliga: berättelsen ska ha HELD:s musik som bädd (`stories/glimt/varld.md`). De ligger i `audio/glimt/bed/` och `audio/glimt/fx/`, som är gitignorade eftersom råfilerna inte ska ligga öppet i ett publikt repo. Appen fungerar utan dem, rösten spelas ändå.
+Bädd och riser är Splice-samples som Henric har betalat för, och de är tillfälliga: berättelsen ska ha HELD:s musik som bädd (`stories/glimt/varld.md`). De ligger komprimerade (opus) i `audio/glimt/bed/` och `audio/glimt/fx/` sedan 12 september (Henrics beslut, PR #4). Råfilerna från Splice ligger inte i repot och ska inte dit. Hennes sida i episod 1 (`audio/glimt/side/`) är gjord med ElevenLabs ljudeffekter och Web Audio, inga Splice-filer. Appen fungerar utan bädd och riser, rösten spelas ändå.
 
 ## Lokalt dev
 
