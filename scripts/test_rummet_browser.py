@@ -57,21 +57,25 @@ def load(name: str):
 
 
 LINES_JS = """
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 const M = await import(process.env.MANUS_JS);
+const L = await import(process.env.LJUD_JS);
 const text = readFileSync(process.env.FIL, 'utf8');
+const lj = existsSync(process.env.LJUD) ? L.tolkaLjud(readFileSync(process.env.LJUD, 'utf8')) : null;
 const m = M.tolka(text);
 const ut = m.rader.filter((r) => r.typ === 'replik' && r.scen != null).map((r) => {
   let strykbar = true;
   try { M.stryk(text, M.ankareFor(m, r.i)); } catch { strykbar = false; }
-  return { i: r.i, scen: r.scen, kropp: r.kropp, variant: r.variant, etikett: r.etikett, strykbar, slag: M.kroppDelar(r.kropp).slag };
+  return { i: r.i, scen: r.scen, kropp: r.kropp, variant: r.variant, etikett: r.etikett, strykbar, slag: M.kroppDelar(r.kropp).slag,
+    ljud: lj ? L.ljudFor(r.kropp, lj).lage : null };
 });
 process.stdout.write(JSON.stringify(ut));
 """
 
 
 def repliker(fil: Path) -> list[dict]:
-    env = {**os.environ, "MANUS_JS": (REPO / "rummet" / "manus.js").as_uri(), "FIL": str(fil)}
+    env = {**os.environ, "MANUS_JS": (REPO / "rummet" / "manus.js").as_uri(), "LJUD_JS": (REPO / "rummet" / "ljud.js").as_uri(),
+           "FIL": str(fil), "LJUD": str(fil.with_suffix(".json"))}
     out = subprocess.run(["node", "--input-type=module", "-e", LINES_JS], capture_output=True, text=True, check=True, env=env)
     return json.loads(out.stdout)
 
@@ -89,7 +93,7 @@ def sandbox() -> tuple[Path, Path]:
         shutil.copyfile(lore, held / "LORE.md")
     else:
         (held / "LORE.md").write_text("# HELD\n\nEn stand-in för HELD:s lore.\n", encoding="utf-8")
-    load("rummet_grund").write_baseline(rot / "data/glimt-rummet", ["1e54ffc"])
+    load("rummet_grund").write_baseline(rot / "data/glimt-rummet", ["1e54ffc", "f0fd543"])
     ut = rot / "uploads"
     load("rummet_deploy").deploy(ut)
     return rot, ut
@@ -180,6 +184,12 @@ def skillnad(a: str, b: str) -> list[int]:
     return [k for k in range(len(x)) if x[k] != y[k]]
 
 
+def demi(rot: Path, *args: str) -> subprocess.CompletedProcess:
+    """Demi's door into the room: scripts/rummet.py on the sandbox."""
+    return subprocess.run([sys.executable, str(REPO / "scripts/rummet.py"), "--rot", str(rot), *args],
+                          capture_output=True, text=True, check=False)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--skarmar", type=Path, default=None, help="save screenshots here")
@@ -199,13 +209,16 @@ def main() -> int:
     alla = repliker(manus1)
     vega = [r for r in alla if r["slag"] == "vega" and not r["variant"] and not r["etikett"]]
 
-    def valj(scen: str, n: int, strykbar: bool | None = None) -> dict:
-        kand = [r for r in vega if r["scen"] == scen and (strykbar is None or r["strykbar"] == strykbar)]
+    def valj(scen: str, n: int, strykbar: bool | None = None, inspelad: bool = False) -> dict:
+        kand = [r for r in vega if r["scen"] == scen and (strykbar is None or r["strykbar"] == strykbar)
+                and (not inspelad or r["ljud"] == "inspelad")]
         return kand[min(n, len(kand) - 1)]
 
+    inspelade = sum(1 for r in alla if r["ljud"] == "inspelad")
+    ej_inspelade = sum(1 for r in alla if r["ljud"] == "ej")
     L1, L2, L3 = valj("1", 0), valj("1", 2), valj("2", 0)
     L4, L5, L6 = valj("3", 0), valj("3", 3), valj("4", 0)
-    L7, L8, L9, L10 = valj("5", 1, strykbar=True), valj("6", 0), valj("2", 2), valj("0", 2)
+    L7, L8, L9, L10 = valj("5", 1, strykbar=True), valj("5", 6), valj("2", 2), valj("0", 0, inspelad=True)
     valda = [L1, L2, L3, L4, L5, L6, L7, L8, L9, L10]
     ok(len({r["i"] for r in valda}) == len(valda), "test setup: ten different lines picked")
 
@@ -227,8 +240,9 @@ def main() -> int:
             page.wait_for_selector(".rad")
             ok(page.locator(".rad").count() == len(alla), f"episode 1: every line is shown ({page.locator('.rad').count()}/{len(alla)})")
             ok(page.locator(".vem .marke.demi").count() == len(alla), "episode 1: every line is marked as Demi's draft")
-            ok(page.locator(".spela").count() > len(alla) * 0.8, f"episode 1: most lines can be played ({page.locator('.spela').count()})")
-            ok(page.locator(".radinfo .ej").count() == 0, "episode 1: nothing reads as not recorded before anyone has changed anything")
+            ok(page.locator(".spela").count() == inspelade > 0, f"episode 1: every recorded line can be played ({page.locator('.spela').count()}/{inspelade})")
+            ok(page.locator(".radinfo .ej").count() == ej_inspelade,
+               f"episode 1: lines written after the recording read as not recorded yet ({page.locator('.radinfo .ej').count()}/{ej_inspelade})")
             ok(bool(re.match(r"^[0-9a-f]{10} ", page.get_attribute('meta[name="rummet-bygge"]', "content") or "")), "the deployed page names its build")
             skarm(page, "01-episod-1")
 
@@ -326,7 +340,7 @@ def main() -> int:
             ok(rad(page, L5["i"]).locator(".marke.utanfor").count() == 1 and "ändrad utanför rummet" in rad(page, L5["i"]).inner_text(),
                "conflict: the line changed in the file shows as changed outside the room")
             oppna(page, L5["i"])
-            fel = spara(page, lambda: rad(page, L5["i"]).get_by_role("button", name="Demi", exact=True).click())
+            fel = spara(page, lambda: rad(page, L5["i"]).get_by_role("button", name="Demi (AI)", exact=True).click())
             ok(fel is None and rad(page, L5["i"]).locator(".marke.demi").count() == 1, "conflict: saying whose words they are takes one press")
 
             # The same line changed while Henric typed: his words are kept, the file's are not overwritten.
@@ -397,6 +411,65 @@ def main() -> int:
             ok(rad(page, L2["i"]).locator(".kort.forslag").count() == 1, "reload: the proposal is still there")
             skarm(page, "04-efter-omladdning")
 
+            # --- Demi in the room: marked, answerable, never able to change anyone's text ------------------------
+            henrics = json.loads(rumfil.read_text(encoding="utf-8"))["kommentarer"]
+            hk = next(k for k in henrics if k["skrev"] == "henric" and k["mal"].get("text") == L3["kropp"])
+            r1 = demi(rot, "kommentera", "--episod", "1", "--scen", L3["scen"], "--rad", L3["kropp"], "--text", "Jag hör den som en fråga, inte ett svar.")
+            r2 = demi(rot, "svara", "--pa", hk["id"], "--text", "Håller med om tempot.")
+            ok(r1.returncode == 0 and r2.returncode == 0, f"demi: the script posts a comment and a reply ({r1.stderr.strip()}{r2.stderr.strip()})")
+            page.reload()
+            page.wait_for_selector(".rad")
+            dk = rad(page, L3["i"]).locator(".kort.kommentar.fran-ai")
+            ok(dk.count() == 1 and dk.locator(".ai-markor").count() == 1 and "Demi" in dk.locator(".kort-huvud").inner_text(),
+               "demi: Demi's comment is marked as an AI's, on a card of its own")
+            hkort = rad(page, L3["i"]).locator(".kort.kommentar:not(.fran-ai)")
+            ok(hkort.locator(".svar.fran-ai").count() == 1 and hkort.locator(".svar.fran-ai .ai-markor").count() == 1,
+               "demi: Demi's reply hangs under Henric's comment, marked")
+            ok(dk.get_by_role("button", name="Ta bort").count() == 0 and hkort.locator(".kort-huvud ~ .knappar").get_by_role("button", name="Ta bort").count() == 1
+               and hkort.locator(".svar.fran-ai").get_by_role("button", name="Ta bort").count() == 0,
+               "demi: Henric can remove his own comment, never Demi's comment or reply")
+            skarm(page, "08-demi")
+
+            # Henric asks Demi something in the thread; it waits until Demi answers.
+            hkort.get_by_role("button", name="Svara", exact=True).click()
+            tradform = rad(page, L3["i"]).locator(".kort.kommentar:not(.fran-ai) .trad form")
+            tradform.wait_for()
+            ok(tradform.get_by_role("button", name="Fråga Demi").get_attribute("aria-pressed") == "true",
+               "ask: answering Demi asks Demi by default, and it shows")
+            tradform.locator("textarea").fill("Varför en fråga?")
+            fel = spara(page, lambda: tradform.get_by_role("button", name="Svara", exact=True).click())
+            sista = json.loads(rumfil.read_text(encoding="utf-8"))["kommentarer"][-1]
+            ok(fel is None and sista["text"] == "Varför en fråga?" and sista["svarPa"] == hk["id"] and sista["till"] == "demi" and sista["skrev"] == "henric",
+               f"ask: saved as Henric's reply, addressed to Demi ({fel})")
+            hkort = rad(page, L3["i"]).locator(".kort.kommentar:not(.fran-ai)")
+            ok("Väntar på svar från Demi." in hkort.inner_text(), "ask: the thread shows it waits for Demi")
+            nytt = demi(rot, "nytt", "--sedan", "2020-01-01T00:00")
+            ok(nytt.stdout.startswith("Väntar på svar från Demi: 1") and "Varför en fråga?" in nytt.stdout.split("Nytt sedan")[0],
+               "ask: the script lists the question first")
+            demi(rot, "svara", "--pa", sista["id"], "--text", "För att hon inte vet än.")
+            page.reload()
+            page.wait_for_selector(".rad")
+            hkort = rad(page, L3["i"]).locator(".kort.kommentar:not(.fran-ai)")
+            ok("Väntar på svar" not in hkort.inner_text() and "För att hon inte vet än." in hkort.inner_text(), "ask: answered, it no longer waits")
+
+            # Hiding Demi's posts is Henric's own setting, and it stays.
+            brytare = page.get_by_role("switch", name="Demis inlägg")
+            ok(brytare.get_attribute("aria-checked") == "true", "hide: Demi's posts show by default for Henric")
+            brytare.click()
+            page.wait_for_selector(".status.ok:not([hidden])")
+            inst = json.loads((rot / "data/glimt-rummet/installningar.json").read_text(encoding="utf-8"))
+            ok(page.locator("main .fran-ai").count() == 0 and "Demis inlägg är dolda för dig" in page.locator("main").inner_text(),
+               "hide: Demi's comment and replies are gone from the page, and it says so")
+            ok(inst["personer"]["henric"]["doljDemi"] is True and "liv" not in inst["personer"], "hide: saved as Henric's setting only")
+            page.reload()
+            page.wait_for_selector(".rad")
+            ok(page.get_by_role("switch", name="Demis inlägg").get_attribute("aria-checked") == "false" and page.locator("main .fran-ai").count() == 0,
+               "hide: still hidden after a reload")
+            skarm(page, "09-demi-dolt")
+            page.get_by_role("switch", name="Demis inlägg").click()
+            page.wait_for_function("document.querySelectorAll('main .fran-ai').length > 0")
+            ok(rad(page, L3["i"]).locator(".kort.fran-ai").count() == 1, "hide: shown again with one press")
+
             # --- Episode 2 ------------------------------------------------------------------------------------------
             page.goto(f"{rum_url}#episod-2")
             page.wait_for_function("document.querySelector('.ep-titel') && document.querySelector('h2').textContent.includes('2')")
@@ -433,6 +506,14 @@ def main() -> int:
             page.wait_for_selector(".sida-titel")
             ok("Andra versionen" in page.locator(".sida-text").inner_text(), "lore: the page is there after a reload")
             skarm(page, "05-lore")
+            r3 = demi(rot, "lore", "--titel", "Slingan", "--text", "Den surrar lågt i fickan.")
+            page.goto(f"{rum_url}#varlden/sidor")
+            page.wait_for_selector(".sidlista")
+            ok(r3.returncode == 0 and page.locator(".sidlista li.fran-ai .ai-markor").count() == 1, "lore: Demi's page is listed, marked as an AI's")
+            page.locator(".sidlista li.fran-ai a").click()
+            page.wait_for_selector(".sida-titel")
+            ok(page.get_by_role("button", name="Ändra").count() == 0 and page.get_by_role("button", name="Ta bort").count() == 0
+               and "Bara Demi kan ändra sidan." in page.locator("main").inner_text(), "lore: Henric cannot change or remove Demi's page")
 
             ok(not fel_i_sidan, f"no script errors on the page ({fel_i_sidan})")
             ctx.close()

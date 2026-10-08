@@ -82,7 +82,27 @@ nav.flikar ul { list-style: none; display: flex; gap: 1.3rem; margin: 0; padding
 nav.flikar a { color: var(--dov); text-decoration: none; font-size: 0.95rem; padding: 0.3rem 0; }
 nav.flikar a:hover { color: var(--text); }
 nav.flikar a[aria-current='page'] { color: var(--text); box-shadow: 0 2px 0 var(--kontakt); }
-.jag { color: var(--svag); font-size: 0.82rem; white-space: nowrap; }
+.jag { color: var(--svag); font-size: 0.82rem; white-space: nowrap; display: flex; align-items: center; gap: 0.9rem; }
+
+/* The switch for Demi's posts: each person decides for themselves. */
+.brytare {
+  font: inherit; font-size: 0.82rem; color: var(--dov); background: none; border: 0; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.4rem 0; min-height: 2.2rem;
+}
+.brytare .spar {
+  position: relative; width: 1.75rem; height: 1rem; border-radius: 999px;
+  border: 1px dashed var(--kant-stark); transition: background 120ms, border-color 120ms;
+}
+.brytare .spar::after {
+  content: ''; position: absolute; top: 50%; left: 0.14rem; width: 0.62rem; height: 0.62rem; margin-top: -0.31rem;
+  border-radius: 50%; background: var(--svag); transition: transform 120ms, background 120ms;
+}
+.brytare[aria-checked='true'] .spar { border-color: var(--demi); background: rgba(157, 188, 193, 0.16); }
+.brytare[aria-checked='true'] .spar::after { transform: translateX(0.75rem); background: var(--demi); }
+.brytare:hover { color: var(--text); }
+@media (max-width: 34rem) {
+  .jag .du { display: none; }
+}
 
 /* Banners: the sandbox, read-only, things that need attention. */
 .band { border: 1px solid var(--kant-stark); border-radius: 8px; background: var(--yta); padding: 0.75rem 1rem; margin: 1.2rem 0 0; font-size: 0.95rem; }
@@ -289,6 +309,41 @@ details.tidigare li { border-top: 1px solid var(--kant); padding: 0.5rem 0; }
 .galde q { font-family: var(--serif); font-style: italic; color: var(--dov); }
 details.klara summary { cursor: pointer; color: var(--svag); font-size: 0.85rem; }
 
+/* Demi is an AI and is never dressed as a person: a dashed edge, a cool
+   tint, and the letters AI after the name, wherever Demi writes. */
+.ai-markor {
+  display: inline-block; margin-left: 0.35rem; padding: 0 0.28rem; border: 1px dashed var(--demi); border-radius: 3px;
+  color: var(--demi); font-size: 0.66rem; font-weight: 600; letter-spacing: 0.06em; line-height: 1.35; vertical-align: 0.08em;
+}
+.nyckel .ai-markor { margin: 0 0.35rem 0 0; }
+.av.ai { color: var(--demi); }
+.kort.fran-ai { border-left-style: dashed; border-left-color: var(--demi); background: rgba(157, 188, 193, 0.06); }
+.till-text { margin-left: 0.45rem; color: var(--sken); font-size: 0.78rem; }
+
+/* Replies hang under the post that started the thread. */
+.trad { margin: 0.55rem 0 0; padding-left: 0.8rem; border-left: 1px solid var(--kant); }
+.trad > .knappar { margin: 0.2rem 0 0; }
+.trad.utan-svar { border-left: 0; padding-left: 0; margin-top: 0.35rem; }
+.svar { padding: 0.15rem 0 0.35rem; }
+.svar + .svar { border-top: 1px solid var(--kant); padding-top: 0.45rem; }
+.svar .kort-huvud { margin-bottom: 0.2rem; }
+.svar .knappar { margin-top: 0.1rem; }
+.svar.fran-ai {
+  margin-left: calc(-0.8rem - 1px); padding-left: 0.8rem; border-left: 1px dashed var(--demi);
+  background: linear-gradient(90deg, rgba(157, 188, 193, 0.07), transparent 70%);
+}
+.vantar { color: var(--demi); font-size: 0.82rem; margin: 0.25rem 0 0.35rem; }
+.vantar::before {
+  content: ''; display: inline-block; width: 0.55rem; height: 0.55rem; margin-right: 0.45rem; vertical-align: 0.02em;
+  border: 1px dashed var(--demi); border-radius: 50%;
+}
+.knapp.tyst { color: var(--svag); border-color: var(--kant); background: none; font-size: 0.82rem; }
+.knapp.tyst:hover { color: var(--text); border-color: var(--sken); }
+.val.till { margin-bottom: 0.3rem; }
+.val .till-knapp[aria-pressed='true'] { color: var(--natt); background: var(--demi); border-color: var(--demi); }
+.lore-sida.fran-ai { border-left: 1px dashed var(--demi); padding-left: 0.9rem; }
+.sidlista li.fran-ai a { border-left-style: dashed; border-left-color: var(--demi); }
+
 .scenfot { margin: 0.2rem 0 0; }
 .scenfot h4 { font-weight: 600; font-size: 0.85rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--dov); margin: 1.2rem 0 0.4rem; }
 .scenfot .knappar { margin-top: 0.4rem; }
@@ -379,4 +434,5 @@ footer { color: var(--svag); font-size: 0.85rem; border-top: 1px solid var(--kan
 
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; }
+  .brytare .spar, .brytare .spar::after { transition: none; }
 }

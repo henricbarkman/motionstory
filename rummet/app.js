@@ -7,7 +7,7 @@ import { portalAdapter, valjAdapter, EPISODER, PERSONER } from './data.js';
 import { skapaLager } from './lager.js';
 import { ankareFor, hitta, tecken, kroppDelar, byggKropp, provaKropp } from './manus.js';
 import { ljudFor, stycketid } from './ljud.js';
-import { vy, GALLER, loreText } from './rum.js';
+import { vy, GALLER, loreText, arAI } from './rum.js';
 import { renderMd, renderText, inline } from './md.js';
 
 const $ = (id) => document.getElementById(id);
@@ -25,6 +25,7 @@ const S = {
   upptagen: false,
   lore: null,
   utkast: new Set(),
+  inst: { doljDemi: false }, // this person's own settings (lager.lasInstallningar)
 };
 
 // --- Small helpers ----------------------------------------------------------------
@@ -69,6 +70,17 @@ function lista(ord) {
 
 const kanSkriva = () => !!(S.adapter && S.adapter.kanSkriva);
 const kan = () => kanSkriva() && !(S.ep && S.ep.rumFel);
+
+// Demi is an AI. Its posts are marked everywhere, and each person can hide
+// them for themselves.
+const dold = (vem) => !!(S.inst.doljDemi && arAI(vem));
+const synliga = (lista) => lista.filter((x) => !dold(x.skrev));
+const mitt = (post) => !!(S.jag && post.skrev === S.jag.id);
+function avsandare(vem) {
+  return h('span', { class: `av${arAI(vem) ? ' ai' : ''}` }, namn(vem),
+    arAI(vem) ? h('span', { class: 'ai-markor', title: `${namn(vem)} är en AI, inte en människa.` }, 'AI') : null);
+}
+const namnText = (vem) => (arAI(vem) ? `${namn(vem)} (AI)` : namn(vem));
 
 function autosize(t) {
   t.style.height = 'auto';
@@ -145,7 +157,9 @@ const TYPNAMN = {
   andra: 'Ändring', foresla: 'Förslag', kommentera: 'Kommentar', ny: 'Ny replik efter',
   'kommentera-scen': 'Kommentar', 'foresla-scen': 'Förslag', 'ny-forst': 'Ny replik',
 };
-const radNyckel = (typ, ankare) => utkastNyckel(`e${S.ep.nr}`, typ, JSON.stringify(ankare));
+// Keyed by scene, text and position only: the neighbours an anchor carries
+// change when a nearby line is edited, and the draft must still be found.
+const radNyckel = (typ, ankare) => utkastNyckel(`e${S.ep.nr}`, typ, JSON.stringify({ scen: ankare.scen, text: ankare.text, n: ankare.n }));
 const harUtkast = (typ, ankare) => S.utkast.has(radNyckel(typ, ankare));
 
 // --- Sound ------------------------------------------------------------------------------
@@ -285,7 +299,12 @@ async function laddaOm() {
 // --- Routing ------------------------------------------------------------------------------
 
 function lasRutt() {
-  const hash = decodeURIComponent(location.hash.replace(/^#/, ''));
+  let hash;
+  try {
+    hash = decodeURIComponent(location.hash.replace(/^#/, ''));
+  } catch {
+    hash = '';
+  }
   let m = /^episod-(\d+)$/.exec(hash);
   if (m && EPISODER.includes(m[1])) return { vy: 'episod', nr: m[1] };
   if (hash === 'varlden') return { vy: 'varlden', flik: 'varld' };
@@ -437,7 +456,13 @@ function episodHuvud() {
       h('span', null, marke({ vem: 'demi', hur: 'utkast' }, { dold: true }), 'Demis utkast'),
       h('span', null, marke({ vem: 'henric', hur: 'skrev' }, { dold: true }), 'Henric'),
       h('span', null, marke({ vem: 'liv', hur: 'skrev' }, { dold: true }), 'Liv'),
-      h('span', null, marke({ vem: null, hur: 'utanfor' }, { dold: true }), 'ändrad utanför rummet')));
+      h('span', null, marke({ vem: null, hur: 'utanfor' }, { dold: true }), 'ändrad utanför rummet'),
+      S.inst.doljDemi ? null : h('span', null, h('span', { class: 'ai-markor', 'aria-hidden': 'true' }, 'AI'), 'Demis kommentarer och förslag')));
+    if (S.inst.doljDemi) {
+      const antal = ep.rum.kommentarer.filter((k) => arAI(k.skrev) && !k.borta).length
+        + ep.rum.forslag.filter((f) => arAI(f.skrev) && f.lage === 'oppet').length;
+      if (antal) f.append(h('p', { class: 'dov liten smal' }, `Demis inlägg är dolda för dig: ${antal === 1 ? 'ett' : antal} i den här episoden.`));
+    }
   }
   if (!ep.ljud) {
     f.append(h('p', { class: 'dov liten smal' }, `Episod ${ep.nr} är inte inspelad än.`));
@@ -475,6 +500,13 @@ function osparat() {
       if (!ep.manus.scener.some((s) => `scen-${s.nr}` === mal)) kvar.push({ k, typ, ankare: null });
       continue;
     }
+    if (mal.startsWith('svar-')) {
+      // A reply whose thread is gone keeps its words here too.
+      const rotId = mal.slice(5);
+      const finns = [...ep.rum.kommentarer, ...ep.rum.forslag].some((x) => x.id === rotId && !x.borta);
+      if (!finns) kvar.push({ k, typ, ankare: null, svar: true });
+      continue;
+    }
     let ankare;
     try {
       ankare = JSON.parse(mal);
@@ -487,12 +519,12 @@ function osparat() {
   return h('div', { class: 'band varning osparat' },
     h('p', null, h('strong', null, 'Text som inte blev sparad. '),
       'Repliken den gällde står inte längre likadant i manuset, så texten ligger kvar här i webbläsaren tills du slänger den.'),
-    kvar.map(({ k, typ, ankare }) => {
+    kvar.map(({ k, typ, ankare, svar }) => {
       const v = lasUtkast(k) || {};
       const text = v.text != null ? v.text : byggKropp({ slag: v.slag || 'vega', ord: v.ord || '', vem: v.vem || '' });
       const falt = h('textarea', { class: 'falt', readonly: true, rows: '2', value: text, 'aria-label': 'Osparad text' });
       const kort = h('div', { class: 'kort' },
-        h('p', { class: 'galde' }, `${TYPNAMN[typ] || 'Text'} till `, ankare ? h('q', null, ankare.text) : 'en scen som inte finns kvar'),
+        h('p', { class: 'galde' }, svar ? 'Svar i en tråd som inte finns kvar' : [`${TYPNAMN[typ] || 'Text'} till `, ankare ? h('q', null, ankare.text) : 'en scen som inte finns kvar']),
         falt,
         h('div', { class: 'knappar' },
           h('button', {
@@ -585,8 +617,8 @@ function ritaRad(r) {
     : h('div', { class: 'radtext' }, innehall);
 
   const sida = h('div', { class: 'sida' });
-  for (const f of info.forslag) if (f.lage === 'oppet') sida.append(forslagKort(f, { rad: r }));
-  sida.append(...kommentarer(info.kommentarer, { rad: r }));
+  for (const f of synliga(info.forslag)) if (f.lage === 'oppet') sida.append(forslagKort(f, { rad: r }));
+  sida.append(...kommentarer(synliga(info.kommentarer), { rad: r }));
   if (oppen) sida.append(verktyg(r, info, ankare));
 
   return h('div', { class: `rad${oppen ? ' oppen' : ''}`, id: `rad-${r.i}` },
@@ -695,7 +727,7 @@ function namnVal(ankare) {
     h('div', { class: 'knappar' }, Object.entries(PERSONER).map(([id, p]) => h('button', {
       class: 'knapp liten', type: 'button',
       onclick: () => gora(() => S.lager.sattNamn(S.ep.nr, ankare, id)),
-    }, p.namn))));
+    }, namnText(id)))));
 }
 
 function tidigareLista(ankare, tidigare) {
@@ -703,7 +735,7 @@ function tidigareLista(ankare, tidigare) {
     h('summary', null, `Tidigare text (${tidigare.length})`),
     h('ol', null, [...tidigare].reverse().map((t) => h('li', null,
       h('p', { class: 'tidigare-text' }, radText(t.kropp)),
-      h('p', { class: 'meta' }, t.skrev === 'demi' && !t.nar ? 'Demis utkast' : t.skrev ? `${namn(t.skrev)}${tid(t.nar)}` : 'ändrad utanför rummet'),
+      h('p', { class: 'meta' }, t.skrev === 'demi' && !t.nar ? 'Demis utkast' : t.skrev ? `${namnText(t.skrev)}${tid(t.nar)}` : 'ändrad utanför rummet'),
       h('button', {
         class: 'knapp liten', type: 'button',
         onclick: () => gora(() => S.lager.taTillbakaText(S.ep.nr, ankare, t), { efter: (m) => { if (m) S.oppen = { nyI: m.i }; } }),
@@ -744,8 +776,8 @@ function radForm(r, ankare) {
   }
   if (typ === 'kommentera') {
     return kommentarForm({
-      rubrik: 'Kommentar till repliken', nyckel, knapp: 'Spara kommentaren',
-      spara: (text, galler) => S.lager.kommentera(nr, ankare, text, galler),
+      rubrik: 'Kommentar till repliken', nyckel, knapp: 'Spara kommentaren', medTill: true,
+      spara: (text, galler, till) => S.lager.kommentera(nr, ankare, text, galler, { till }),
     });
   }
   return bekrafta({
@@ -844,17 +876,33 @@ function ordForm({ rubrik, start, rad, nyckel, knapp, spara, efter = null, vidFe
   return form;
 }
 
-// A comment, or a proposal for a whole scene: free text, kept exactly.
-function kommentarForm({ rubrik, nyckel, knapp, spara, medGaller = true, hjalpText = null }) {
+// Asking Demi is offered to people who see Demi's posts.
+const kanFragaDemi = () => !!(S.jag && !arAI(S.jag.id) && !S.inst.doljDemi);
+
+// A comment, a reply, or a proposal for a whole scene: free text, kept exactly.
+function kommentarForm({ rubrik, nyckel, knapp, spara, medGaller = true, hjalpText = null, etikett = null, medTill = false, tillForval = false }) {
   const utkast = lasUtkast(nyckel);
   let galler = utkast ? utkast.galler || null : null;
+  const visaTill = medTill && kanFragaDemi();
+  let till = visaTill && (utkast ? utkast.till === 'demi' : tillForval) ? 'demi' : null;
   const id = nyttFaltId();
   const falt = h('textarea', { class: 'falt', id, rows: '3', value: utkast ? utkast.text || '' : '' });
   const fel = h('div', { class: 'fel', role: 'alert' });
   const minns = () => {
     if (!falt.value) slangUtkast(nyckel);
-    else skrivUtkast(nyckel, { text: falt.value, galler });
+    else skrivUtkast(nyckel, { text: falt.value, galler, till });
   };
+  const tillHjalp = h('p', { class: 'hjalp' });
+  const tillKnapp = h('button', {
+    type: 'button', class: 'till-knapp',
+    onclick: () => { till = till ? null : 'demi'; visaTillLage(); minns(); },
+  }, 'Fråga Demi');
+  function visaTillLage() {
+    tillKnapp.setAttribute('aria-pressed', String(till === 'demi'));
+    tillHjalp.textContent = till
+      ? 'Demi svarar här i tråden nästa gång Demi läser rummet. Demi är en AI.'
+      : 'Tryck om du vill ha svar från Demi.';
+  }
   const nycklar = Object.keys(GALLER);
   const val = nycklar.map((g) => h('button', {
     type: 'button', 'aria-pressed': String(g === galler),
@@ -869,9 +917,11 @@ function kommentarForm({ rubrik, nyckel, knapp, spara, medGaller = true, hjalpTe
     utkast ? h('p', { class: 'utkast-not' }, 'Här är texten du skrev förra gången men inte sparade.') : null,
     medGaller ? h('p', { class: 'hjalp' }, 'Gäller det något särskilt? Välj om du vill.') : null,
     medGaller ? h('div', { class: 'val', role: 'group', 'aria-label': 'Vad kommentaren gäller' }, val) : null,
-    h('label', { class: 'etikett-falt', for: id }, medGaller ? 'Kommentaren' : 'Förslaget'),
+    h('label', { class: 'etikett-falt', for: id }, etikett || (medGaller ? 'Kommentaren' : 'Förslaget')),
     falt,
     hjalpText ? h('p', { class: 'hjalp' }, hjalpText) : null,
+    visaTill ? h('div', { class: 'val till' }, tillKnapp) : null,
+    visaTill ? tillHjalp : null,
     fel,
     h('div', { class: 'knappar' },
       h('button', { class: 'knapp huvud', type: 'submit' }, knapp),
@@ -882,8 +932,9 @@ function kommentarForm({ rubrik, nyckel, knapp, spara, medGaller = true, hjalpTe
     ev.preventDefault();
     fel.replaceChildren();
     if (!falt.value.trim()) { fel.replaceChildren(h('p', null, 'Skriv något först.')); return; }
-    await gora(() => spara(falt.value, galler), { fel, nyckel });
+    await gora(() => spara(falt.value, galler, visaTill ? till : null), { fel, nyckel });
   });
+  if (visaTill) visaTillLage();
   return form;
 }
 
@@ -901,8 +952,8 @@ function bekrafta({ text, ja, fara = false, gor, avbryt = stangForm }) {
 function forslagKort(f, { rad = null, scen = null, galde = null } = {}) {
   const nr = S.ep.nr;
   const scenNiva = f.mal.text == null;
-  const kort = h('div', { class: 'kort forslag' },
-    h('p', { class: 'kort-huvud' }, h('span', { class: 'slag' }, scenNiva ? 'Förslag för scenen' : 'Förslag'), ` ${namn(f.skrev)}${tid(f.nar)}`),
+  const kort = h('div', { class: `kort forslag${arAI(f.skrev) ? ' fran-ai' : ''}` },
+    h('p', { class: 'kort-huvud' }, h('span', { class: 'slag' }, scenNiva ? 'Förslag för scenen' : 'Förslag'), ' ', avsandare(f.skrev), tid(f.nar)),
     galde,
     scenNiva ? h('div', { class: 'kort-text' }, renderText(f.kropp)) : h('p', { class: 'kort-manus' }, radText(f.kropp)));
   const ja = (f.ja || []).map((j) => namn(j.vem));
@@ -910,7 +961,10 @@ function forslagKort(f, { rad = null, scen = null, galde = null } = {}) {
   if (f.togsTillbaka) {
     kort.append(h('p', { class: 'meta' }, `Har legat i manus. ${namn(f.togsTillbaka.av)} tog tillbaka den tidigare texten${tid(f.togsTillbaka.nar)}.`));
   }
-  if (!kan()) return kort;
+  if (!kan()) {
+    kort.append(trad(f, { rad, scen, galde }));
+    return kort;
+  }
   if (S.form && S.form.typ === 'lagg-in' && S.form.id === f.id) {
     kort.append(bekrafta({
       text: scenNiva
@@ -921,16 +975,17 @@ function forslagKort(f, { rad = null, scen = null, galde = null } = {}) {
     }));
     return kort;
   }
-  const mitt = !!(S.jag && (f.ja || []).some((j) => j.vem === S.jag.id));
+  const harJa = !!(S.jag && (f.ja || []).some((j) => j.vem === S.jag.id));
   kort.append(h('div', { class: 'knappar' },
-    h('button', { class: 'knapp liten', type: 'button', onclick: () => gora(() => S.lager.sagJa(nr, f.id, !mitt)) }, mitt ? 'Ta tillbaka mitt ja' : 'Säg ja'),
+    h('button', { class: 'knapp liten', type: 'button', onclick: () => gora(() => S.lager.sagJa(nr, f.id, !harJa)) }, harJa ? 'Ta tillbaka mitt ja' : 'Säg ja'),
     galde ? null : h('button', {
       class: 'knapp liten', type: 'button',
       onclick: () => oppna(ctxOppen(rad, scen), { typ: 'lagg-in', id: f.id }),
     }, scenNiva ? 'Markera som inlagt' : 'Lägg in i manus'),
-    S.jag && f.skrev === S.jag.id
+    mitt(f)
       ? h('button', { class: 'knapp liten', type: 'button', onclick: () => gora(() => S.lager.draUndanForslag(nr, f.id)) }, 'Dra undan')
       : null));
+  kort.append(trad(f, { rad, scen, galde }));
   return kort;
 }
 
@@ -948,13 +1003,17 @@ function kommentarer(alla, ctx) {
 
 function kommentarKort(k, { rad = null, scen = null, galde = null } = {}) {
   const nr = S.ep.nr;
-  const kort = h('div', { class: `kort kommentar${k.klar ? ' klar' : ''}` },
-    h('p', { class: 'kort-huvud' }, h('span', { class: 'slag' }, 'Kommentar'), ` ${namn(k.skrev)}${tid(k.nar)}`,
-      k.galler ? h('span', { class: 'galler' }, GALLER[k.galler] || k.galler) : null),
+  const kort = h('div', { class: `kort kommentar${k.klar ? ' klar' : ''}${arAI(k.skrev) ? ' fran-ai' : ''}` },
+    h('p', { class: 'kort-huvud' }, h('span', { class: 'slag' }, 'Kommentar'), ' ', avsandare(k.skrev), tid(k.nar),
+      k.galler ? h('span', { class: 'galler' }, GALLER[k.galler] || k.galler) : null,
+      tillText(k)),
     galde,
     h('div', { class: 'kort-text' }, renderText(k.text)),
     k.klar ? h('p', { class: 'meta' }, `Klar, sa ${namn(k.klar.av)}${tid(k.klar.nar)}.`) : null);
-  if (!kan()) return kort;
+  if (!kan()) {
+    kort.append(trad(k, { rad, scen, galde }));
+    return kort;
+  }
   if (S.form && S.form.typ === 'ta-bort' && S.form.id === k.id) {
     kort.append(bekrafta({
       text: 'Ta bort kommentaren? Den försvinner ur rummet men står kvar i anteckningsfilen.',
@@ -965,10 +1024,62 @@ function kommentarKort(k, { rad = null, scen = null, galde = null } = {}) {
   }
   kort.append(h('div', { class: 'knappar' },
     h('button', { class: 'knapp liten', type: 'button', onclick: () => gora(() => S.lager.kommentarKlar(nr, k.id, !k.klar)) }, k.klar ? 'Inte klar' : 'Klar'),
-    S.jag && k.skrev === S.jag.id
+    mitt(k)
       ? h('button', { class: 'knapp liten', type: 'button', onclick: () => oppna(ctxOppen(rad, scen), { typ: 'ta-bort', id: k.id }) }, 'Ta bort')
       : null));
+  kort.append(trad(k, { rad, scen, galde }));
   return kort;
+}
+
+const tillText = (post) => (post.till ? h('span', { class: `till-text${arAI(post.till) ? ' ai' : ''}` }, `till ${namn(post.till)}`) : null);
+
+// The replies under a comment or a proposal, whether Demi has been asked and
+// not answered yet, and a way to answer.
+function trad(rot, { rad = null, scen = null } = {}) {
+  const nr = S.ep.nr;
+  const alla = (S.v.svar.get(rot.id) || []);
+  const svar = synliga(alla);
+  const ut = h('div', { class: `trad${svar.length ? '' : ' utan-svar'}` });
+  for (const k of svar) {
+    const el = h('div', { class: `svar${arAI(k.skrev) ? ' fran-ai' : ''}`, id: `svar-${k.id}` },
+      h('p', { class: 'kort-huvud' }, avsandare(k.skrev), tid(k.nar), tillText(k)),
+      h('div', { class: 'kort-text' }, renderText(k.text)));
+    if (kan() && mitt(k)) {
+      if (S.form && S.form.typ === 'ta-bort' && S.form.id === k.id) {
+        el.append(bekrafta({
+          text: 'Ta bort svaret? Det försvinner ur tråden men står kvar i anteckningsfilen.',
+          ja: 'Ta bort', fara: true,
+          gor: (fel) => gora(() => S.lager.taBortKommentar(nr, k.id), { fel }),
+        }));
+      } else {
+        el.append(h('div', { class: 'knappar' }, h('button', {
+          class: 'knapp liten tyst', type: 'button',
+          onclick: () => oppna(ctxOppen(rad, scen), { typ: 'ta-bort', id: k.id }),
+        }, 'Ta bort')));
+      }
+    }
+    ut.append(el);
+  }
+  if (!S.inst.doljDemi && [rot, ...alla].some((x) => S.v.vantar.has(x.id))) {
+    ut.append(h('p', { class: 'vantar' }, 'Väntar på svar från Demi.'));
+  }
+  if (kan() && !rot.borta && !rot.klar) {
+    const nyckel = utkastNyckel(`e${nr}`, 'svar', `svar-${rot.id}`);
+    if (S.form && S.form.typ === 'svara' && S.form.id === rot.id) {
+      const sista = svar.length ? svar[svar.length - 1] : rot;
+      ut.append(kommentarForm({
+        rubrik: `Svar till ${namn(sista.skrev)}`, nyckel, knapp: 'Svara', medGaller: false, etikett: 'Svaret',
+        medTill: true, tillForval: arAI(sista.skrev),
+        spara: (text, _g, till) => S.lager.svara(nr, rot.id, text, { till }),
+      }));
+    } else {
+      ut.append(h('div', { class: 'knappar' }, h('button', {
+        class: 'knapp liten tyst', type: 'button',
+        onclick: () => oppna(ctxOppen(rad, scen), { typ: 'svara', id: rot.id }),
+      }, S.utkast.has(nyckel) ? 'Svara · osparat' : 'Svara')));
+    }
+  }
+  return ut.childNodes.length ? ut : null;
 }
 
 // --- The end of a scene: notes on the whole scene, notes whose line is gone,
@@ -982,13 +1093,14 @@ function ritaFot(s) {
   const oppen = !!(S.oppen && S.oppen.i == null && S.oppen.scen === s.nr);
   const fot = h('div', { class: 'scenfot', id: `fot-${s.nr}` });
 
-  const forslag = sv.forslag.filter((f) => f.lage === 'oppet');
-  if (forslag.length || sv.kommentarer.length) {
+  const forslag = synliga(sv.forslag).filter((f) => f.lage === 'oppet');
+  const scenKommentarer = synliga(sv.kommentarer);
+  if (forslag.length || scenKommentarer.length) {
     fot.append(h('h4', null, 'Om hela scenen'));
     for (const f of forslag) fot.append(forslagKort(f, { scen: s.nr }));
-    fot.append(...kommentarer(sv.kommentarer, { scen: s.nr }));
+    fot.append(...kommentarer(scenKommentarer, { scen: s.nr }));
   }
-  const losa = sv.losa.filter((x) => x.slag === 'kommentarer' || x.post.lage === 'oppet');
+  const losa = sv.losa.filter((x) => !dold(x.post.skrev) && (x.slag === 'kommentarer' || x.post.lage === 'oppet'));
   if (losa.length) {
     fot.append(h('h4', null, 'Gällde en replik som inte står så längre'));
     for (const { slag, post } of losa) {
@@ -1030,8 +1142,8 @@ function scenForm(s) {
   const nyckel = utkastNyckel(`e${nr}`, S.form.typ, `scen-${s.nr}`);
   if (S.form.typ === 'kommentera-scen') {
     return kommentarForm({
-      rubrik: `Kommentar till scen ${s.nr}, ${s.titel}`, nyckel, knapp: 'Spara kommentaren',
-      spara: (text, galler) => S.lager.kommentera(nr, { scen: s.nr }, text, galler),
+      rubrik: `Kommentar till scen ${s.nr}, ${s.titel}`, nyckel, knapp: 'Spara kommentaren', medTill: true,
+      spara: (text, galler, till) => S.lager.kommentera(nr, { scen: s.nr }, text, galler, { till }),
     });
   }
   if (S.form.typ === 'foresla-scen') {
@@ -1051,7 +1163,8 @@ function scenForm(s) {
 // --- The world: the world book, HELD's lore, and pages people write ----------------------------
 
 const senast = (s) => (s.andrad && s.andrad.nar) || s.skapad || '';
-const metaSida = (s) => `${namn(s.skrev)}${tid(s.skapad)}${s.andrad ? ` · ändrad av ${namn(s.andrad.av)}${tid(s.andrad.nar)}` : ''}`;
+const metaSida = (s) => [avsandare(s.skrev), tid(s.skapad),
+  s.andrad ? `, ändrad${s.andrad.av !== s.skrev ? ` av ${namn(s.andrad.av)}` : ''}${tid(s.andrad.nar)}` : ''];
 
 async function visaVarlden(r, { tyst = false, hamta = true } = {}) {
   if (!tyst) main.replaceChildren(h('p', { class: 'laddar' }, 'Läser …'));
@@ -1101,8 +1214,10 @@ async function loreDokument(flik) {
 
 function loreLista(nySida) {
   const sidor = S.lore.sidor;
-  const aktiva = sidor.filter((s) => !s.borta).sort((a, b) => String(senast(b)).localeCompare(String(senast(a))));
-  const borta = sidor.filter((s) => s.borta);
+  const doldaSidor = sidor.filter((s) => !s.borta && dold(s.skrev)).length;
+  const aktiva = synliga(sidor.filter((s) => !s.borta)).sort((a, b) => String(senast(b)).localeCompare(String(senast(a))));
+  // Only the one who wrote a page can bring it back, so only theirs are listed.
+  const borta = sidor.filter((s) => s.borta && mitt(s));
   const ut = h('div', { class: 'smal' },
     h('p', { class: 'kalla' }, 'Lore ni skriver själva: personer, platser, regler, sådant som inte står i världsboken än.'));
   if (kanSkriva()) {
@@ -1112,7 +1227,7 @@ function loreLista(nySida) {
   if (aktiva.length) {
     ut.append(h('ul', { class: 'sidlista' }, aktiva.map((s) => {
       const forsta = loreText(s).split('\n').find((x) => x.trim()) || '';
-      return h('li', null, h('a', { href: `#varlden/sida/${s.id}` },
+      return h('li', { class: arAI(s.skrev) ? 'fran-ai' : null }, h('a', { href: `#varlden/sida/${s.id}` },
         h('span', { class: 'titel' }, s.titel),
         h('span', { class: 'meta' }, metaSida(s)),
         forsta ? h('span', { class: 'utdrag' }, forsta) : null));
@@ -1120,9 +1235,12 @@ function loreLista(nySida) {
   } else if (!nySida) {
     ut.append(h('p', { class: 'dov' }, 'Inga sidor än.'));
   }
+  if (doldaSidor) {
+    ut.append(h('p', { class: 'dov liten' }, `${doldaSidor === 1 ? 'En sida' : `${doldaSidor} sidor`} av Demi är dolda för dig.`));
+  }
   if (borta.length) {
     ut.append(h('details', { class: 'versioner' },
-      h('summary', null, `Borttagna sidor (${borta.length})`),
+      h('summary', null, `Dina borttagna sidor (${borta.length})`),
       borta.map((s) => h('div', { class: 'version' },
         h('p', { class: 'tidigare-text' }, s.titel),
         h('p', { class: 'meta' }, `Borttagen av ${namn(s.borta.av)}${tid(s.borta.nar)}.`),
@@ -1138,19 +1256,26 @@ function loreSida(id) {
     ut.append(h('p', { class: 'dov' }, 'Sidan finns inte.'));
     return ut;
   }
+  if (dold(s.skrev)) {
+    ut.append(h('p', { class: 'dov' }, 'Sidan är skriven av Demi, och Demis inlägg är dolda för dig. Du kan visa dem igen med knappen Demis inlägg högst upp.'));
+    return ut;
+  }
   if (s.borta) {
     ut.append(h('div', { class: 'band varning' }, `Sidan är borttagen av ${namn(s.borta.av)}${tid(s.borta.nar)}. `,
-      kanSkriva() ? h('button', { class: 'knapp liten', type: 'button', onclick: () => gora(() => S.lager.hamtaTillbakaLoresida(s.id)) }, 'Hämta tillbaka') : null));
+      kanSkriva() && mitt(s) ? h('button', { class: 'knapp liten', type: 'button', onclick: () => gora(() => S.lager.hamtaTillbakaLoresida(s.id)) }, 'Hämta tillbaka') : null));
   }
   if (S.form && S.form.typ === 'andra-sida' && S.form.id === id) {
     ut.append(loreForm({ sida: s, sedd: S.form.sedd }));
     return ut;
   }
-  ut.append(
+  ut.append(h('article', { class: `lore-sida${arAI(s.skrev) ? ' fran-ai' : ''}` },
     h('h3', { class: 'sida-titel' }, s.titel),
     h('p', { class: 'meta' }, metaSida(s)),
-    h('div', { class: 'sida-text' }, renderText(loreText(s))));
-  if (kanSkriva() && !s.borta) {
+    h('div', { class: 'sida-text' }, renderText(loreText(s)))));
+  if (kanSkriva() && !s.borta && !mitt(s)) {
+    ut.append(h('p', { class: 'dov liten' }, `Bara ${namn(s.skrev)} kan ändra sidan. Har du något att lägga till, skriv en egen sida.`));
+  }
+  if (kanSkriva() && !s.borta && mitt(s)) {
     if (S.form && S.form.typ === 'ta-bort-sida') {
       ut.append(bekrafta({
         text: 'Ta bort sidan? Den går att hämta tillbaka under Borttagna sidor.',
@@ -1238,10 +1363,59 @@ function visaInloggning() {
     h('p', { class: 'dov' }, 'Logga in där och kom sedan tillbaka hit.')));
 }
 
+function ritaJag() {
+  const jag = $('jag');
+  if (!S.jag) {
+    jag.replaceChildren('Bara läsning');
+    return;
+  }
+  const visas = !S.inst.doljDemi;
+  jag.replaceChildren(
+    h('span', { class: 'du' }, `Du är ${S.jag.namn}`),
+    arAI(S.jag.id) ? null : h('button', {
+      type: 'button', class: 'brytare', role: 'switch', 'aria-checked': String(visas),
+      title: visas ? 'Demis inlägg visas. Tryck för att dölja dem, bara för dig.' : 'Demis inlägg är dolda för dig. Tryck för att visa dem.',
+      onclick: vaxlaDemi,
+    }, h('span', { class: 'spar', 'aria-hidden': 'true' }), 'Demis inlägg'));
+}
+
+let sparInst = false;
+async function vaxlaDemi() {
+  if (sparInst) return;
+  sparInst = true;
+  const fore = S.inst.doljDemi;
+  S.inst = { ...S.inst, doljDemi: !fore };
+  ritaJag();
+  ritaVyIgen();
+  try {
+    S.inst = await S.lager.sattInstallning('doljDemi', !fore);
+    status(S.inst.doljDemi ? 'Demis inlägg är dolda för dig.' : 'Demis inlägg visas.', 'ok');
+  } catch (e) {
+    S.inst = { ...S.inst, doljDemi: fore };
+    status(`Inställningen sparades inte. ${felText(e)}`, 'fel');
+  }
+  sparInst = false;
+  ritaJag();
+  ritaVyIgen();
+}
+
+function ritaVyIgen() {
+  if (!S.rutt) return;
+  const y = window.scrollY;
+  if (S.rutt.vy === 'episod') {
+    if (!S.ep) return;
+    S.form = null;
+    ritaEpisod();
+    window.scrollTo(0, y);
+  } else {
+    ritaVarldenIgen();
+  }
+}
+
 function ritaRam() {
   const iPortalen = location.pathname.includes('/uploads/');
   $('tillbaka').hidden = !iPortalen;
-  $('jag').textContent = S.jag ? `Du är ${S.jag.namn}` : 'Bara läsning';
+  ritaJag();
   const band = $('band');
   band.replaceChildren();
   if (S.adapter.rot === 'prov') {
@@ -1267,8 +1441,23 @@ async function start() {
     adapter = await valjAdapter({ sida });
   }
   S.adapter = adapter;
-  S.lager = skapaLager(adapter, { lasTider });
+  // Notes that wait for a manuscript change are kept in the browser, so a
+  // reload does not lose them.
+  const koNyckel = `${UTKAST}|${adapter.rot || adapter.namn}|vantar`;
+  const ko = {
+    las: () => JSON.parse(localStorage.getItem(koNyckel) || '[]'),
+    skriv: (lista) => {
+      if (lista.length) localStorage.setItem(koNyckel, JSON.stringify(lista));
+      else localStorage.removeItem(koNyckel);
+    },
+  };
+  S.lager = skapaLager(adapter, { lasTider, ko });
   S.jag = await S.lager.vem();
+  try {
+    S.inst = await S.lager.lasInstallningar();
+  } catch {
+    S.inst = { doljDemi: !!(S.jag && PERSONER[S.jag.id] && PERSONER[S.jag.id].doljDemi) };
+  }
   ritaRam();
   window.addEventListener('hashchange', () => { visa(); });
   // Back in the tab: read the manuscript again, unless someone is mid-sentence.
