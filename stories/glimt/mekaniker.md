@@ -211,7 +211,7 @@ Det här är glimtarna: vad Vega ser av din värld utan att du gör något.
 
 ### Minnet mellan episoderna
 **I berättelsen:** en episod kan veta vad vandraren gjorde i den förra: om du svarade, om Företaget blev misstänksamt, vilken plats hon såg.
-**Omdöme:** Byggt i episod 1. Minnet ligger i webbläsaren, så det följer inte med till en annan telefon.
+**Omdöme:** Oprövad. Episod 1 sparar minnet, men ingen episod har läst det i en promenad än. Minnet ligger i webbläsaren, så det följer inte med till en annan telefon.
 
 ---
 
