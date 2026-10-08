@@ -630,6 +630,15 @@ function nyttRum(vem) {
     ['lay a proposal in', demi.laggInForslag('1', rum.forslag[0].id)],
   ]) ok(await rejectsKod(p, 'bara-manniskor'), `Demi cannot ${vad}`);
   ok(a.text('manus:1') === manus0 && a.text('rum:1') === rum0, 'and the files are untouched by all of it');
+  // The notes' own rules say the same, without the store in front of them.
+  {
+    const r0 = JSON.parse(rum0);
+    const fid = r0.forslag[0].id;
+    const allt = { manusFore: m, manusEfter: m, karta: (i) => i, manus: m, i: rad.i, id: fid, skrev: 'demi', vem: 'demi', nar: NU(), grund: null, struken: {} };
+    for (const fn of ['efterAndrad', 'efterTillagd', 'efterStruken', 'efterTillbakalagd', 'sattNamn', 'sagJa', 'forslagInlagt', 'forslagOppnatIgen']) {
+      ok(throwsKod(() => R[fn](r0, allt), 'bara-manniskor'), `rum.js: ${fn} is for people only`);
+    }
+  }
 
   // Nobody changes someone else's words.
   const hid = await henric.kommentera('1', ank, 'Henrics kommentar.');
@@ -680,7 +689,9 @@ function nyttRum(vem) {
   const s1 = e2.rum.kommentarer.find((k) => k.id === svar);
   ok(!v2.vantar.has(fraga) && v2.svar.get(fraga).map((k) => k.id).join() === svar && s1.svarPa === fraga && s1.mal.text === ank.text,
     'Demi answers in the thread: no longer waiting, the answer hangs under the question');
-  ok(!v2.rader.get(rad.i).kommentarer.some((k) => k.id === svar), 'a reply is shown in its thread, not as a comment of its own');
+  const somEgen = [...v2.rader.values()].flatMap((x) => x.kommentarer)
+    .concat([...v2.scener.values()].flatMap((x) => [...x.kommentarer, ...x.losa.map((l) => l.post)]));
+  ok(somEgen.some((k) => k.id === fraga) && !somEgen.some((k) => k.id === svar), 'a reply is shown in its thread, never as a comment of its own');
   const foljd = await henric.svara('1', svar, 'Och efter?', { till: 'demi' });
   e2 = await henric.lasEpisod('1');
   ok(e2.rum.kommentarer.find((k) => k.id === foljd).svarPa === fraga && R.vantarPa(e2.rum, 'demi').map((k) => k.id).join() === foljd,
@@ -701,6 +712,23 @@ function nyttRum(vem) {
   await liv.sattInstallning('doljDemi', false);
   ok((await liv.lasInstallningar()).doljDemi === false && (await henric.lasInstallningar()).doljDemi === true, 'each person\'s choice is their own');
   ok(await rejectsKod(henric.sattInstallning('allt', true), 'okand'), 'an unknown setting is refused');
+}
+
+// A record of who wrote a line holds only while something ties it to that
+// line: twins whose neighbours all changed are credited to nobody.
+{
+  const t = '# Glimt, episod 1: Prov\n\nA.\n\n---\n\n## 0. A\n\n> A\n>\n> Ja.\n>\n> B\n>\n> Ja.\n>\n> C\n\n---\n\n## Bilaga\n';
+  const m = M.tolka(t);
+  const tva = repliker(m).filter((r) => r.kropp === 'Ja.');
+  const rum = R.tomtRum('1');
+  rum.rader.push({ mal: M.ankareFor(m, tva[1].i), skrev: 'henric', nar: NU(), hur: 'andrade', tidigare: [] });
+  ok(R.skrevRad(m, rum, new Set(), tva[1].i).vem === 'henric' && R.skrevRad(m, rum, new Set(), tva[0].i).vem === null,
+    'twins: the record credits the one Henric wrote, not its twin');
+  const t2 = t.replace('> A\n', '> A2\n').replace('> B\n', '> B2\n').replace('> C\n', '> C2\n');
+  const m2 = M.tolka(t2);
+  const tva2 = repliker(m2).filter((r) => r.kropp === 'Ja.');
+  ok(tva2.every((r) => R.skrevRad(m2, rum, new Set(), r.i).hur === 'utanfor'),
+    'twins whose neighbours all changed outside: credited to nobody, read as changed outside the room');
 }
 
 // --- 5e. The manuscript as it is now, against the baseline of the recorded draft ----
