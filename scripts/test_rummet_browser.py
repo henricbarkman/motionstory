@@ -282,6 +282,16 @@ def skrivaren(b, url: str, rot: Path, storlek: str, skarmar: Path | None) -> Non
     ok("sparat" in lage(page), f"{pre} the state says Sparat before anything is typed")
     ok(page.evaluate("document.documentElement.scrollWidth <= innerWidth"), f"{pre} the page never pans sideways")
     skarm("01-start")
+    # Bold in running text: the stars show only where the cursor is.
+    fet = stycke_id(page, "**Vad episoden ska göra:**")
+    bredd = "(id) => { const m = document.querySelector(`.ProseMirror .st[data-id=\"${id}\"] .mk`); return m ? m.getBoundingClientRect().width : -1; }"
+    ok(fet is not None and page.evaluate(bredd, fet) == 0, f"{pre} the marks around bold text are out of sight in a paragraph nobody is in ({page.evaluate(bredd, fet) if fet else None})")
+    markor(page, fet)
+    ok(page.evaluate(bredd, fet) > 0, f"{pre} and show in the paragraph with the cursor")
+    page.keyboard.type("!")
+    page.keyboard.press("Backspace")
+    markor(page, stycke_id(page, "Jag måste få veta en sak"))
+    ok(page.evaluate(bredd, fet) == 0 and F.read_text(encoding="utf-8") == original, f"{pre} leaving it hides them again, and the file is as it was")
 
     # Listen: the ring plays the recording.
     ring = page.locator(".ProseMirror button.ring").first
