@@ -81,7 +81,8 @@ Ett stopp är det tydligaste vandraren kan säga.
 ### Frys
 **Du gör:** stannar tvärt när hon säger nu, och står blickstilla tills något har passerat.
 **I berättelsen:** rädsla ni delar. Står ni båda still finns inget att se, och då gömmer ni er ihop.
-**Omdöme:** Osäker. Bara provad på gps, där stoppet lästes efter drygt fem sekunder. Det ska ta under en. Testpromenaden väntar.
+**Omdöme:** Håller, gående. På stegen klarade den båda rundorna och kändes i tid (8/10).
+**Tänk på:** stoppet läses ungefär två sekunder efter vandrarens sista steg. Låt henne inte reagera på stoppet direkt efter ordet, och ge minst ett par sekunder innan något "passerar". Sprungen Frys är inte provad.
 
 ### Hållscenen
 **Du gör:** stannar när hon ber om det och står kvar medan hon pratar.
