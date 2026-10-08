@@ -14,6 +14,7 @@ Arbetsnamn. Narrativt fitness-system där motionsformen styr berättelse-genren.
 - `rummet/` is the page where Henric (later Liv) reads, listens to and edits Glimt's manuscript, proposes, comments and writes lore. Plain HTML/CSS/JS, no build step. Deploy with `python3 scripts/rummet_deploy.py` to https://demi.henricbarkman.se/uploads/glimt-rummet/ (portal login only). Its notes live in `~/generalassistant/data/glimt-rummet/`, outside this public repo; formats and rules in the README there.
 - Demi takes part only through `scripts/rummet.py` (`nytt`, `kommentera`, `foresla`, `svara`, `lore`; `--prov` for the sandbox). Never edit the notes files by hand, and never change someone else's post. Demi never lays anything into the manuscript from the room.
 - After Demi commits a new draft of an episode straight into the md file, run `python3 scripts/rummet_grund.py --commit <sha>` so the room shows those lines as Demi's draft, not "ändrad utanför rummet".
+- The room's look is decided (Henric 2026-10-08): lunar punk as the ground, HELD as the light, the text as a book. `rummet/design/DESIGN.md` has the rules and `rummet/design/skiss.html` is the reference page with the tokens. Follow them for anything visual in the room; do not design it anew.
 - Tests: `node scripts/test_rummet.mjs`, `python3 scripts/test_rummet_cli.py`, `python3 scripts/test_rummet_browser.py` (Playwright). Try changes against the real portal only on the sandbox (`rummet_grund.py --prov --nollstall`, then `?rot=prov`), never on the manuscript.
 
 ## Links

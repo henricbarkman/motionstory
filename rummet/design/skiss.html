@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Manusrummet, designskiss</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..700;1,400..600&family=Spectral:ital,wght@0,400;0,500;1,400&family=Syne:wght@600;700&display=swap" rel="stylesheet">
+<style>
+/* Manusrummet, design sketch (2026-10-08). Static: nothing here saves.
+   The tokens and the look are the reference for rummet.css; see DESIGN.md.
+
+   Lunar punk is the ground (the portal's midnight violet, mint, paper grain,
+   Syne). HELD is the light (the pale turquoise glow of the Drifting Away
+   cover, the purple curtain, thin wide capitals that drift apart). One notch
+   less tech: a book serif for the text, no monospace, no hairline boxes. */
+
+:root {
+  color-scheme: dark;
+  /* ground: lunar punk's night */
+  --natt-1: oklch(0.090 0.024 292);
+  --natt-2: oklch(0.120 0.024 278);
+  --natt-3: oklch(0.165 0.032 255);
+  --rida:   #271240;                      /* HELD's purple, left edge */
+  /* light: HELD's glow, and the mint the portal and HELD share */
+  --sken:   #A4DADB;
+  --mint:   oklch(0.815 0.094 155);       /* lunar punk's, softer than HELD's #48FEC8 */
+  /* ink */
+  --blad:   oklch(0.925 0.022 88);        /* the words that are heard: warm, like paper under a lamp */
+  --text:   oklch(0.845 0.010 250);
+  --dov:    oklch(0.700 0.016 260);
+  --svag:   oklch(0.560 0.018 265);
+  /* surfaces are light laid on the night, never boxes */
+  --yta:    color-mix(in oklch, var(--sken) 6%, transparent);
+  --yta-2:  color-mix(in oklch, var(--sken) 11%, transparent);
+  --linje:  color-mix(in oklch, var(--sken) 16%, transparent);
+  /* who wrote it */
+  --henric: var(--mint);
+  --liv:    oklch(0.790 0.110 320);       /* orchid */
+  --demi:   oklch(0.775 0.100 270);       /* periwinkle, always hollow: an AI, marked as one */
+  /* how sure a mechanic is */
+  --haller:  var(--mint);
+  --delvis:  var(--sken);
+  --osaker:  oklch(0.840 0.110 80);       /* amber */
+  --oprovad: oklch(0.720 0.060 285);
+
+  --serif: 'Spectral', Georgia, serif;
+  --sans:  'Open Sans', system-ui, sans-serif;
+  --visa:  'Syne', system-ui, sans-serif;
+
+  --marg: 3rem;          /* left margin: who wrote, listen */
+  --spalt: 35rem;        /* the text column, about 66 characters of Spectral */
+  --sido: 17rem;         /* comments, wide screens only */
+}
+
+* { box-sizing: border-box; }
+html { background: oklch(0.105 0.022 288); }
+body {
+  margin: 0; min-height: 100vh;
+  color: var(--text);
+  font-family: var(--sans); font-size: 1rem; line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--rida) 78%, transparent) 0%, transparent 26%),
+    linear-gradient(155deg, var(--natt-1) 0%, var(--natt-2) 45%, var(--natt-3) 100%);
+  background-attachment: fixed;
+}
+/* paper grain, as on every lunar punk page */
+body::before {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.78' numOctaves='3' seed='7' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1.00  0 0 0 0 0.96  0 0 0 0 0.88  0 0 0 0.020 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  opacity: 0.42; mix-blend-mode: screen;
+}
+p, h1, h2, h3 { margin: 0; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--mint); outline-offset: 3px; border-radius: 6px; }
+
+.skissrad {
+  position: relative; z-index: 2; text-align: center;
+  font-size: 0.8125rem; color: var(--svag); padding: 0.45rem 1rem;
+  background: color-mix(in oklch, var(--natt-1) 70%, transparent);
+}
+
+/* --- top: quiet ------------------------------------------------------------- */
+.topp {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; align-items: center; gap: 1.75rem;
+  padding: 0.8rem 1.5rem;
+  background: color-mix(in oklch, var(--natt-1) 82%, transparent);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+}
+.marke { display: flex; align-items: baseline; gap: 0.6rem; text-decoration: none; }
+.marke b {
+  font-family: var(--visa); font-weight: 700; font-size: 1.3rem; letter-spacing: -0.01em;
+  background: linear-gradient(115deg, var(--mint) 0%, oklch(0.700 0.085 270) 60%, oklch(0.710 0.091 350) 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.marke span { font-size: 0.875rem; color: var(--svag); }
+.flikar { display: flex; gap: 0.25rem; margin-left: 0.5rem; overflow-x: auto; scrollbar-width: none; }
+.flikar a {
+  flex: none; text-decoration: none; color: var(--dov);
+  font-size: 0.9375rem; padding: 0.35rem 0.8rem; border-radius: 999px;
+}
+.flikar a[aria-current] { color: var(--blad); background: var(--yta-2); }
+.lage { margin-left: auto; display: flex; align-items: center; gap: 0.9rem; font-size: 0.8125rem; color: var(--svag); white-space: nowrap; }
+.lage .sparat::before { content: ''; display: inline-block; width: 0.45rem; height: 0.45rem; border-radius: 50%; background: var(--mint); margin-right: 0.45rem; vertical-align: 0.05em; }
+.jag {
+  width: 1.9rem; height: 1.9rem; border-radius: 50%; display: grid; place-items: center;
+  font-weight: 600; font-size: 0.8125rem; color: oklch(0.20 0.015 155); background: var(--henric);
+}
+
+/* --- tools: one row, in the background -------------------------------------- */
+.verktyg {
+  position: sticky; top: 3.5rem; z-index: 4;
+  display: flex; align-items: center; gap: 0.35rem;
+  padding: 0.4rem 1.5rem 0.55rem; overflow-x: auto; scrollbar-width: none;
+  background: linear-gradient(180deg, color-mix(in oklch, var(--natt-1) 82%, transparent) 60%, transparent);
+  font-size: 0.875rem; color: var(--dov);
+}
+.verktyg > * { flex: none; }
+.typval {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  padding: 0.4rem 0.85rem; border-radius: 999px; background: var(--yta-2); color: var(--blad);
+}
+.typval::after { content: ''; width: 0.4rem; height: 0.4rem; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg) translateY(-0.12rem); opacity: 0.6; }
+.verktyg button:not(.typval) { padding: 0.4rem 0.7rem; border-radius: 999px; }
+.verktyg button:not(.typval):hover { background: var(--yta); color: var(--blad); }
+.verktyg .skilje { width: 1px; height: 1.1rem; background: var(--linje); margin: 0 0.4rem; }
+.vem { margin-left: auto; display: flex; align-items: center; gap: 0.9rem; font-size: 0.8125rem; color: var(--svag); padding-left: 1rem; }
+.vem i { display: inline-block; width: 0.5rem; height: 0.5rem; border-radius: 50%; margin-right: 0.35rem; }
+.vem .h i { background: var(--henric); }
+.vem .l i { background: var(--liv); }
+.vem .d i { border: 1.5px solid var(--demi); }
+
+/* --- the sheet ----------------------------------------------------------------- */
+.blad {
+  position: relative; z-index: 1;
+  max-width: calc(var(--marg) + var(--spalt) + var(--sido) + 4rem);
+  margin: 0 auto; padding: 3.5rem 1.5rem 9rem;
+}
+/* HELD's glow: the tilted pane of light from the cover. The one loud thing. */
+.sken {
+  position: absolute; z-index: -1; pointer-events: none;
+  left: calc(var(--marg) + 4rem); top: 0.5rem; width: min(27rem, 74vw); height: 10.5rem;
+  background: oklch(0.800 0.095 200); opacity: 0.26; border-radius: 2.75rem;
+  transform: rotate(-17deg); filter: blur(56px);
+}
+.sken + .sken { left: calc(var(--marg) + 14rem); top: 4rem; width: min(15rem, 46vw); height: 6rem; opacity: 0.12; transform: rotate(-9deg); filter: blur(34px); background: var(--mint); }
+
+.huvud { padding-left: var(--marg); margin-bottom: 3.25rem; }
+/* The title as on the cover: thin, wide, and doubled a little to the side. */
+.titel {
+  position: relative; display: inline-block; max-width: var(--spalt);
+  font-family: var(--sans); font-weight: 300; text-transform: uppercase;
+  font-size: clamp(1.25rem, 4.6vw, 1.85rem); line-height: 1.5; letter-spacing: 0.34em;
+  color: var(--blad);
+}
+.titel::after {
+  content: attr(data-text); position: absolute; left: 0.62em; top: 0.3em; width: 100%;
+  color: var(--sken); opacity: 0.17; filter: blur(0.6px); pointer-events: none;
+}
+.under { margin-top: 0.7rem; font-size: 0.9375rem; color: var(--dov); }
+
+/* a paragraph: margin | text | (comment) */
+.st {
+  display: grid; grid-template-columns: var(--marg) minmax(0, var(--spalt)) minmax(0, var(--sido));
+  column-gap: 0; align-items: start;
+}
+.st > .marg { display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem; padding-right: 0.9rem; min-height: 1.95rem; }
+.st { position: relative; }
+.st > .kom { position: absolute; top: 0; left: calc(var(--marg) + var(--spalt) + 2rem); width: var(--sido); }
+
+/* who last wrote the paragraph: a dot, not a badge */
+.av { width: 0.5rem; height: 0.5rem; border-radius: 50%; flex: none; opacity: 0.85; }
+.av.h { background: var(--henric); }
+.av.l { background: var(--liv); }
+.av.d { border: 1.5px solid var(--demi); opacity: 0.8; }
+/* listen: the ring before a recorded line */
+.ring {
+  width: 1.3rem; height: 1.3rem; border-radius: 50%; flex: none;
+  border: 1.5px solid color-mix(in oklch, var(--sken) 55%, transparent); position: relative;
+}
+.ring::after { content: ''; position: absolute; left: 0.43rem; top: 0.31rem; border-left: 0.4rem solid var(--sken); border-top: 0.26rem solid transparent; border-bottom: 0.26rem solid transparent; }
+.ring.ny { border-style: dotted; border-color: var(--svag); }
+.ring.ny::after { border-left-color: var(--svag); }
+
+/* paragraph kinds */
+.replik p, .anteckning p {
+  font-family: var(--serif); font-size: 1.1875rem; line-height: 1.68; color: var(--blad);
+  padding: 0.15rem 0 0.75rem;
+}
+.anteckning p { color: var(--text); font-size: 1.0625rem; }
+.anteckning strong { font-family: var(--sans); font-weight: 600; font-size: 0.9375rem; color: var(--blad); }
+.regi { font-family: var(--sans); font-style: italic; font-size: 0.9em; color: var(--dov); }
+.st.regi p { font-family: var(--sans); font-style: italic; font-size: 0.9375rem; color: var(--dov); padding: 0 0 0.75rem; }
+
+.scenrubrik { margin-top: 3.25rem; }
+.scenrubrik h2 {
+  font-family: var(--serif); font-weight: 500; font-size: 1.75rem; line-height: 1.25;
+  color: var(--blad); padding-bottom: 0.9rem;
+}
+.scenrubrik h2 span { color: var(--svag); font-weight: 400; margin-right: 0.6rem; }
+
+/* Mechanic: how the scene is played. Light on the page, no frame. */
+.mekanik .ruta {
+  background: var(--yta); border-radius: 1.1rem 1.1rem 1.1rem 0.3rem;
+  padding: 0.85rem 1.1rem 0.95rem; margin: 0 0 1.35rem -1.1rem;
+  font-size: 0.9375rem; line-height: 1.6; color: var(--text);
+}
+.bricka {
+  display: inline-flex; align-items: center; gap: 0.4rem; white-space: nowrap;
+  padding: 0.08rem 0.6rem 0.12rem 0.5rem; border-radius: 999px;
+  font-weight: 600; color: var(--blad);
+  background: color-mix(in oklch, var(--farg) 20%, transparent);
+}
+.bricka::before { content: ''; width: 0.45rem; height: 0.45rem; border-radius: 50%; background: var(--farg); }
+.bricka.haller { --farg: var(--haller); }
+.bricka.delvis { --farg: var(--delvis); }
+.bricka.osaker { --farg: var(--osaker); }
+.bricka.oprovad { --farg: var(--oprovad); }
+.varsel { display: block; margin-top: 0.55rem; font-size: 0.8125rem; color: var(--osaker); }
+
+/* Branch: what happens if. The lines under it hang on a soft thread. */
+.gren p {
+  font-family: var(--sans); font-weight: 600; font-size: 0.9375rem; color: var(--sken);
+  padding: 0.55rem 0 0.5rem; display: flex; align-items: center; gap: 0.55rem;
+}
+.gren p::before { content: ''; width: 0.85rem; height: 0.6rem; border-left: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; border-bottom-left-radius: 0.55rem; opacity: 0.7; transform: translateY(-0.2rem); }
+.igren > :nth-child(2) { padding-left: 1.4rem; border-left: 1.5px solid var(--linje); margin-left: 0.3rem; }
+
+/* Variant: the phone picks one. The label is chosen from a list. */
+.variant p { display: grid; grid-template-columns: 4.6rem 1fr; column-gap: 0.4rem; }
+.etikett {
+  justify-self: start; align-self: start; margin-top: 0.42rem;
+  font-family: var(--sans); font-size: 0.8125rem; font-weight: 600; color: var(--sken);
+  padding: 0.05rem 0.6rem 0.1rem; border-radius: 999px; background: var(--yta-2);
+}
+
+/* where the cursor stands */
+.har > :nth-child(2) { position: relative; }
+.har > :nth-child(2)::before { content: ''; position: absolute; inset: -0.2rem -0.9rem 0.45rem -0.9rem; border-radius: 0.8rem; background: var(--yta); z-index: -1; }
+.markor { display: inline-block; width: 2px; height: 1.25em; background: var(--mint); vertical-align: -0.22em; margin-left: 1px; animation: blink 1.1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+
+/* comments in the margin */
+.kom .kort {
+  font-size: 0.875rem; line-height: 1.5; color: var(--text);
+  padding: 0.7rem 0.9rem 0.75rem; border-radius: 0.3rem 1rem 1rem 1rem; background: var(--yta);
+  margin-bottom: 0.6rem;
+}
+.kom .kort b { display: flex; align-items: center; gap: 0.4rem; font-weight: 600; color: var(--blad); margin-bottom: 0.2rem; font-size: 0.8125rem; }
+.kom .kort.ai { background: transparent; border: 1.5px dashed color-mix(in oklch, var(--demi) 55%, transparent); }
+.kom .kort.ai b span { font-weight: 400; color: var(--svag); }
+.kom .forslag { display: block; font-family: var(--serif); font-size: 1rem; color: var(--blad); margin: 0.3rem 0 0.5rem; }
+.kom .val { display: flex; gap: 1rem; font-size: 0.8125rem; }
+.kom .val button { color: var(--mint); font-weight: 600; }
+.kom .val button + button { color: var(--dov); font-weight: 400; }
+.kom-prick { display: none; }
+
+.fot { position: relative; z-index: 1; display: flex; align-items: center; gap: 0.8rem; justify-content: center; padding: 0 1rem 3rem; font-size: 0.8125rem; color: var(--svag); }
+.fot img { height: 1.5rem; width: auto; opacity: 0.85; }
+
+@media (prefers-reduced-motion: reduce) { .markor { animation: none; } }
+
+/* --- phone ------------------------------------------------------------------- */
+@media (max-width: 62rem) {
+  :root { --marg: 2.1rem; }
+  .st { grid-template-columns: var(--marg) minmax(0, 1fr); }
+  .st > .kom { position: static; width: auto; grid-column: 2; margin: -0.2rem 0 0.9rem; }
+  .blad { padding: 2.25rem 1rem 8rem 0.35rem; }
+  .st > .marg { padding-right: 0.55rem; flex-direction: column-reverse; gap: 0.35rem; padding-top: 0.5rem; }
+  .vem { display: none; }
+}
+@media (max-width: 40rem) {
+  .topp { padding: 0.65rem 0.9rem; gap: 0.75rem; flex-wrap: wrap; row-gap: 0.4rem; }
+  .marke span { display: none; }
+  .flikar { order: 3; width: 100%; margin: 0 -0.3rem; }
+  .verktyg {
+    position: fixed; top: auto; bottom: 0; left: 0; right: 0;
+    padding: 0.55rem 0.8rem calc(0.55rem + env(safe-area-inset-bottom));
+    background: color-mix(in oklch, var(--natt-1) 92%, transparent);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  }
+  .replik p, .anteckning p { font-size: 1.125rem; line-height: 1.62; }
+  .mekanik .ruta { margin-left: -0.6rem; }
+  .variant p { grid-template-columns: 1fr; }
+  .etikett { margin: 0 0 0.2rem; }
+  .sken { left: 2rem; }
+  .huvud { margin-bottom: 2.4rem; }
+}
+</style>
+</head>
+<body>
+<p class="skissrad">Designskiss av manusrummet. Texten är episod 1, utkast 3. Kommentarerna är exempel, och inget här sparas.</p>
+
+<header class="topp">
+  <a class="marke" href="#"><b>Glimt</b><span>manusrummet</span></a>
+  <nav class="flikar" aria-label="Dokument">
+    <a href="#" aria-current="page">Episod 1</a>
+    <a href="#">Episod 2</a>
+    <a href="#">Världen</a>
+    <a href="#">Mekaniker</a>
+  </nav>
+  <div class="lage"><span class="sparat">Sparat</span><span class="jag" title="Henric">H</span></div>
+</header>
+
+<div class="verktyg" role="toolbar" aria-label="Stycke">
+  <button class="typval">Replik</button>
+  <span class="skilje"></span>
+  <button>Mekanik</button>
+  <button>Variant</button>
+  <button>Gren</button>
+  <span class="skilje"></span>
+  <button>Kommentera</button>
+  <button>Föreslå</button>
+  <button>Historik</button>
+  <span class="vem"><span class="h"><i></i>Henric</span><span class="l"><i></i>Liv</span><span class="d"><i></i>Demi</span></span>
+</div>
+
+<main class="blad">
+  <div class="sken"></div><div class="sken"></div>
+
+  <div class="huvud">
+    <h1 class="titel" data-text="Det är när du går">Det är när du går</h1>
+    <p class="under">Episod 1, utkast 3</p>
+  </div>
+
+  <div class="st anteckning">
+    <div class="marg"><span class="av d" title="Demi"></span></div>
+    <p><strong>Vad episoden ska göra:</strong> Vega och vandraren möts. Vandraren ska förstå tre saker utan att någon förklarar dem: hon ser glimtar av din värld men hör dig aldrig, hon hörs bara när du går, och dina steg gömmer henne.</p>
+  </div>
+
+  <div class="st scenrubrik">
+    <div class="marg"></div>
+    <h2><span>2</span>Frågan</h2>
+  </div>
+
+  <div class="st mekanik">
+    <div class="marg"><span class="av d" title="Demi"></span></div>
+    <div class="ruta">Kontakten stark, runt minut två och en halv. <span class="bricka osaker">Stanna för ja</span> Hon väntar tjugo sekunder på ett stopp. Hon går sin runda som vanligt, så stoppet är ofarligt. Rösten blir dov medan vandraren står.
+      <span class="varsel">Osäker: tål bara lätta följder tills den är provad.</span>
+    </div>
+  </div>
+
+  <div class="st replik">
+    <div class="marg"><span class="av d" title="Demi"></span><span class="ring" title="Lyssna"></span></div>
+    <p>Jag måste få veta en sak, annars blir jag tokig. Jag har pratat för mig själv här länge. Jag vet hur det känns när ingen lyssnar. Det här känns inte så.</p>
+  </div>
+
+  <div class="st replik har">
+    <div class="marg"><span class="av h" title="Henric"></span><span class="ring ny" title="Inte inspelad än"></span></div>
+    <p>Så. Om det finns någon där. Om du hör vad jag säger. Stanna. Bara ett par sekunder, sen går du igen.<span class="markor"></span></p>
+    <aside class="kom">
+      <div class="kort ai"><b><span class="av d"></span>Demi <span>AI</span></b>Förslag i stället:
+        <span class="forslag">Stanna. Bara en liten stund. Sen går du igen.</span>
+        <span class="val"><button>Lägg in</button><button>Avfärda</button></span>
+      </div>
+    </aside>
+  </div>
+
+  <div class="st regi">
+    <div class="marg"></div>
+    <p>(väntar)</p>
+  </div>
+
+  <div class="st gren igren">
+    <div class="marg"></div>
+    <p>Ja, vandraren stannar</p>
+  </div>
+  <div class="st replik igren">
+    <div class="marg"><span class="av d"></span><span class="ring"></span></div>
+    <p><span class="regi">(dovt, långt borta)</span> ...det står still. Du stannade.</p>
+  </div>
+  <div class="st replik igren">
+    <div class="marg"><span class="av d"></span><span class="ring"></span></div>
+    <p><span class="regi">(vandraren går igen, rösten tillbaka, andfådd fast hon inte har sprungit)</span> Du stannade när jag bad om det. Du hör mig. Det finns en människa där ute som... okej. Okej. Jag behöver gå en bit utan att säga något nu.</p>
+    <aside class="kom">
+      <div class="kort"><b><span class="av h"></span>Henric</b>Kan hon säga något om vad hon ser i stället för "du hör mig"?</div>
+    </aside>
+  </div>
+
+  <div class="st gren igren">
+    <div class="marg"></div>
+    <p>Nej, vandraren går vidare</p>
+  </div>
+  <div class="st replik igren">
+    <div class="marg"><span class="av d"></span><span class="ring"></span></div>
+    <p>Nej. Nej, det är klart. Du är steg, inte öron. <span class="regi">(kort skratt som inte håller)</span> Jag pratar ändå. Det har aldrig hindrat mig förut.</p>
+  </div>
+
+  <div class="st scenrubrik">
+    <div class="marg"></div>
+    <h2><span>4</span>Himlen</h2>
+  </div>
+
+  <div class="st mekanik">
+    <div class="marg"><span class="av d"></span></div>
+    <div class="ruta">Kontakten stark, runt minut sex. Hon sitter still under trädet, så ett kort stopp är ofarligt här. <span class="bricka haller">Ljust eller mörkt</span> och <span class="bricka delvis">Regn eller torrt</span> väljs vid start. <span class="bricka osaker">Platser nära dig</span> kommer ur kartan, annars slumpat.</div>
+  </div>
+
+  <div class="st replik">
+    <div class="marg"><span class="av d"></span><span class="ring"></span></div>
+    <p>Jag sitter ner nu. Under plastträdet. Och när jag sitter still ser jag mer av dig. Inte dig. Det runt omkring.</p>
+  </div>
+  <div class="st replik variant">
+    <div class="marg"><span class="av d"></span><span class="ring"></span></div>
+    <p><span class="etikett">mörkt</span><span>Det är mörkt hos dig. Här är det alltid kväll men aldrig mörkt. De säger att det är lugnande.</span></p>
+  </div>
+  <div class="st replik variant">
+    <div class="marg"><span class="av d"></span><span class="ring"></span></div>
+    <p><span class="etikett">ljust</span><span>Det är ljust hos dig. Det bländar i kanten. Här är det alltid kväll. De säger att det är lugnande.</span></p>
+  </div>
+  <div class="st replik variant">
+    <div class="marg"><span class="av d"></span><span class="ring"></span></div>
+    <p><span class="etikett">bro</span><span>En bro. Jag ser den suddigt, som ett blyertsstreck. <span class="regi">(paus)</span> Vi har en bro här också. Den går över ingenting. Någon ritade av bron och glömde ån.</span></p>
+  </div>
+</main>
+
+<footer class="fot"><span>Glimt hör till samma värld som</span><img src="held-logo.svg" alt="HELD"></footer>
+</body>
+</html>
