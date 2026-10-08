@@ -343,9 +343,9 @@ def main() -> int:
             # after Demi read the thread shows here, above Demi's answer.
             print("Tråden nu:")
             for t in ut["trad"][-6:]:
-                vem = NAMN.get(t["skrev"], t["skrev"])
-                eget = "  <- ditt svar" if t["id"] == ut["id"] else ("  (till Demi)" if t.get("till") == "demi" else "")
-                print(f"  {vem}: {kort(t['text'], 160)}{eget}")
+                vem = NAMN.get(t.get("skrev"), t.get("skrev") or "?")
+                eget = "  <- ditt svar" if t.get("id") == ut["id"] else ("  (till Demi)" if t.get("till") == "demi" else "")
+                print(f"  {vem}: {kort(str(t.get('text') or ''), 160)}{eget}")
             return 0
 
         if a.cmd == "lore":

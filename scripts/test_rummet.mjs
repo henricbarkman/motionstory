@@ -862,6 +862,32 @@ function nyttRum(vem) {
   const w4 = S.skapaLager(d4, { nu: NU, nyttId: ID, ko: { las: () => lag4, skriv() {} } });
   await w4.kommentera('1', ank, 'Trots skräp.');
   ok(JSON.parse(d4.text('rum:1')).kommentarer.length === 1, 'junk in the log does not block saving');
+
+  // Throwing notes away throws away what the page showed, not a note another
+  // window left in the list meanwhile.
+  let lag5 = null;
+  const ko5 = { las: () => (lag5 ? JSON.parse(lag5) : null), skriv: (v) => { lag5 = JSON.stringify(v); } };
+  const e5 = nyttRum();
+  e5.fore = (p) => { if (p === 'rum:1') throw new TypeError('Failed to fetch'); };
+  const vA = S.skapaLager(e5, { nu: NU, nyttId: ID, ko: ko5 });
+  await rejectsKod(vA.andraRad('1', ank, 'Fönster A.'), 'halvt');
+  const visade = vA.vantar.map((x) => x.aid);
+  lag5 = JSON.stringify([...JSON.parse(lag5), { typ: 'andrad', nr: '1', fore: EP[1], efter: EP[1], i: rad.i, skift: null, vem: 'henric', nar: NU(), aid: 'fran-b', post: {} }]);
+  vA.slangVantande(visade);
+  ok(JSON.stringify(JSON.parse(lag5).map((x) => x.aid)) === '["fran-b"]' && vA.vantar.length === 1,
+    'throwing away keeps a note another window left meanwhile');
+
+  // A note only this window holds, merged with the list: oldest goes first.
+  let lag6 = '[]';
+  const ko6 = { las: () => JSON.parse(lag6), skriv: () => { throw new Error('QuotaExceededError'); } };
+  const c6 = nyttRum();
+  c6.fore = (p) => { if (p === 'rum:1') throw new TypeError('Failed to fetch'); };
+  const w6 = S.skapaLager(c6, { nu: NU, nyttId: ID, ko: ko6 });
+  await rejectsKod(w6.andraRad('1', ank, 'Första ändringen.'), 'halvt');
+  const egen = w6.vantar[0].aid;
+  lag6 = JSON.stringify([{ typ: 'andrad', nr: '1', fore: EP[1], efter: EP[1], i: rad.i, skift: null, vem: 'henric', nar: NU(), aid: 'senare', post: {} }]);
+  w6.slangVantande([]);
+  ok(JSON.stringify(w6.vantar.map((x) => x.aid)) === JSON.stringify([egen, 'senare']), 'merged notes are kept oldest first');
 }
 
 // --- 5e. The manuscript as it is now, against the baseline of the recorded draft ----

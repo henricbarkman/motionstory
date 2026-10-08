@@ -440,12 +440,13 @@ function episodHuvud() {
       ' Manuset går att läsa och lyssna på som vanligt.'));
   }
   if (kanSkriva() && S.lager.vantar.length) {
+    const visade = S.lager.vantar.map((a) => a.aid);
     f.append(h('div', { class: 'band varning' },
       h('p', null, h('strong', null, 'Halvt sparat. '), 'Texten står i manuset, men anteckningen om vem som skrev den kom inte fram. Tills den gör det visas raden som ändrad utanför rummet.'),
       h('p', { class: 'dov liten' }, 'Slänger du anteckningen står texten kvar i manuset, och du kan säga vems den är.'),
       h('div', { class: 'knappar' },
         h('button', { class: 'knapp liten', type: 'button', onclick: () => gora(() => S.lager.forsokIgen()) }, 'Försök igen'),
-        h('button', { class: 'knapp liten', type: 'button', onclick: () => { S.lager.slangVantande(); ritaEpisod(); } }, 'Släng anteckningen'))));
+        h('button', { class: 'knapp liten', type: 'button', onclick: () => { S.lager.slangVantande(visade); ritaEpisod(); } }, 'Släng anteckningen'))));
   }
   if (kanSkriva() && !ep.grund && !ep.rumFel) {
     f.append(h('div', { class: 'band' }, 'Listan över Demis utkast går inte att läsa, så rummet säger inte vem som skrev de rader som inte ändrats här.'));

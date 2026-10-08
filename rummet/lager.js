@@ -65,7 +65,12 @@ export function skapaLager(adapter, {
     }
     const raa = Array.isArray(sparade) ? sparade : [];
     const lista = raa.filter(giltig).map((a) => (a.aid ? a : { ...a, aid: innehallsId(a) }));
-    if (!lagrat) for (const a of vantar) if (!lista.some((x) => x.aid === a.aid)) lista.push(a);
+    if (!lagrat) {
+      let fler = false;
+      for (const a of vantar) if (!lista.some((x) => x.aid === a.aid)) { lista.push(a); fler = true; }
+      // Oldest first, so a change is never applied over a later one.
+      if (fler) lista.sort((x, y) => String(x.nar || '').localeCompare(String(y.nar || '')));
+    }
     vantar.splice(0, vantar.length, ...lista);
     // A note from before ids, junk in the list, or notes only this window had.
     if (!lagrat || lista.length !== raa.length || raa.some((a) => giltig(a) && !a.aid)) sparaKo();
@@ -229,11 +234,15 @@ export function skapaLager(adapter, {
     }
   }
 
-  // Gives up on the waiting notes. The lines they were about show as changed
-  // outside the room, and a person can say whose they are.
-  function slangVantande() {
+  // Gives up on the waiting notes: the ones whose ids are given (those the
+  // page showed), so a note another window left meanwhile is not thrown away
+  // unseen; all of them without ids. The lines they were about show as
+  // changed outside the room, and a person can say whose they are.
+  function slangVantande(aids) {
     synka();
-    vantar.splice(0, vantar.length);
+    const kasta = Array.isArray(aids) ? new Set(aids) : null;
+    const kvar = kasta ? vantar.filter((a) => !kasta.has(a.aid)) : [];
+    vantar.splice(0, vantar.length, ...kvar);
     sparaKo();
   }
 
