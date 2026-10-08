@@ -16,13 +16,16 @@
 
 import {
   Schema, Fragment, Slice, EditorState, TextSelection, NodeSelection, Selection, Plugin, PluginKey, EditorView,
-  Decoration, DecorationSet, history, undo, redo, keymap, baseKeymap, chainCommands, deleteSelection, joinBackward,
+  Decoration, DecorationSet, history, undo, redo, closeHistory, keymap, baseKeymap, chainCommands, deleteSelection, joinBackward,
 } from './pm.js';
 import * as D from './dok.js';
 import { hittaNamn, klassFor } from './katalog.js';
 
 const NYCKEL = new PluginKey('rummet');
 const UTIFRAN = 'utifran';
+// A whole action (a style, a mechanic, a version laid in, a paste): its own
+// step for Ctrl+Z, never joined with the typing just before or after it.
+const EGET = 'eget-steg';
 
 const tolkaA = (s) => {
   try {
@@ -452,6 +455,11 @@ class Redigerare {
   ta(tr) {
     if (this.dod) return;
     const fore = this.view.state;
+    if (tr.docChanged && tr.getMeta('addToHistory') !== false) {
+      const eget = !!(tr.getMeta(EGET) || tr.getMeta('paste'));
+      if (eget || this.stangNasta) closeHistory(tr);
+      this.stangNasta = eget;
+    }
     const nu = fore.apply(tr);
     this.view.updateState(nu);
     if (nu.doc !== fore.doc && tr.getMeta(NYCKEL) !== UTIFRAN) {
@@ -541,11 +549,44 @@ class Redigerare {
         tr.setNodeMarkup(hit.pos, null, { ...hit.node.attrs, raw: op.raw ?? null, orig: op.orig ?? null, sep: op.sep ?? null });
       } else if (op.op === 'byt-id' && hit) {
         tr.setNodeMarkup(hit.pos, null, { ...hit.node.attrs, id: op.till });
+      } else if (op.op === 'ordning') {
+        this.ordna(tr, op.ids);
       }
     }
     if (!tr.docChanged) return;
     tr.setMeta('addToHistory', false).setMeta(NYCKEL, UTIFRAN);
     this.view.dispatch(tr);
+  }
+
+  // Someone else moved paragraphs: put them in that order. The cursor stays
+  // in its paragraph, at the same place in it.
+  ordna(tr, ids) {
+    const vill = ids.filter((id) => hitta(tr.doc, id));
+    const med = new Set(vill);
+    const sel = tr.selection;
+    let minne = null;
+    if (sel instanceof TextSelection && sel.$anchor.depth >= 1 && sel.$head.depth >= 1) {
+      minne = [sel.$anchor, sel.$head].map(($p) => [$p.node(1).attrs.id, $p.pos - $p.start(1)]);
+    }
+    const lista = () => {
+      const ut = [];
+      tr.doc.forEach((n, pos) => { if (med.has(n.attrs.id)) ut.push({ id: n.attrs.id, pos, n }); });
+      return ut;
+    };
+    for (let k = 0; k < vill.length; k++) {
+      const nu = lista();
+      if (!nu[k] || nu[k].id === vill[k]) continue;
+      const x = nu.find((y) => y.id === vill[k]);
+      if (!x) continue;
+      // x stands further down: take it out there and put it in here.
+      tr.delete(x.pos, x.pos + x.n.nodeSize);
+      tr.insert(nu[k].pos, x.n);
+    }
+    if (minne) {
+      const a = hitta(tr.doc, minne[0][0]);
+      const h = hitta(tr.doc, minne[1][0]);
+      if (a && h) tr.setSelection(TextSelection.create(tr.doc, a.pos + 1 + minne[0][1], h.pos + 1 + minne[1][1]));
+    }
   }
 
   // Replaces a paragraph's text by changing only what differs, so a cursor
@@ -766,7 +807,7 @@ class Redigerare {
         tr.insertText(`${nr}. `, m + 1);
       }
     }
-    if (tr.docChanged) this.view.dispatch(tr.scrollIntoView());
+    if (tr.docChanged) this.view.dispatch(tr.setMeta(EGET, true).scrollIntoView());
     this.view.focus();
   }
 
@@ -774,7 +815,7 @@ class Redigerare {
     const hit = hitta(this.view.state.doc, id);
     if (!hit) return;
     const a = { ...D.rensaAttrs('variant', hit.node.attrs.a), etikett };
-    this.view.dispatch(this.view.state.tr.setNodeMarkup(hit.pos, null, { ...hit.node.attrs, typ: 'variant', a }));
+    this.view.dispatch(this.view.state.tr.setNodeMarkup(hit.pos, null, { ...hit.node.attrs, typ: 'variant', a }).setMeta(EGET, true));
   }
 
   // A person's own change to a whole paragraph (a proposal laid in, an
@@ -784,7 +825,7 @@ class Redigerare {
     if (!hit) return null;
     const tr = this.view.state.tr;
     this.ersattI(tr, hit, { ...p, id, raw: null, orig: null, sep: null });
-    if (tr.docChanged) this.view.dispatch(tr);
+    if (tr.docChanged) this.view.dispatch(tr.setMeta(EGET, true));
     return franNod(hitta(this.view.state.doc, id).node);
   }
 
@@ -796,7 +837,7 @@ class Redigerare {
       if (e) pos = e.pos + e.node.nodeSize;
     }
     tr.insert(pos, tillNod({ ...p, raw: null, orig: null, sep: null }));
-    this.view.dispatch(tr.scrollIntoView());
+    this.view.dispatch(tr.setMeta(EGET, true).scrollIntoView());
     return p.id;
   }
 
@@ -844,7 +885,7 @@ class Redigerare {
       grenar = true;
     }
     tr.setSelection(TextSelection.create(tr.doc, Math.min(markor, tr.doc.content.size)));
-    this.view.dispatch(tr.scrollIntoView());
+    this.view.dispatch(tr.setMeta(EGET, true).scrollIntoView());
     this.view.focus();
     return { ok: true, grenar };
   }

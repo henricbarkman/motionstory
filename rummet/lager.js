@@ -18,6 +18,7 @@
 //   tillampa(ops)  changes from outside, never into the undo history:
 //                  { op: 'ersatt', id, p } | { op: 'infoga', efter, p } | { op: 'ta-bort', id }
 //                  | { op: 'attrs', id, raw, orig, sep } | { op: 'byt-id', id, till }
+//                  | { op: 'ordning', ids } (the paragraphs in this order)
 //   laser()        -> the id of the paragraph the cursor is in, or null
 
 import { Krock, DataFel, EPISODER, textPlats } from './data.js';
@@ -91,6 +92,9 @@ function loreKalla(adapter, sidId) {
     }
     throw new SparFel('krock', 'Loresidorna ändrades hela tiden medan rummet försökte spara. Försök igen om en stund.');
   }
+  // The text's version is the text, which says nothing about which of two
+  // is newer. The page counts its writes (rev) for that.
+  let rev = 0;
   return {
     dok,
     slag: D.SLAG_FRI,
@@ -98,15 +102,19 @@ function loreKalla(adapter, sidId) {
       const { lore } = await lasFil();
       const s = A.loreSida(lore, sidId);
       const text = A.loreText(s);
+      rev = Number(s.rev) || 0;
       return { text, version: text, sida: s };
     },
     async skrivText(text, version) {
       await byt((lore, s) => {
         if (A.loreText(s) !== version) throw new Krock();
         s.text = text.split('\n');
+        s.rev = (Number(s.rev) || 0) + 1;
+        rev = s.rev;
       });
       return text;
     },
+    skuggaVersion: () => rev,
     async lasNot() {
       const r = await adapter.las('lore');
       const lore = A.lasLore(r ? r.text : null);
@@ -161,6 +169,7 @@ const OPS = {
   forslag: (not, x) => A.nyttForslag(not, x.args),
   'forslag-lage': (not, x) => A.forslagLage(not, x.args),
   'krock-lage': (not, x) => A.krockLage(not, x.args),
+  byten: (not, x) => A.bytStycken(not, x.par),
 };
 
 // --- One open document ---------------------------------------------------------------
@@ -189,6 +198,9 @@ export class Dokument {
     this.avsikter = new Map();
     this.hallna = new Map();
     this.pagar = null;
+    this.sparNr = 0;
+    this.hamtar = false;
+    this.efterslap = false;
     this.igen = false;
     this.lage = 'sparat';
     this.felet = null;
@@ -328,6 +340,7 @@ export class Dokument {
   spara() {
     if (!this.ed) return Promise.resolve();
     if (this.pagar) { this.igen = true; return this.pagar; }
+    this.sparNr += 1;
     this.pagar = (async () => {
       try {
         do {
@@ -433,8 +446,8 @@ export class Dokument {
       if (delta.poster.length || delta.krockar.length || delta.forslag.length || delta.krockLagen.length
         || JSON.stringify(not.stycken) !== JSON.stringify(delta.skugga.stycken)) {
         this.laggIKo({ id: delta.id, slag: 'delta', delta });
-        await this.tommaKo();
       }
+      if (this.ko().length) await this.tommaKo();
       this.minns();
       this.forstaOsparat = this.harOsparat() ? Date.now() : 0;
       if (this.ko().length) this.satt('fel', this.notFel || new SparFel('anteckningar', 'Texten är sparad, men anteckningen om vem som skrev väntar i webbläsaren.'));
@@ -449,8 +462,10 @@ export class Dokument {
   hallnaBara() {
     const nu = this.ed.stycken();
     const B = new Map(this.bas.map((p) => [p.id, p]));
+    const N = new Set(nu.map((p) => p.id));
     return nu.every((p) => this.hallna.has(p.id) || (B.has(p.id) && D.nyckel(B.get(p.id)) === D.nyckel(p)))
-      && this.bas.every((b) => nu.some((p) => p.id === b.id));
+      && this.bas.every((b) => N.has(b.id))
+      && sammaOrdning(nu.filter((p) => B.has(p.id)), this.bas.filter((b) => N.has(b.id)));
   }
 
   // Renames from namnbyten: in the base, the editor and what is being sent.
@@ -463,6 +478,8 @@ export class Dokument {
       if (this.avsikter.has(fran)) { this.avsikter.set(till, this.avsikter.get(fran)); this.avsikter.delete(fran); }
     }
     this.ed.tillampa(ops);
+    // What hangs on the old name in the notes (history, comments) moves too.
+    this.laggIKo({ id: this.nyttId(), slag: 'byten', par: [...karta] });
     return sanda.map((p) => (karta.has(p.id) ? { ...p, id: karta.get(p.id) } : p));
   }
 
@@ -508,7 +525,7 @@ export class Dokument {
       if (!p || a.nyckel !== D.nyckel(p)) this.avsikter.delete(id);
     }
     return {
-      id: this.nyttId(), vem, nar, skugga: { version, stycken: D.skuggaFor(filen) }, poster, krockar: kr, forslag, krockLagen,
+      id: this.nyttId(), vem, nar, skugga: { version: this.kalla.skuggaVersion ? this.kalla.skuggaVersion() : version, stycken: D.skuggaFor(filen) }, poster, krockar: kr, forslag, krockLagen,
     };
   }
 
@@ -526,6 +543,11 @@ export class Dokument {
     const ops = [];
     const nyBas = new Map();
     const orord = (id) => B.has(id) && N.has(id) && D.nyckel(N.get(id)) === D.nyckel(B.get(id));
+    // Left as it is only because the cursor is in it: the next read brings it.
+    let slapar = false;
+    // Moved here since the base? Then this window's order stands until it saves.
+    const iAlla = (p) => N.has(p.id) && B.has(p.id) && F.has(p.id);
+    const flyttatHar = !sammaOrdning(nu.filter(iAlla), this.bas.filter(iAlla));
     const harFatt = new Set(nu.map((p) => p.id));
     let foreId = null;
     for (const f of filen) {
@@ -541,6 +563,7 @@ export class Dokument {
         } else if (sparad && s && D.nyckel(s) === D.nyckel(f)) {
           nyBas.set(f.id, f);
         } else if (B.has(f.id)) {
+          if (orord(f.id) && f.id === laser) slapar = true;
           nyBas.set(f.id, B.get(f.id));
         }
       } else if (!S.has(f.id) && !(B.has(f.id) && D.nyckel(B.get(f.id)) === D.nyckel(f))) {
@@ -559,9 +582,31 @@ export class Dokument {
       if (F.has(e.id) || !B.has(e.id)) continue;
       // Gone from the file: removed by someone else.
       if (orord(e.id) && e.id !== laser && !this.hallna.has(e.id)) ops.push({ op: 'ta-bort', id: e.id });
-      else nyBas.set(e.id, B.get(e.id));
+      else {
+        if (orord(e.id) && e.id === laser) slapar = true;
+        nyBas.set(e.id, B.get(e.id));
+      }
     }
+    this.efterslap = slapar;
     if (ops.length) this.ed.tillampa(ops);
+    // The order: the file's, when someone else moved paragraphs. What only
+    // the editor has stays after the paragraph it follows there.
+    if (sparad || !flyttatHar) {
+      const har = this.ed.stycken().map((p) => p.id);
+      const H = new Set(har);
+      const mal = filen.map((p) => p.id).filter((id) => H.has(id));
+      if (!lika(mal, har.filter((id) => F.has(id)))) {
+        let index = new Map(mal.map((id, k) => [id, k]));
+        har.forEach((id, k) => {
+          if (index.has(id)) return;
+          let plats = 0;
+          for (let x = k - 1; x >= 0; x--) if (index.has(har[x])) { plats = index.get(har[x]) + 1; break; }
+          mal.splice(plats, 0, id);
+          index = new Map(mal.map((i, n) => [i, n]));
+        });
+        this.ed.tillampa([{ op: 'ordning', ids: mal }]);
+      }
+    }
     // The base in the file's order; what only the editor still has keeps its
     // place after the paragraph it followed.
     const lista = filen.filter((p) => nyBas.has(p.id)).map((p) => nyBas.get(p.id));
@@ -582,20 +627,29 @@ export class Dokument {
 
   // -> true when something changed. Never during a save: the save brings it.
   async hamta() {
-    if (!this.ed || this.pagar) return false;
-    const t = await this.kalla.lasText();
+    if (!this.ed || this.pagar || this.hamtar) return false;
+    this.hamtar = true;
+    const nr = this.sparNr;
+    let t;
     let n = null;
     try {
-      n = await this.kalla.lasNot(t.text);
-      this.notFel = null;
-    } catch (e) {
-      this.notFel = e;
+      t = await this.kalla.lasText();
+      try {
+        n = await this.kalla.lasNot(t.text);
+        this.notFel = null;
+      } catch (e) {
+        this.notFel = e;
+      }
+    } finally {
+      this.hamtar = false;
     }
-    if (this.pagar) return false;
+    // A save that ran meanwhile has already brought the file in, and what
+    // was read here is older than that.
+    if (this.pagar || this.sparNr !== nr) return false;
     const notAndrad = !!n && n.version !== this.notVersion;
-    if (t.version === this.version && !notAndrad) return false;
+    if (t.version === this.version && !notAndrad && !this.efterslap) return false;
     if (n) { this.not = n.not; this.notVersion = n.version; }
-    if (t.version !== this.version) {
+    if (t.version !== this.version || this.efterslap) {
       const parsed = D.tolka(t.text, this.slag);
       const fjarr = D.justera(parsed.paras, this.not.stycken).map(rensa);
       const { sanda: s0, hallna } = this.forbered(this.ed.stycken().map(rensa));
@@ -690,6 +744,9 @@ export class Dokument {
   }
 }
 
+const lika = (a, b) => a.length === b.length && a.every((x, k) => x === b[k]);
+const sammaOrdning = (a, b) => lika(a.map((p) => p.id), b.map((p) => p.id));
+
 function rensa(p) {
   return {
     id: p.id,
@@ -713,7 +770,25 @@ function forstaFel(text, paras, slag) {
 
 // --- The store ----------------------------------------------------------------------
 
-export function skapaLager(adapter, {
+// A text file with Windows line endings is read as if it had ours, and
+// written back with its own.
+const AR_TEXT = /^(manus:|varld$|mekaniker$|held$)/;
+function utanCR(adapter) {
+  const crlf = new Set();
+  return {
+    ...adapter,
+    async las(plats) {
+      const r = await adapter.las(plats);
+      if (!r || !AR_TEXT.test(plats) || typeof r.text !== 'string' || !r.text.includes('\r')) { crlf.delete(plats); return r; }
+      crlf.add(plats);
+      return { ...r, text: r.text.replace(/\r\n?/g, '\n') };
+    },
+    skriv: (plats, text, version) => adapter.skriv(plats, crlf.has(plats) ? text.replace(/\n/g, '\r\n') : text, version),
+    vem: () => adapter.vem(),
+  };
+}
+
+export function skapaLager(adapter0, {
   nu = () => new Date().toISOString(),
   nyttId = D.nyttId,
   lasTider = async () => null,
@@ -721,6 +796,7 @@ export function skapaLager(adapter, {
   flik = 'f',
   klocka = null,
 } = {}) {
+  const adapter = utanCR(adapter0);
   let jag = null;
   const prefix = `glimt-rummet|${adapter.rot || adapter.namn}`;
 

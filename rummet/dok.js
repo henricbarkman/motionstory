@@ -274,7 +274,9 @@ export function skriv(dok) {
   let foreSep = null;
   dok.paras.forEach((p, k) => {
     const fore = k ? dok.paras[k - 1] : null;
-    const egen = p.sep != null && sepOk(fore, p, p.sep);
+    // Two neighbours nobody touched keep what stood between them, whatever it was.
+    const egen = p.sep != null && (sepOk(fore, p, p.sep)
+      || (!!fore && oforandrad(fore) && oforandrad(p) && Array.isArray(p.sep) && p.sep.every(arSeparator)));
     const sep = egen ? p.sep : forvaldSep(fore, p, foreSep);
     ut.push(...sep, radFor(p));
     foreSep = egen ? sep : null;

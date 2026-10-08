@@ -297,6 +297,7 @@ function redigerare(paras) {
         } else if (o.op === 'ta-bort' && k >= 0) lista.splice(k, 1);
         else if (o.op === 'attrs' && k >= 0) Object.assign(lista[k], { raw: o.raw, orig: o.orig, sep: o.sep });
         else if (o.op === 'byt-id' && k >= 0) lista[k].id = o.till;
+        else if (o.op === 'ordning') { const n = new Map(o.ids.map((id, i) => [id, i])); lista = lista.map((p, i) => [p, i]).sort((x, y) => (n.get(x[0].id) ?? x[1]) - (n.get(y[0].id) ?? y[1])).map((x) => x[0]); }
       }
     },
     // What a person does:
@@ -304,6 +305,8 @@ function redigerare(paras) {
     typ(id, typ, attrs = {}) { Object.assign(lista.find((p) => p.id === id), { typ, attrs }); },
     ny(efterId, p) { const e = lista.findIndex((x) => x.id === efterId); lista.splice(e + 1, 0, { id: ID(), attrs: {}, raw: null, orig: null, sep: null, ...p }); return lista[e + 1].id; },
     bort(id) { lista = lista.filter((p) => p.id !== id); },
+    flytta(id, foreId) { const p = lista.find((x) => x.id === id); lista = lista.filter((x) => x.id !== id); lista.splice(lista.findIndex((x) => x.id === foreId), 0, p); },
+    ordning: () => lista.map((p) => p.id),
     pinna(id) { pin = id; },
     hitta: (f) => lista.find(f),
   };
@@ -602,6 +605,136 @@ const replik = (ed, borjan) => ed.hitta((p) => p.typ === 'replik' && p.text.star
   const ut = JSON.parse(text(m, 'lore'));
   ok(ut.sidor[0].text.join('\n') === '# Vega\n\nHon är arbetare på slingan.\nTredje raden.', 'a lore page: one line changed, the rest as it was');
   ok(ut.sidor[0].rum.historik[p.id].at(-1).vem === 'henric', 'and its history is on the page');
+}
+
+{
+  // Someone else moves a paragraph: the other window takes the new order
+  // when it reads, and its next save does not put the old order back.
+  const m = minne({ 'manus:1': FIL[1] });
+  const h = await oppna(adapterFor(m, 'henric'), '1');
+  const l = await oppna(adapterFor(m, 'liv'), '1');
+  const a = replik(h.ed, 'Jag vet inte vem du är');
+  const b = replik(h.ed, 'Fortsätt gå');
+  h.ed.flytta(b.id, a.id);
+  await h.d.spara();
+  const flyttad = text(m, 'manus:1');
+  ok(flyttad.indexOf('> Fortsätt gå') < flyttad.indexOf('> Jag vet inte vem du är') && flyttad !== FIL[1], 'a paragraph moved here is saved in its new place');
+  await l.d.hamta();
+  const ordn = l.ed.ordning();
+  ok(ordn.indexOf(b.id) < ordn.indexOf(a.id), 'the other window takes the new order when it reads the file');
+  ok(!l.d.harOsparat(), 'and has nothing unsaved because of it');
+  l.ed.skriv(replik(l.ed, 'Fortsätt gå').id, 'Fortsätt gå, sa Liv.');
+  await l.d.spara();
+  const t = text(m, 'manus:1');
+  ok(t.indexOf('> Fortsätt gå, sa Liv.') >= 0 && t.indexOf('> Fortsätt gå, sa Liv.') < t.indexOf('> Jag vet inte vem du är'), 'its next save keeps the order the other one made');
+  ok(Dk.skriv(Dk.tolka(t, 'episod')) === t, 'and the file still reads back as itself');
+}
+
+{
+  // A paragraph moved here and not saved yet: reading does not move it back.
+  const m = minne({ 'manus:1': FIL[1] });
+  const h = await oppna(adapterFor(m), '1');
+  const a = replik(h.ed, 'Jag vet inte vem du är');
+  const b = replik(h.ed, 'Fortsätt gå');
+  h.ed.flytta(b.id, a.id);
+  const raa = rader(FIL[1]);
+  raa[raa.indexOf('> Så. Nu är du tydlig.')] = '> Ändrad utifrån.';
+  utifran(m, 'manus:1', raa.join('\n'));
+  await h.d.hamta();
+  const o = h.ed.ordning();
+  ok(o.indexOf(b.id) < o.indexOf(a.id) && h.ed.hitta((x) => x.text === 'Ändrad utifrån.'), 'a move made here stands while the other change comes in');
+  await h.d.spara();
+  const t = text(m, 'manus:1');
+  ok(t.indexOf('> Fortsätt gå') < t.indexOf('> Jag vet inte vem du är') && t.includes('> Ändrad utifrån.'), 'and both are in the file after the save');
+}
+
+{
+  // A read that started before a save must not undo what the save wrote.
+  const m = minne({ 'manus:1': FIL[1] });
+  const a = adapterFor(m);
+  const h = await oppna(a, '1');
+  h.ed.skriv(replik(h.ed, 'Fortsätt gå').id, 'Fortsätt gå, först.');
+  await h.d.spara();
+  const p = replik(h.ed, 'Jag vet inte vem du är');
+  let en = true;
+  a.efterLas = async (plats) => {
+    if (plats !== 'rum:1' || !en) return;
+    en = false;
+    a.efterLas = null;
+    h.ed.skriv(p.id, 'Skrivet och sparat under läsningen.');
+    await h.d.spara();
+  };
+  utifran(m, 'manus:1', text(m, 'manus:1'));
+  await h.d.hamta();
+  ok(!en && h.ed.hitta((x) => x.id === p.id).text === 'Skrivet och sparat under läsningen.' && text(m, 'manus:1').includes('> Skrivet och sparat under läsningen.'),
+    'a read that a save overtook is thrown away, not laid over the newer text');
+}
+
+{
+  // The cursor stands in a paragraph someone else changes: it is left alone,
+  // and comes in by itself once the cursor has left, without a new change in the file.
+  const m = minne({ 'manus:1': FIL[1] });
+  const h = await oppna(adapterFor(m), '1');
+  const p = replik(h.ed, 'Jag vet inte vem du är');
+  h.ed.pinna(p.id);
+  const raa = rader(FIL[1]);
+  raa[raa.indexOf(p.raw)] = '> Ändrad av någon annan.';
+  utifran(m, 'manus:1', raa.join('\n'));
+  await h.d.hamta();
+  h.ed.pinna(null);
+  await h.d.hamta();
+  ok(h.ed.hitta((x) => x.text === 'Ändrad av någon annan.') && !h.d.harOsparat(), 'a change held back for the cursor comes in on the next read');
+}
+
+{
+  // A file with Windows line endings: read as ours, written back as its own.
+  const win = FIL[1].replace(/\n/g, '\r\n');
+  const m = minne({ 'manus:1': win });
+  const a = adapterFor(m);
+  const h = await oppna(a, '1');
+  const p = replik(h.ed, 'Jag vet inte vem du är');
+  ok(p && h.ed.hitta((x) => x.typ === 'scen') && !h.ed.stycken().some((x) => x.text.includes('\r')), 'a file with Windows line endings is read as the same paragraphs');
+  await h.d.spara();
+  ok(a.skrivningar.length === 0, 'and opening it writes nothing');
+  h.ed.skriv(p.id, 'Ändrad i en Windowsfil.');
+  await h.d.spara();
+  const t = text(m, 'manus:1');
+  ok(t.includes('> Ändrad i en Windowsfil.\r\n') && !/[^\r]\n/.test(t) && diffRader(win, t).length === 1, 'a save changes one line and keeps the file\'s line endings');
+}
+
+{
+  // Lines glued in ways the room would not write itself stay as they are
+  // when nobody touched them.
+  for (const [t, slag] of [['> a\ntext\n', 'fri'], ['## 1. A\n\n> Hej.\n**Gren**\n\n> Mer.\n', 'episod'], ['text\n>\n> a\n', 'fri']]) {
+    ok(Dk.skriv(Dk.tolka(t, slag)) === t, `untouched neighbours keep what stood between them: ${JSON.stringify(t)}`);
+  }
+  const x = Dk.tolka('> a\ntext\n> b\n', 'fri');
+  x.paras[1] = { ...x.paras[1], text: 'ny text' };
+  ok(Dk.skriv(x) === '> a\n\nny text\n> b\n', 'a changed paragraph gets a separator that reads back, and no more than that');
+}
+
+{
+  // A lore page whose new text sorts before the old: the notes' shadow follows the text.
+  const lore = { format: 1, sidor: [{ id: 's1', titel: 'Djur', text: ['Apa rad ett', 'Zebra rad två'], skrev: 'liv', skapad: 't' }] };
+  const m = minne({ lore: JSON.stringify(lore) });
+  const h = await oppna(adapterFor(m), 'lore:s1');
+  const p = h.ed.hitta((x) => x.text === 'Zebra rad två');
+  h.ed.skriv(p.id, 'Zebra rad tre');
+  await h.d.spara();
+  h.ed.skriv(p.id, 'Apa rad två');
+  await h.d.spara();
+  const s = JSON.parse(text(m, 'lore')).sidor[0];
+  ok(s.text.join('\n') === 'Apa rad ett\nApa rad två' && s.rum.stycken.map((x) => x[1]).join('\n') === 'Apa rad ett\nApa rad två', 'a lore page: the shadow in the notes follows the text, whatever the words are');
+  ok(s.rum.historik[p.id].length >= 2 && s.rum.historik[p.id].at(-1).text === 'Apa rad två', 'and the history stays on the same paragraph');
+}
+
+{
+  // Notes move with a paragraph that got another name.
+  let not = A.tomAnteckning('1');
+  not = A.nyKommentar(not, { id: 'k1', stycke: 'gammal', galde: 'x', text: 'En kommentar.', vem: 'liv', nar: 't1' });
+  const ny = A.bytStycken(not, [['gammal', 'ny']]);
+  ok(ny.kommentarer[0].stycke === 'ny' && not.kommentarer[0].stycke === 'gammal', 'a comment follows its paragraph to the new name');
+  ok(A.bytStycken(ny, [['gammal', 'ny']]) === ny, 'and doing it again changes nothing');
 }
 
 // --- 10. The portal's real file code -----------------------------------------------------------------

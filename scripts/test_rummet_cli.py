@@ -44,9 +44,40 @@ def ok(cond: bool, what: str) -> None:
         print(f"{'ok  ' if cond else 'FAIL'}  {what}")
 
 
-def kor(rot: Path, *args: str, stdin: str | None = None) -> subprocess.CompletedProcess:
+def kor(rot: Path, *args: str, stdin: str | None = None, env: dict | None = None) -> subprocess.CompletedProcess:
     return subprocess.run([sys.executable, str(SCRIPT), "--rot", str(rot), *args], input=stdin,
-                          capture_output=True, text=True, check=False)
+                          capture_output=True, text=True, check=False, env={**os.environ, **(env or {})})
+
+
+# A stand-in for the portal's file module that can be told to misbehave:
+# RUMMET_TEST_NEKA (a regex on the file name) refuses writes, and
+# RUMMET_TEST_BYT ({"fil", "fran", "till"}) changes a file right after this
+# process first read it, as someone else saving in between would.
+STORIG = """
+import json, os, re
+from pathlib import Path
+_src = Path(os.environ["RUMMET_TEST_RIKTIG"])
+exec(compile(_src.read_text(encoding="utf-8"), str(_src), "exec"), globals())
+_las, _skriv, _bytt = read_file, write_file, set()
+
+def write_file(path, content, expected_mtime):
+    neka = os.environ.get("RUMMET_TEST_NEKA")
+    if neka and re.search(neka, Path(path).name):
+        raise OSError("disken svarar inte (prov)")
+    return _skriv(path, content, expected_mtime)
+
+def read_file(path):
+    d = _las(path)
+    byt = json.loads(os.environ.get("RUMMET_TEST_BYT") or "null")
+    if byt and Path(path).name == byt["fil"] and path not in _bytt:
+        _bytt.add(path)
+        t = Path(path).read_text(encoding="utf-8")
+        assert byt["fran"] in t, "the line to change is not in the file"
+        st = os.stat(path)
+        Path(path).write_text(t.replace(byt["fran"], byt["till"]), encoding="utf-8")
+        os.utime(path, ns=(st.st_atime_ns, st.st_mtime_ns + 50_000_000))
+    return d
+"""
 
 
 def rum(rot: Path, namn: str = "episod-1") -> dict:
@@ -95,6 +126,7 @@ const ed = {
       if (o.op === 'ta-bort') { const k = plats(o.id); if (k >= 0) lista.splice(k, 1); }
       if (o.op === 'attrs') { const k = plats(o.id); if (k >= 0) lista[k] = { ...lista[k], raw: o.raw, orig: o.orig, sep: o.sep }; }
       if (o.op === 'byt-id') { const k = plats(o.id); if (k >= 0) lista[k] = { ...lista[k], id: o.till }; }
+      if (o.op === 'ordning') { const n = new Map(o.ids.map((id, i) => [id, i])); lista = lista.map((p, i) => [p, i]).sort((a, b) => (n.get(a[0].id) ?? a[1]) - (n.get(b[0].id) ?? b[1])).map((x) => x[0]); }
     }
   },
 };
@@ -337,6 +369,64 @@ def main() -> int:
         ok(all(hist.get(repliker[10 + n * 3 + k][0], [{}])[-1].get("vem") == "demi" for n in range(2) for k in range(3)), "text: Demi's changes are Demi's in the history")
         ok(all(hist.get(i, [{}])[-1].get("vem") == "henric" for i in resultat.get("sidan", [])), "text: the page's changes are Henric's in the history")
         ok(not rum(rot).get("krockar"), f"text: different paragraphs never make a krock: {rum(rot).get('krockar')}")
+
+        # --- When something goes wrong on the way -------------------------------
+        storig = tmp / "storig_files.py"
+        storig.write_text(STORIG, encoding="utf-8")
+        riktig = os.environ.get("RUMMET_FILES_PY") or str(Path.home() / "generalassistant" / "scripts" / "dashboard" / "files.py")
+        prov = {"RUMMET_FILES_PY": str(storig), "RUMMET_TEST_RIKTIG": riktig}
+        vantande = rot / "data" / "glimt-rummet" / "demi-vantande.json"
+        rader = rader_av(rot, "--dok", "1", "--scen", "3")
+        x = next(r for r in rader if r[1] == "replik")
+
+        # A comment whose notes could not be written waits, and goes out next time.
+        r = kor(rot, "kommentera", "--dok", "1", "--stycke", x[0], "--text", "Den här fick vänta.", env={**prov, "RUMMET_TEST_NEKA": r"^episod-1\.json$"})
+        ko = json.loads(vantande.read_text(encoding="utf-8")) if vantande.exists() else {}
+        ok(r.returncode == 2 and "väntar" in r.stderr and any("Den här fick vänta." in v for v in ko.values()),
+           f"a comment that could not be written is refused out loud and kept waiting: {r.stderr[:200]} {list(ko)}")
+        ok(not any("Den här fick vänta." == k.get("text") for k in rum(rot)["kommentarer"]), "and is not in the notes yet")
+        ok(not any("|osparat|" in k for k in ko), "what waits is notes only, never text")
+        r = kor(rot, "rader", "--dok", "1", "--scen", "3")
+        ko = json.loads(vantande.read_text(encoding="utf-8"))
+        ok(r.returncode == 0 and sum("Den här fick vänta." == k.get("text") for k in rum(rot)["kommentarer"]) == 1 and not any(json.loads(v) for v in ko.values()),
+           f"the next command sends it, once, and the waiting list is empty: {ko}")
+
+        # Text saved, the note about who did it refused: said, kept, sent next time.
+        r = kor(rot, "andra", "--dok", "1", "--stycke", x[0], "--text", f"{x[2]} (noten väntar)", env={**prov, "RUMMET_TEST_NEKA": r"^episod-1\.json$"})
+        ok(r.returncode == 0 and "(noten väntar)" in M.read_text(encoding="utf-8") and "väntar och skickas nästa gång" in r.stderr,
+           f"text saved while the notes could not be written: said so: {r.stderr[:200]}")
+        ok((rum(rot)["historik"].get(x[0]) or [{}])[-1].get("text") != f"{x[2]} (noten väntar)", "and the history does not have it yet")
+        kor(rot, "rader", "--dok", "1", "--scen", "3")
+        h = (rum(rot)["historik"].get(x[0]) or [{}])[-1]
+        ok(h.get("text") == f"{x[2]} (noten väntar)" and h.get("vem") == "demi", f"the next command writes the history, as Demi's: {h}")
+
+        # Two rummet.py at once: what one put in the waiting list, the other keeps.
+        sys.path.insert(0, str(REPO / "scripts"))
+        import rummet as R
+        ett = R.Rum(rot, False)
+        vantande.write_text(json.dumps({"k": json.dumps([{"id": "a"}])}), encoding="utf-8")
+        ett.spara_vantande({}, {"k": json.dumps([{"id": "b"}])})
+        ok([n["id"] for n in json.loads(json.loads(vantande.read_text(encoding="utf-8"))["k"])] == ["a", "b"], "a note another process left waiting meanwhile is kept beside this one's")
+        vantande.write_text(json.dumps({"k": json.dumps([{"id": "a"}, {"id": "c"}])}), encoding="utf-8")
+        ett.spara_vantande({"k": json.dumps([{"id": "a"}])}, {})
+        ok([n["id"] for n in json.loads(json.loads(vantande.read_text(encoding="utf-8"))["k"])] == ["c"], "a note this process sent is taken out, the other's stays")
+        ett.spara_vantande({"k": json.dumps([{"id": "c"}])}, {})
+        ok(json.loads(vantande.read_text(encoding="utf-8")) == {}, "and when all is sent the list is empty")
+
+        # Someone saves the same paragraph between Demi's read and write.
+        y = next(r for r in rader if r[1] == "replik" and r[0] != x[0])
+        byt = json.dumps({"fil": "episod-1.md", "fran": f"> {y[2]}", "till": f"> {y[2]} (någon annan hann före)"})
+        r = kor(rot, "andra", "--dok", "1", "--stycke", y[0], "--text", f"{y[2]} (Demi)", env={**prov, "RUMMET_TEST_BYT": byt})
+        t = M.read_text(encoding="utf-8")
+        kr = [k for k in rum(rot).get("krockar") or [] if k.get("stycke") == y[0] and k.get("lage") == "oppen"]
+        ok(r.returncode == 0 and f"> {y[2]} (Demi)" in t and "(någon annan hann före)" not in t and len(kr) == 1 and kr[0]["text"] == f"{y[2]} (någon annan hann före)",
+           f"andra over someone's simultaneous change: Demi's words in the text, theirs kept at the paragraph: {r.stderr[:200]} {kr}")
+        ok("ändrade samma stycke samtidigt" in r.stderr and y[2][:40] in r.stderr and "krock vid stycket" in r.stderr, f"and Demi is told so: {r.stderr[:300]}")
+        z = next(r for r in rader if r[1] == "replik" and r[0] not in (x[0], y[0]))
+        byt = json.dumps({"fil": "episod-1.md", "fran": f"> {z[2]}", "till": f"> {z[2]} (ändrad just nu)"})
+        r = kor(rot, "stryk", "--dok", "1", "--stycke", z[0], env={**prov, "RUMMET_TEST_BYT": byt})
+        ok(r.returncode == 2 and "togs inte bort" in r.stderr and f"> {z[2]} (ändrad just nu)" in M.read_text(encoding="utf-8"),
+           f"stryk of a paragraph someone just changed: it stands, and the command says so: {r.returncode} {r.stderr[:300]}")
 
         # The file still reads back as itself.
         js = "import { readFileSync } from 'node:fs'; const D = await import(process.argv[1]); const t = readFileSync(process.argv[2], 'utf8'); const x = D.tolka(t, D.SLAG_EPISOD); process.stdout.write(String(D.skriv({ paras: D.justera(x.paras, null), slut: x.slut }) === t));"

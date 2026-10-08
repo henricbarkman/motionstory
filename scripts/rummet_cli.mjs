@@ -78,15 +78,18 @@ function adapterFor(prov) {
 
 // The page keeps notes that could not be written yet in localStorage; here
 // rummet.py keeps them in a file and hands them over (lagring) both ways.
+// Only notes wait: text that could not be saved is an error Demi sees and
+// runs again, never something a later step writes on its own.
+const arText = (k) => k.includes('|osparat|');
 function minne(start) {
-  const m = new Map(Object.entries(start || {}));
+  const m = new Map(Object.entries(start || {}).filter(([k]) => !arText(k)));
   return {
     getItem: (k) => (m.has(k) ? m.get(k) : null),
     setItem: (k, v) => { m.set(k, String(v)); },
     removeItem: (k) => { m.delete(k); },
     key: (n) => [...m.keys()][n] ?? null,
     get length() { return m.size; },
-    allt: () => Object.fromEntries(m),
+    allt: () => Object.fromEntries([...m].filter(([k]) => !arText(k))),
   };
 }
 
@@ -105,6 +108,7 @@ function utanSida(paras) {
         if (o.op === 'ta-bort') { const k = plats(o.id); if (k >= 0) lista.splice(k, 1); }
         if (o.op === 'attrs') { const k = plats(o.id); if (k >= 0) lista[k] = { ...lista[k], raw: o.raw, orig: o.orig, sep: o.sep }; }
         if (o.op === 'byt-id') { const k = plats(o.id); if (k >= 0) lista[k] = { ...lista[k], id: o.till }; }
+        if (o.op === 'ordning') { const n = new Map(o.ids.map((id, i) => [id, i])); lista = lista.map((p, i) => [p, i]).sort((a, b) => (n.get(a[0].id) ?? a[1]) - (n.get(b[0].id) ?? b[1])).map((x) => x[0]); }
       }
     },
   };
@@ -206,7 +210,7 @@ async function rader(lager, { dok }) {
 async function anteckna(lager, dok, slag, args) {
   const { d } = await oppna(lager, dok);
   const ok = await d.anteckna(slag, args);
-  if (!ok) throw new CliFel('anteckningar', `Det gick inte att skriva anteckningen: ${d.notFel ? d.notFel.message : 'okänt fel'}. Den väntar och skickas nästa gång.`);
+  if (!ok) throw new CliFel('anteckningar', `Det gick inte att skriva anteckningen: ${d.notFel ? d.notFel.message : 'okänt fel'}. Den väntar och skickas nästa gång rummet.py körs.`);
   return d;
 }
 
@@ -253,7 +257,7 @@ async function svara(lager, u) {
     const rot = [...d.not.kommentarer, ...d.not.forslag].find((x) => x.id === u.pa);
     if (!rot) continue;
     const ok = await d.anteckna('kommentar', { id: u.id, stycke: rot.stycke, text: u.text, vem: DEMI, nar: u.nar, svarPa: u.pa });
-    if (!ok) throw new CliFel('anteckningar', `Det gick inte att skriva svaret: ${d.notFel ? d.notFel.message : 'okänt fel'}.`);
+    if (!ok) throw new CliFel('anteckningar', `Det gick inte att skriva svaret: ${d.notFel ? d.notFel.message : 'okänt fel'}. Det väntar och skickas nästa gång rummet.py körs.`);
     const rotId = rot.svarPa || rot.id;
     const huvud = [...d.not.kommentarer, ...d.not.forslag].find((x) => x.id === rotId);
     const trad = [huvud, ...A.trad(d.not, rotId)].filter(Boolean).map((x) => ({ id: x.id, skrev: x.skrev, text: x.text, till: x.till || null }));
@@ -320,8 +324,16 @@ async function andraText(lager, u) {
   if (u.op !== 'stryk' && (!efter || D.nyckel(efter) !== D.nyckel(lista[k2]))) {
     throw new CliFel('krock', 'Någon ändrade samma stycke samtidigt. Det ligger nu en krock vid stycket i rummet.');
   }
+  // Someone changed the paragraph while it was being removed: it stands, with their words.
+  if (u.op === 'stryk' && efter) {
+    throw new CliFel('krock', `Stycket togs inte bort: någon ändrade det samtidigt. Det står nu «${efter.text}». Läs det och stryk igen om det fortfarande ska bort.`);
+  }
+  // Demi's words went in over someone else's change of the same paragraph:
+  // theirs lies at the paragraph, and Demi is told.
+  const trangde = d.not.krockar.find((x) => x.lage === 'oppen' && x.stycke === id && x.mot === DEMI && x.nar === u.nar);
   return {
     dok, op: u.op, id, fore, text: efter ? efter.text : null, notVantar: d.ko().length > 0, notFel: d.notFel ? d.notFel.message : null,
+    trangde: trangde ? { vem: trangde.vem || null, text: trangde.text } : null,
   };
 }
 
@@ -395,8 +407,9 @@ async function loreNy(lager, u) {
   return { id, titel: u.titel };
 }
 
+let lagring = null;
 async function steg(u) {
-  const lagring = minne(u.lagring);
+  lagring = minne(u.lagring);
   const lager = skapaLager(adapterFor(!!u.prov), {
     nu: () => u.nar || new Date().toISOString(),
     lagring,
@@ -418,7 +431,9 @@ try {
   const u = await forstaRad;
   skicka({ klart: await steg(u) });
 } catch (e) {
-  skicka({ fel: e.message || String(e), kod: e.kod || e.name || 'fel', nara: e.nara || null });
+  // What waits is handed back on an error too: a note that could not be
+  // written is promised to be sent next time.
+  skicka({ fel: e.message || String(e), kod: e.kod || e.name || 'fel', nara: e.nara || null, lagring: lagring ? lagring.allt() : null });
 }
 rl.close();
 process.exit(0);

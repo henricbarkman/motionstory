@@ -130,7 +130,9 @@ button:disabled { cursor: default; }
   position: sticky; top: 3.5rem; z-index: 4;
   display: flex; align-items: center; gap: 0.35rem;
   padding: 0.4rem 1.5rem 0.55rem; overflow-x: auto; scrollbar-width: none;
-  background: linear-gradient(180deg, color-mix(in oklch, var(--natt-1) 82%, transparent) 60%, transparent);
+  /* The sketch's row, made dense enough to read when text scrolls under it. */
+  background: linear-gradient(180deg, color-mix(in oklch, var(--natt-1) 94%, transparent) 70%, color-mix(in oklch, var(--natt-1) 70%, transparent));
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
   font-size: 0.875rem; color: var(--dov);
 }
 .verktyg > * { flex: none; }

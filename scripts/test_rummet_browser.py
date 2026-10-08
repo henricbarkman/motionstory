@@ -317,6 +317,14 @@ def skrivaren(b, url: str, rot: Path, storlek: str, skarmar: Path | None) -> Non
     ok(vanta_fil(page, F, lambda t: "Hallå?En ny replik från Henric.\n" in t and "\n> En ny replik" not in t), f"{pre} Backspace at the start joins two paragraphs")
     page.keyboard.press("Control+z")
     ok(vanta_fil(page, F, lambda t: foljd(t, rad1, "> En ny replik från Henric.")), f"{pre} Ctrl+Z splits them again")
+    # A style is its own step for Ctrl+Z, however fast the next key comes.
+    stil(page, "Regi och ljud")
+    markor(page, stycke_id(page, "En ny replik från Henric."), "start")
+    page.keyboard.press("Backspace")
+    page.keyboard.press("Control+z")
+    ok(vanta_fil(page, F, lambda t: foljd(t, rad1, "> (En ny replik från Henric.)")), f"{pre} a style and a join right after it: Ctrl+Z undoes the join only")
+    page.keyboard.press("Control+z")
+    ok(vanta_fil(page, F, lambda t: foljd(t, rad1, "> En ny replik från Henric.")), f"{pre} and once more undoes the style")
     skarm("02-skrivet")
 
     # 5. Paste several lines: each becomes a paragraph, (…) becomes direction.
@@ -405,8 +413,9 @@ def skrivaren(b, url: str, rot: Path, storlek: str, skarmar: Path | None) -> Non
     page.locator("#panel .version", has_text="Det här känns inte så.").filter(has_not_text="Hallå").locator("button", has_text="Ta tillbaka").first.click()
     ok(vanta_fil(page, F, lambda t: "> Jag måste få veta en sak, annars blir jag tokig. Jag har pratat för mig själv här länge. Jag vet hur det känns när ingen lyssnar. Det här känns inte så.\n" in t),
        f"{pre} taking back the first version writes it back")
-    h = notes(N).get("historik", {}).get(p1, [])
-    ok(any(e.get("hur") == "tillbaka" for e in h) and any(e.get("hur") == "forslag" for e in h), f"{pre} the history records the proposal and the taking back")
+    # The notes are written right after the text: wait for them.
+    hur = lambda t: {e.get("hur") for e in json.loads(t).get("historik", {}).get(p1, [])}  # noqa: E731
+    ok(vanta_fil(page, N, lambda t: {"tillbaka", "forslag"} <= hur(t)), f"{pre} the history records the proposal and the taking back")
 
     # 11. Someone else writes in the file meanwhile (the file panel, a new draft from Demi).
     t = F.read_text(encoding="utf-8")
@@ -495,6 +504,32 @@ def tva_fonster(b, url: str, rot: Path, skarmar: Path | None) -> None:
     a.locator(f'.st[data-id="{iz}"] .kort.krock button', has_text="Använd den här").click()
     ok(vanta_fil(a, F, lambda t: f"> {z} {andra}\n" in t), "[två] choosing the other version writes it")
     ok(vanta_fil(a, N, lambda t: all(k.get("lage") != "oppen" for k in json.loads(t).get("krockar", []))), "[två] the krock is settled")
+
+    # Two paragraphs change places in the file (Demi's new draft, or the file
+    # panel): both windows follow, the cursor stays in its paragraph, and the
+    # next save from a window keeps the new order.
+    text = F.read_text(encoding="utf-8")
+    par = next((m for m in re.finditer(r"^> ([^(\[*>\n][^\n]*)\n>\n> ([^(\[*>\n][^\n]*)\n", text, re.M)
+                if not any(v[:30] in m.group(0) for v in (x, y, z))), None)
+    ok(par is not None, "[två] found two lines next to each other to swap")
+    if par:
+        p1, p2 = par.group(1), par.group(2)
+        i1, i2 = stycke_id(a, p1[:40]), stycke_id(a, p2[:40])
+        markor(bb, i2)
+        ordning = "[...document.querySelectorAll('.ProseMirror .st[data-id]')].map((e) => e.dataset.id)"
+        fore = a.evaluate(ordning)
+        ok(fore.index(i1) < fore.index(i2), "[två] before the swap the first stands first")
+        F.write_text(text.replace(par.group(0), f"> {p2}\n>\n> {p1}\n"), encoding="utf-8")
+        a.wait_for_timeout(6500)
+        for namn, s in (("A", a), ("B", bb)):
+            o = s.evaluate(ordning)
+            ok(o.index(i2) < o.index(i1) and sorted(o) == sorted(fore), f"[två] window {namn} shows the paragraphs in the file's new order, none lost or doubled")
+        inne = bb.evaluate("(id) => { const n = getSelection().anchorNode; const e = n && (n.nodeType === 1 ? n : n.parentElement).closest('.st[data-id]'); return !!e && e.dataset.id === id; }", i2)
+        ok(inne, "[två] the cursor stays in its paragraph when it moves")
+        bb.keyboard.type(" (kvar)")
+        ok(vanta_fil(bb, F, lambda t: f"> {p2} (kvar)\n>\n> {p1}\n" in t), "[två] typing there afterwards saves in the new order")
+        a.wait_for_timeout(1500)
+        ok(F.read_text(encoding="utf-8").count(f"> {p1}\n") == 1, "[två] and the other window does not put the old order back")
     ok(not fel, f"[två] no errors in the pages: {fel[:3]}")
     for s in sidor:
         s.context.close()

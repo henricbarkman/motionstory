@@ -175,15 +175,57 @@ class Rum:
         if ut is None:
             raise Fel(f"rummet_cli.mjs svarade inte: {(p.stderr.read() if p.stderr else '').strip()[:400]}")
         if "fel" in ut:
+            self.spara_vantande(uppdrag["lagring"], ut.get("lagring"))
             text = ut.get("fel") or "Något gick fel."
             if ut.get("nara"):
                 text += "\nNärmast:\n" + "\n".join(f"  {x}" for x in ut["nara"])
             raise Fel(text)
         klart = ut["klart"]
-        ko = klart.pop("lagring", None)
-        if ko is not None and (ko or lagring):
-            self.files.write_file(self.vantande, json.dumps(ko, ensure_ascii=False) + "\n", None)
+        self.spara_vantande(uppdrag["lagring"], klart.pop("lagring", None))
         return klart
+
+    def spara_vantande(self, fore: dict, efter: dict | None) -> None:
+        """Write what still waits, keeping what another rummet.py put there meanwhile.
+
+        Each value is a list of notes with ids, and sending a note twice does
+        nothing: a note another process added since this one read the file is
+        kept, and one this process sent is taken out.
+        """
+        if efter is None or not (efter or fore):
+            return
+        for _ in range(5):
+            text, mtime = self.las(self.vantande)
+            try:
+                nu_ = json.loads(text) if text else {}
+            except ValueError:
+                nu_ = {}
+            ut = dict(efter)
+            for k, v in nu_.items():
+                if "|osparat|" in k or v == fore.get(k):
+                    continue
+                andras = [x for x in lista(v) if x not in lista(fore.get(k))]
+                egna = lista(ut.get(k))
+                har = {x.get("id") for x in egna if isinstance(x, dict)}
+                nya = [x for x in andras if not (isinstance(x, dict) and x.get("id") in har)]
+                if nya:
+                    ut[k] = json.dumps(nya + egna, ensure_ascii=False)
+            if ut == nu_:
+                return
+            try:
+                self.files.write_file(self.vantande, json.dumps(ut, ensure_ascii=False) + "\n", mtime if mtime is not None else 0)
+                return
+            except FileExistsError:
+                continue
+        raise Fel("Det gick inte att spara det som väntar (demi-vantande.json ändrades hela tiden). Kör kommandot igen.")
+
+
+def lista(v: str | None) -> list:
+    """A waiting list as the room's code stores it: a JSON list in a string."""
+    try:
+        x = json.loads(v) if v else []
+    except ValueError:
+        return []
+    return x if isinstance(x, list) else []
 
 
 def iso(t: datetime) -> str:
@@ -441,6 +483,9 @@ def main() -> int:
             ut = rum.steg(u)
             vad = {"andra": "Ändrat", "lagg-till": "Lagt till", "stryk": "Tagit bort"}[a.cmd]
             print(f"{vad} som Demi i {doknamn(ut['dok'])}: [{ut['id']}] «{kort(ut['text'] if ut['text'] is not None else ut['fore'], 90)}»")
+            if ut.get("trangde"):
+                vem = NAMN.get(ut["trangde"].get("vem"), ut["trangde"].get("vem") or "någon")
+                print(f"Obs: {vem} ändrade samma stycke samtidigt. Din text står i manuset; deras version «{kort(ut['trangde'].get('text'), 90)}» ligger som en krock vid stycket i rummet, där vem som helst kan välja.", file=sys.stderr)
             if ut.get("notVantar"):
                 print(f"Obs: texten är sparad, men anteckningen om att det var Demi väntar och skickas nästa gång ({ut.get('notFel')}).", file=sys.stderr)
             return 0

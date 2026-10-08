@@ -238,6 +238,17 @@ function bytId(not, fran, till) {
   for (const lista of Object.values(not.historik)) for (const e of lista) if (e.borta && e.efter === fran) e.efter = till;
 }
 
+// The room came to know a paragraph under another name (the file's): what
+// hangs on the old name moves over. par: [[from, to], ...]. Doing it twice
+// changes nothing.
+export function bytStycken(not0, par) {
+  const flytta = (par || []).filter(([fran, till]) => fran && till && fran !== till && anvands(not0, fran));
+  if (!flytta.length) return not0;
+  const not = kopia(not0);
+  for (const [fran, till] of flytta) bytId(not, fran, till);
+  return not;
+}
+
 // Two windows can each have named the same line: one wrote the file, the
 // other wrote the notes in between. The shadow kept is the one for the newest
 // file; where the two shadows say the same line under different ids, the id
