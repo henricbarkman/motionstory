@@ -1,440 +1,634 @@
-/* Manusrummet. The plan page's room (HELD's navy and purple, the pale glow,
-   mint as the signal) with the reading page's manuscript: Vega's words warm
-   and italic, direction small and grey, other voices pale turquoise. The
-   manuscript sits in the middle; the tools stay quiet until a line is opened. */
+/* Manusrummet. The look is decided in design/DESIGN.md and drawn in
+   design/skiss.html: lunar punk is the ground, HELD is the light, and the
+   text is a book. The tokens and the paragraph kinds below come from the
+   sketch; the parts it does not show follow the same rules: surfaces of
+   light laid on the night, dots for marks, serif for story, sans for tools. */
 
 :root {
-  --natt: #0d1c2b;
-  --marin: #152E43;
-  --lila: #271240;
-  --sken: #A4DADB;
-  --yta: rgba(164, 218, 219, 0.07);
-  --yta-stark: rgba(164, 218, 219, 0.12);
-  --kant: rgba(164, 218, 219, 0.17);
-  --kant-stark: rgba(164, 218, 219, 0.32);
-  --text: #E4F6F5;
-  --dov: #9dbcc1;
-  --svag: #7d9ea4;
-  --kontakt: #48FEC8;
-  --replika: #ecc98e;
-  --osaker: #f0a9b4;
-  /* Who wrote a line. Demi's drafts are the ground the others write on. */
-  --demi: #9dbcc1;
-  --henric: #48FEC8;
-  --liv: #cdb4f6;
-  --sans: 'Open Sans', system-ui, sans-serif;
+  color-scheme: dark;
+  /* ground: lunar punk's night */
+  --natt-1: oklch(0.090 0.024 292);
+  --natt-2: oklch(0.120 0.024 278);
+  --natt-3: oklch(0.165 0.032 255);
+  --rida:   #271240;                      /* HELD's purple, left edge */
+  /* light: HELD's glow, and the mint the portal and HELD share */
+  --sken:   #A4DADB;
+  --mint:   oklch(0.815 0.094 155);
+  /* ink */
+  --blad:   oklch(0.925 0.022 88);        /* the words that are heard */
+  --text:   oklch(0.845 0.010 250);
+  --dov:    oklch(0.700 0.016 260);
+  --svag:   oklch(0.560 0.018 265);
+  /* surfaces are light laid on the night, never boxes */
+  --yta:    color-mix(in oklch, var(--sken) 6%, transparent);
+  --yta-2:  color-mix(in oklch, var(--sken) 11%, transparent);
+  --linje:  color-mix(in oklch, var(--sken) 16%, transparent);
+  /* who wrote it */
+  --henric: var(--mint);
+  --liv:    oklch(0.790 0.110 320);       /* orchid */
+  --demi:   oklch(0.775 0.100 270);       /* periwinkle, always hollow: an AI, marked as one */
+  /* how sure a mechanic is */
+  --haller:  var(--mint);
+  --delvis:  var(--sken);
+  --osaker:  oklch(0.840 0.110 80);       /* amber */
+  --oprovad: oklch(0.720 0.060 285);
+  --ide:     oklch(0.640 0.030 270);
+  /* two changes that met, and taking something away: lunar punk's rose */
+  --ros:     oklch(0.745 0.115 351);
+
   --serif: 'Spectral', Georgia, serif;
+  --sans:  'Open Sans', system-ui, sans-serif;
+  --visa:  'Syne', system-ui, sans-serif;
+
+  --marg: 3rem;          /* left margin: who wrote, listen */
+  --spalt: 35rem;        /* the text column, about 66 characters of Spectral */
+  --sido: 17rem;         /* comments, wide screens only */
+  --tangentbord: 0px;    /* how much of the screen the keyboard covers */
 }
+
 * { box-sizing: border-box; }
-html { background: var(--natt); scroll-padding-top: 5rem; }
+html { background: oklch(0.105 0.022 288); }
 body {
-  margin: 0;
+  margin: 0; min-height: 100vh;
   color: var(--text);
-  font-family: var(--sans);
-  font-size: 1.0625rem;
-  line-height: 1.6;
+  font-family: var(--sans); font-size: 1rem; line-height: 1.55;
   -webkit-font-smoothing: antialiased;
-}
-body::before {
-  content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
   background:
-    linear-gradient(90deg, rgba(39, 18, 64, 0.9) 0%, rgba(39, 18, 64, 0) 32%),
-    linear-gradient(270deg, rgba(7, 15, 24, 0.85) 0%, rgba(7, 15, 24, 0) 24%),
-    linear-gradient(180deg, var(--marin) 0%, var(--natt) 85%);
+    linear-gradient(90deg, color-mix(in srgb, var(--rida) 78%, transparent) 0%, transparent 26%),
+    linear-gradient(155deg, var(--natt-1) 0%, var(--natt-2) 45%, var(--natt-3) 100%);
+  background-attachment: fixed;
 }
-a { color: var(--sken); text-underline-offset: 0.2em; }
-:focus-visible { outline: 2px solid var(--kontakt); outline-offset: 3px; border-radius: 2px; }
+/* paper grain, as on every lunar punk page */
+body::before {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.78' numOctaves='3' seed='7' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1.00  0 0 0 0 0.96  0 0 0 0 0.88  0 0 0 0.020 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  opacity: 0.42; mix-blend-mode: screen;
+}
+p, h1, h2, h3, h4, h5, h6 { margin: 0; }
+a { color: var(--sken); text-underline-offset: 0.18em; text-decoration-thickness: 1px; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+button:disabled { cursor: default; }
+:focus-visible { outline: 2px solid var(--mint); outline-offset: 3px; border-radius: 6px; }
 [hidden] { display: none !important; }
-p { margin: 0 0 1rem; }
 
-.inne { max-width: 44rem; margin: 0 auto; padding: 0 1.25rem; }
-
-/* --- Header ------------------------------------------------------------------ */
-.sidhuvud { overflow: clip; }
-header.inne { position: relative; z-index: 0; padding-top: 2.4rem; padding-bottom: 1.6rem; }
-header::before {
-  content: ''; position: absolute; z-index: -1; pointer-events: none;
-  left: 30%; top: 0.5rem; width: min(26rem, 72vw); height: 9rem;
-  background: var(--sken); opacity: 0.16; border-radius: 2.5rem;
-  transform: rotate(-17deg); filter: blur(46px);
+/* --- bands: sandbox, read only, something wrong --------------------------------- */
+.band {
+  position: relative; z-index: 6;
+  padding: 0.5rem 1.5rem; font-size: 0.8125rem; color: var(--dov); text-align: center;
+  background: color-mix(in oklch, var(--natt-1) 80%, transparent);
 }
-h1 {
-  font-weight: 300;
-  font-size: clamp(1.7rem, 7.4vw, 2.7rem);
-  line-height: 1.15;
-  letter-spacing: 0.36em;
-  text-transform: uppercase;
-  margin: 0 0 0.7rem;
-  text-shadow: 0.2em 0.07em 0 rgba(72, 254, 200, 0.34);
+.band.prov { color: var(--blad); background: color-mix(in oklch, var(--oprovad) 18%, var(--natt-1)); }
+.band.varning {
+  text-align: left; color: var(--blad); font-size: 0.9375rem;
+  background: color-mix(in oklch, var(--osaker) 14%, transparent);
+  border-radius: 0.3rem 1rem 1rem 1rem; margin: 1rem 0; padding: 0.8rem 1rem;
 }
-.lead { color: var(--dov); margin: 0; max-width: 34rem; }
-.lead .vega { font-family: var(--serif); font-style: italic; color: var(--replika); }
-.tillbaka { margin: 0.6rem 0 0; font-size: 0.9rem; }
 
-nav.flikar {
+/* --- top: quiet ------------------------------------------------------------------ */
+.topp {
   position: sticky; top: 0; z-index: 5;
-  background: rgba(15, 30, 46, 0.9);
-  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--kant);
+  display: flex; align-items: center; gap: 1.75rem;
+  padding: 0.8rem 1.5rem;
+  background: color-mix(in oklch, var(--natt-1) 82%, transparent);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
 }
-nav.flikar .inne { display: flex; align-items: center; gap: 1rem; }
-nav.flikar ul { list-style: none; display: flex; gap: 1.3rem; margin: 0; padding: 0.75rem 0; overflow-x: auto; white-space: nowrap; flex: 1; }
-nav.flikar a { color: var(--dov); text-decoration: none; font-size: 0.95rem; padding: 0.3rem 0; }
-nav.flikar a:hover { color: var(--text); }
-nav.flikar a[aria-current='page'] { color: var(--text); box-shadow: 0 2px 0 var(--kontakt); }
-.jag { color: var(--svag); font-size: 0.82rem; white-space: nowrap; display: flex; align-items: center; gap: 0.9rem; }
+.marke { display: flex; align-items: baseline; gap: 0.6rem; text-decoration: none; }
+.marke b {
+  font-family: var(--visa); font-weight: 700; font-size: 1.3rem; letter-spacing: -0.01em;
+  background: linear-gradient(115deg, var(--mint) 0%, oklch(0.700 0.085 270) 60%, oklch(0.710 0.091 350) 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.marke span { font-size: 0.875rem; color: var(--svag); }
+.flikar { display: flex; gap: 0.25rem; margin-left: 0.5rem; overflow-x: auto; scrollbar-width: none; }
+.flikar a {
+  flex: none; text-decoration: none; color: var(--dov);
+  font-size: 0.9375rem; padding: 0.35rem 0.8rem; border-radius: 999px;
+}
+.flikar a:hover { color: var(--blad); }
+.flikar a[aria-current] { color: var(--blad); background: var(--yta-2); }
+.lage { margin-left: auto; display: flex; align-items: center; gap: 0.9rem; font-size: 0.8125rem; color: var(--svag); white-space: nowrap; }
+.lage-text::before {
+  content: ''; display: inline-block; width: 0.45rem; height: 0.45rem; border-radius: 50%;
+  margin-right: 0.45rem; vertical-align: 0.05em; background: transparent;
+}
+.lage-text:empty::before { display: none; }
+.lage-text.sparat::before { background: var(--mint); }
+.lage-text.sparar::before { border: 1.5px solid var(--dov); animation: andas 1.4s ease-in-out infinite; }
+.lage-text.fel { color: var(--osaker); }
+.lage-text.fel::before { background: var(--osaker); }
+.lage-text.fel button { text-decoration: underline; text-underline-offset: 0.18em; }
+@keyframes andas { 50% { opacity: 0.35; } }
+.jag {
+  width: 1.9rem; height: 1.9rem; border-radius: 50%; display: grid; place-items: center; flex: none;
+  font-weight: 600; font-size: 0.8125rem; color: oklch(0.20 0.015 155); background: var(--henric);
+}
+.jag.l { background: var(--liv); color: oklch(0.20 0.02 320); }
+.jag.d { background: transparent; color: var(--demi); border: 1.5px solid var(--demi); }
 
-/* The switch for Demi's posts: each person decides for themselves. */
-.brytare {
-  font: inherit; font-size: 0.82rem; color: var(--dov); background: none; border: 0; cursor: pointer;
-  display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.4rem 0; min-height: 2.2rem;
+/* --- tools: one row, in the background ------------------------------------------- */
+.verktyg {
+  position: sticky; top: 3.5rem; z-index: 4;
+  display: flex; align-items: center; gap: 0.35rem;
+  padding: 0.4rem 1.5rem 0.55rem; overflow-x: auto; scrollbar-width: none;
+  /* The sketch's row, made dense enough to read when text scrolls under it. */
+  background: linear-gradient(180deg, color-mix(in oklch, var(--natt-1) 94%, transparent) 70%, color-mix(in oklch, var(--natt-1) 70%, transparent));
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  font-size: 0.875rem; color: var(--dov);
 }
-.brytare .spar {
-  position: relative; width: 1.75rem; height: 1rem; border-radius: 999px;
-  border: 1px dashed var(--kant-stark); transition: background 120ms, border-color 120ms;
+.verktyg > * { flex: none; }
+.typval {
+  display: inline-flex; align-items: center; justify-content: space-between; gap: 0.5rem; min-width: 7.5rem;
+  padding: 0.4rem 0.85rem; border-radius: 999px; background: var(--yta-2); color: var(--blad);
 }
-.brytare .spar::after {
-  content: ''; position: absolute; top: 50%; left: 0.14rem; width: 0.62rem; height: 0.62rem; margin-top: -0.31rem;
-  border-radius: 50%; background: var(--svag); transition: transform 120ms, background 120ms;
-}
-.brytare[aria-checked='true'] .spar { border-color: var(--demi); background: rgba(157, 188, 193, 0.16); }
-.brytare[aria-checked='true'] .spar::after { transform: translateX(0.75rem); background: var(--demi); }
-.brytare:hover { color: var(--text); }
-@media (max-width: 34rem) {
-  .jag .du { display: none; }
-}
+.typval::after { content: ''; width: 0.4rem; height: 0.4rem; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg) translateY(-0.12rem); opacity: 0.6; }
+.verktyg button:not(.typval) { padding: 0.4rem 0.7rem; border-radius: 999px; }
+.verktyg button:not(.typval):hover { background: var(--yta); color: var(--blad); }
+.verktyg button.ikon { display: inline-grid; place-items: center; padding: 0.35rem 0.5rem; }
+.verktyg .skilje { width: 1px; height: 1.1rem; background: var(--linje); margin: 0 0.4rem; }
+svg { width: 1.15rem; height: 1.15rem; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.vem { margin-left: auto; display: flex; align-items: center; gap: 0.9rem; font-size: 0.8125rem; color: var(--svag); padding-left: 1rem; }
+.vem i { display: inline-block; width: 0.5rem; height: 0.5rem; border-radius: 50%; margin-right: 0.35rem; }
+.vem .h i { background: var(--henric); }
+.vem .l i { background: var(--liv); }
+.vem .d i { border: 1.5px solid var(--demi); }
 
-/* Banners: the sandbox, read-only, things that need attention. */
-.band { border: 1px solid var(--kant-stark); border-radius: 8px; background: var(--yta); padding: 0.75rem 1rem; margin: 1.2rem 0 0; font-size: 0.95rem; }
-.band.prov { border-color: var(--replika); color: var(--replika); }
-.band.varning { border-color: var(--osaker); }
-.band.varning strong { color: var(--osaker); font-weight: 600; }
-.band .knappar { margin-top: 0.6rem; }
-
-main { padding-bottom: 7rem; }
-.laddar { color: var(--dov); padding: 3rem 0; }
-
-h2 {
-  font-weight: 300; font-size: 1.3rem; letter-spacing: 0.32em; text-transform: uppercase;
-  margin: 2.6rem 0 0.3rem;
+/* the style menu: a small sheet of light under the button */
+.meny {
+  position: fixed; z-index: 30; min-width: 14rem; padding: 0.4rem;
+  display: flex; flex-direction: column;
+  border-radius: 0.3rem 1.1rem 1.1rem 1.1rem;
+  background: color-mix(in oklch, var(--natt-2) 94%, transparent);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  box-shadow: 0 1.5rem 3rem -1rem oklch(0.05 0.025 295 / 0.7);
 }
-.ep-titel { font-family: var(--serif); font-style: italic; color: var(--replika); font-size: clamp(1.6rem, 6vw, 2.2rem); line-height: 1.2; margin: 0 0 1.2rem; }
+.meny button {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 1.5rem;
+  padding: 0.5rem 0.75rem; border-radius: 0.7rem; font-size: 0.9375rem; color: var(--text); text-align: left;
+}
+.meny button:hover, .meny button:focus-visible { background: var(--yta-2); color: var(--blad); outline-offset: -2px; }
+.meny button.vald { color: var(--mint); }
+.meny button.vald span::before { content: ''; display: inline-block; width: 0.4rem; height: 0.4rem; border-radius: 50%; background: var(--mint); margin-right: 0.5rem; vertical-align: 0.1em; }
+.meny kbd { font-family: var(--sans); font-size: 0.75rem; color: var(--svag); }
+
+/* --- the sheet --------------------------------------------------------------------- */
+.blad {
+  position: relative; z-index: 1;
+  max-width: calc(var(--marg) + var(--spalt) + var(--sido) + 4rem);
+  margin: 0 auto; padding: 3.5rem 1.5rem 9rem;
+}
+/* HELD's glow: the tilted pane of light from the cover. The one loud thing. */
+.sken {
+  position: absolute; z-index: -1; pointer-events: none;
+  left: calc(var(--marg) + 4rem); top: 0.5rem; width: min(27rem, 74vw); height: 10.5rem;
+  background: oklch(0.800 0.095 200); opacity: 0.26; border-radius: 2.75rem;
+  transform: rotate(-17deg); filter: blur(56px);
+}
+.sken + .sken { left: calc(var(--marg) + 14rem); top: 4rem; width: min(15rem, 46vw); height: 6rem; opacity: 0.12; transform: rotate(-9deg); filter: blur(34px); background: var(--mint); }
+
+/* everything on the sheet that is not the editor lines up with the text */
+#inne > :is(.underflikar, .kalla, .notis, .lore-huvud, .laddar, .band, .falt, .omdomen, .katalog, .sidlista, p, .borttagna, .md, .smal) {
+  margin-left: var(--marg); max-width: var(--spalt);
+}
+.laddar { color: var(--svag); font-size: 0.9375rem; }
+.kalla { font-size: 0.875rem; color: var(--svag); margin-bottom: 2rem; }
+.underflikar { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-bottom: 1.25rem; }
+.underflikar a { text-decoration: none; color: var(--dov); font-size: 0.875rem; padding: 0.3rem 0.75rem; border-radius: 999px; }
+.underflikar a:hover { color: var(--blad); }
+.underflikar a[aria-current] { color: var(--blad); background: var(--yta); }
+.notis:empty { display: none; }
+.notis { margin-bottom: 1.5rem; }
+.sedan { font-size: 0.875rem; color: var(--dov); }
+.lank { color: var(--sken); text-decoration: underline; text-underline-offset: 0.18em; text-decoration-thickness: 1px; text-align: left; }
+.lank.fara { color: var(--ros); margin-left: 1rem; }
 .dov { color: var(--dov); }
-.liten { font-size: 0.9rem; }
+.liten { font-size: 0.8125rem; }
 
-/* Legend: the marks the lines carry. */
-.nyckel { display: flex; flex-wrap: wrap; gap: 0.4rem 1.1rem; margin: 0 0 1rem; color: var(--dov); font-size: 0.88rem; }
-.nyckel > span { display: inline-flex; align-items: center; gap: 0.4rem; }
+/* --- the editor ----------------------------------------------------------------------- */
+.ProseMirror {
+  position: relative; outline: none;
+  word-wrap: break-word; white-space: pre-wrap; white-space: break-spaces;
+  font-variant-ligatures: none; font-feature-settings: "liga" 0;
+}
+.ProseMirror-hideselection *::selection { background: transparent; }
+.ProseMirror-hideselection { caret-color: transparent; }
+.ProseMirror [contenteditable="false"] { white-space: normal; }
+.ProseMirror ::selection { background: color-mix(in oklch, var(--sken) 30%, transparent); }
+.ProseMirror .text { caret-color: var(--mint); outline: none; }
+.ProseMirror-selectednode hr { background: var(--mint); height: 2px; }
 
-details.om { border-top: 1px solid var(--kant); border-bottom: 1px solid var(--kant); padding: 0.7rem 0; margin: 0 0 1rem; color: var(--dov); font-size: 0.96rem; }
-details.om summary { cursor: pointer; color: var(--sken); }
-details.om[open] summary { margin-bottom: 0.8rem; }
-details.om strong { color: var(--sken); font-weight: 600; }
+/* a paragraph: margin | words | (comments) */
+.st {
+  position: relative;
+  display: grid; grid-template-columns: var(--marg) minmax(0, var(--spalt)) minmax(0, var(--sido));
+  column-gap: 0; align-items: start;
+}
+.st > .marg {
+  grid-column: 1;
+  display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem;
+  padding-right: 0.9rem; min-height: 1.95rem;
+}
+.st > :nth-child(2) { grid-column: 2; position: relative; }
+.st > .kom { position: absolute; top: 0; left: calc(var(--marg) + var(--spalt) + 2rem); width: var(--sido); z-index: 2; }
+.st > .kom:empty { display: none; }
+.st > .under-st { grid-column: 2; }
+.st > .under-st:empty { display: none; }
 
-.scenlista { display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 1.2rem 0 0; padding: 0; list-style: none; }
-.scenlista button {
-  width: 2.4rem; height: 2.4rem; border-radius: 50%;
-  border: 1px solid var(--kant-stark); background: none; color: var(--dov);
-  font: inherit; font-size: 0.92rem; cursor: pointer;
+/* who last wrote the paragraph: a dot, not a badge */
+.av { display: inline-block; width: 0.5rem; height: 0.5rem; border-radius: 50%; flex: none; opacity: 0.85; }
+.av.h { background: var(--henric); }
+.av.l { background: var(--liv); }
+.av.d { border: 1.5px solid var(--demi); opacity: 0.8; }
+.av.x { border: 1.5px solid var(--svag); opacity: 0.6; }
+button.av { position: relative; }
+button.av::after { content: ''; position: absolute; inset: -0.6rem; }
+.av.osparat { opacity: 0.45; }
+.av.nytt { box-shadow: 0 0 0 3px color-mix(in oklch, var(--sken) 28%, transparent); }
+/* listen: the ring before a recorded line */
+.ring {
+  display: inline-block; width: 1.3rem; height: 1.3rem; border-radius: 50%; flex: none;
+  border: 1.5px solid color-mix(in oklch, var(--sken) 55%, transparent); position: relative;
 }
-.scenlista button:hover { border-color: var(--kontakt); color: var(--kontakt); }
+.ring::after { content: ''; position: absolute; left: 0.43rem; top: 0.31rem; border-left: 0.4rem solid var(--sken); border-top: 0.26rem solid transparent; border-bottom: 0.26rem solid transparent; }
+.ring.ny { border-style: dotted; border-color: var(--svag); }
+.ring.ny::after { border-left-color: var(--svag); }
+.ring.spelar { border-color: var(--sken); background: var(--yta-2); }
+.ring.spelar::after { left: 50%; top: 50%; width: 0.42rem; height: 0.42rem; border: 0; background: var(--sken); transform: translate(-50%, -50%); border-radius: 1px; }
 
-/* --- Scenes ------------------------------------------------------------------- */
-section.scen { padding-top: 0.4rem; }
-h3.scen-rubrik {
-  display: flex; align-items: center; gap: 0.9rem;
-  font-weight: 300; font-size: 1.15rem; letter-spacing: 0.22em; text-transform: uppercase;
-  margin: 3.2rem 0 0.7rem;
+/* an empty paragraph says what goes there */
+.text { position: relative; }
+.st.tom .text::after {
+  content: attr(data-tom); position: absolute; top: 0; left: 0; right: 0; padding: inherit;
+  color: var(--svag); font-style: italic; opacity: 0.8; pointer-events: none; white-space: normal;
 }
-h3.scen-rubrik .nr {
-  flex: none; width: 2rem; height: 2rem; border-radius: 50%;
-  border: 1px solid var(--kontakt); color: var(--kontakt);
-  display: grid; place-items: center; font-size: 0.95rem; letter-spacing: 0;
-}
-.trigger, .not, .stycke-text { color: var(--dov); font-size: 0.92rem; margin: 0 0 1.1rem; }
-.trigger b { font-weight: 600; color: var(--sken); letter-spacing: 0.08em; text-transform: uppercase; font-size: 0.78rem; margin-right: 0.5rem; }
-.gren-rubrik { font-weight: 600; color: var(--kontakt); font-size: 0.95rem; margin: 1.6rem 0 0.6rem; }
 
-.manus { margin: 0 0 1.4rem; padding: 0.1rem 0 0.1rem 0.35rem; border-left: 2px solid var(--kant-stark); }
-.stycket { margin: 0 0 0.75rem; }
-.stycket:last-child { margin-bottom: 0; }
-.manus .gren { font-weight: 600; font-size: 0.86rem; color: var(--kontakt); margin: 1.2rem 0 0.3rem 3rem; }
-.manus .gren.gren2 { color: var(--sken); }
-.stycket:first-child .gren:first-child { margin-top: 0.2rem; }
-.manus .q-not { color: var(--dov); font-size: 0.9rem; margin: 0.2rem 0 0.3rem 3rem; }
+/* --- paragraph kinds --- */
+.st.replik .text, .st.variant .text, .st.stycke .text {
+  font-family: var(--serif); font-size: 1.1875rem; line-height: 1.68; color: var(--blad);
+  padding: 0.15rem 0 0.75rem;
+}
+.st.stycke .text { color: var(--text); font-size: 1.0625rem; }
+.st.stycke[data-form="kursiv"] .text { font-style: italic; color: var(--dov); font-size: 1rem; }
+.st.stycke:is([data-form="citat"], [data-form="citat-kursiv"]) .text { padding-left: 1.1rem; border-left: 1.5px solid var(--linje); color: var(--dov); }
+.st.stycke[data-form="citat-kursiv"] .text { font-style: italic; }
+.st.regi .text { font-family: var(--sans); font-style: italic; font-size: 0.9375rem; color: var(--dov); padding: 0 0 0.75rem; }
+.st.regi .text::before { content: '('; color: var(--svag); }
+.st.regi:not(.tom) .text::after { content: ')'; color: var(--svag); }
+.st.regi.tom .text::before { content: none; }
 
-/* A line: play | words | who, and its notes under it (beside it on a wide screen). */
-.rad {
-  display: grid;
-  grid-template-columns: 2.6rem minmax(0, 1fr) 1.6rem;
-  grid-template-areas: "spel text vem" ". sida sida";
-  column-gap: 0.4rem;
-  align-items: start;
-  border-radius: 6px;
-  padding: 0.12rem 0.2rem 0.12rem 0;
-}
-.rad.oppen { background: var(--yta); box-shadow: inset 2px 0 0 var(--kontakt); }
-.spel { grid-area: spel; display: flex; justify-content: center; align-items: flex-start; }
-.radtext {
-  grid-area: text; cursor: pointer;
-  font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--replika);
-  font-size: 1.15rem; line-height: 1.68; padding: 0.3rem 0;
-}
-.radtext:hover { color: #f5dcae; }
-.vem { grid-area: vem; display: flex; justify-content: flex-end; padding-top: 0.55rem; }
-.sida { grid-area: sida; min-width: 0; }
-.sida:empty { display: none; }
+/* marks in the words: the md is there, quietly */
+.regi { font-family: var(--sans); font-style: italic; font-size: 0.9em; color: var(--dov); }
+.annan { color: var(--text); }
+.mk { color: var(--svag); }
+.fet { font-weight: 600; }
+.st:is(.replik, .variant, .stycke) .fet { font-family: var(--sans); font-size: 0.9375rem; color: var(--blad); }
+.kursiv { font-style: italic; }
+.kod { font-family: var(--sans); font-size: 0.85em; background: var(--yta-2); border-radius: 0.35rem; padding: 0 0.25rem; }
 
-.regi { font-family: var(--sans); font-style: normal; font-size: 0.78em; color: var(--svag); }
-.annan { color: var(--sken); }
-.regi .annan { font-family: var(--serif); font-style: italic; font-size: 1.15em; }
-.var {
-  font-family: var(--sans); font-style: normal; font-size: 0.68em; color: var(--sken); white-space: nowrap;
-  border: 1px solid var(--kant-stark); border-radius: 3px; padding: 0.05em 0.4em; margin-right: 0.35em;
-  position: relative; top: -0.12em;
+/* the title, as on the cover: thin, wide, and doubled a little to the side */
+.st.rubrik .huvud { padding-bottom: 2.6rem; }
+.st.rubrik h1.text {
+  display: inline-block; min-width: 4rem; max-width: var(--spalt);
+  font-family: var(--sans); font-weight: 300; text-transform: uppercase;
+  font-size: clamp(1.25rem, 4.6vw, 1.85rem); line-height: 1.5; letter-spacing: 0.34em;
+  color: var(--blad);
 }
-.etikett { font-family: var(--sans); font-style: normal; font-size: 0.75em; font-weight: 600; color: var(--sken); margin-right: 0.4em; }
-.radinfo { display: block; font-family: var(--sans); font-style: normal; font-size: 0.78rem; line-height: 1.4; margin-top: 0.15rem; }
-.radinfo .ej { color: var(--svag); }
-.radinfo .utanfor { color: var(--osaker); }
-.radinfo .osparad { color: var(--replika); }
-.radinfo span + span::before { content: ' · '; color: var(--svag); }
+.st.rubrik h1.text::after {
+  content: attr(data-text); position: absolute; left: 0.62em; top: 0.3em; width: 100%;
+  color: var(--sken); opacity: 0.17; filter: blur(0.6px); pointer-events: none;
+}
+.st.rubrik.tom h1.text::after {
+  content: attr(data-tom); left: 0; top: 0; opacity: 0.8; filter: none; color: var(--svag);
+  text-transform: none; letter-spacing: 0; font-style: italic;
+}
+.st.rubrik .under { margin-top: 0.7rem; font-size: 0.9375rem; color: var(--dov); }
+.st.rubrik .under:empty { display: none; }
+.st.rubrik h2.text { font-family: var(--serif); font-weight: 500; font-size: 1.5rem; line-height: 1.3; color: var(--blad); padding: 2rem 0 0.7rem; }
+.st.rubrik :is(h3, h4, h5, h6).text { font-family: var(--serif); font-weight: 500; font-size: 1.2rem; line-height: 1.35; color: var(--blad); padding: 1.4rem 0 0.5rem; }
 
-/* The play button: a small ring, mint while it plays. */
-.spela {
-  width: 2.6rem; height: 2.6rem; padding: 0; border: 0; background: none; cursor: pointer;
-  display: grid; place-items: center; color: var(--sken);
-}
-.spela::before {
-  content: ''; width: 1.75rem; height: 1.75rem; border-radius: 50%;
-  border: 1px solid var(--kant-stark); grid-area: 1 / 1;
-}
-.spela::after {
-  content: ''; grid-area: 1 / 1; margin-left: 0.14rem;
-  border-style: solid; border-width: 0.36rem 0 0.36rem 0.58rem;
-  border-color: transparent transparent transparent currentColor;
-}
-.spela:hover::before { border-color: var(--sken); }
-.spela.spelar { color: var(--kontakt); }
-.spela.spelar::before { border-color: var(--kontakt); box-shadow: 0 0 10px rgba(72, 254, 200, 0.45); }
-.spela.spelar::after { margin-left: 0; width: 0.5rem; height: 0.62rem; border: 0; border-left: 0.17rem solid currentColor; border-right: 0.17rem solid currentColor; }
+/* scene */
+.st.scen { margin-top: 3.25rem; }
+.st.scen h2.text { font-family: var(--serif); font-weight: 500; font-size: 1.75rem; line-height: 1.25; color: var(--blad); padding-bottom: 0.9rem; }
+.st.scen .nr { color: var(--svag); font-weight: 400; }
 
-/* Who wrote it: an initial in a ring. */
-.marke {
-  display: inline-grid; place-items: center; flex: none;
-  width: 1.35rem; height: 1.35rem; border-radius: 50%;
-  border: 1px solid currentColor; font: 600 0.66rem/1 var(--sans); font-style: normal;
+/* Mechanic: how the scene is played. Light on the page, no frame. */
+.st.mekanik .ruta {
+  background: var(--yta); border-radius: 1.1rem 1.1rem 1.1rem 0.3rem;
+  padding: 0.85rem 1.1rem 0.95rem; margin: 0 0 1.35rem -1.1rem;
+  font-size: 0.9375rem; line-height: 1.6; color: var(--text);
 }
-.marke.demi { color: var(--demi); border-color: rgba(157, 188, 193, 0.5); }
-.marke.henric { color: var(--henric); }
-.marke.liv { color: var(--liv); }
-.marke.utanfor { color: var(--osaker); border-style: dashed; }
-.marke.okant { color: var(--svag); border-style: dotted; }
-
-/* --- The tools of an open line ------------------------------------------------ */
-.verktyg { padding: 0.35rem 0 0.7rem; font-size: 0.93rem; }
-.vemrad { color: var(--dov); margin: 0 0 0.6rem; }
-.knappar { display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 0; }
-.knapp {
-  font: inherit; font-size: 0.9rem; line-height: 1.2;
-  color: var(--text); background: rgba(13, 28, 43, 0.55);
-  border: 1px solid var(--kant-stark); border-radius: 999px;
-  padding: 0.55rem 0.95rem; min-height: 2.5rem; cursor: pointer; text-decoration: none;
-  display: inline-flex; align-items: center;
+.st.mekanik .text { font-family: var(--sans); }
+.bricka {
+  white-space: nowrap; cursor: pointer;
+  padding: 0.08rem 0.6rem 0.12rem 0.5rem; border-radius: 999px;
+  font-weight: 600; color: var(--blad);
+  background: color-mix(in oklch, var(--farg) 20%, transparent);
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
 }
-.knapp:hover { border-color: var(--sken); }
-.knapp.huvud { color: var(--kontakt); border-color: var(--kontakt); box-shadow: 0 0 12px rgba(72, 254, 200, 0.14); }
-.knapp.huvud:hover { box-shadow: 0 0 18px rgba(72, 254, 200, 0.3); }
-.knapp.fara { color: var(--osaker); border-color: var(--osaker); }
-.knapp.liten { min-height: 2.1rem; padding: 0.35rem 0.75rem; font-size: 0.85rem; }
-.knapp[disabled], body.upptagen .knapp { opacity: 0.55; cursor: progress; }
+.bricka::before { content: ''; display: inline-block; width: 0.45rem; height: 0.45rem; border-radius: 50%; background: var(--farg); margin-right: 0.4rem; vertical-align: 0.06em; }
+:is(.bricka, .omdome, .prick-omdome, .varsel).haller { --farg: var(--haller); }
+:is(.bricka, .omdome, .prick-omdome, .varsel).delvis { --farg: var(--delvis); }
+:is(.bricka, .omdome, .prick-omdome, .varsel).osaker { --farg: var(--osaker); }
+:is(.bricka, .omdome, .prick-omdome, .varsel).oprovad { --farg: var(--oprovad); }
+:is(.bricka, .omdome, .prick-omdome, .varsel).ide { --farg: var(--ide); }
+:is(.bricka, .omdome, .prick-omdome, .varsel).inget { --farg: var(--svag); }
+.ruta-extra { display: flex; flex-direction: column; align-items: flex-start; gap: 0.35rem; margin-top: 0.55rem; }
+.ruta-extra:empty { display: none; }
+.varsel { display: block; font-size: 0.8125rem; color: var(--osaker); }
+.varsel:is(.oprovad, .ide) { color: color-mix(in oklch, var(--oprovad) 70%, var(--blad)); }
+.vantar {
+  display: inline-block; font-size: 0.8125rem; font-weight: 600; color: var(--demi);
+  padding: 0.1rem 0.7rem 0.15rem; border-radius: 999px;
+  border: 1.5px dashed color-mix(in oklch, var(--demi) 55%, transparent);
+}
+.vantar.svarat { color: var(--dov); font-weight: 400; border-style: solid; border-color: var(--linje); }
 
-form.form { margin: 0.2rem 0 0; }
-.form-rubrik { font-weight: 600; color: var(--sken); margin: 0 0 0.5rem; font-size: 0.93rem; }
+/* Branch: what happens if. The lines under it hang on a soft thread. */
+.st.gren .grenrad { display: flex; align-items: baseline; gap: 0.55rem; padding: 0.55rem 0 0.5rem; }
+.st.gren .text { flex: 1; min-width: 0; font-family: var(--sans); font-weight: 600; font-size: 0.9375rem; color: var(--sken); }
+.st.gren .trad {
+  flex: none; width: 0.85rem; height: 0.6rem; color: var(--sken);
+  border-left: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; border-bottom-left-radius: 0.55rem;
+  opacity: 0.7; transform: translateY(-0.2rem);
+}
+.st.igren > :nth-child(2) { padding-left: 1.4rem; border-left: 1.5px solid var(--linje); margin-left: 0.3rem; }
+.st.gren.igren > :nth-child(2) { border-left-color: transparent; }
+
+/* Variant: the phone picks one. The label is chosen from a list. */
+.st.variant .rad { display: grid; grid-template-columns: 4.6rem minmax(0, 1fr); column-gap: 0.4rem; }
+.etikett {
+  justify-self: start; align-self: start; margin-top: 0.42rem; max-width: 100%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: var(--sans); font-size: 0.8125rem; font-weight: 600; color: var(--sken);
+  padding: 0.05rem 0.6rem 0.1rem; border-radius: 999px; background: var(--yta-2);
+}
+.etikett.saknas { color: var(--osaker); background: transparent; border: 1.5px dashed color-mix(in oklch, var(--osaker) 60%, transparent); }
+
+/* lists, tables and the line between parts */
+.st.punkt .punktrad { display: grid; grid-template-columns: 1.6rem minmax(0, 1fr); }
+.punktmarkor { color: var(--svag); font-family: var(--sans); font-size: 0.9375rem; padding-top: 0.2rem; }
+.st.punkt .text { font-family: var(--serif); font-size: 1.0625rem; line-height: 1.6; color: var(--text); padding-bottom: 0.35rem; }
+.st.tabell .text { font-family: var(--sans); font-size: 0.875rem; line-height: 1.5; padding: 0.15rem 0; }
+.tabell-skilje { color: var(--svag); opacity: 0.5; }
+.st.linje hr {
+  grid-column: 2; width: 100%; border: 0; height: 1px; margin: 2.5rem 0;
+  background: linear-gradient(90deg, transparent, var(--linje) 20%, var(--linje) 80%, transparent);
+}
+
+/* where the cursor stands, while someone is writing */
+.ProseMirror-focused .har > :nth-child(2)::before {
+  content: ''; position: absolute; inset: -0.2rem -0.9rem 0.45rem -0.9rem;
+  border-radius: 0.8rem; background: var(--yta); z-index: -1; pointer-events: none;
+}
+.ProseMirror-focused .har:is(.mekanik, .linje) > :nth-child(2)::before { content: none; }
+.ProseMirror-focused .har.mekanik .ruta { background: var(--yta-2); }
+.ProseMirror-focused .har.igren > :nth-child(2)::before { left: 0.5rem; }
+
+/* why a paragraph is not saved */
+.hallen { font-size: 0.8125rem; color: var(--osaker); margin: -0.45rem 0 0.9rem; }
+
+/* --- comments in the margin ---------------------------------------------------------- */
+.kom .kort {
+  display: flex; flex-direction: column; gap: 0.2rem;
+  font-size: 0.875rem; line-height: 1.5; color: var(--text);
+  padding: 0.7rem 0.9rem 0.75rem; border-radius: 0.3rem 1rem 1rem 1rem; background: var(--yta);
+  margin-bottom: 0.6rem;
+}
+.kom .kort b { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.5rem; font-weight: 600; color: var(--blad); font-size: 0.8125rem; }
+.kom .kort :is(.nar, .till) { font-weight: 400; color: var(--svag); }
+.vem-namn { display: inline-flex; align-items: center; gap: 0.35rem; }
+.vem-namn .ai { font-weight: 400; font-size: 0.75rem; color: var(--svag); }
+.kom .kort.ai { background: transparent; border: 1.5px dashed color-mix(in oklch, var(--demi) 55%, transparent); }
+.kort-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.galde { font-size: 0.8125rem; color: var(--svag); font-style: italic; }
+.kom .forslag { display: block; font-family: var(--serif); font-size: 1rem; color: var(--blad); margin: 0.1rem 0 0.3rem; overflow-wrap: anywhere; }
+.kom .svar { display: flex; flex-direction: column; gap: 0.15rem; margin: 0.35rem 0 0 0.2rem; padding-left: 0.7rem; border-left: 1.5px solid var(--linje); }
+.kom .val { display: flex; flex-wrap: wrap; gap: 0.35rem 1rem; font-size: 0.8125rem; margin-top: 0.2rem; }
+.kom .val button { color: var(--dov); }
+.kom .val button:first-child { color: var(--mint); font-weight: 600; }
+.kom .val button:hover { color: var(--blad); }
+.kom .kort.krock { background: color-mix(in oklch, var(--ros) 12%, transparent); }
+.kom .kort.krock b::before { content: ''; width: 0.45rem; height: 0.45rem; border-radius: 50%; background: var(--ros); align-self: center; }
+.kom .kort.krock .val button:first-child { color: var(--ros); }
+
+/* --- the panel: comments, history, the mechanic picker ------------------------------ */
+.panel {
+  position: fixed; z-index: 20; right: 1.25rem; top: 6.6rem;
+  width: min(23rem, 100vw - 2.5rem); max-height: calc(100vh - 8rem);
+  overflow: auto; overscroll-behavior: contain;
+  border-radius: 0.3rem 1.4rem 1.4rem 1.4rem;
+  background: color-mix(in oklch, var(--natt-2) 95%, transparent);
+  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+  box-shadow: 0 2rem 4rem -1.5rem oklch(0.04 0.03 295 / 0.8);
+  font-size: 0.9375rem;
+}
+.panel-topp {
+  position: sticky; top: 0; z-index: 1;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 0.95rem 1.1rem 0.6rem 1.25rem;
+  background: linear-gradient(180deg, color-mix(in oklch, var(--natt-2) 98%, transparent) 70%, transparent);
+}
+.panel-topp h2 { font-family: var(--serif); font-weight: 500; font-size: 1.25rem; line-height: 1.3; color: var(--blad); }
+.stang { flex: none; width: 2rem; height: 2rem; border-radius: 50%; display: grid; place-items: center; color: var(--dov); }
+.stang:hover { background: var(--yta-2); color: var(--blad); }
+.panel-inne { padding: 0.2rem 1.25rem 1.4rem; display: flex; flex-direction: column; gap: 0.9rem; }
+.om { font-size: 0.875rem; color: var(--dov); font-style: italic; }
+.hjalp { font-size: 0.8125rem; color: var(--svag); }
+.avsnitt { display: flex; flex-direction: column; gap: 0.6rem; }
+.avsnitt + .avsnitt { margin-top: 0.6rem; }
+.panel h3 { font-family: var(--sans); font-weight: 600; font-size: 0.8125rem; color: var(--dov); }
+.version {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 0.25rem;
+  padding: 0.6rem 0.75rem; border-radius: 0.3rem 0.9rem 0.9rem 0.9rem; background: var(--yta);
+}
+.version.nu { background: var(--yta-2); }
+.version.krockad { background: color-mix(in oklch, var(--ros) 10%, transparent); }
+.meta { font-size: 0.8125rem; color: var(--svag); }
+.meta .vem-namn { color: var(--text); }
+.text-version { font-family: var(--serif); font-size: 1rem; color: var(--blad); overflow-wrap: anywhere; }
+.handelser { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.6rem; }
+.handelser li { display: flex; flex-direction: column; gap: 0.15rem; }
+.handelser .lank { font-size: 0.875rem; text-decoration: none; color: var(--text); }
+.handelser .lank:hover { color: var(--blad); text-decoration: underline; }
+.handelser .utdrag { font-family: var(--serif); font-size: 0.9375rem; color: var(--dov); padding-left: 0.85rem; }
+
+/* forms */
+.form { display: flex; flex-direction: column; gap: 0.7rem; }
 .falt {
-  display: block; width: 100%;
-  font: inherit; font-size: 1rem; color: var(--text);
-  background: rgba(9, 20, 32, 0.75); border: 1px solid var(--kant-stark); border-radius: 6px;
-  padding: 0.6rem 0.7rem; margin: 0 0 0.6rem;
+  width: 100%; font: inherit; color: var(--blad);
+  background: var(--yta); border: 0; border-radius: 0.3rem 0.9rem 0.9rem 0.9rem;
+  padding: 0.65rem 0.85rem; box-shadow: inset 0 0 0 1px var(--linje);
 }
-.falt:focus { border-color: var(--kontakt); outline: none; box-shadow: 0 0 0 1px var(--kontakt); }
-textarea.falt { resize: vertical; min-height: 3.2rem; line-height: 1.55; }
-textarea.manusfalt { font-family: var(--serif); font-style: italic; font-size: 1.12rem; color: var(--replika); }
-textarea.manusfalt.regi { font-family: var(--sans); font-style: normal; font-size: 1rem; color: var(--dov); }
-input.titelfalt { font-family: var(--serif); font-style: italic; font-size: 1.25rem; color: var(--replika); }
-textarea.lorefalt { min-height: 16rem; }
-label.etikett-falt { display: block; color: var(--dov); font-size: 0.85rem; margin: 0 0 0.25rem; }
-.hjalp { color: var(--svag); font-size: 0.85rem; margin: -0.2rem 0 0.7rem; }
-.fel { color: var(--osaker); font-size: 0.9rem; margin: 0 0 0.6rem; }
+.falt::placeholder { color: var(--svag); }
+.falt:focus { outline: none; box-shadow: inset 0 0 0 1.5px var(--mint); }
+textarea.falt { font-family: var(--serif); font-size: 1.0625rem; line-height: 1.55; min-height: 5.5rem; resize: vertical; }
+.kryss { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: var(--dov); }
+.kryss input { accent-color: var(--demi); width: 1rem; height: 1rem; }
+.fel { font-size: 0.8125rem; color: var(--osaker); }
 .fel:empty { display: none; }
-.fel .knappar { margin-top: 0.5rem; }
-.utkast-not { color: var(--replika); font-size: 0.85rem; margin: 0 0 0.4rem; }
-
-.val { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0 0 0.6rem; }
-.val button {
-  font: inherit; font-size: 0.85rem; color: var(--dov); background: none;
-  border: 1px solid var(--kant); border-radius: 999px; padding: 0.35rem 0.75rem; min-height: 2.1rem; cursor: pointer;
+.knappar { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.knapp {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0.45rem 1rem; border-radius: 999px; background: var(--yta-2); color: var(--blad);
+  font-size: 0.875rem; text-decoration: none;
 }
-.val button[aria-pressed='true'] { color: var(--natt); background: var(--sken); border-color: var(--sken); }
+.knapp:hover { background: color-mix(in oklch, var(--sken) 18%, transparent); }
+.knapp.huvud { background: var(--mint); color: oklch(0.20 0.015 155); font-weight: 600; }
+.knapp.huvud:hover { background: color-mix(in oklch, var(--mint) 88%, white); }
+.knapp.liten { padding: 0.25rem 0.75rem; font-size: 0.8125rem; }
+.rad-form { flex-direction: row; align-items: center; }
+.rad-form .falt { flex: 1; }
 
-.bekrafta { border-left: 2px solid var(--osaker); padding: 0.1rem 0 0.1rem 0.8rem; margin: 0.3rem 0 0.2rem; }
-.bekrafta.lugn { border-left-color: var(--kontakt); }
-.bekrafta p { margin: 0 0 0.6rem; }
+/* a switch: on is mint */
+.brytare { display: flex; align-items: center; gap: 0.75rem; cursor: pointer; color: var(--text); font-size: 0.9375rem; }
+.brytare input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.brytare .spar { position: relative; flex: none; width: 2.4rem; height: 1.35rem; border-radius: 999px; background: var(--yta-2); transition: background 0.15s; }
+.brytare .spar::after { content: ''; position: absolute; left: 0.2rem; top: 0.2rem; width: 0.95rem; height: 0.95rem; border-radius: 50%; background: var(--dov); transition: transform 0.15s, background 0.15s; }
+.brytare input:checked + .spar { background: color-mix(in oklch, var(--mint) 35%, transparent); }
+.brytare input:checked + .spar::after { transform: translateX(1.05rem); background: var(--mint); }
+.brytare input:focus-visible + .spar { outline: 2px solid var(--mint); outline-offset: 3px; }
 
-details.tidigare { margin: 0 0 0.7rem; }
-details.tidigare summary { cursor: pointer; color: var(--sken); }
-details.tidigare ol { list-style: none; padding: 0; margin: 0.5rem 0 0; }
-details.tidigare li { border-top: 1px solid var(--kant); padding: 0.5rem 0; }
-.tidigare-text { font-family: var(--serif); font-style: italic; color: var(--replika); font-size: 1.05rem; margin: 0 0 0.25rem; }
-.meta { color: var(--svag); font-size: 0.82rem; }
+/* the mechanic picker and the label picker */
+.mek-lista { display: flex; flex-direction: column; gap: 1rem; }
+.mek-lista .grupp { display: flex; flex-direction: column; gap: 0.2rem; }
+.mek-lista .grupp h3 { margin-bottom: 0.2rem; }
+.mek-val { display: flex; flex-direction: column; gap: 0.1rem; text-align: left; padding: 0.5rem 0.65rem; border-radius: 0.3rem 0.9rem 0.9rem 0.9rem; }
+.mek-val:hover, .mek-val:focus-visible { background: var(--yta-2); }
+.mek-namn { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0.15rem 0.45rem; font-weight: 600; color: var(--blad); }
+.mek-namn .dov { font-weight: 400; font-size: 0.8125rem; }
+.mek-du { font-size: 0.8125rem; color: var(--dov); }
+.prick-omdome, .omdome i { display: inline-block; flex: none; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--farg); }
+.prick-omdome.inget, .omdome.inget i { background: transparent; border: 1.5px solid var(--farg); }
+.omdome { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.8125rem; color: color-mix(in oklch, var(--farg) 80%, var(--blad)); white-space: nowrap; }
+.etikett-grupp { display: flex; flex-direction: column; gap: 0.4rem; }
+.etiketter { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.etikett-val { font-size: 0.875rem; font-weight: 600; color: var(--sken); padding: 0.2rem 0.75rem 0.25rem; border-radius: 999px; background: var(--yta-2); }
+.etikett-val:hover { background: color-mix(in oklch, var(--sken) 20%, transparent); }
+.etikett-val.vald { background: var(--sken); color: var(--natt-1); }
+.mekanik-detaljer { display: flex; flex-direction: column; gap: 0.55rem; }
+.mekanik-detaljer strong { color: var(--blad); font-weight: 600; }
 
-/* --- Proposals and comments ------------------------------------------------------ */
-.kort {
-  border: 1px solid var(--kant); border-left-width: 2px; border-radius: 6px; background: rgba(13, 28, 43, 0.5);
-  padding: 0.6rem 0.8rem 0.7rem; margin: 0.35rem 0 0.5rem; font-size: 0.92rem;
+/* --- the mechanics, as a list ----------------------------------------------------------- */
+#inne > .falt { margin-bottom: 0.9rem; border-radius: 999px; padding-left: 1.1rem; }
+.omdomen { display: flex; flex-wrap: wrap; gap: 0.4rem 1.1rem; margin-bottom: 2.25rem; }
+.katalog { display: flex; flex-direction: column; gap: 2.5rem; }
+.katalog .grupp { display: flex; flex-direction: column; gap: 0.25rem; }
+.katalog .grupp > h2 { font-family: var(--serif); font-weight: 500; font-size: 1.45rem; line-height: 1.3; color: var(--blad); margin-bottom: 0.6rem; }
+.mekanik-post { border-radius: 0.3rem 1rem 1rem 1rem; }
+.mekanik-post[open] { background: var(--yta); }
+.mekanik-post summary {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 0.2rem 1rem;
+  list-style: none; cursor: pointer; padding: 0.65rem 0.9rem; border-radius: 0.3rem 1rem 1rem 1rem;
 }
-.kort.forslag { border-left-color: var(--replika); }
-.kort.kommentar { border-left-color: var(--sken); }
-.kort.klar { opacity: 0.72; }
-.kort.stangd { opacity: 0.8; }
-.kort-huvud .lage { margin-left: 0.45rem; color: var(--svag); }
-.kort-huvud { color: var(--dov); font-size: 0.82rem; margin: 0 0 0.35rem; }
-.kort-huvud .slag { letter-spacing: 0.16em; text-transform: uppercase; font-size: 0.72rem; font-weight: 600; margin-right: 0.1rem; }
-.forslag .slag { color: var(--replika); }
-.kommentar .slag { color: var(--sken); }
-.galler { margin-left: 0.4rem; border: 1px solid var(--kant-stark); border-radius: 999px; padding: 0 0.5rem; color: var(--sken); font-size: 0.76rem; }
-.kort-manus { font-family: var(--serif); font-style: italic; color: var(--replika); font-size: 1.08rem; line-height: 1.6; margin: 0 0 0.4rem; }
-.kort-text p { margin: 0 0 0.5rem; }
-.kort-text p:last-child { margin-bottom: 0.45rem; }
-.ja { color: var(--dov); font-size: 0.85rem; margin: 0 0 0.5rem; }
-.galde { color: var(--svag); font-size: 0.84rem; margin: 0 0 0.3rem; }
-.galde q { font-family: var(--serif); font-style: italic; color: var(--dov); }
-details.klara summary { cursor: pointer; color: var(--svag); font-size: 0.85rem; }
+.mekanik-post summary::-webkit-details-marker { display: none; }
+.mekanik-post summary:hover { background: var(--yta); }
+.mekanik-post summary .mek-namn { font-size: 1rem; }
+.mekanik-post summary .mek-du { grid-column: 1 / -1; font-size: 0.875rem; }
+.mekanik-post[open] summary .mek-du { display: none; }
+.mekanik-post > .mekanik-detaljer { padding: 0.2rem 0.9rem 1rem; font-size: 0.9375rem; }
+.mekanik-post .mek-rad { display: none; }
+.anvands h3 { font-family: var(--sans); font-weight: 600; font-size: 0.8125rem; color: var(--dov); margin: 0.4rem 0 0.3rem; }
+.anvands ul { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.2rem; }
 
-/* Demi is an AI and is never dressed as a person: a dashed edge, a cool
-   tint, and the letters AI after the name, wherever Demi writes. */
-.ai-markor {
-  display: inline-block; margin-left: 0.35rem; padding: 0 0.28rem; border: 1px dashed var(--demi); border-radius: 3px;
-  color: var(--demi); font-size: 0.66rem; font-weight: 600; letter-spacing: 0.06em; line-height: 1.35; vertical-align: 0.08em;
+/* --- the world: our pages ------------------------------------------------------------------ */
+.sidlista { list-style: none; margin: 1.5rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+.sidlista a { display: flex; flex-direction: column; gap: 0.15rem; padding: 0.75rem 0.9rem; border-radius: 0.3rem 1rem 1rem 1rem; text-decoration: none; color: var(--text); }
+.sidlista a:hover { background: var(--yta); }
+.sid-titel { font-family: var(--serif); font-size: 1.25rem; color: var(--blad); }
+.utdrag { font-family: var(--serif); color: var(--dov); }
+.borttagna { margin-top: 2rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.borttagna summary { cursor: pointer; color: var(--dov); font-size: 0.875rem; }
+.borttagna .version { margin-top: 0.5rem; }
+.lore-huvud { display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 2.25rem; }
+.lore-huvud > p:first-child { font-size: 0.875rem; }
+.sidtitel {
+  width: 100%; font-family: var(--serif); font-weight: 500; font-size: 2rem; line-height: 1.25; color: var(--blad);
+  background: transparent; border: 0; border-radius: 0.6rem; padding: 0;
 }
-.nyckel .ai-markor { margin: 0 0.35rem 0 0; }
-.av.ai { color: var(--demi); }
-.kort.fran-ai { border-left-style: dashed; border-left-color: var(--demi); background: rgba(157, 188, 193, 0.06); }
-.till-text { margin-left: 0.45rem; color: var(--sken); font-size: 0.78rem; }
+.sidtitel:focus { outline: none; background: var(--yta); box-shadow: 0 0 0 0.5rem var(--yta); }
+.md { font-family: var(--serif); font-size: 1.0625rem; line-height: 1.65; color: var(--text); }
+.md :is(h1, h2, h3, h4) { font-weight: 500; color: var(--blad); margin: 2rem 0 0.6rem; line-height: 1.3; }
+.md h1 { font-size: 1.75rem; }
+.md h2 { font-size: 1.45rem; }
+.md h3 { font-size: 1.2rem; }
+.md p, .md ul, .md ol, .md blockquote { margin: 0 0 0.9rem; }
+.md blockquote { padding-left: 1.1rem; border-left: 1.5px solid var(--linje); color: var(--dov); }
+.md code { font-family: var(--sans); font-size: 0.85em; background: var(--yta-2); border-radius: 0.35rem; padding: 0 0.25rem; }
+.md hr { border: 0; height: 1px; background: var(--linje); margin: 2rem 0; }
+.md table { border-collapse: collapse; font-family: var(--sans); font-size: 0.875rem; margin: 0 0 1rem; }
+.md :is(th, td) { padding: 0.35rem 0.75rem 0.35rem 0; text-align: left; vertical-align: top; }
+.smal { display: flex; flex-direction: column; gap: 1rem; }
+.smal h2 { font-family: var(--serif); font-weight: 500; font-size: 1.75rem; color: var(--blad); }
 
-/* Replies hang under the post that started the thread. */
-.trad { margin: 0.55rem 0 0; padding-left: 0.8rem; border-left: 1px solid var(--kant); }
-.trad > .knappar { margin: 0.2rem 0 0; }
-.trad.utan-svar { border-left: 0; padding-left: 0; margin-top: 0.35rem; }
-.svar { padding: 0.15rem 0 0.35rem; }
-.svar + .svar { border-top: 1px solid var(--kant); padding-top: 0.45rem; }
-.svar .kort-huvud { margin-bottom: 0.2rem; }
-.svar .knappar { margin-top: 0.1rem; }
-.svar.fran-ai {
-  margin-left: calc(-0.8rem - 1px); padding-left: 0.8rem; border-left: 1px dashed var(--demi);
-  background: linear-gradient(90deg, rgba(157, 188, 193, 0.07), transparent 70%);
-}
-.vantar { color: var(--demi); font-size: 0.82rem; margin: 0.25rem 0 0.35rem; }
-.vantar::before {
-  content: ''; display: inline-block; width: 0.55rem; height: 0.55rem; margin-right: 0.45rem; vertical-align: 0.02em;
-  border: 1px dashed var(--demi); border-radius: 50%;
-}
-.knapp.tyst { color: var(--svag); border-color: var(--kant); background: none; font-size: 0.82rem; }
-.knapp.tyst:hover { color: var(--text); border-color: var(--sken); }
-.val.till { margin-bottom: 0.3rem; }
-.val .till-knapp[aria-pressed='true'] { color: var(--natt); background: var(--demi); border-color: var(--demi); }
-.lore-sida.fran-ai { border-left: 1px dashed var(--demi); padding-left: 0.9rem; }
-.sidlista li.fran-ai a { border-left-style: dashed; border-left-color: var(--demi); }
-
-.scenfot { margin: 0.2rem 0 0; }
-.scenfot h4 { font-weight: 600; font-size: 0.85rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--dov); margin: 1.2rem 0 0.4rem; }
-.scenfot .knappar { margin-top: 0.4rem; }
-/* The scene's own tools stay in the background until they are needed. */
-.scenverktyg { align-items: center; }
-.scenverktyg .knapp { color: var(--svag); border-color: var(--kant); background: none; font-size: 0.82rem; }
-.scenverktyg .knapp:hover { color: var(--text); border-color: var(--sken); }
-.scenfot .verktyg { padding-top: 0.2rem; }
-.struken .tidigare-text { text-decoration: line-through; text-decoration-color: rgba(240, 169, 180, 0.6); }
-
-.bilagor { margin-top: 3.5rem; }
-
-/* Text kept from a form that could not be saved. */
-.osparat .kort { border-left-color: var(--replika); }
-.osparat textarea { margin-top: 0.3rem; }
-
-/* --- Lore ------------------------------------------------------------------------- */
-.underflikar { display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 0.8rem 0 1.6rem; }
-.underflikar a { color: var(--dov); text-decoration: none; border: 1px solid var(--kant); border-radius: 999px; padding: 0.4rem 0.9rem; font-size: 0.9rem; }
-.underflikar a[aria-current='page'] { color: var(--natt); background: var(--sken); border-color: var(--sken); }
-.kalla { color: var(--svag); font-size: 0.85rem; margin: 0 0 1.4rem; }
-article.md h3, article.md h4, article.md h5, article.md h6 { font-weight: 600; color: var(--sken); margin: 2rem 0 0.6rem; line-height: 1.35; }
-article.md h3 { font-size: 1.2rem; }
-article.md h4 { font-size: 1.05rem; }
-article.md h5, article.md h6 { font-size: 0.98rem; }
-article.md strong { color: var(--sken); font-weight: 600; }
-article.md em { color: var(--replika); }
-article.md ul, article.md ol { padding-left: 1.2rem; }
-article.md li { margin-bottom: 0.4rem; }
-article.md blockquote { margin: 0 0 1rem; padding-left: 1rem; border-left: 2px solid var(--kant-stark); color: var(--dov); }
-article.md hr { border: 0; border-top: 1px solid var(--kant); margin: 2rem 0; }
-article.md code { font-size: 0.88em; color: var(--sken); background: var(--yta); padding: 0.05em 0.3em; border-radius: 3px; }
-.tabell { overflow-x: auto; margin: 0 0 1.2rem; }
-table { border-collapse: collapse; width: 100%; min-width: 28rem; font-size: 0.92rem; }
-th { text-align: left; font-weight: 600; color: var(--dov); border-bottom: 1px solid var(--kant-stark); padding: 0.45rem 0.9rem 0.45rem 0; }
-td { vertical-align: top; border-bottom: 1px solid var(--kant); padding: 0.55rem 0.9rem 0.55rem 0; }
-
-.sidlista { list-style: none; padding: 0; margin: 0 0 1.5rem; display: grid; gap: 0.7rem; }
-.sidlista a {
-  display: block; text-decoration: none; color: var(--text);
-  border: 1px solid var(--kant-stark); border-radius: 8px; background: var(--yta);
-  padding: 0.85rem 1.05rem;
-}
-.sidlista a:hover { border-color: var(--sken); }
-.sidlista .titel { display: block; font-family: var(--serif); font-style: italic; color: var(--replika); font-size: 1.25rem; line-height: 1.3; }
-.sidlista .meta { display: block; margin-top: 0.15rem; }
-.sidlista .utdrag { display: block; color: var(--dov); font-size: 0.92rem; margin-top: 0.3rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sida-titel { font-family: var(--serif); font-style: italic; color: var(--replika); font-size: clamp(1.6rem, 6vw, 2.1rem); line-height: 1.2; margin: 0 0 0.3rem; font-weight: 400; }
-.sida-text { margin: 1.3rem 0 1.5rem; }
-.sida-text p { white-space: pre-wrap; }
-details.versioner { border-top: 1px solid var(--kant); padding-top: 0.8rem; margin-top: 2rem; color: var(--dov); }
-details.versioner summary { cursor: pointer; color: var(--sken); }
-details.versioner .version { border-top: 1px solid var(--kant); padding: 0.8rem 0; }
-details.versioner .version:first-of-type { border-top: 0; }
-
-/* --- Status ---------------------------------------------------------------------- */
+/* --- the status line ------------------------------------------------------------------------ */
 .status {
-  position: fixed; left: 50%; bottom: max(1rem, env(safe-area-inset-bottom)); transform: translateX(-50%);
-  z-index: 20; max-width: min(34rem, calc(100vw - 2rem));
-  background: rgba(13, 28, 43, 0.96); border: 1px solid var(--kant-stark); border-radius: 12px;
-  padding: 0.6rem 0.9rem; font-size: 0.92rem; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+  position: fixed; z-index: 40; left: 50%; transform: translateX(-50%);
+  bottom: calc(1.25rem + var(--tangentbord));
+  width: max-content; max-width: min(34rem, 100vw - 2rem);
   display: flex; align-items: center; gap: 0.8rem;
+  padding: 0.6rem 0.6rem 0.6rem 1.1rem; border-radius: 1.2rem;
+  font-size: 0.875rem; color: var(--blad);
+  background: color-mix(in oklch, var(--natt-2) 94%, transparent);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  box-shadow: 0 1.5rem 3rem -1rem oklch(0.05 0.025 295 / 0.7);
 }
-.status.ok { border-color: var(--kontakt); }
-.status.fel { border-color: var(--osaker); }
-.status button { font: inherit; font-size: 0.85rem; color: var(--dov); background: none; border: 0; cursor: pointer; padding: 0.3rem; }
+.status > span:first-child { flex: 1; }
+.status:is(.ok, .fel) > span:first-child::before { content: ''; display: inline-block; width: 0.45rem; height: 0.45rem; border-radius: 50%; margin-right: 0.55rem; vertical-align: 0.08em; }
+.status.ok > span:first-child::before { background: var(--mint); }
+.status.fel > span:first-child::before { background: var(--osaker); }
 
-footer { color: var(--svag); font-size: 0.85rem; border-top: 1px solid var(--kant); padding: 1.2rem 0 2rem; }
-
-/* --- Wide screens: the notes and tools move into the margin ------------------------ */
-@media (min-width: 70rem) {
-  .inne.bred { max-width: 74rem; }
-  .bred .smal, .bred h2, .bred .ep-titel, .bred .nyckel, .bred details.om, .bred .scenlista,
-  .bred h3.scen-rubrik, .bred .trigger, .bred .not, .bred .stycke-text, .bred .gren-rubrik, .bred .band, .bred .bilagor { max-width: 44rem; }
-  .bred .manus { max-width: none; }
-  .rad {
-    grid-template-columns: 2.6rem minmax(0, 37rem) 1.6rem minmax(0, 1fr);
-    grid-template-areas: "spel text vem sida";
-    column-gap: 0.5rem;
-  }
-  .rad .sida { padding-left: 1.4rem; margin-left: 0.6rem; border-left: 1px solid var(--kant); }
-  .rad .sida .kort:first-child { margin-top: 0.2rem; }
-  .rad.oppen { background: none; box-shadow: none; }
-  .rad.oppen .radtext { background: var(--yta); box-shadow: -0.5rem 0 0 var(--yta), inset 0 0 0 0 transparent; border-radius: 4px; }
-  .rad.oppen .sida { border-left-color: var(--kontakt); }
-  .scenfot { max-width: 44rem; }
-}
+.fot { position: relative; z-index: 1; display: flex; align-items: center; gap: 0.8rem; justify-content: center; padding: 0 1rem 3rem; font-size: 0.8125rem; color: var(--svag); }
+.fot img { height: 1.5rem; width: auto; opacity: 0.85; }
 
 @media (prefers-reduced-motion: reduce) {
-  * { scroll-behavior: auto !important; }
+  .lage-text.sparar::before { animation: none; }
   .brytare .spar, .brytare .spar::after { transition: none; }
+}
+
+/* --- narrower: comments go under their paragraph ----------------------------------------- */
+@media (max-width: 62rem) {
+  :root { --marg: 2.1rem; }
+  .st { grid-template-columns: var(--marg) minmax(0, 1fr); }
+  .st > .kom { position: static; width: auto; grid-column: 2; margin: -0.2rem 0 0.9rem; transform: none !important; }
+  .blad { padding: 2.25rem 1rem 8rem 0.35rem; }
+  .st > .marg { padding-right: 0.55rem; flex-direction: column-reverse; gap: 0.35rem; padding-top: 0.5rem; }
+  .vem { display: none; }
+}
+
+/* --- phone: the tools sit above the keyboard, the panel rises from below ----------------- */
+@media (max-width: 40rem) {
+  .topp { padding: 0.65rem 0.9rem; gap: 0.75rem; flex-wrap: wrap; row-gap: 0.4rem; }
+  .marke span { display: none; }
+  .flikar { order: 3; width: 100%; margin: 0 -0.3rem; }
+  .verktyg {
+    position: fixed; top: auto; bottom: var(--tangentbord); left: 0; right: 0; z-index: 15;
+    padding: 0.55rem 0.8rem calc(0.55rem + env(safe-area-inset-bottom));
+    background: color-mix(in oklch, var(--natt-1) 92%, transparent);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  }
+  body.med-verktyg .blad { padding-bottom: 11rem; }
+  .st:is(.replik, .variant) .text { font-size: 1.125rem; line-height: 1.62; }
+  .st.mekanik .ruta { margin-left: -0.6rem; }
+  .st.variant .rad { grid-template-columns: minmax(0, 1fr); }
+  .etikett { margin: 0 0 0.2rem; }
+  .sken { left: 2rem; }
+  /* The glow reaches past the right edge; the page must never pan sideways. */
+  .blad { overflow-x: clip; }
+  .st.rubrik .huvud { padding-bottom: 2rem; }
+  .ProseMirror-focused .har > :nth-child(2)::before { left: -0.5rem; right: -0.5rem; }
+  .panel {
+    left: 0; right: 0; top: auto; bottom: var(--tangentbord); width: auto;
+    max-height: min(74vh, 100vh - var(--tangentbord) - 3rem);
+    border-radius: 1.4rem 1.4rem 0 0;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .panel-topp { padding-top: 1.25rem; }
+  .panel-topp::before {
+    content: ''; position: absolute; top: 0.5rem; left: 50%; transform: translateX(-50%);
+    width: 2.25rem; height: 0.25rem; border-radius: 999px; background: var(--linje);
+  }
+  .status { bottom: calc(4.4rem + var(--tangentbord) + env(safe-area-inset-bottom)); }
+  .sidtitel { font-size: 1.6rem; }
+  #inne > :is(.underflikar, .kalla, .notis, .lore-huvud, .laddar, .band, .falt, .omdomen, .katalog, .sidlista, p, .borttagna, .md, .smal) {
+    margin-left: calc(var(--marg) - 0.6rem);
+  }
 }
