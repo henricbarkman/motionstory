@@ -619,7 +619,7 @@ const PROV_PROFILES = {
 // question from the log alone.
 const PROV_SAYS = {
   frys: [/stopp läst [\d,]+ s efter ordet \(steg\): du stannade .*telefonen märkte det [\d,]+ s efter sista steget/, /frys 2: /],
-  ja: [/ja-q1: ja läst [\d,]+ s efter ordet \(steg\): du stannade/, /ja\/ja\/nej \(rätt: ja\/ja\/nej\)/],
+  ja: [/ja-q1: ja efter [\d,]+ s, stoppet läst [\d,]+ s efter ordet \(steg\): du stannade/,/ja\/ja\/nej \(rätt: ja\/ja\/nej\)/],
   kontakt: [/stopp 1: stod [\d,]+ s \(still läst [\d,]+ s efter sista steget\), dov under 0,5 efter [\d,]+ s, under 0,2 efter/, /stopp 2: .*över 0,8 efter [\d,]+ s/],
   knack: [/knack gående 3: hört \(\d+ utslag/, /gående 3 av 3 hörda .*upp ur fickan 0 dubbelknack/],
   riktning: [/vägval: (tät|gles) gps \(\d+ positioner på 20 s/, /läst [\d,]+ s efter frågan, [\d,]+ s efter svängen i spåret/, /[\d,]+ s efter vändpunkten i spåret/],

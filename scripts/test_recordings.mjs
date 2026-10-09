@@ -221,5 +221,27 @@ function replay(file, { buzzes = [], pattern = knockPattern } = {}) {
   check(doubles.filter(d => d > 10 && d < 100).length === 2, `nothing else while he stood is a double (${fmt(doubles.filter(d => d > 10 && d < 100))})`);
 }
 
+// Knacket gående, 2026-10-09, version 26 in Chrome: walked the whole time,
+// a gentle gait (71-104 steps a minute, heel strikes nine in ten under 6).
+// Asked three times for two knocks; the phone heard the second only, and he
+// said he had to knock "ganska hårt". All three are plain in the sensor,
+// each pair 0.32-0.33 s apart: 12.3 / 12.6 at 56.3, 35.4 / 23.2 at 78.0,
+// 21.9 / 13.7 at 86.1. At 94.2, 12.1 / 13.3 0.30 s apart, most likely
+// knocked again after the third went unheard: the same rhythm, and twice
+// anything his feet struck around it. Then the phone up out of the pocket
+// and back, 1:42-1:57, which must be no double.
+{
+  const { doubles } = replay('knackgang-2026-10-09.json');
+  const fmt = xs => xs.map(x => x.toFixed(2)).join(', ') || 'none';
+  const within = (a, b) => doubles.some(d => d >= a && d <= b);
+  check(within(56.2, 56.9), `the soft double, 12.3 / 12.6, is heard (${fmt(doubles)})`);
+  check(within(77.9, 78.5), 'the hard one, as version 26 heard it');
+  check(within(86.0, 86.7), 'the third, 21.9 / 13.7');
+  check(!doubles.some(d => d >= 102 && d <= 129), 'the phone taken out and put back is no double');
+  const asked = [[56.2, 56.9], [77.9, 78.5], [86.0, 86.7], [94.1, 94.8]];
+  const stray = doubles.filter(d => d > 10 && !asked.some(([a, b]) => d >= a && d <= b));
+  check(stray.length === 0, `and nothing else from the start of the station is a double (${fmt(stray)})`);
+}
+
 if (failures) { console.log(`\n${failures} failed`); process.exit(1); }
 console.log('\nall recordings ok');

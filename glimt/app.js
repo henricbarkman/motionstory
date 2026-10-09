@@ -19,7 +19,7 @@ import { Memory, drawWorld, KEY_NAMES } from './memory.js';
 
 // The version the start screen shows, the same number as the service
 // worker's cache. Bump both together.
-const APP_VERSION = 26;
+const APP_VERSION = 27;
 
 const params = new URLSearchParams(location.search);
 const SIM = params.has('sim');
@@ -631,9 +631,11 @@ function logKnocks(s) {
   if (doublesLogged > 41) return;
   if (doublesLogged === 41) { log('knack: fler än 40 dubbelknack, slutar skriva ut dem'); return; }
   // A group is at most three knocks under a second apart, ending at d.
-  const peaks = walk.knocks.spikes.filter(x => x.knock && x.t > d - 2 && x.t <= d).map(x => dec(x.peak));
+  const group = walk.knocks.spikes.filter(x => x.knock && x.t > d - 2 && x.t <= d);
+  const peaks = group.map(x => dec(x.peak));
   const feet = s.paceSource === 'steps' ? `${BAND_WORDS[s.band]}, ${Math.round(s.cadence)} steg/min` : BAND_WORDS[s.band];
-  log(`knack: dubbelknack hörd (styrka ${peaks.join(' / ')}; ${feet})`);
+  const bar = group.length && group[0].walking ? `, gränsen ${dec(group[0].bar)}` : '';
+  log(`knack: dubbelknack hörd (styrka ${peaks.join(' / ')}${bar}; ${feet})`);
 }
 
 // Half a minute of the knock detector's view in the lab: how many sharp
@@ -645,7 +647,13 @@ function logSpikes(s) {
   if (!peaks.length) { log(`utslag: inga på ${GPS_LOG_EVERY} s, ${BAND_WORDS[s.band]}`); return; }
   const q = p => peaks[Math.min(peaks.length - 1, Math.floor(p * peaks.length))];
   const over = walk.knocks.spikes.filter(x => x.t > s.t - GPS_LOG_EVERY && x.knock).length;
-  log(`utslag: ${peaks.length} på ${GPS_LOG_EVERY} s, median ${dec(q(0.5))}, 9 av 10 under ${dec(q(0.9))}, högst ${dec(peaks[peaks.length - 1])}, ${over} över knackgränsen, ${BAND_WORDS[s.band]}`);
+  // Walking, the bar follows the gait (2026-10-09): say where it stood.
+  let bar = '';
+  if (walk.knocks.walking(s.t)) {
+    const b = walk.knocks.walkingBars(s.t);
+    bar = b.level === null ? ` (gående ${dec(b.jump)}, gången inte läst än)` : ` (gående ${dec(b.jump)}, gången ${dec(b.level)})`;
+  }
+  log(`utslag: ${peaks.length} på ${GPS_LOG_EVERY} s, median ${dec(q(0.5))}, 9 av 10 under ${dec(q(0.9))}, högst ${dec(peaks[peaks.length - 1])}, ${over} över knackgränsen${bar}, ${BAND_WORDS[s.band]}`);
 }
 
 // One line per half minute: how often the phone reported, how well, and what

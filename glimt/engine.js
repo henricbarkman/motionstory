@@ -547,11 +547,48 @@ export function buzzReading(samples, pattern, t0) {
 // Walking or not is judged at the group's first knock, and the sway trails
 // a second: a double knocked right after stopping, its first knock 15-25,
 // is held to this bar and can be lost (Sway's first limit, a little wider).
+//
+// The walking bars follow the gait (2026-10-09). 15 and 25 were set on
+// pockets whose heel strikes hit hard, and in a gentle walk they ask for
+// knocks harder than a walker gives: Knacket gående heard one double of
+// three that day, though all three stood out in the sensor. His heel strikes
+// then were about a tenth of his first walk's bar, and the double nobody
+// heard was 12.3 and 12.6. Labb 2's brisk walks strike at 12-20 every few
+// steps, so a lower fixed bar would hear doubles in them. So the gait sets
+// the bars: its level is the median of the biggest curvature per half
+// second over the last GAIT_WINDOW seconds of walking (quiet half seconds
+// count, a gentle gait leaves many), and a knock must clear GAIT_JUMP
+// levels, a double's hard knock GAIT_TOP, never less than the soft floors
+// and never more than the fixed bars. The level rises at once and falls
+// slowly: the last GAIT_RECENT half seconds count on their own. Without
+// that, the first hard strides after ten slow seconds in labb 2 (6/10,
+// 1:54, 20.8 and 11.5 0.30 s apart) met a bar still lowered and made a
+// double nobody knocked.
+//
+// Under a lowered bar a heel strike's bounce clears it too, 0.12-0.14 s
+// after the strike in three recordings (labb 2 turning round, 16.6 and 15.9;
+// 12.1 and 12.9; 10.7 and 14.3). So there a spike within KNOCK_GAP_SOFT of a
+// knock is the same blow. His knocks come 0.23-0.33 s apart. At the fixed
+// bars nothing changes from version 26.
+//
+// Set against seven recorded walks: every double he knocked heard, and none
+// that nobody knocked. Each number can move a good way either way before
+// that breaks, except GAIT_JUMP upwards: 3.5 still holds, at 4 the walking
+// double of 28 September is lost and at 5 his soft one of 9 October.
 const KNOCK_JUMP = 3.0;      // m/s² above the mean of the two neighbours
 const KNOCK_JUMP_WALKING = 15;
 const KNOCK_TOP_WALKING = 25;
+const KNOCK_JUMP_SOFT = 8;   // the lowest the walking bars go
+const KNOCK_TOP_SOFT = 10;
+const GAIT_JUMP = 3;         // gait levels a walking knock must clear
+const GAIT_TOP = 4.5;        // and one knock of a walking double
+const GAIT_BIN = 0.5;        // s
+const GAIT_WINDOW = 8;       // s of walking half seconds the level is read from
+const GAIT_MIN_BINS = 10;    // fewer than this: the fixed bars
+const GAIT_RECENT = 5;       // half seconds; a harder gait raises the bars at once
 const KNOCK_SEEN = 1.5;      // smaller spikes are logged, not counted
 const KNOCK_GAP = 0.12;      // s; spikes closer than this are the same knock
+const KNOCK_GAP_SOFT = 0.18; // the same, walking under lowered bars
 const KNOCK_PAIR = 0.8;      // s; knocks closer than this are one group
 const KNOCK_PAIR_WALKING = 0.4;
 const KNOCK_ALONE = 1.0;     // s of quiet before a group for it to count
@@ -571,6 +608,7 @@ export class Knocks {
     this.mutedUntil = -Infinity;
     this.count = 0;
     this.history = [];         // every double-knock time this walk (capped)
+    this.bins = [];            // {start, max, walking}: the gait, last forty seconds
   }
 
   // The phone's own vibration shakes the sensor; nothing counts meanwhile.
@@ -583,20 +621,54 @@ export class Knocks {
     if (this.cur && t - this.cur.t > 1) { this.prev = null; this.cur = next; return; }
     if (this.prev && this.cur) {
       const peak = this.cur.m - (this.prev.m + next.m) / 2;
+      if (this.cur.t >= this.mutedUntil) this._gait(this.cur.t, peak);
       if (peak > KNOCK_SEEN) this._spike(this.cur.t, peak);
     }
     this.prev = this.cur;
     this.cur = next;
   }
 
+  // Every sample's curvature into its half second, the motor's excepted.
+  _gait(t, peak) {
+    const start = Math.floor(t / GAIT_BIN) * GAIT_BIN;
+    let bin = this.bins[this.bins.length - 1];
+    if (!bin || bin.start !== start) {
+      bin = { start, max: 0, walking: this.walking(t) };
+      this.bins.push(bin);
+      while (this.bins[0].start < t - 40) this.bins.shift();
+    }
+    bin.max = Math.max(bin.max, peak);
+  }
+
+  // How hard the gait strikes before t: the median of the walking half
+  // seconds over GAIT_WINDOW, or of the last GAIT_RECENT if that is higher.
+  // Null with too little walking to tell.
+  gaitLevel(t) {
+    const done = this.bins.filter(b => b.walking && b.start + GAIT_BIN <= t);
+    const window = done.filter(b => b.start >= t - GAIT_WINDOW - GAIT_BIN);
+    if (window.length < GAIT_MIN_BINS) return null;
+    const median = bins => { const xs = bins.map(b => b.max).sort((a, b) => a - b); return xs[Math.floor((xs.length - 1) / 2)]; };
+    return Math.max(median(window), median(done.slice(-GAIT_RECENT)));
+  }
+
+  // The walking bars at t: {jump, top, soft}, soft when the gait lowered them.
+  walkingBars(t) {
+    const level = this.gaitLevel(t);
+    if (level === null) return { jump: KNOCK_JUMP_WALKING, top: KNOCK_TOP_WALKING, soft: false, level };
+    const jump = Math.min(KNOCK_JUMP_WALKING, Math.max(KNOCK_JUMP_SOFT, GAIT_JUMP * level));
+    const top = Math.min(KNOCK_TOP_WALKING, Math.max(KNOCK_TOP_SOFT, GAIT_TOP * level));
+    return { jump, top, soft: jump < KNOCK_JUMP_WALKING, level };
+  }
+
   _spike(t, peak) {
     const walking = this.walking(t);
-    const knock = peak > (walking ? KNOCK_JUMP_WALKING : KNOCK_JUMP) && t >= this.mutedUntil;
-    this.spikes.push({ t, peak, knock, walking });
+    const bars = walking ? this.walkingBars(t) : null;
+    const knock = peak > (walking ? bars.jump : KNOCK_JUMP) && t >= this.mutedUntil;
+    this.spikes.push({ t, peak, knock, walking, bar: bars ? bars.jump : KNOCK_JUMP });
     while (this.spikes.length && this.spikes[0].t < t - 60) this.spikes.shift();
     if (!knock) return;
     const prevKnock = this.times[this.times.length - 1];
-    if (prevKnock !== undefined && t - prevKnock < KNOCK_GAP) {
+    if (prevKnock !== undefined && t - prevKnock < (bars?.soft ? KNOCK_GAP_SOFT : KNOCK_GAP)) {
       // The same knock a sample or two on; its height is still the knock's.
       if (this.group) this.group.top = Math.max(this.group.top, peak);
       return;
@@ -613,6 +685,7 @@ export class Knocks {
       this.group = {
         alone: prevKnock === undefined || t - prevKnock > KNOCK_ALONE, n: 1, last: t,
         walking, top: peak, pair: walking ? KNOCK_PAIR_WALKING : KNOCK_PAIR,
+        hard: walking ? bars.top : 0,
       };
     }
   }
@@ -624,7 +697,7 @@ export class Knocks {
     if (!g || t - g.last <= g.pair) return;
     this.group = null;
     if (!g.alone || g.n < 2 || g.n > KNOCK_MOST) return;
-    if (g.walking && g.top < KNOCK_TOP_WALKING) return;
+    if (g.walking && g.top < g.hard) return;
     this.doubles.push(g.last);
     while (this.doubles.length && this.doubles[0] < t - 60) this.doubles.shift();
     if (this.history.length < 2000) this.history.push(g.last);

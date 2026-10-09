@@ -322,8 +322,10 @@ function spikeNote(ctx, from, to) {
   if (ctx.sensorShare(from, to) < 0.5) return 'sensorn tyst';
   const sp = ctx.spikesBetween(from, to);
   if (!sp.length) return 'inga utslag';
-  const max = Math.max(...sp.map(x => x.peak));
-  return `${sp.length} utslag, högst ${max.toFixed(1).replace('.', ',')}`;
+  const top = sp.reduce((a, x) => x.peak > a.peak ? x : a);
+  // Walking, the bar follows the gait: a miss says how near it came.
+  const bar = top.walking ? `, gränsen ${top.bar.toFixed(1).replace('.', ',')}` : '';
+  return `${sp.length} utslag, högst ${top.peak.toFixed(1).replace('.', ',')}${bar}`;
 }
 
 // A stop as the log should tell it: when it was read after the word, and,
