@@ -634,7 +634,9 @@ function logKnocks(s) {
   const group = walk.knocks.spikes.filter(x => x.knock && x.t > d - 2 && x.t <= d);
   const peaks = group.map(x => dec(x.peak));
   const feet = s.paceSource === 'steps' ? `${BAND_WORDS[s.band]}, ${Math.round(s.cadence)} steg/min` : BAND_WORDS[s.band];
-  const bar = group.length && group[0].walking ? `, gränsen ${dec(group[0].bar)}` : '';
+  // The double ends at d; an earlier lone knock can be in the two seconds.
+  const last = group[group.length - 1];
+  const bar = last && last.walking ? `, gränsen ${dec(last.bar)}` : '';
   log(`knack: dubbelknack hörd (styrka ${peaks.join(' / ')}${bar}; ${feet})`);
 }
 
