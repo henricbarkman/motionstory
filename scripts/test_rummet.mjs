@@ -156,8 +156,20 @@ const KAT = K.tolkaKatalog(FIL.mekaniker);
 {
   const namn = (n) => KAT.mekaniker.find((k) => k.namn === n);
   ok(KAT.mekaniker.filter((k) => !k.ide).length === (FIL.mekaniker.match(/^### /gm) || []).length, `every "###" in the file is a mechanic (${KAT.mekaniker.length} with the two ideas)`);
-  ok(namn('Stanna för ja').omdome === 'Osäker' && namn('Kontakten').omdome === 'Håller' && namn('Tjuvlyssning').omdome === 'Idé', 'verdicts read from the file');
-  ok(namn('Minnet mellan episoderna').omdome === null, 'a mechanic whose verdict is no verdict word gets none (not a guess)');
+  // The verdicts move as the walks come in (Stanna för ja went from Osäker to
+  // Håller 2026-10-08), so how they are read is held to a catalogue of its
+  // own, and the real one only to having a verdict word for every mechanic.
+  const PROV_KAT = K.tolkaKatalog([
+    '## Vad omdömena betyder', '', '- **Håller.** Har fungerat ute.', '- **Osäker.** Gränsen är en gissning.', '',
+    '## Regler som gäller alla', '', '- **Tung följd bara på det som håller.** En mekanik som är Osäker eller Oprövad får bara lätta följder.', '',
+    '## Stanna', '', '### Ett', '**Omdöme:** Håller. Provad.', '', '### Två', '**Omdöme:** Osäker. En gång.', '', '### Tre', '**Omdöme:** Byggd i episod 1.', '',
+    '## Idéer som inte är byggda', '', '- **Fyra.** Inte byggd.', '',
+  ].join('\n'));
+  const prov = (n) => PROV_KAT.mekaniker.find((k) => k.namn === n);
+  ok(prov('Ett').omdome === 'Håller' && prov('Två').omdome === 'Osäker' && prov('Fyra').omdome === 'Idé', 'verdicts read from the file');
+  ok(prov('Tre').omdome === null, 'a mechanic whose verdict is no verdict word gets none (not a guess)');
+  const utan = KAT.mekaniker.filter((k) => !k.omdome).map((k) => k.namn);
+  ok(!utan.length, `every mechanic in the catalogue has a verdict word (${utan.join(', ') || 'all do'})`);
   const v = K.varianter(KAT).map((x) => x.etikett).sort().join(',');
   ok(v === ['bro', 'berg', 'gång', 'kyrkogård', 'ljust', 'löpning', 'mörkt', 'regn', 'skog', 'torrt', 'vatten'].sort().join(','), 'the variant labels come from the catalogue');
   // Hand count of the chips (2026-10-08): the catalogue's names in the Mekanik paragraphs.
@@ -169,7 +181,7 @@ const KAT = K.tolkaKatalog(FIL.mekaniker);
   ok(!K.hittaNamn('vandraren går i sin egen takt och hittar hem', KAT).some((h) => h.mekanik.namn === 'Takten'), 'no chip for "takt" (not the name Takten)');
   ok(K.hittaNamn('Hon knackar två gånger', KAT).map((h) => h.mekanik.namn).join() === 'Hon knackar', 'the longest name wins');
   ok(K.hittaNamn('Kontaktens styrka', KAT).length === 1 && K.hittaNamn('kontaktlös', KAT).length === 0, 'simple inflection, never a word that only starts like a name');
-  const w = K.varsel(namn('Stanna för ja'), KAT);
+  const w = K.varsel(prov('Två'), PROV_KAT);
   ok(w && w[0].ord === 'Osäker' && /lätta följder/.test(w[0].text), 'Osäker gets the quiet line from the catalogue\'s own rule');
   ok(K.varsel(namn('Kontakten'), KAT) === null, 'Håller gets no line');
   ok(K.arNyMekanik('**Ny mekanik:** hoppa') && K.arNyMekanik('Ny mekanik: hoppa') && !K.arNyMekanik('runt minut två'), '"Ny mekanik:" first in a Mekanik paragraph is a request to Demi');

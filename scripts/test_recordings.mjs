@@ -221,5 +221,59 @@ function replay(file, { buzzes = [], pattern = knockPattern } = {}) {
   check(doubles.filter(d => d > 10 && d < 100).length === 2, `nothing else while he stood is a double (${fmt(doubles.filter(d => d > 10 && d < 100))})`);
 }
 
+// Knacket gående, 2026-10-09, version 26 in Chrome: walked the whole time,
+// a gentle gait (71-104 steps a minute, heel strikes nine in ten under 6).
+// Asked three times for two knocks; the phone heard the second only, and he
+// said he had to knock "ganska hårt". All three are plain in the sensor,
+// each pair 0.32-0.33 s apart: 12.3 / 12.6 at 56.3, 35.4 / 23.2 at 78.0,
+// 21.9 / 13.7 at 86.1. At 94.2, 12.1 / 13.3 0.30 s apart, most likely
+// knocked again after the third went unheard: the same rhythm, and twice
+// anything his feet struck around it. Then the phone up out of the pocket
+// and back, 1:42-1:57, which must be no double. The first, 12.3 / 12.6, is
+// as soft as steps and the phone in other walks, and is let go (engine.js).
+{
+  const { doubles } = replay('knackgang-2026-10-09.json');
+  const fmt = xs => xs.map(x => x.toFixed(2)).join(', ') || 'none';
+  const within = (a, b) => doubles.some(d => d >= a && d <= b);
+  check(within(77.9, 78.5), `the hard one, as version 26 heard it (${fmt(doubles)})`);
+  check(within(86.0, 86.7), 'the third, 21.9 / 13.7');
+  check(!doubles.some(d => d >= 102 && d <= 129), 'the phone taken out and put back is no double');
+  const asked = [[56.2, 56.9], [77.9, 78.5], [86.0, 86.7], [94.1, 94.8]];
+  const stray = doubles.filter(d => d > 10 && !asked.some(([a, b]) => d >= a && d <= b));
+  check(stray.length === 0, `and nothing else from the start of the station is a double (${fmt(stray)})`);
+}
+
+// Knacket gående again, 12:24 the same day, version 26: a firmer gait (93-123
+// steps a minute) and knocks he called "väldigt hårt". Version 26 heard the
+// second and third; the first, 31.0 / 14.8 at 38.3, met the fixed bars.
+// Then the phone up out of the pocket and back while walking, 71.5-97.5 s:
+// there 13.0 and 16.7, 0.35 s apart, made a double under the bars of the
+// first gait-relative draft.
+{
+  const { doubles } = replay('knackgang-2026-10-09-1224.json');
+  const fmt = xs => xs.map(x => x.toFixed(2)).join(', ') || 'none';
+  const within = (a, b) => doubles.some(d => d >= a && d <= b);
+  check(within(38.2, 38.8), `the first, 31.0 / 14.8, is heard (${fmt(doubles)})`);
+  check(within(59.6, 60.2) && within(68.5, 69.2), 'and the two version 26 heard');
+  check(!doubles.some(d => d >= 71.5 && d <= 97.5), 'the phone taken out and put back walking is no double');
+  const asked = [[38.2, 38.8], [59.6, 60.2], [68.5, 69.2]];
+  const stray = doubles.filter(d => d > 10 && !asked.some(([a, b]) => d >= a && d <= b));
+  check(stray.length === 0, `and nothing else from the start of the station is a double (${fmt(stray)})`);
+}
+
+// Labb 2, 2026-10-05, in Firefox: Vägvalet and Ljudkompassen walked, Hon
+// knackar skipped (no vibration), so no knock was asked for. In a gentle
+// stretch steps made doubles under the first draft's floors: 9.3 / 20.8
+// 0.20 s apart at 70.6, and at 324.1 a strike of 17.3 whose bounce 0.14 s on
+// met bars risen in between (the floor of 19 stops it now; the bounce rule
+// is held by test_knocks). Version 26 heard the one at 276.6, a step of
+// 26.6, and the phone pocketed at 0.4 as well.
+{
+  const { doubles } = replay('labb2-2026-10-05.json');
+  const fmt = xs => xs.map(x => x.toFixed(2)).join(', ') || 'none';
+  const stray = doubles.filter(d => d > 1 && !(d >= 276.4 && d <= 276.8));
+  check(stray.length === 0, `nothing he did is a double, the one version 26 heard aside (${fmt(doubles)})`);
+}
+
 if (failures) { console.log(`\n${failures} failed`); process.exit(1); }
 console.log('\nall recordings ok');

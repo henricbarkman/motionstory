@@ -92,21 +92,30 @@ check(gap.spikes.length === 0, 'the first sample after a gap is not judged again
 // steps a minute on a wave twice as high. `bumps`: a hand landing on the
 // pocket at those times, 1.6 over 0.15 s (the lab simulation's handling). The
 // bands the ticks saw come back as `walk.bands`.
-function pocket({ knocks = [], stillFrom = Infinity, seconds = 40, seed = 7, bigEvery = 0, runFrom = Infinity, bumps = [] } = {}) {
+// `buzz`: she buzzes `buzzes` times at that second the lab's way, a motor
+// the sensor feels at ±5; when the lab takes it to have stopped comes back as
+// `walk.buzzOver`.
+function pocket({ knocks = [], stillFrom = Infinity, seconds = 40, seed = 7, bigEvery = 0, runFrom = Infinity, bumps = [], strike = [4, 8], buzz = null, buzzes = 2, harderFrom = Infinity, harder = [10, 10], walkFrom = 0 } = {}) {
   let r = seed; const rand = () => (r = (r * 16807) % 2147483647) / 2147483647;
   const walk = new Walk();
   const HZ = 60;
-  let phase = 0, stepNo = -1;
+  let phase = 0, stepNo = -1, u = 0;
   walk.bands = [];
+  const lab = buzz === null ? null : labHelpers(walk, { now: () => u, vibrateImpl: () => true });
+  const pattern = knockPattern(buzzes), on = [];
+  if (lab) for (let i = 0, t = buzz; i < pattern.length; t += (pattern[i] + (pattern[i + 1] || 0)) / 1000, i += 2) on.push([t, t + pattern[i] / 1000]);
   for (let i = 0; i <= seconds * HZ; i++) {
-    const u = i / HZ;
+    u = i / HZ;
+    if (lab && i === Math.round(buzz * HZ)) { lab.vibrate(pattern); walk.buzzOver = lab.buzzOver(); }
     let m = 9.81 + (rand() - 0.5) * 0.3;
-    if (u < stillFrom) {
+    if (on.some(([a, b]) => u >= a && u < b)) m += i % 2 ? 5 : -5;
+    if (u >= walkFrom && u < stillFrom) {
       phase += (u < runFrom ? 118 : 170) / 60 / HZ;
       m += (u < runFrom ? 3 : 6) * Math.sin(2 * Math.PI * phase);
       if (Math.floor(phase) !== stepNo) {
         stepNo = Math.floor(phase);
-        m += bigEvery && stepNo % bigEvery === 0 ? 17 + rand() * 28 : 4 + rand() * 8;
+        const s = u >= harderFrom ? harder : strike;
+        m += bigEvery && stepNo % bigEvery === 0 ? 17 + rand() * 28 : s[0] + rand() * s[1];
       }
     }
     for (const b of bumps) if (u >= b && u < b + 0.15) m += 1.6;
@@ -147,6 +156,99 @@ function pocket({ knocks = [], stillFrom = Infinity, seconds = 40, seed = 7, big
   const w = pocket({ knocks: [{ t: 20, height: 8 }, { t: 20.2, height: 8 }] });
   check(w.knocks.history.length === 0, 'a light double walking is not, the heel strikes are as hard');
 }
+// A gentle gait lowers the walking bars (2026-10-09): heel strikes of 1-2.5,
+// as in his Knacket gående that day, nine in ten under 6. There his double
+// of 21.9 and 13.7, 0.32 s apart, was lost to the fixed bars. Here it is
+// heard, and the same double in the pocket above, whose heel strikes reach
+// 12, is not. His softest, 12.3 and 12.6, stays lost: steps and a phone
+// taken out of the pocket reach as high in other walks.
+const gentle = { strike: [1, 1.5] };
+const soft = at => [{ t: at, height: 22 }, { t: at + 0.32, height: 14 }];
+{
+  const w = pocket({ ...gentle, knocks: soft(20) });
+  check(w.knocks.history.length === 1, `a soft double in a gentle gait is heard (${w.knocks.history.length}; bars ${JSON.stringify(w.knocks.walkingBars(19.9))})`);
+  check(pocket({ knocks: soft(20) }).knocks.history.length === 0, 'and not where the heel strikes are as hard');
+  check(pocket({ ...gentle, knocks: [{ t: 20, height: 12.3 }, { t: 20.31, height: 12.6 }] }).knocks.history.length === 0, 'his softest, 12.3 and 12.6, is not');
+  check(pocket({ ...gentle }).knocks.history.length === 0, 'a gentle gait alone makes no double');
+}
+// The gait is read from the walk, not from her: while the motor runs, the
+// half seconds stay out of the level. Counted, her buzz would raise the bars
+// and lose the soft double he answers with, right after it as the lab
+// allows (0.3 s after the lab takes the motor to have stopped). Three buzzes:
+// two shake only three half seconds, which the recent level rides out.
+{
+  const w = pocket({ ...gentle, buzz: 18, buzzes: 3, seconds: 30 });
+  const at = w.buzzOver + 0.3;
+  const answer = pocket({ ...gentle, buzz: 18, buzzes: 3, seconds: 30, knocks: soft(at) });
+  const bars = w.knocks.walkingBars(at - 0.1);
+  check(bars.soft && answer.knocks.history.length === 1,
+    `a soft double answered walking right after her buzz is heard (${answer.knocks.history.length}; bars ${JSON.stringify(bars)})`);
+}
+// The first seconds of walking say nothing about the gait yet: until five
+// seconds of it are in, the fixed bars hold.
+{
+  const w = pocket({ ...gentle, seconds: 20 });
+  const began = w.knocks.bins.find(b => b.walking).start;
+  check(!w.knocks.walkingBars(began + 3).soft && w.knocks.walkingBars(began + 6).soft,
+    `fixed bars for the first seconds of walking, lowered after (walking from ${began}, ${JSON.stringify(w.knocks.walkingBars(began + 3))} → ${JSON.stringify(w.knocks.walkingBars(began + 6))})`);
+}
+// The same after standing: the still half seconds say nothing about the
+// gait either, so the first seconds of walking keep the fixed bars.
+{
+  const w = pocket({ ...gentle, walkFrom: 12, seconds: 25 });
+  const began = w.knocks.bins.find(b => b.walking && b.start >= 12)?.start ?? 12;
+  check(!w.knocks.walkingBars(began + 1.5).soft, `walking on after standing, the fixed bars hold at first (walking from ${began}, ${JSON.stringify(w.knocks.walkingBars(began + 1.5))})`);
+}
+// A walker who missed knocks again. The missed knocks are no gait: a retry
+// a second and more after them is held to the bars the gait set, wherever
+// in its half seconds it falls (the code review 2026-10-09 lost four in ten).
+{
+  const lost = [];
+  for (const gap of [1.4, 1.6, 1.8]) for (let k = 0; k < 10; k++) {
+    const t0 = 20 + k * 0.05, again = t0 + gap;
+    const w = pocket({ ...gentle, knocks: [{ t: t0, height: 12 }, { t: t0 + 0.3, height: 12 }, ...soft(again)] });
+    if (!w.knocks.history.some(d => d > again && d < again + 0.5)) lost.push(`${gap}/${k}`);
+  }
+  check(!lost.length, `a soft retry after a missed one is heard (${lost.length} of 30 lost${lost.length ? ': ' + lost.join(' ') : ''})`);
+  const four = pocket({ ...gentle, knocks: [20, 21.6, 23.2, 24.8].flatMap(soft) });
+  check(four.knocks.history.length === 4, `four soft doubles 1.6 s apart are four (${four.knocks.history.length})`);
+}
+// A gait that turns hard raises the bars within a couple of seconds, not
+// after the eight the level is read over.
+{
+  const w = pocket({ ...gentle, harderFrom: 20, seconds: 30 });
+  const before = w.knocks.walkingBars(19.9), after = w.knocks.walkingBars(22.6);
+  check(before.soft && !after.soft, `a harder gait raises the bars at once (${JSON.stringify(before)} → ${JSON.stringify(after)})`);
+}
+// The lowered bars have floors: 11 for a knock, 19 for a double's hard one.
+{
+  const w = pocket({ ...gentle, knocks: [{ t: 20, height: 13 }, { t: 20.3, height: 17 }] });
+  check(w.knocks.countBetween(19.9, 20.4) === 2 && w.knocks.history.length === 0,
+    `knocks of 13 and 17 are knocks, but neither is hard, so no double (${w.knocks.countBetween(19.9, 20.4)} knocks, ${w.knocks.history.length} doubles)`);
+  const low = pocket({ ...gentle, knocks: [{ t: 20, height: 10 }, { t: 20.3, height: 22 }] });
+  check(low.knocks.countBetween(19.9, 20.4) === 1, `a blow of 10 is under the lowest bar (${low.knocks.countBetween(19.9, 20.4)} knocks)`);
+}
+// Under a lowered bar a heel strike's bounce clears it too, 0.12-0.14 s on in
+// three recordings. It is the same blow, so a strike and its bounce are no
+// double; his knocks came 0.21 s apart and more.
+{
+  const w = pocket({ ...gentle, knocks: [{ t: 20, height: 20 }, { t: 20.13, height: 19 }] });
+  check(w.knocks.history.length === 0, `a strike and its bounce 0.13 s on are one blow (${w.knocks.history.length} doubles)`);
+  const two = pocket({ ...gentle, knocks: [{ t: 20, height: 20 }, { t: 20.23, height: 19 }] });
+  check(two.knocks.history.length === 1, `two knocks 0.23 s apart are two (${two.knocks.history.length} doubles)`);
+  // And when the bars rise between the strike and its bounce (labb 2 5/10,
+  // 5:24: a gait turning hard), the bounce is still the strike's.
+  const k = new Knocks({ walking: () => true });
+  let raised = false;
+  k.walkingBars = () => raised ? { jump: 15, top: 25, soft: false, level: 6 } : { jump: 11, top: 19, soft: true, level: 2 };
+  for (let i = 0; i <= 60 * 12; i++) {
+    const u = i / 60;
+    if (u > 10.05) raised = true;
+    k.push(u, 9.81 + (Math.abs(u - 10) < 1e-6 || Math.abs(u - 10.15) < 1e-6 ? 20 : 0));
+  }
+  check(k.countBetween(9.9, 10.3) === 1, `a blow is one when the bars rise between strike and bounce (${k.countBetween(9.9, 10.3)} knocks)`);
+}
+
 // Turning round in labb 2 (2026-10-01): two heel strikes of 16.6 and 15.9,
 // 0.14 s apart, over the walking bar both. Neither is hard.
 {
@@ -243,7 +345,8 @@ function pocket({ knocks = [], stillFrom = Infinity, seconds = 40, seed = 7, big
 // deaf (the sway and the feet still see the motor), 'none' neither. `gait`
 // is a walker who never stopped (a step wave of that height all through, and
 // no knocks back), `strike` a heel strike that long after the detector hears
-// again.
+// again. It is 6: over the standing bar, under the lowest walking one (11, a
+// gait as soft as this wave lowers the walking bars all the way).
 function answered({ shake = 5, after = 0.7, guard = 'buzz', seed = 7, lag = 0, ring = 0, gait = 0, strike = null, fidget = 0 } = {}) {
   let r = seed; const rand = () => (r = (r * 16807) % 2147483647) / 2147483647;
   const walk = new Walk();
@@ -273,7 +376,7 @@ function answered({ shake = 5, after = 0.7, guard = 'buzz', seed = 7, lag = 0, r
     const run = on.find(([a, b]) => u >= a && u < b + ring);
     if (run) { up = !up; const amp = u < run[1] ? shake : shake * (1 - (u - run[1]) / ring); m += up ? amp : -amp; }
     for (const k of knocks) if (Math.round(k * HZ) === i) m += 8;
-    if (strike !== null && Math.round((over + strike) * HZ) === i) m += 8;
+    if (strike !== null && Math.round((over + strike) * HZ) === i) m += 6;
     walk.motion(u, m);
     if (u >= 15 && u < over) stale = Math.max(stale, u - walk.steps.lastT);
     if (i % 15 === 0 && i > 0) walk.tick(u);

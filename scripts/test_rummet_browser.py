@@ -67,6 +67,14 @@ def sandbox() -> tuple[Path, Path]:
     glimt.mkdir(parents=True)
     for f in ("episod-1.md", "episod-2.md", "episod-1.json", "varld.md", "mekaniker.md"):
         shutil.copyfile(GLIMT / f, glimt / f)
+    # The verdicts move as the walks come in (Stanna för ja went from Osäker
+    # to Håller 2026-10-08), so the copy holds the two the checks are about.
+    kat = glimt / "mekaniker.md"
+    text = kat.read_text(encoding="utf-8")
+    for namn, omdome in (("Stanna för ja", "Osäker. Satt av testet."), ("Minnet mellan episoderna", "Byggt i episod 1.")):
+        text, n = re.subn(rf"(^### {re.escape(namn)}\n(?:(?!### ).*\n)*?\*\*Omdöme:\*\* ).*$", rf"\g<1>{omdome}", text, count=1, flags=re.M)
+        assert n == 1, namn
+    kat.write_text(text, encoding="utf-8")
     held = rot / "projects/held/universe"
     held.mkdir(parents=True)
     lore = GA / "projects/held/universe/LORE.md"

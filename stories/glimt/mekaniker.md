@@ -66,7 +66,7 @@ Grunden. Nästan allt annat bygger på att telefonen vet vilket av de tre du gö
 ### Sensorvakten
 **Du gör:** ingenting. Telefonen har slutat känna dina steg, oftast för att skärmen släckts.
 **I berättelsen:** Vega säger till inom några sekunder: "Vänta. Jag känner inte dina steg längre."
-**Omdöme:** Oprövad. Ett skyddsnät, inget att bygga en scen på.
+**Omdöme:** Håller. Hon sa till fem sekunder efter att skärmen låstes och igen när stegen var tillbaka, och Henric hörde henne med låst skärm (9/10). Ett skyddsnät, inget att bygga en scen på.
 
 ## Stanna som svar
 
@@ -142,8 +142,8 @@ Telefonen i fickan som kanal åt båda hållen. Den enda beröringen mellan vär
 ### Knack
 **Du gör:** knackar två gånger på fickan.
 **I berättelsen:** ett svar när hon inte kan prata, eller ett tecken till henne.
-**Omdöme:** Delvis. Stående har fungerat. Gående har aldrig fungerat ute. *Bara gående,* aldrig under löpning.
-**Tänk på:** en stöt mot telefonen kan läsas som knack. Bara lätta följder.
+**Omdöme:** Delvis. Stående har fungerat. Gående hördes bara en av tre (9/10), och Henric fick knacka ganska hårt, fast alla tre syns tydligt i sensorn: gränsen var satt efter hårdare steg än hans. Från version 27 sänks gränsen när gången är mjuk, men aldrig under det som steg och en telefon som tas upp ur fickan kan ge. Då hörs åtta av hans nio gående dubbelknack i tre promenader, och inget falskt i tretton. Det mjukaste (9/10 klockan 11:25) hörs fortfarande inte. Ska gås om. *Bara gående,* aldrig under löpning.
+**Tänk på:** en stöt mot telefonen kan läsas som knack. Bara lätta följder. Ett av de två knacken ska vara tydligt hårt. Ju mjukare vandraren går, desto lättare knack räcker; den som stampar får knacka hårdare.
 
 ### Hon knackar
 **Du gör:** knackar tillbaka lika många gånger som telefonen surrade.
