@@ -2,8 +2,10 @@
 """Render Glimt episode drafts as one reading page for Henric.
 
 The drafts live as markdown in stories/glimt/episod-N.md. Henric reads in the
-portal, not in the repo, so this turns them into a single HTML page in the same
-look as the plan page (data/uploads/glimt-plan/ in generalassistant).
+portal, not in the repo, so this turns them into a single HTML page in Glimt's
+shared look (design/DESIGN.md). The page links design/glimt.css relative to
+itself, so OUT's folder needs design/ next to it (data/uploads/glimt-plan/ in
+generalassistant has it).
 
 Usage:
     python3 scripts/manus_sida.py OUT.html stories/glimt/episod-1.md [episod-2.md ...]
@@ -75,7 +77,7 @@ def style_body(body: str) -> str:
 
     def trigger(m: re.Match) -> str:
         text = m.group(1)
-        return f"<p class='trigger'><b>När</b>{text[:1].upper()}{text[1:]}</p>"
+        return f"<p class='trigger'><b>När:</b>{text[:1].upper()}{text[1:]}</p>"
 
     body = re.sub(r"<p><em>Trigger: (.*?)</em></p>", trigger, body, flags=re.S)
     body = re.sub(r"<p><em>((?:(?!</p>).)*?)</em></p>", r"<p class='not'>\1</p>", body, flags=re.S)
@@ -131,162 +133,113 @@ PAGE = """<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>Glimt: utkast till episoderna</title>
-<meta name="theme-color" content="#152E43">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..700;1,400&family=Spectral:ital,wght@1,300;1,400&display=swap" rel="stylesheet">
+<meta name="theme-color" content="#1a2130">
+<link rel="stylesheet" href="design/glimt.css">
 <style>
-  :root {
-    --natt: #0d1c2b; --marin: #152E43; --lila: #271240; --sken: #A4DADB;
-    --yta: rgba(164, 218, 219, 0.07); --kant: rgba(164, 218, 219, 0.17);
-    --kant-stark: rgba(164, 218, 219, 0.32);
-    --text: #E4F6F5; --dov: #9dbcc1; --svag: #7d9ea4;
-    --kontakt: #48FEC8; --replika: #ecc98e;
-    --sans: 'Open Sans', system-ui, sans-serif;
-    --serif: 'Spectral', Georgia, serif;
-  }
+  /* Tokens, typefaces and the verdict marks come from design/glimt.css; the rules in design/DESIGN.md. */
   * { box-sizing: border-box; }
   html { background: var(--natt); scroll-behavior: smooth; }
   @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
   body {
-    margin: 0; color: var(--text); font-family: var(--sans);
-    font-size: 1.0625rem; line-height: 1.6; -webkit-font-smoothing: antialiased;
+    margin: 0; color: var(--text); font-family: var(--telefonens);
+    font-size: var(--s1); line-height: 1.5; -webkit-font-smoothing: antialiased;
   }
-  body::before {
-    content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
-    background:
-      linear-gradient(90deg, rgba(39, 18, 64, 0.9) 0%, rgba(39, 18, 64, 0) 32%),
-      linear-gradient(270deg, rgba(7, 15, 24, 0.85) 0%, rgba(7, 15, 24, 0) 24%),
-      linear-gradient(180deg, var(--marin) 0%, var(--natt) 85%);
-  }
-  a { color: var(--sken); text-underline-offset: 0.2em; }
-  :focus-visible { outline: 2px solid var(--kontakt); outline-offset: 3px; border-radius: 2px; }
-  .wrap { overflow: clip; }
-  header, main { max-width: 44rem; margin: 0 auto; padding: 0 1.25rem; }
-  header { position: relative; z-index: 0; padding-top: 3rem; padding-bottom: 1rem; }
-  header::before {
-    content: ''; position: absolute; z-index: -1; pointer-events: none;
-    left: 28%; top: 1.5rem; width: min(30rem, 78vw); height: 13rem;
-    background: var(--sken); opacity: 0.2; border-radius: 2.5rem;
-    transform: rotate(-17deg); filter: blur(46px);
-  }
-  .held { display: block; width: 4.6rem; margin: 0 0 2.6rem; opacity: 0.92; }
-  .held img { display: block; width: 100%; height: auto; }
-  h1 {
-    font-weight: 300; font-size: clamp(1.35rem, 6vw, 3.2rem); line-height: 1.1;
-    letter-spacing: 0.3em; text-transform: uppercase; margin: 0 0 1.2rem;
-    text-shadow: 0.24em 0.08em 0 rgba(72, 254, 200, 0.38);
-    animation: glid 2.6s cubic-bezier(.2, .7, .2, 1) both;
-  }
-  @keyframes glid {
-    from { text-shadow: 0 0 0 rgba(72, 254, 200, 0); }
-    to { text-shadow: 0.24em 0.08em 0 rgba(72, 254, 200, 0.38); }
-  }
-  @media (prefers-reduced-motion: reduce) { h1 { animation: none; } }
-  .lead { color: var(--dov); font-size: 1.15rem; max-width: 34rem; margin: 0 0 1.4rem; }
-  .back { font-size: 0.92rem; }
-  .updated { color: var(--svag); font-size: 0.85rem; margin-top: 1.4rem; }
+  header, main { max-width: var(--matt); margin: 0 auto; padding: 0 1.5rem; }
+  header { padding-top: 3.5rem; padding-bottom: 0.5rem; }
   main { padding-bottom: 6rem; }
-  section { padding-top: 3rem; }
-  h2 { font-weight: 300; font-size: 1.45rem; line-height: 1.3; letter-spacing: 0.32em; text-transform: uppercase; margin: 0 0 1.4rem; }
+  a { color: var(--text); text-decoration-color: var(--svag); text-decoration-thickness: 1px; text-underline-offset: 0.2em; }
+  a:hover { text-decoration-color: var(--text); }
+  :focus-visible { outline: 2px solid var(--vega); outline-offset: 3px; border-radius: 2px; }
+  h1 { font-family: var(--hennes); font-weight: 300; font-size: var(--s4); letter-spacing: -0.01em; line-height: 1.15; margin: 0 0 1rem; font-variation-settings: "opsz" 48; }
+  .lead { margin: 0 0 1rem; }
+  .back { font-size: var(--s0); }
+  .updated { color: var(--svag); font-size: var(--s-1); margin: 0; }
+  section { padding-top: 3.5rem; }
+  h2 { font-family: var(--hennes); font-weight: 400; font-size: var(--s3); line-height: 1.25; margin: 0 0 1.25rem; font-variation-settings: "opsz" 36; }
   p { margin: 0 0 1rem; }
+  strong, b { font-weight: 600; }
   ul { padding-left: 1.2rem; margin: 0 0 1rem; }
   li { margin: 0 0 0.45rem; }
   li::marker { color: var(--svag); }
-  code {
-    font-family: var(--sans); font-size: 0.8em; color: var(--sken); white-space: nowrap;
-    border: 1px solid var(--kant-stark); border-radius: 3px; padding: 0 0.38rem;
-  }
+  code { font: inherit; color: var(--dampad); }
 
-  /* Vägvisare: de två episoderna */
-  .hitta { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.9rem; }
-  .hitta li { margin: 0; }
-  .hitta a {
-    display: block; text-decoration: none; color: var(--text);
-    border: 1px solid var(--kant-stark); border-radius: 8px; background: var(--yta);
-    padding: 1rem 1.2rem 1.05rem;
+  /* The two episodes */
+  .hitta { list-style: none; padding: 0; margin: 0; }
+  .hitta li { margin: 0 0 1.4rem; }
+  .hitta a { display: block; text-decoration: none; }
+  .hitta .nr { display: block; color: var(--dampad); font-size: var(--s0); }
+  .hitta .titel {
+    display: block; font-family: var(--hennes); font-size: var(--s2); line-height: 1.3;
+    text-decoration: underline 1px var(--svag); text-underline-offset: 0.2em;
   }
-  .hitta a:hover { border-color: var(--sken); }
-  .hitta .nr { display: block; color: var(--dov); font-size: 0.9rem; }
-  .hitta .titel { display: block; font-family: var(--serif); font-style: italic; color: var(--replika); font-size: 1.4rem; line-height: 1.3; }
-  .hitta .vad { display: block; color: var(--dov); font-size: 0.95rem; margin-top: 0.3rem; }
+  .hitta a:hover .titel { text-decoration-color: var(--text); }
+  .hitta .vad { display: block; color: var(--dampad); font-size: var(--s0); margin-top: 0.2rem; }
 
-  /* Läsnyckel */
+  /* Reading key */
   .nyckel { margin: 0; }
-  .nyckel > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0.4rem 1.2rem; padding: 0.7rem 0; border-top: 1px solid var(--kant); align-items: baseline; }
+  .nyckel > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0.3rem 1.2rem; padding: 0.6rem 0; align-items: baseline; }
   .nyckel dt { margin: 0; }
-  .nyckel dd { margin: 0; color: var(--dov); font-size: 0.95rem; }
-  .nyckel .regi-prov { color: var(--svag); font-size: 0.92rem; }
-  .nyckel .manus-prov { font-family: var(--serif); font-style: italic; color: var(--replika); font-size: 1.14rem; }
+  .nyckel dd { margin: 0; color: var(--dampad); font-size: var(--s0); }
+  .nyckel .manus-prov { font-family: var(--hennes); font-size: var(--s2); line-height: 1.4; }
+  .nyckel .regi-prov { font-family: var(--hennes); font-style: italic; color: var(--dampad); }
+  .nyckel .annan-prov { font-family: var(--hennes); font-size: var(--s2); color: var(--dampad); }
+  .nyckel .gren-prov { color: var(--dampad); font-size: var(--s0); }
   @media (max-width: 30rem) { .nyckel > div { grid-template-columns: 1fr; } }
 
-  /* Episod */
-  .episod { padding-top: 4.5rem; }
-  .episod > h2 { margin-bottom: 0.3rem; }
-  .ep-titel { font-family: var(--serif); font-style: italic; color: var(--replika); font-size: clamp(1.7rem, 6vw, 2.4rem); line-height: 1.2; margin: 0 0 1.6rem; }
-  .om p:first-child { color: var(--svag); font-size: 0.9rem; }
-  .om strong, .bakom strong { font-weight: 600; color: var(--sken); }
-  details.bakom { margin: 0 0 1rem; border-top: 1px solid var(--kant); border-bottom: 1px solid var(--kant); padding: 0.75rem 0; color: var(--dov); font-size: 0.96rem; }
-  details.bakom summary { cursor: pointer; color: var(--sken); }
-  details.bakom[open] summary { margin-bottom: 0.9rem; }
+  /* Episode */
+  .episod { padding-top: 5rem; }
+  .episod > h2 { color: var(--dampad); font-size: var(--s1); font-family: var(--telefonens); font-weight: 400; margin-bottom: 0.2rem; }
+  .ep-titel { font-family: var(--hennes); font-weight: 300; font-size: var(--s4); letter-spacing: -0.01em; line-height: 1.15; margin: 0 0 1.5rem; font-variation-settings: "opsz" 48; }
+  .om p:first-child { color: var(--svag); font-size: var(--s-1); }
+  details.bakom { margin: 0 0 1rem; color: var(--dampad); font-size: var(--s0); }
+  details.bakom summary {
+    display: inline-block; cursor: pointer; padding: 0.5rem 0; color: var(--dampad);
+    text-decoration: underline 1px var(--svag); text-underline-offset: 0.2em;
+  }
+  details.bakom summary::-webkit-details-marker { display: none; }
+  details.bakom summary:hover { color: var(--text); }
+  details.bakom[open] summary { margin-bottom: 0.6rem; }
+  details.bakom strong { color: var(--text); }
 
-  h3.scen {
-    display: flex; align-items: center; gap: 0.9rem;
-    font-weight: 300; font-size: 1.2rem; letter-spacing: 0.22em; text-transform: uppercase;
-    margin: 3.4rem 0 0.7rem;
-  }
-  h3.scen .nr {
-    flex: none; width: 2rem; height: 2rem; border-radius: 50%;
-    border: 1px solid var(--kontakt); color: var(--kontakt);
-    display: grid; place-items: center; font-size: 0.95rem; letter-spacing: 0;
-  }
-  .trigger, .not { color: var(--dov); font-size: 0.92rem; margin: 0 0 1.1rem; }
-  .trigger b { font-weight: 600; color: var(--sken); letter-spacing: 0.08em; text-transform: uppercase; font-size: 0.8rem; margin-right: 0.5rem; }
-  .gren-rubrik { font-weight: 600; color: var(--kontakt); font-size: 0.95rem; margin: 1.8rem 0 0.7rem; }
+  /* Scenes: the heading in her face, the trigger and notes in the phone's. */
+  h3.scen { font-family: var(--hennes); font-weight: 600; font-size: var(--s2); line-height: 1.3; margin: 3rem 0 0.6rem; }
+  h3.scen .nr { margin-right: 0.4em; }
+  .trigger, .not { color: var(--dampad); font-size: var(--s0); margin: 0 0 1rem; }
+  .trigger b { color: var(--text); margin-right: 0.3em; }
+  .gren-rubrik { color: var(--dampad); font-size: var(--s0); margin: 1.8rem 0 0.6rem; }
 
-  /* Manuset: det som hörs */
-  .manus { margin: 0 0 1.5rem; padding: 0.15rem 0 0.15rem 1.15rem; border-left: 2px solid var(--kant-stark); }
-  .manus p {
-    font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--replika);
-    font-size: 1.17rem; line-height: 1.72; margin: 0 0 0.8rem;
-  }
+  /* The manuscript: what is heard, in Literata, without a frame. */
+  .manus { margin: 0 0 1.5rem; padding: 0; }
+  .manus p { font-family: var(--hennes); font-size: var(--s2); line-height: 1.55; margin: 0 0 0.8rem; }
   .manus p:last-child { margin-bottom: 0; }
-  .manus .regi { font-family: var(--sans); font-style: normal; font-size: 0.78em; color: var(--svag); }
-  .manus .annan { color: var(--sken); }
-  .manus .var {
-    font-family: var(--sans); font-style: normal; font-size: 0.68em; color: var(--sken); white-space: nowrap;
-    border: 1px solid var(--kant-stark); border-radius: 3px; padding: 0.05em 0.4em; margin-right: 0.3em;
-    position: relative; top: -0.12em;
-  }
-  .manus .gren { display: block; font-family: var(--sans); font-style: normal; font-weight: 600; font-size: 0.8em; color: var(--kontakt); }
-  .manus .gren2 { color: var(--sken); }
+  .manus .regi { font-style: italic; color: var(--dampad); }
+  .manus .annan { color: var(--dampad); }
+  .manus .var { font-family: var(--telefonens); font-size: var(--s0); color: var(--dampad); white-space: nowrap; margin-right: 0.35em; }
+  .manus .gren { display: block; font-family: var(--telefonens); font-size: var(--s0); color: var(--dampad); }
   .manus .gren + br { display: none; }
   .manus p:has(> .gren:first-child) { margin-top: 1.5rem; }
   .manus p:first-child:has(> .gren:first-child) { margin-top: 0; }
-  .manus em { font-family: var(--sans); font-style: normal; font-size: 0.8em; color: var(--dov); }
-  .manus p.not { font-family: var(--sans); font-style: normal; font-size: 0.92rem; line-height: 1.6; color: var(--dov); }
+  .manus em { font-family: var(--telefonens); font-style: normal; font-size: var(--s0); color: var(--dampad); }
+  .manus p.not { font-family: var(--telefonens); font-size: var(--s0); line-height: 1.5; color: var(--dampad); }
 
-  /* Bilagor efter scenerna */
-  .bilagor { margin-top: 4rem; border-top: 1px solid var(--kant-stark); }
-  h3.bilaga { font-weight: 600; font-size: 1.05rem; color: var(--sken); margin: 2.2rem 0 0.8rem; }
+  /* Appendices after the scenes */
+  .bilagor { margin-top: 4rem; }
+  h3.bilaga { font-family: var(--hennes); font-weight: 600; font-size: var(--s1); margin: 2.5rem 0 0.6rem; }
   .tabell { overflow-x: auto; margin: 0 0 1.2rem; }
-  table { border-collapse: collapse; width: 100%; min-width: 30rem; font-size: 0.92rem; }
-  th { text-align: left; font-weight: 600; color: var(--dov); border-bottom: 1px solid var(--kant-stark); padding: 0.45rem 0.9rem 0.45rem 0; }
-  td { vertical-align: top; border-bottom: 1px solid var(--kant); padding: 0.55rem 0.9rem 0.55rem 0; }
+  table { border-collapse: collapse; width: 100%; min-width: 30rem; font-size: var(--s0); }
+  th { text-align: left; font-weight: 600; color: var(--dampad); border-bottom: 1px solid var(--linje); padding: 0.45rem 0.9rem 0.45rem 0; }
+  td { vertical-align: top; border-bottom: 1px solid var(--linje); padding: 0.55rem 0.9rem 0.55rem 0; font-variant-numeric: tabular-nums; }
   td:first-child { white-space: nowrap; }
-  footer { margin-top: 4rem; color: var(--svag); font-size: 0.85rem; border-top: 1px solid var(--kant); padding-top: 1.2rem; }
+  footer { margin-top: 4rem; color: var(--svag); font-size: var(--s-1); }
 </style>
 </head>
 <body>
-<div class="wrap">
 <header>
-  <a class="held" href="https://www.instagram.com/held.band/"><img src="held-logo.svg" alt="HELD" width="1281" height="607"></a>
   <h1>Utkast</h1>
   <p class="lead">De första episoderna som manus. Läs, och säg vad som skaver. Allt går att ändra, också det som redan är inspelat.</p>
   <p class="back"><a href="index.html">Till planen och läget</a></p>
   <p class="updated">Senast ändrad __DATE__.</p>
 </header>
-</div>
 <main>
 <section id="hitta">
   <ul class="hitta">
@@ -299,9 +252,9 @@ __TOC__
   <dl class="nyckel">
     <div><dt><span class="manus-prov">Det är när du går jag hör dig.</span></dt><dd>Det Vega säger.</dd></div>
     <div><dt><span class="regi-prov">(dovt, långt borta)</span></dt><dd>Hur hon säger det, och det som hörs runt henne.</dd></div>
-    <div><dt><span class="manus-prov" style="color:var(--sken)">”Du går fint i kväll.”</span></dt><dd>Andra röster än hennes.</dd></div>
+    <div><dt><span class="annan-prov">”Du går fint i kväll.”</span></dt><dd>Andra röster än hennes.</dd></div>
     <div><dt><code>mörkt</code> <code>regn</code> <code>löpning</code></dt><dd>Rader som telefonen väljer mellan, efter ljus, väder, fart och vad som hände förra gången.</dd></div>
-    <div><dt><span style="color:var(--kontakt);font-weight:600;font-size:0.95rem">Vandraren stannar:</span></dt><dd>Berättelsen delar sig efter vad du gör. Den fortsätter alltid, vilken väg du än tar.</dd></div>
+    <div><dt><span class="gren-prov">Vandraren stannar:</span></dt><dd>Berättelsen delar sig efter vad du gör. Den fortsätter alltid, vilken väg du än tar.</dd></div>
   </dl>
 </section>
 
