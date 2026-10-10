@@ -89,9 +89,20 @@ function lista(ord) {
   return `${ord.slice(0, -1).join(', ')} och ${ord[ord.length - 1]}`;
 }
 
-// A person, as a dot and a name. Demi is marked as an AI everywhere.
-const prick = (vem) => h('span', { class: `av ${vem === 'henric' ? 'h' : vem === 'liv' ? 'l' : vem === 'demi' ? 'd' : 'x'}`, 'aria-hidden': 'true' });
-const avsandare = (vem) => h('span', { class: 'vem-namn' }, prick(vem), namn(vem), arAI(vem) ? h('span', { class: 'ai', title: `${namn(vem)} är en AI, inte en människa.` }, 'AI') : null);
+// A person: an initial in the margin, a name elsewhere. Demi is marked as an
+// AI everywhere, in words: "Demi (AI)".
+const initial = (vem) => (vem === 'henric' ? 'H' : vem === 'liv' ? 'L' : vem === 'demi' ? 'D' : '·');
+const avKlass = (vem) => `av ${vem === 'henric' ? 'h' : vem === 'liv' ? 'l' : vem === 'demi' ? 'd' : 'x'}`;
+const avsandare = (vem) => h('span', { class: 'vem-namn' }, namn(vem), arAI(vem) ? h('span', { class: 'ai', title: `${namn(vem)} är en AI, inte en människa.` }, ' (AI)') : null);
+
+// A verdict as a mark (design/glimt.css .dom), and a name that never breaks
+// from its mark: the mark and the name's first word wrap together.
+const domMarke = (omdome) => (omdome ? h('span', { class: 'dom', 'data-dom': K.klassFor(omdome), 'aria-hidden': 'true' }) : null);
+function medMarke(omdome, text) {
+  const i = text.indexOf(' ');
+  const forst = i < 0 ? text : text.slice(0, i);
+  return [h('span', { class: 'hel' }, domMarke(omdome), forst), i < 0 ? null : text.slice(i)];
+}
 
 // --- Status ----------------------------------------------------------------------------
 
@@ -540,9 +551,9 @@ function ritaStycke(V, vy, p, info) {
         : !v.vem ? (v.hur === 'utanfor' ? 'Ändrat utanför rummet' : 'Okänt vem som skrev')
           : `${namn(v.vem)}${arAI(v.vem) ? ' (AI)' : ''}${v.av && v.av !== v.vem ? `, lagt in av ${namn(v.av)}` : ''}${v.nar ? `, ${datum(v.nar)}` : ''}`;
     marg.push(h('button', {
-      type: 'button', class: `av ${v.vem === 'henric' ? 'h' : v.vem === 'liv' ? 'l' : v.vem === 'demi' ? 'd' : 'x'}${nytt ? ' nytt' : ''}${v.hur === 'osparat' ? ' osparat' : ''}`,
+      type: 'button', class: `${avKlass(v.vem)}${nytt ? ' nytt' : ''}${v.hur === 'osparat' ? ' osparat' : ''}`,
       title: `${titel}. Tryck för historiken.`, 'aria-label': `${titel}. Visa historiken.`, 'data-gor': 'historik',
-    }));
+    }, h('span', { 'aria-hidden': 'true' }, initial(v.hur === 'osparat' ? mig() : v.vem))));
   }
   if (V.arEpisod && info.iScen) {
     const lj = ljudLage(p);
@@ -929,8 +940,8 @@ function visaBricka(mekId) {
   oppnaPanel(k.namn, mekanikDetaljer(k, { lank: true }));
 }
 
-function omdomeMarke(k) {
-  return h('span', { class: `omdome ${K.klassFor(k.omdome)}` }, h('i', { 'aria-hidden': 'true' }), k.omdome || 'Inget omdöme');
+function omdomeMarke(k, { marke = true } = {}) {
+  return h('span', { class: `omdome ${K.klassFor(k.omdome)}` }, marke ? domMarke(k.omdome) : null, k.omdome || 'Inget omdöme');
 }
 
 function mekanikDetaljer(k, { lank = false, anvands = null } = {}) {
@@ -969,7 +980,7 @@ function infogaMekanik(V) {
           if (!r.ok) { status(r.fel, 'info'); return; }
           status(`${k.namn} står nu i scenens mekanik${r.grenar ? ', och scenen har fått två tomma grenar att skriva i' : ''}.`, 'ok');
         },
-      }, h('span', { class: 'mek-namn' }, h('i', { class: `prick-omdome ${K.klassFor(k.omdome)}`, 'aria-hidden': 'true' }), k.namn, h('span', { class: 'dov' }, ` ${k.omdome || ''}`)),
+      }, h('span', { class: 'mek-namn' }, ...medMarke(k.omdome, k.namn), h('span', { class: 'dov' }, ` ${k.omdome || ''}`)),
       k.du ? h('span', { class: 'mek-du' }, `Du ${kortText(k.du, 110)}`) : null)))));
     if (!traffar.length) ut.replaceChildren(h('p', { class: 'dov' }, 'Ingen mekanik passar. Skriv den med egna ord i scenens mekanik, och börja med Ny mekanik:, så svarar Demi.'));
   };
@@ -1041,7 +1052,7 @@ function byggVerktyg(t) {
     h('span', { class: 'skilje' }),
     h('button', { type: 'button', 'data-gor': 'angra', class: 'ikon', 'aria-label': 'Ångra', title: 'Ångra (Ctrl+Z)' }, svg(IKON.angra)),
     h('button', { type: 'button', 'data-gor': 'gorom', class: 'ikon', 'aria-label': 'Gör om', title: 'Gör om (Ctrl+Y)' }, svg(IKON.gorom)),
-    h('span', { class: 'vem', 'aria-hidden': 'true' }, h('span', { class: 'h' }, h('i'), 'Henric'), h('span', { class: 'l' }, h('i'), 'Liv'), h('span', { class: 'd' }, h('i'), 'Demi')),
+    h('span', { class: 'vem', 'aria-hidden': 'true' }, h('span', null, 'H Henric'), h('span', null, 'L Liv'), h('span', null, 'D Demi (AI)')),
   );
 }
 
@@ -1187,7 +1198,7 @@ async function visaKatalog(r) {
   const forklaring = h('p', { class: 'omdomen' }, [...K.OMDOMEN, null].map((o) => {
     const n = o ? antal(o) : kat.mekaniker.filter((k) => !k.omdome).length;
     if (!n) return null;
-    return h('span', { class: `omdome ${K.klassFor(o)}`, title: o ? kat.betydelse[o] || '' : 'Omdömet börjar inte med något av de fem orden.' }, h('i', { 'aria-hidden': 'true' }), `${o || 'Inget omdöme'} ${n}`);
+    return h('span', { class: `omdome ${K.klassFor(o)}`, title: o ? kat.betydelse[o] || '' : 'Omdömet börjar inte med något av de fem orden.' }, domMarke(o), `${o || 'Inget omdöme'} ${n}`);
   }));
   const rita = () => {
     const traffar = K.sok(kat, sok.value);
@@ -1199,7 +1210,7 @@ async function visaKatalog(r) {
     ut.replaceChildren(...[...grupper].map(([g, ks]) => h('section', { class: 'grupp' }, h('h2', null, g || 'Övrigt'),
       ks.map((k) => {
         const d = h('details', { class: 'mekanik-post', id: `mek-${k.id}` },
-          h('summary', null, h('span', { class: 'mek-namn' }, k.namn), omdomeMarke(k), k.du ? h('span', { class: 'mek-du' }, `Du ${k.du}`) : null),
+          h('summary', null, h('span', { class: 'mek-namn' }, ...medMarke(k.omdome, k.namn)), omdomeMarke(k, { marke: false }), k.du ? h('span', { class: 'mek-du' }, `Du ${k.du}`) : null),
           mekanikDetaljer(k, { anvands: anvandsI(V, k) }));
         return d;
       }))));
@@ -1277,8 +1288,8 @@ function ritaJag() {
     return;
   }
   jag.hidden = false;
-  jag.textContent = S.jag.namn[0];
-  jag.className = `jag ${S.jag.id === 'liv' ? 'l' : S.jag.id === 'demi' ? 'd' : 'h'}`;
+  jag.textContent = `${S.jag.namn}${arAI(S.jag.id) ? ' (AI)' : ''}`;
+  jag.className = 'jag';
   jag.title = `Du är ${S.jag.namn}`;
 }
 
@@ -1288,9 +1299,9 @@ $('jag').addEventListener('click', () => {
     h('input', { type: 'checkbox', role: 'switch', checked: pa, onchange: (e) => sattInst(nyckel, e.target.checked) }), h('span', { class: 'spar', 'aria-hidden': 'true' }), text);
   oppnaPanel(`Du är ${S.jag.namn}`,
     h('p', { class: 'hjalp' }, 'Inställningarna gäller bara dig.'),
-    brytare('visaVem', 'Visa vem som skrev, med en prick i marginalen', S.inst.visaVem),
+    brytare('visaVem', 'Visa vem som skrev, med en initial i marginalen', S.inst.visaVem),
     arAI(S.jag.id) ? null : brytare('doljDemi', 'Visa Demis kommentarer och förslag', !S.inst.doljDemi),
-    h('p', { class: 'hjalp' }, 'Prickarna: ', h('span', { class: 'vem-namn' }, prick('henric'), 'Henric'), ' ', h('span', { class: 'vem-namn' }, prick('liv'), 'Liv'), ' ', h('span', { class: 'vem-namn' }, prick('demi'), 'Demi, en AI')),
+    h('p', { class: 'hjalp' }, 'Initialerna: H Henric, L Liv, D Demi (AI).'),
     S.adapter.rot === 'prov' ? h('p', { class: 'hjalp' }, 'Du är i provläget. Allt här är kopior.') : null);
   b.setAttribute('aria-expanded', 'true');
 });

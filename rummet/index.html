@@ -6,17 +6,15 @@
 <meta name="robots" content="noindex">
 <meta name="rummet-bygge" content="lokal">
 <title>Glimt: manusrummet</title>
-<meta name="theme-color" content="#120f24">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..700;1,400..600&family=Spectral:ital,wght@0,400;0,500;1,400&family=Syne:wght@600;700&display=swap" rel="stylesheet">
+<meta name="theme-color" content="#1a2130">
+<link rel="stylesheet" href="../design/glimt.css">
 <link rel="stylesheet" href="rummet.css">
 <script type="module" src="app.js"></script>
 </head>
 <body>
 <div id="band"></div>
 <header class="topp">
-  <a class="marke" href="#episod-1"><b>Glimt</b><span>manusrummet</span></a>
+  <a class="marke" href="#episod-1"><span class="namn" role="img" aria-label="Glimt">Gl<span class="i">ı</span>mt</span><span class="rum">manusrummet</span></a>
   <nav class="flikar" aria-label="Dokument">
     <a href="#episod-1" data-flik="episod-1">Episod 1</a>
     <a href="#episod-2" data-flik="episod-2">Episod 2</a>
@@ -27,10 +25,8 @@
 </header>
 <div class="verktyg" id="verktyg" role="toolbar" aria-label="Stycke" hidden></div>
 <main class="blad" id="rum">
-  <div class="sken"></div><div class="sken"></div>
   <div id="inne"><p class="laddar">Läser manuset …</p></div>
 </main>
-<footer class="fot"><span>Glimt hör till samma värld som</span><img src="held-logo.svg" alt="HELD"></footer>
 <div class="panel" id="panel" role="dialog" hidden></div>
 <div class="meny" id="meny" role="menu" hidden></div>
 <div class="status" id="status" role="status" aria-live="polite" hidden></div>
