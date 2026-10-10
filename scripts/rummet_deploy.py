@@ -8,7 +8,10 @@ Every file except index.html gets its content's hash in its name
 (app.3f9c0a1b2d.js), and every reference to it is rewritten, so a phone that
 holds an old page from the portal's five-minute cache still gets the files
 that page was built with, never a mix. index.html keeps its name and carries
-the build in <meta name="rummet-bygge">. The previous build's files are kept
+the build in <meta name="rummet-bygge">. Glimt's shared look
+(design/glimt.css, linked as ../design/glimt.css) is hashed the same way and
+lands next to the page; its typefaces go to fonts/ under their own names,
+which is where the stylesheet's url("fonts/...") points. The previous build's files are kept
 next to the new ones for the same reason; older ones are removed. Only files
 this script made are ever removed.
 
@@ -32,11 +35,16 @@ SRC = REPO / "rummet"
 UT = Path.home() / "generalassistant" / "data" / "uploads" / "glimt-rummet"
 FILES = ["manus.js", "data.js", "ljud.js", "dok.js", "katalog.js", "anteckn.js", "lager.js", "pm.js", "redigerare.js",
          "md.js", "app.js", "rummet.css", "ljudtider.json"]
-# Copied as they are, under their own names: the footer's logo, and the
-# editor bundle's licence, which travels with pm.js.
-EXTRAS = ["held-logo.svg", "pm-LICENSE.txt"]
+# Copied as they are, under their own names: the editor bundle's licence,
+# which travels with pm.js.
+EXTRAS = ["pm-LICENSE.txt"]
+# Glimt's shared look, outside rummet/: the page links it as ../design/glimt.css.
+DESIGN = REPO / "design"
+GLIMT_CSS = "glimt.css"
+GLIMT_HREF = "../design/glimt.css"
+FONTS = sorted(p.name for p in (DESIGN / "fonts").iterdir() if p.suffix in (".woff2", ".txt"))
 MANIFEST = "bygge.json"
-OURS = re.compile(r"^(?:%s)\.[0-9a-f]{10}\.(?:js|css|json)$" % "|".join(re.escape(Path(f).stem) for f in FILES))
+OURS = re.compile(r"^(?:%s)\.[0-9a-f]{10}\.(?:js|css|json)$" % "|".join(re.escape(Path(f).stem) for f in [*FILES, GLIMT_CSS]))
 
 
 def refs(text: str) -> list[str]:
@@ -70,7 +78,14 @@ def build() -> tuple[dict[str, bytes], str]:
             left.remove(f)
     commit = subprocess.run(["git", "-C", str(REPO), "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip() or "okänd"
     bygge = f"{names['app.js'].split('.')[1]} {commit}"
+    glimt = (DESIGN / GLIMT_CSS).read_bytes()
+    names[GLIMT_CSS] = hashed_name(GLIMT_CSS, glimt)
+    out[names[GLIMT_CSS]] = glimt
     index = (SRC / "index.html").read_text(encoding="utf-8")
+    pattern = r"""(href=")%s(")""" % re.escape(GLIMT_HREF)
+    if not re.search(pattern, index):
+        sys.exit(f"index.html does not reference {GLIMT_HREF}")
+    index = re.sub(pattern, lambda m: f"{m.group(1)}{names[GLIMT_CSS]}{m.group(2)}", index)
     for f in ("rummet.css", "app.js"):
         pattern = r"""((?:href|src)=")%s(")""" % re.escape(f)
         if not re.search(pattern, index):
@@ -105,6 +120,11 @@ def deploy(ut: Path) -> str:
             write_atomic(ut / name, data)
     for name in EXTRAS:
         write_atomic(ut / name, (SRC / name).read_bytes())
+    (ut / "fonts").mkdir(exist_ok=True)
+    for name in FONTS:
+        write_atomic(ut / "fonts" / name, (DESIGN / "fonts" / name).read_bytes())
+    # The HELD logo went with the 2026-10-10 look; only this script put it there.
+    (ut / "held-logo.svg").unlink(missing_ok=True)
     write_atomic(ut / "index.html", out["index.html"])
     current = sorted(n for n in out if n != "index.html")
     write_atomic(mf, (json.dumps({

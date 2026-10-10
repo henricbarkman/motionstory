@@ -194,16 +194,28 @@ def markor(page, sid: str, var: str = "slut") -> None:
     """Tap the paragraph, then put the caret at its start or end, as a
     finger or an arrow key would."""
     sel = f'.ProseMirror .st[data-id="{sid}"] .text'
+    # The typefaces are self-hosted and swap in when loaded; a reflow after
+    # the tap can let the editor move the caret to where the tap now lands.
+    page.evaluate("document.fonts.ready.then(() => true)")
     page.locator(sel).first.scroll_into_view_if_needed()
     page.locator(sel).first.click()
-    page.evaluate("""([sel, slut]) => {
-      const t = document.querySelector(sel);
-      const r = document.createRange();
-      r.selectNodeContents(t);
-      r.collapse(!slut);
-      const s = getSelection(); s.removeAllRanges(); s.addRange(r);
-    }""", [sel, var == "slut"])
-    page.wait_for_timeout(80)
+    for _ in range(5):
+        page.evaluate("""([sel, slut]) => {
+          const t = document.querySelector(sel);
+          const r = document.createRange();
+          r.selectNodeContents(t);
+          r.collapse(!slut);
+          const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+        }""", [sel, var == "slut"])
+        page.wait_for_timeout(80)
+        # Still where it was put? (The editor can apply the tap a moment late.)
+        if page.evaluate("""([sel, slut]) => {
+          const t = document.querySelector(sel); const s = getSelection();
+          if (!s.rangeCount || !s.isCollapsed || !t.contains(s.anchorNode)) return false;
+          const r = document.createRange(); r.setStart(t, 0); r.setEnd(s.anchorNode, s.anchorOffset);
+          return r.toString().length === (slut ? t.textContent.length : 0);
+        }""", [sel, var == "slut"]):
+            break
 
 
 def markera_allt_i(page, sid: str) -> None:
