@@ -1,5 +1,12 @@
 # PROGRESS — Motionstory
 
+## 2026-10-10
+- Henric: "För både appen, planen, testsidan och manusrummet - gör designen mycket mer avskalad, minimalistisk. Välj teckensnitt med extra stor omsorg. Ha inte med Held-loggan." Ersätter rummets lunar punk + HELD från 8/10.
+- Demi: **en gemensam look** för alla fyra (PR #32): `design/DESIGN.md`, `design/glimt.css`, `design/referens.html`. Två röster, två typsnitt, självhostade: Literata för hennes ord och alla rubriker, Atkinson Hyperlegible Next för telefonens. Prövade mot Newsreader, Hanken Grotesk och Inclusive Sans; Atkinsons nolla med snedstreck behålls (ingen vanlig nolla finns, och Inclusive Sans har samma plus ett barnsligt a). Blå timmen som grund (#1a2130), Vega (#c8d6ff) som enda accent, en varm färg för det som behöver dig. Ordmärket är namnet med en stjärna som i:ets prick, det enda som lyser. Domar som märken (fylld, halv, ring, svag ring, punkt), inte färger.
+- Demi: **appen, version 28** (PR #34): vänsterställd, en fylld knapp per skärm, ingen glöd utom stjärnan, hennes värld som punkter. Typsnitten ligger i service workerns cache, så promenaden går utan nät. Testpromenadens kort säger bara versionen (stod dubbelt). Alla node-sviter gröna, webbläsartestet 228 ok.
+- Jobb: planen, testsidan och utkasten i nya looken (manus_sida.py PR #33). Planens Fortare och Gå till landmärket rättade efter katalogen (Delvis, Oprövad).
+- → Nästa: Knacket gående på version 28 (samma knackgränser som 27). Bygget efter utkast 3 blir version 29.
+
 ## 2026-10-09
 - Henric, **testpromenad Knacket gående** (version 26, Chrome 154): missade, gående 1 av 3 hörda, upp ur fickan 0 dubbelknack. Svar "Ganska hårt" på hur hårt han fick knacka, betyg igen. Demi i sensorfilen: alla tre dubbelknackarna syns (12,3/12,6, 21,9/13,7 och 12,1/13,3), men under gående-gränsen 15 och den hårda gränsen 25, som sattes på fickor med hårdare steg. Hans gång var mjuk: gångnivån runt 1,8, mot 5-11 i labb 2.
 - Henric, **Knacket gående igen** 12:24 (version 26, fil till en annan session): klarade, gående 2 av 3, svar "Väldigt hårt". Fastare gång (93-123 steg/min).
