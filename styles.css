@@ -1,99 +1,90 @@
+/* The app's base, on design/glimt.css (tokens, fonts, the name). Rules:
+   design/DESIGN.md. One column, left aligned, space instead of boxes. */
+
 * { box-sizing: border-box; }
+
+html { background: var(--natt); }
 
 body {
   margin: 0;
-  background: #0a0a14;
-  color: #e6e6f0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--natt);
+  color: var(--text);
+  font-family: var(--telefonens);
+  font-size: var(--s1);
+  line-height: 1.5;
   min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   -webkit-font-smoothing: antialiased;
 }
 
 main {
   width: 100%;
-  max-width: 480px;
-  padding: 2.5rem 1.5rem;
-  text-align: center;
+  max-width: var(--matt);
+  margin: 0 auto;
+  padding: 3rem 1.5rem 3rem;
 }
 
+a { color: var(--text); text-decoration-color: var(--svag); text-decoration-thickness: 1px; text-underline-offset: 0.2em; }
+a:hover { text-decoration-color: var(--text); }
+:focus-visible { outline: 2px solid var(--vega); outline-offset: 3px; border-radius: 2px; }
+
 header h1 {
-  font-size: 2rem;
+  margin: 0 0 1.25rem;
+  font-size: var(--s5);
   font-weight: 300;
-  margin: 0 0 0.5rem;
-  letter-spacing: 0.02em;
+}
+header h1:not(.namn) {
+  font-family: var(--hennes);
+  font-size: var(--s4);
+  letter-spacing: -0.01em;
+  line-height: 1.15;
 }
 
 header .subtitle {
-  color: #9090a8;
-  font-size: 0.95rem;
-  margin: 0 0 3rem;
-  line-height: 1.4;
+  color: var(--dampad);
+  font-size: var(--s1);
+  margin: 0 0 2.5rem;
 }
 
+/* The screen's one filled button. */
 #start-btn {
-  padding: 1rem 2.5rem;
-  background: transparent;
-  border: 1px solid #6a6a90;
-  color: #e6e6f0;
-  font-size: 1rem;
-  border-radius: 2rem;
+  display: block;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 1.5rem;
+  background: var(--vega);
+  border: 0;
+  border-radius: 6px;
+  color: var(--natt);
+  font: 600 var(--s1)/1 var(--telefonens);
   cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
 }
-
-#start-btn:hover,
-#start-btn:focus {
-  background: #14142a;
-  border-color: #9090c0;
-  outline: none;
-}
+#start-btn:hover { background: #d9e3ff; }
 
 .hint {
-  color: #707090;
-  font-size: 0.85rem;
-  margin-top: 2rem;
-  line-height: 1.6;
+  color: var(--dampad);
+  font-size: var(--s0);
+  margin: 1rem 0 0;
 }
 
 .display {
   display: flex;
   flex-direction: column;
-  gap: 2.5rem;
+  gap: 2rem;
   margin-top: 2rem;
 }
-
-.metric {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.metric .label {
-  color: #707090;
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-}
-
-.metric .value {
-  font-size: 2.5rem;
-  font-weight: 300;
-  letter-spacing: 0.02em;
-}
+.metric { display: flex; flex-direction: column; gap: 0.2rem; }
+.metric .label { color: var(--dampad); font-size: var(--s0); }
+.metric .value { font-family: var(--hennes); font-size: var(--s4); font-weight: 300; }
 
 .status {
   margin-top: 2rem;
-  color: #9090a8;
-  font-size: 0.9rem;
+  color: var(--dampad);
+  font-size: var(--s0);
   min-height: 1.2em;
 }
 
 .build {
-  margin-top: 3.5rem;
-  color: #45455e;
-  font-size: 0.7rem;
-  letter-spacing: 0.06em;
+  margin-top: 4rem;
+  color: var(--svag);
+  font-size: var(--s-1);
 }
