@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Glimt, referens</title>
+<link rel="stylesheet" href="glimt.css">
+<style>
+  * { box-sizing: border-box; }
+  html { background: var(--natt); }
+  body {
+    margin: 0; color: var(--text); font-family: var(--telefonens);
+    font-size: var(--s1); line-height: 1.5; -webkit-font-smoothing: antialiased;
+  }
+  main { max-width: var(--matt); margin: 0 auto; padding: 3.5rem 1.5rem 6rem; }
+  a { color: var(--text); text-decoration-color: var(--svag); text-decoration-thickness: 1px; text-underline-offset: 0.2em; }
+  a:hover { text-decoration-color: var(--text); }
+  :focus-visible { outline: 2px solid var(--vega); outline-offset: 3px; border-radius: 2px; }
+  p { margin: 0 0 1rem; }
+  .hint { color: var(--dampad); font-size: var(--s0); }
+  .svag { color: var(--svag); font-size: var(--s-1); }
+
+  .namn { font-size: var(--s5); display: inline-block; margin: 0 0 1.5rem; }
+  h1 { font-family: var(--hennes); font-weight: 300; font-size: var(--s4); letter-spacing: -0.01em; line-height: 1.15; margin: 0 0 1rem; font-variation-settings: "opsz" 48; }
+  h2 { font-family: var(--hennes); font-weight: 400; font-size: var(--s3); line-height: 1.25; margin: 4.5rem 0 1.25rem; font-variation-settings: "opsz" 36; }
+  h3 { font-family: var(--hennes); font-weight: 600; font-size: var(--s1); margin: 2rem 0 0.4rem; }
+  .yta { color: var(--svag); font-size: var(--s0); margin: 5.5rem 0 1.5rem; padding-top: 1rem; border-top: 1px solid var(--linje); }
+  .yta:first-of-type { margin-top: 0; }
+
+  .hennes { font-family: var(--hennes); font-size: var(--s2); line-height: 1.55; }
+  .regi { font-family: var(--hennes); font-style: italic; color: var(--dampad); }
+  q.hennes { font-size: 1.06em; }
+
+  .val { border: 0; padding: 0; margin: 0 0 2rem; }
+  .val legend { color: var(--dampad); font-size: var(--s0); padding: 0; margin-bottom: 0.4rem; }
+  .val label { display: flex; gap: 0.7rem; align-items: baseline; padding: 0.45rem 0; cursor: pointer; }
+  .val input { accent-color: var(--vega); margin: 0; transform: translateY(0.1em); }
+
+  .huvud {
+    display: block; width: 100%; min-height: 52px; padding: 0 1.5rem;
+    background: var(--vega); color: var(--natt); border: 0; border-radius: 6px;
+    font: 600 var(--s1)/1 var(--telefonens); cursor: pointer;
+  }
+  .huvud:hover { background: #d9e3ff; }
+  .text-knapp { background: none; border: 0; padding: 0.5rem 0; color: var(--dampad); font: inherit; font-size: var(--s0); text-decoration: underline 1px var(--svag); text-underline-offset: 0.2em; cursor: pointer; }
+  .svar { display: flex; gap: 0.6rem; flex-wrap: wrap; margin: 0.5rem 0 1rem; }
+  .svar button { min-height: 44px; padding: 0 1.2rem; background: none; border: 1px solid var(--linje); border-radius: 6px; color: var(--text); font: inherit; font-size: var(--s0); cursor: pointer; }
+  .svar button[aria-pressed="true"] { background: var(--vega); border-color: var(--vega); color: var(--natt); }
+
+  .rad { padding: 1.1rem 0; border-bottom: 1px solid var(--linje); }
+  .rad:first-child { border-top: 1px solid var(--linje); }
+  .rad-huvud { display: flex; justify-content: space-between; gap: 1rem; align-items: baseline; }
+  .rad-huvud strong { font-weight: 600; }
+  .utfall { font-size: var(--s0); }
+  .utfall.missade { color: var(--varm); }
+  .rad p { margin: 0.3rem 0 0; color: var(--dampad); font-size: var(--s0); }
+
+  .punkter { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 0.6rem; }
+  .punkter i { width: 6px; height: 6px; border-radius: 50%; background: var(--linje); }
+  .punkter i.lit { background: var(--vega); }
+
+  .nav { display: flex; gap: 1.4rem; flex-wrap: wrap; font-size: var(--s0); margin: 0 0 1rem; }
+  .nav a { color: var(--dampad); text-decoration: none; }
+  .nav a:hover { color: var(--text); }
+
+  .test { padding: 1.4rem 0; border-bottom: 1px solid var(--linje); }
+  .test h3 { margin: 0 0 0.3rem; font-size: var(--s2); font-weight: 400; }
+  .test .fraga { margin: 0 0 0.3rem; }
+  .test .gor { color: var(--dampad); font-size: var(--s0); margin: 0 0 0.9rem; }
+  .test a.ga { display: inline-flex; align-items: center; min-height: 44px; padding: 0 1.2rem; border: 1px solid var(--linje); border-radius: 6px; text-decoration: none; font-size: var(--s0); }
+  .test.forst a.ga { background: var(--vega); color: var(--natt); border-color: var(--vega); font-weight: 600; }
+
+  /* The room, at the reference's width; the real room adds a margin column. */
+  .verktyg { display: flex; gap: 0.2rem; flex-wrap: wrap; font-size: var(--s0); margin: 0 0 2.5rem; }
+  .verktyg span { padding: 0.35rem 0.7rem; border-radius: 6px; color: var(--dampad); }
+  .verktyg span.nu { background: var(--skymning); color: var(--text); }
+  .stycke { position: relative; margin: 0 0 1rem; }
+  .stycke .vem { position: absolute; left: -1.15rem; top: 0.35em; font-size: var(--s-1); color: var(--svag); }
+  .scen { font-family: var(--hennes); font-weight: 600; font-size: var(--s2); margin: 2.5rem 0 1rem; }
+  .mekanik { color: var(--dampad); font-size: var(--s0); }
+  .mekanik b { color: var(--text); font-weight: 400; white-space: nowrap; }
+  .gren { color: var(--dampad); font-size: var(--s0); margin-bottom: 0.2rem; }
+  .anteckning { color: var(--svag); font-size: var(--s0); }
+  .kommentar { margin: 1.25rem 0 2rem; padding-left: 1rem; border-left: 1px solid var(--linje); font-size: var(--s0); }
+  .kommentar .vem2 { color: var(--svag); margin-bottom: 0.2rem; }
+  .kommentar .forslag { font-family: var(--hennes); font-size: var(--s1); margin: 0.3rem 0 0.5rem; }
+  .sparat { color: var(--svag); font-size: var(--s-1); }
+  @media (min-width: 46rem) { .stycke .vem { left: -2rem; } }
+</style>
+</head>
+<body>
+<main>
+
+<p class="yta">Appen, startskärmen</p>
+<span class="namn" role="img" aria-label="Glimt">Gl<span class="i">ı</span>mt</span>
+<p class="hint" style="font-size:var(--s1)">Episod 1. Ungefär tolv minuter. Gå eller spring. Hon hörs när du går.</p>
+<fieldset class="val">
+  <legend>Kapitel</legend>
+  <label><input type="radio" name="k" checked> Episod 1. Det är när du går</label>
+  <label><input type="radio" name="k"> 1. Det är när du går jag hör dig</label>
+  <label><input type="radio" name="k"> 2. Stanna för ja</label>
+  <label><input type="radio" name="k"> Labb 1. Åtta banor, en mekanik i taget</label>
+</fieldset>
+<button class="huvud" type="button">Börja gå</button>
+<p class="hint" style="margin-top:1rem">Sätt på lurarna. Tryck när du står där du vill börja.</p>
+<button class="text-knapp" type="button">Prova vibrationen</button>
+<p class="svag" style="margin-top:3rem">Version 28</p>
+
+<p class="yta">Appen, efter en testpromenad</p>
+<p class="hennes">Kom tillbaka och gå.</p>
+<p style="margin-top:1.5rem">Hur hårt fick du knacka?</p>
+<div class="svar">
+  <button type="button" aria-pressed="false">Lätt</button>
+  <button type="button" aria-pressed="true">Ganska hårt</button>
+  <button type="button" aria-pressed="false">Väldigt hårt</button>
+</div>
+<div>
+  <div class="rad"><div class="rad-huvud"><strong>Knacket gående</strong><span class="utfall">klarade</span></div><p>Gående 2 av 3 hörda. Upp ur fickan 0 dubbelknack.</p></div>
+  <div class="rad"><div class="rad-huvud"><strong>Sensorvakten</strong><span class="utfall missade">missade</span></div><p>Skärmen låstes 0:36, sensorn tillbaka 0:51.</p></div>
+</div>
+
+<p class="yta">Planen</p>
+<span class="namn" role="img" aria-label="Glimt" style="font-size:var(--s4)">Gl<span class="i">ı</span>mt</span>
+<p class="hennes" style="color:var(--dampad)">En röst från trettio år fram, i en kopia av din värld. <q class="hennes" style="color:var(--text)">Det är när du går jag hör dig.</q></p>
+<div class="punkter" aria-hidden="true"><i class="lit"></i><i class="lit"></i><i class="lit"></i><i class="lit"></i><i class="lit"></i><i class="lit"></i><i class="lit"></i><i class="lit"></i><i class="lit"></i><i class="lit"></i><i class="lit"></i><i class="lit"></i><i class="lit"></i><i class="lit"></i><i class="lit"></i><i class="lit"></i><i class="lit"></i><i class="lit"></i><i class="lit"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+<p class="hint">19 av 32 mekaniker har hållit ute.</p>
+<nav class="nav"><a href="#">Gå episod 1</a><a href="#">Testpromenaderna</a><a href="#">Utkasten</a><a href="#">Manusrummet</a></nav>
+<p class="svag">Uppdaterad 10 oktober 2026, efter Knacket gående.</p>
+
+<h2>Mekanikerna</h2>
+<h3>Att stanna</h3>
+<div>
+  <div class="rad"><div class="rad-huvud"><span><span class="dom" data-dom="haller" aria-hidden="true"></span>Frys</span><span class="utfall">Håller</span></div><p>Stopp läses ca 2 s efter sista steget. Gående.</p></div>
+  <div class="rad"><div class="rad-huvud"><span><span class="dom" data-dom="delvis" aria-hidden="true"></span>Knacket gående</span><span class="utfall">Delvis</span></div><p>2 av 3 hörda på version 26. Version 27 följer gången.</p></div>
+  <div class="rad"><div class="rad-huvud"><span><span class="dom" data-dom="osaker" aria-hidden="true"></span>Ljudkompassen</span><span class="utfall">Osäker</span></div><p>Riktningen höll i labb 2, inte i labb 1.</p></div>
+  <div class="rad"><div class="rad-huvud"><span><span class="dom" data-dom="oprovad" aria-hidden="true"></span>Minnet mellan episoderna</span><span class="utfall">Oprövad</span></div><p>Byggt i episod 1.</p></div>
+  <div class="rad"><div class="rad-huvud"><span><span class="dom" data-dom="ide" aria-hidden="true"></span>Andas i takt</span><span class="utfall">Idé</span></div><p>Ingen sensor läser det än.</p></div>
+</div>
+
+<p class="yta">Testsidan</p>
+<h1>Testpromenader</h1>
+<p>Sju korta promenader kvar, en fråga var. Gå dem i vilken ordning du vill. Ordningen här är den jag tror ger mest först.</p>
+<p class="svag">Glimt version 28, uppdaterad 10 oktober 2026.</p>
+<div class="test forst">
+  <h3>Knacket gående</h3>
+  <p class="fraga">Hörs en dubbelknack mot fickan medan du går, utan att du knackar hårdare än du vill?</p>
+  <p class="gor">Två minuter. Gå, knacka två gånger när hon ber om det.</p>
+  <a class="ga" href="#">Gå testet</a>
+</div>
+<div class="test">
+  <h3>Gå och spring</h3>
+  <p class="fraga">Märker hon när du växlar från gång till löpning?</p>
+  <p class="gor">Fyra minuter. Gå, spring när hon säger till, gå igen.</p>
+  <a class="ga" href="#">Gå testet</a>
+</div>
+
+<p class="yta">Manusrummet</p>
+<div class="verktyg"><span class="nu">Episod 1</span><span>Episod 2</span><span>Världen</span><span>Mekaniker</span></div>
+<h1>Det är när du går</h1>
+<p class="svag">Episod 1, utkast 3</p><p class="sparat" style="margin-top:-0.6rem">Sparat</p>
+<p class="scen">2 Frågan</p>
+<div class="stycke mekanik"><span class="vem">D</span>Kontakten stark, runt minut två och en halv. <b><span class="dom" data-dom="haller" aria-hidden="true"></span>Stanna för ja</b>. Hon väntar tjugo sekunder på ett stopp.</div>
+<div class="stycke hennes"><span class="vem">D</span>Jag måste få veta en sak, annars blir jag tokig. Jag har pratat för mig själv här länge.</div>
+<div class="stycke hennes"><span class="vem">H</span>Så. Om det finns någon där. Stanna. Bara ett par sekunder, sen går du igen.</div>
+<div class="stycke regi"><span class="vem">D</span>(väntar)</div>
+<div class="kommentar">
+  <div class="vem2">Demi (AI), föreslår</div>
+  <div class="forslag">Stanna. Bara en liten stund. Sen går du igen.</div>
+  <button class="text-knapp" type="button">Ta in</button>
+</div>
+<div class="gren">Om vandraren stannar</div>
+<div class="stycke hennes"><span class="vem">D</span>Där. Du är där.</div>
+<div class="stycke anteckning"><span class="vem">L</span>Kanske kortare paus här?</div>
+
+</main>
+</body>
+</html>

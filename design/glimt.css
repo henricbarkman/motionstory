@@ -1,0 +1,119 @@
+/* Glimt's ground, shared by the app, the plan, the test page and the room.
+   One file so the four can never drift apart. Rules and reasons: DESIGN.md.
+
+   Two voices, two typefaces. Literata is hers: the story, the manuscript,
+   every title. Atkinson Hyperlegible Next is the phone's: buttons, numbers,
+   status, instructions. A line is set in the voice of whoever says it. */
+
+@font-face {
+  font-family: "Literata";
+  src: url("fonts/literata-normal.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Literata";
+  src: url("fonts/literata-italic.woff2") format("woff2");
+  font-style: italic;
+  font-weight: 200 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  src: url("fonts/atkinson-next-normal.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  src: url("fonts/atkinson-next-italic.woff2") format("woff2");
+  font-style: italic;
+  font-weight: 200 800;
+  font-display: swap;
+}
+
+:root {
+  /* The blue hour, not black: the walks happen at dusk and after. */
+  --natt: #1a2130;
+  /* The one raised surface: a field, a selected row, the toolbar's current. */
+  --skymning: #232b3c;
+  /* Only for lines that mean something: a field's edge, a divider in a list. */
+  --linje: #323b4e;
+  --text: #e6e3da;
+  --dampad: #9aa0ad;
+  --svag: #6d7486;
+  /* Vega, the blue-white star. The dot in the name, the one filled button,
+     focus, and what held up outdoors. Nothing decorative. */
+  --vega: #c8d6ff;
+  /* What needs you: missed, unsure, waiting for an answer. */
+  --varm: #e2b872;
+
+  --hennes: "Literata", Georgia, serif;
+  --telefonens: "Atkinson Hyperlegible Next", system-ui, sans-serif;
+
+  /* Scale from 17px, steps of a fourth-ish (x1.25), rounded to whole px. */
+  --s-1: 0.8125rem;  /* 13: the quietest line, timestamps, the build */
+  --s0: 0.9375rem;   /* 15: phone text, lists, hints */
+  --s1: 1.0625rem;   /* 17: body */
+  --s2: 1.3125rem;   /* 21: her lines when read, lead paragraphs */
+  --s3: 1.6875rem;   /* 27: section titles */
+  --s4: 2.125rem;    /* 34: page titles */
+  --s5: 4rem;        /* 64: the name */
+
+  --matt: 34rem;     /* the measure: about 65 characters of Literata at 17px */
+  color-scheme: dark;
+}
+
+/* The name. The i's dot is Vega: a dotless i with a star set over it. Markup:
+   <span class="namn" role="img" aria-label="Glimt">Gl<span class="i">ı</span>mt</span>
+   (U+0131). The only thing on any page allowed to glow. */
+.namn {
+  font-family: var(--hennes);
+  font-weight: 300;
+  font-variation-settings: "opsz" 72;
+  letter-spacing: -0.015em;
+  line-height: 1;
+  color: var(--text);
+}
+.namn .i { position: relative; }
+.namn .i::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0.37em;
+  width: 0.14em;
+  height: 0.14em;
+  margin-left: -0.07em;
+  border-radius: 50%;
+  background: var(--vega);
+  box-shadow: 0 0 0.12em var(--vega), 0 0 0.45em rgb(200 214 255 / 0.45);
+  animation: tands 1.6s ease-out 0.25s both;
+}
+/* The page's one moment: the star lights once, after the word. */
+@keyframes tands {
+  from { opacity: 0; transform: scale(0.4); }
+  60% { opacity: 1; transform: scale(1.15); }
+  to { opacity: 1; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .namn .i::after { animation: none; }
+}
+
+/* Verdicts, as marks rather than colours: full, half, ring, faint ring, point.
+   <span class="dom" data-dom="haller" aria-hidden="true"></span> Håller */
+.dom {
+  display: inline-block;
+  width: 0.55em;
+  height: 0.55em;
+  border-radius: 50%;
+  vertical-align: 0.05em;
+  margin-right: 0.45em;
+  box-sizing: border-box;
+}
+.dom[data-dom="haller"] { background: var(--vega); }
+.dom[data-dom="delvis"] { background: linear-gradient(90deg, var(--vega) 50%, transparent 50%); border: 1.5px solid var(--vega); }
+.dom[data-dom="osaker"] { border: 1.5px solid var(--varm); }
+.dom[data-dom="oprovad"] { border: 1.5px solid var(--svag); }
+.dom[data-dom="ide"] { width: 0.3em; height: 0.3em; margin: 0 0.575em 0 0.125em; background: var(--svag); vertical-align: 0.15em; }
