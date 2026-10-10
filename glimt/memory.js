@@ -155,7 +155,7 @@ export class Memory {
 }
 
 // Draws the known squares on a canvas: the world as far as she has heard
-// it, north up, no map underneath. `recent` (a set of cell keys) glows; the
+// it, north up, no map underneath. `recent` (a set of cell keys) is lit; the
 // rest is faint. Sized to the canvas's CSS box at the screen's pixel density.
 export function drawWorld(canvas, memory, recent = memory.fresh) {
   const ctx = canvas.getContext && canvas.getContext('2d');
@@ -174,22 +174,22 @@ export function drawWorld(canvas, memory, recent = memory.fresh) {
   const pad = 12 * dpr;
   const size = Math.max(2 * dpr, Math.min(18 * dpr, Math.floor(Math.min((W - pad * 2) / cols, (H - pad * 2) / rows))));
   const gap = size >= 6 * dpr ? Math.round(size * 0.22) : 0;
-  const offX = (W - cols * size) / 2, offY = (H - rows * size) / 2;
+  // Left aligned like the text around it (design/DESIGN.md), centred in height.
+  const offX = 0, offY = (H - rows * size) / 2;
   const at = (i, j) => [offX + (j - minJ) * size, offY + (maxI - i) * size];
-  // Faint squares first, then the glowing ones on top.
-  ctx.fillStyle = 'rgba(200, 210, 255, 0.32)';
-  for (const [i, j] of cells) {
-    if (recent.has(`${i},${j}`)) continue;
+  // Each square walked is a point in its cell, like a star chart: faint ones
+  // first, the latest walk's in Vega's colour on top. No glow; the only glow
+  // in Glimt is the star over the i.
+  const r = Math.max(1 * dpr, (size - gap) * 0.32);
+  const dot = (i, j) => {
     const [x, y] = at(i, j);
-    ctx.fillRect(x, y, size - gap, size - gap);
-  }
-  ctx.fillStyle = '#c8d2ff';
-  ctx.shadowColor = 'rgba(200, 210, 255, 0.7)';
-  ctx.shadowBlur = Math.max(4, size * 0.8);
-  for (const [i, j] of cells) {
-    if (!recent.has(`${i},${j}`)) continue;
-    const [x, y] = at(i, j);
-    ctx.fillRect(x, y, size - gap, size - gap);
-  }
-  ctx.shadowBlur = 0;
+    const c = (size - gap) / 2;
+    ctx.beginPath();
+    ctx.arc(x + c, y + c, r, 0, Math.PI * 2);
+    ctx.fill();
+  };
+  ctx.fillStyle = 'rgba(200, 214, 255, 0.3)';
+  for (const [i, j] of cells) if (!recent.has(`${i},${j}`)) dot(i, j);
+  ctx.fillStyle = '#c8d6ff';
+  for (const [i, j] of cells) if (recent.has(`${i},${j}`)) dot(i, j);
 }

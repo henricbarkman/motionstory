@@ -1,162 +1,165 @@
-/* Glimt: adds to ../styles.css. One thing carries the screen, the contact line. */
+/* Glimt: adds to ../styles.css, on ../design/glimt.css. One thing carries the
+   walking screen, the contact line. Rules: ../design/DESIGN.md. */
 
-body { align-items: flex-start; }
-main { padding-top: 3rem; }
-header .subtitle { margin-bottom: 2rem; }
+h2 { margin: 0; }
 
 .variant {
   border: 0;
   padding: 0;
   margin: 0 0 2rem;
-  text-align: left;
-  color: #9090a8;
-  font-size: 0.9rem;
+  min-width: 0;
 }
-.variant legend { color: #707090; padding: 0; margin-bottom: 0.5rem; }
-.variant label { display: block; padding: 0.4rem 0; cursor: pointer; }
-.variant input { margin-right: 0.6rem; accent-color: #c8d2ff; }
+.variant legend { color: var(--dampad); font-size: var(--s0); padding: 0; margin-bottom: 0.4rem; }
+.variant label { display: flex; gap: 0.7rem; align-items: baseline; padding: 0.45rem 0; cursor: pointer; }
+.variant input { accent-color: var(--vega); margin: 0; flex: none; transform: translateY(0.1em); }
 
-/* A test walk's card: which test, what it asks, what the body does. */
-.prov { text-align: left; margin: 0 0 2rem; padding: 1.2rem 1.2rem 1rem; border: 1px solid #2a2a40; border-radius: 0.6rem; }
+/* A test walk: which test, what it asks, what the body does. No frame. */
+.prov { margin: 0 0 2.5rem; }
 .prov[hidden] { display: none; }
-.prov-kicker { margin: 0 0 0.4rem; color: #707090; font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; }
-.prov-title { margin: 0 0 0.6rem; font-size: 1.4rem; font-weight: 300; color: #e6e6f0; }
-.prov-question { margin: 0 0 0.8rem; color: #c8d2ff; line-height: 1.5; }
-.prov-todo { margin: 0; color: #9090a8; font-size: 0.9rem; line-height: 1.5; }
-.prov-label { color: #707090; font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; margin-right: 0.3rem; }
+.prov-kicker { margin: 0 0 0.3rem; color: var(--dampad); font-size: var(--s0); }
+.prov-title { margin: 0 0 0.6rem; font-family: var(--hennes); font-size: var(--s3); font-weight: 400; line-height: 1.2; }
+.prov-question { margin: 0 0 0.8rem; }
+.prov-todo { margin: 0; color: var(--dampad); font-size: var(--s0); }
+.prov-label { color: var(--text); }
 #sensor-note, #map-note { cursor: pointer; }
 
 /* The test walk's questions on the end screen, above the station's verdict. */
-.prov-asks { margin: 0 0 1.5rem; }
-.prov-ask { padding: 0 0 1.2rem; }
-.prov-ask-text { margin: 0 0 0.6rem; color: #e6e6f0; }
+.prov-asks { margin: 0 0 2rem; }
+.prov-ask { padding: 0 0 1.25rem; }
+.prov-ask-text { margin: 0 0 0.5rem; }
 .prov-ask .lab-rate { flex-wrap: wrap; }
-.prov-ask .lab-rate button { min-height: 44px; }
 
-#start-btn:disabled { color: #707090; border-color: #2a2a40; cursor: default; }
+#start-btn:disabled { background: var(--skymning); color: var(--dampad); cursor: default; }
 
-details { margin-top: 2.5rem; text-align: left; color: #707090; font-size: 0.8rem; }
+details { margin-top: 3rem; color: var(--dampad); font-size: var(--s0); }
 details summary { cursor: pointer; }
-pre { white-space: pre-wrap; font-size: 0.75rem; line-height: 1.5; color: #9090a8; }
-
-/* The contact line. Width and glow follow the meter; nothing else moves. */
-.contact { margin: 0.5rem 0 2.5rem; }
-.contact-line {
-  height: 2px;
-  background: #1c1c30;
-  border-radius: 1px;
-  overflow: visible;
+pre {
+  white-space: pre-wrap;
+  font-family: var(--telefonens);
+  font-size: var(--s-1);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.55;
+  color: var(--dampad);
 }
+
+/* The contact line. Width and brightness follow the meter; nothing else moves. */
+.contact { margin: 0.5rem 0 2.5rem; }
+.contact-line { height: 2px; background: var(--linje); border-radius: 1px; }
 .contact-fill {
   height: 100%;
   width: 35%;
-  background: #c8d2ff;
+  background: var(--vega);
   border-radius: 1px;
-  box-shadow: 0 0 6px rgba(200, 210, 255, 0.35);
-  transition: width 0.6s ease, opacity 0.6s ease, box-shadow 0.6s ease;
+  transition: width 0.6s ease, opacity 0.6s ease;
 }
-.contact-caption {
-  margin-top: 0.6rem;
-  color: #707090;
-  font-size: 0.8rem;
-}
+.contact-caption { margin-top: 0.6rem; color: var(--dampad); font-size: var(--s0); }
 
 .readout {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
-  margin-bottom: 2rem;
+  margin-bottom: 2.5rem;
 }
-.readout > div { display: flex; flex-direction: column; gap: 0.25rem; }
-.readout .big { font-size: 1.4rem; font-weight: 300; }
-.readout .small { color: #707090; font-size: 0.75rem; }
+.readout > div { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+.readout .big { font-family: var(--hennes); font-size: var(--s3); font-weight: 300; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.readout .small { color: var(--dampad); font-size: var(--s-1); }
 
 .sim {
-  margin: 0 0 1.5rem;
-  padding: 1rem;
-  border: 1px dashed #2a2a40;
-  border-radius: 0.5rem;
-  color: #9090a8;
-  font-size: 0.8rem;
-  text-align: left;
+  margin: 0 0 2rem;
+  color: var(--dampad);
+  font-size: var(--s0);
 }
 .sim label { display: block; }
-.sim input[type="range"] { width: 100%; margin-top: 0.4rem; accent-color: #c8d2ff; }
-.sim-row { display: flex; flex-wrap: wrap; gap: 0.8rem 1.2rem; align-items: center; margin-top: 0.8rem; }
-.sim-row button { padding: 0.4rem 1rem; background: transparent; border: 1px solid #45455e; color: #e6e6f0; border-radius: 1rem; }
+.sim input[type="range"] { width: 100%; margin-top: 0.4rem; accent-color: var(--vega); }
+.sim input[type="checkbox"] { accent-color: var(--vega); }
+.sim-row { display: flex; flex-wrap: wrap; gap: 0.6rem 1rem; align-items: center; margin-top: 0.8rem; }
+.sim-row button {
+  min-height: 40px; padding: 0 1rem; background: none; border: 1px solid var(--linje);
+  border-radius: 6px; color: var(--text); font: inherit;
+}
 
 .log {
   list-style: none;
   padding: 0;
   margin: 0 0 2rem;
-  text-align: left;
-  color: #707090;
-  font-size: 0.75rem;
+  color: var(--dampad);
+  font-size: var(--s-1);
+  font-variant-numeric: tabular-nums;
   line-height: 1.6;
   max-height: 14rem;
   overflow-y: auto;
 }
 .log li { display: flex; gap: 0.8rem; }
-.log li time { color: #45455e; flex: 0 0 3em; }
+.log li time { color: var(--svag); flex: 0 0 3em; }
 
-a.quiet { display: inline-block; margin-bottom: 1rem; text-decoration: none; }
+/* Quiet actions: text with an underline, never a second filled button. */
+a.quiet { display: inline-block; margin-top: 1rem; }
 a.quiet[hidden] { display: none; }
-button.quiet, a.quiet, #copy-btn {
-  padding: 0.6rem 1.6rem;
-  background: transparent;
-  border: 1px solid #45455e;
-  color: #9090a8;
-  font-size: 0.85rem;
-  border-radius: 2rem;
+button.quiet, #copy-btn {
+  display: inline-block;
+  min-height: 44px;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--dampad);
+  font: inherit;
+  font-size: var(--s0);
+  text-decoration: underline 1px var(--svag);
+  text-underline-offset: 0.2em;
   cursor: pointer;
 }
+button.quiet:hover, #copy-btn:hover { color: var(--text); text-decoration-color: var(--text); }
+#copy-btn { color: var(--text); }
 
 /* The vibration try-out on the start screen, above the start button so it
    is met before the tap: a hint, one button, and the question once it has
    buzzed. Only the question is lit. The no's hint is a list, one check a
    line. */
 .vibra { margin: 0 0 2rem; }
-.vibra .hint { margin: 0 0 0.9rem; color: #9090a8; white-space: pre-line; }
-.vibra[data-state="asked"] .hint { color: #e6e6f0; }
-.vibra .lab-rate { justify-content: center; gap: 1rem; margin-bottom: 0.9rem; }
+.vibra .hint { margin: 0 0 0.6rem; white-space: pre-line; }
+.vibra[data-state="asked"] .hint { color: var(--text); }
+.vibra .lab-rate { margin-bottom: 0.6rem; }
 .vibra .lab-rate[hidden] { display: none; }
 .vibra .lab-rate button { min-width: 5rem; }
 .vibra button { min-height: 44px; }
-.vibra button:disabled { color: #45455e; cursor: default; }
-.vibra button:focus-visible { outline: 2px solid #c8d2ff; outline-offset: 2px; }
+.vibra button:disabled { color: var(--svag); cursor: default; }
 
-.end-word { font-size: 1.4rem; font-weight: 300; margin: 2rem 0 2rem; }
-.final-log { text-align: left; margin-top: 2rem; }
+.end-word { font-family: var(--hennes); font-size: var(--s3); font-weight: 400; line-height: 1.3; margin: 1rem 0 2.5rem; }
+.final-log { margin-top: 2rem; }
 
 /* The lab's end screen: one row per station, the verdict is the walker's. */
-.lab-results { text-align: left; margin-bottom: 2rem; }
+.lab-results { margin-bottom: 2.5rem; }
 .lab-list { list-style: none; padding: 0; margin: 0 0 1rem; }
-.lab-list li { padding: 1rem 0; border-bottom: 1px solid #1c1c30; }
+.lab-list li { padding: 1.1rem 0; border-bottom: 1px solid var(--linje); }
+.lab-list li:first-child { border-top: 1px solid var(--linje); }
 .lab-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
-.lab-head strong { font-weight: 400; font-size: 1.05rem; color: #e6e6f0; }
-.lab-outcome { font-size: 0.75rem; color: #707090; }
-.lab-outcome.lab-klarade { color: #c8d2ff; }
-.lab-detail { margin: 0.4rem 0 0.8rem; color: #707090; font-size: 0.75rem; line-height: 1.5; }
-.lab-rate { display: flex; gap: 0.6rem; }
+.lab-head strong { font-weight: 600; }
+.lab-outcome { font-size: var(--s0); color: var(--dampad); }
+.lab-outcome.lab-klarade { color: var(--text); }
+.lab-outcome.lab-missade { color: var(--varm); }
+.lab-detail { margin: 0.3rem 0 0.8rem; color: var(--dampad); font-size: var(--s0); }
+.lab-rate { display: flex; gap: 0.6rem; flex-wrap: wrap; }
 .lab-rate button {
-  padding: 0.45rem 1.3rem;
-  background: transparent;
-  border: 1px solid #45455e;
-  color: #9090a8;
-  font-size: 0.85rem;
-  border-radius: 2rem;
+  min-height: 44px;
+  padding: 0 1.2rem;
+  background: none;
+  border: 1px solid var(--linje);
+  border-radius: 6px;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--s0);
   cursor: pointer;
 }
-.lab-rate button[aria-pressed="true"] { border-color: #c8d2ff; color: #0a0a14; background: #c8d2ff; }
+.lab-rate button[aria-pressed="true"] { border-color: var(--vega); color: var(--natt); background: var(--vega); }
 
 /* Her world: the squares walked, as points of light. No frame, no map. */
-.world { margin: 2.5rem 0 0; text-align: left; }
-.world-name { margin: 0 0 0.6rem; color: #707090; font-size: 0.9rem; font-weight: 400; }
+.world { margin: 3rem 0 0; }
+.world-name { margin: 0 0 0.6rem; font-family: var(--hennes); font-size: var(--s1); font-weight: 400; color: var(--dampad); }
 .world-map { display: block; width: 100%; height: 9rem; }
-.world-line { margin: 0.6rem 0 0; color: #9090a8; font-size: 0.8rem; line-height: 1.5; }
+.world-line { margin: 0.6rem 0 0; color: var(--dampad); font-size: var(--s0); }
 #done .world { margin: 0 0 2rem; }
 
 @media (prefers-reduced-motion: reduce) {
   .contact-fill { transition: none; }
 }
-#save-btn { margin: 0.5rem 0 0 0.5rem; }
+#save-btn { margin-left: 1.5rem; }

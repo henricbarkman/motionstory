@@ -19,7 +19,7 @@ import { Memory, drawWorld, KEY_NAMES } from './memory.js';
 
 // The version the start screen shows, the same number as the service
 // worker's cache. Bump both together.
-const APP_VERSION = 27;
+const APP_VERSION = 28;
 
 const params = new URLSearchParams(location.search);
 const SIM = params.has('sim');
@@ -675,7 +675,6 @@ function render(s) {
   const fill = $('contact-fill');
   fill.style.width = `${Math.round(s.contact * 100)}%`;
   fill.style.opacity = String(0.35 + 0.65 * s.contact);
-  fill.style.boxShadow = `0 0 ${Math.round(2 + 10 * s.contact)}px rgba(200,210,255,${(0.15 + 0.4 * s.contact).toFixed(2)})`;
   // An episode holds the contact all the way; what changes is the veil.
   $('contact-word').textContent =
     side ? (veiled ? 'dov' : s.contact > 0.8 ? 'nära' : s.contact > 0.5 ? 'hör dig' : 'svagt') :
