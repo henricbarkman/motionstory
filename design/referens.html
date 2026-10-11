@@ -8,7 +8,6 @@
 <link rel="stylesheet" href="glimt.css">
 <style>
   * { box-sizing: border-box; }
-  html { background: var(--natt); }
   body {
     margin: 0; color: var(--text); font-family: var(--telefonens);
     font-size: var(--s1); line-height: 1.5; -webkit-font-smoothing: antialiased;
@@ -16,7 +15,7 @@
   main { max-width: var(--matt); margin: 0 auto; padding: 3.5rem 1.5rem 6rem; }
   a { color: var(--text); text-decoration-color: var(--svag); text-decoration-thickness: 1px; text-underline-offset: 0.2em; }
   a:hover { text-decoration-color: var(--text); }
-  :focus-visible { outline: 2px solid var(--vega); outline-offset: 3px; border-radius: 2px; }
+  :focus-visible { outline: 2px solid var(--mint); outline-offset: 3px; border-radius: 2px; }
   p { margin: 0 0 1rem; }
   .hint { color: var(--dampad); font-size: var(--s0); }
   .svag { color: var(--svag); font-size: var(--s-1); }
@@ -35,18 +34,18 @@
   .val { border: 0; padding: 0; margin: 0 0 2rem; }
   .val legend { color: var(--dampad); font-size: var(--s0); padding: 0; margin-bottom: 0.4rem; }
   .val label { display: flex; gap: 0.7rem; align-items: baseline; padding: 0.45rem 0; cursor: pointer; }
-  .val input { accent-color: var(--vega); margin: 0; transform: translateY(0.1em); }
+  .val input { accent-color: var(--mint); margin: 0; transform: translateY(0.1em); }
 
   .huvud {
     display: block; width: 100%; min-height: 52px; padding: 0 1.5rem;
-    background: var(--vega); color: var(--natt); border: 0; border-radius: 6px;
+    background: var(--mint); color: var(--pa-mint); border: 0; border-radius: 6px;
     font: 600 var(--s1)/1 var(--telefonens); cursor: pointer;
   }
-  .huvud:hover { background: #d9e3ff; }
+  .huvud:hover { background: var(--mint-ljus); }
   .text-knapp { background: none; border: 0; padding: 0.5rem 0; color: var(--dampad); font: inherit; font-size: var(--s0); text-decoration: underline 1px var(--svag); text-underline-offset: 0.2em; cursor: pointer; }
   .svar { display: flex; gap: 0.6rem; flex-wrap: wrap; margin: 0.5rem 0 1rem; }
   .svar button { min-height: 44px; padding: 0 1.2rem; background: none; border: 1px solid var(--linje); border-radius: 6px; color: var(--text); font: inherit; font-size: var(--s0); cursor: pointer; }
-  .svar button[aria-pressed="true"] { background: var(--vega); border-color: var(--vega); color: var(--natt); }
+  .svar button[aria-pressed="true"] { background: var(--mint); border-color: var(--mint); color: var(--pa-mint); }
 
   .rad { padding: 1.1rem 0; border-bottom: 1px solid var(--linje); }
   .rad:first-child { border-top: 1px solid var(--linje); }
@@ -58,7 +57,7 @@
 
   .punkter { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 0.6rem; }
   .punkter i { width: 6px; height: 6px; border-radius: 50%; background: var(--linje); }
-  .punkter i.lit { background: var(--vega); }
+  .punkter i.lit { background: var(--mint); }
 
   .nav { display: flex; gap: 1.4rem; flex-wrap: wrap; font-size: var(--s0); margin: 0 0 1rem; }
   .nav a { color: var(--dampad); text-decoration: none; }
@@ -69,7 +68,7 @@
   .test .fraga { margin: 0 0 0.3rem; }
   .test .gor { color: var(--dampad); font-size: var(--s0); margin: 0 0 0.9rem; }
   .test a.ga { display: inline-flex; align-items: center; min-height: 44px; padding: 0 1.2rem; border: 1px solid var(--linje); border-radius: 6px; text-decoration: none; font-size: var(--s0); }
-  .test.forst a.ga { background: var(--vega); color: var(--natt); border-color: var(--vega); font-weight: 600; }
+  .test.forst a.ga { background: var(--mint); color: var(--pa-mint); border-color: var(--mint); font-weight: 600; }
 
   /* The room, at the reference's width; the real room adds a margin column. */
   .verktyg { display: flex; gap: 0.2rem; flex-wrap: wrap; font-size: var(--s0); margin: 0 0 2.5rem; }
@@ -82,7 +81,7 @@
   .mekanik b { color: var(--text); font-weight: 400; white-space: nowrap; }
   .gren { color: var(--dampad); font-size: var(--s0); margin-bottom: 0.2rem; }
   .anteckning { color: var(--svag); font-size: var(--s0); }
-  .kommentar { margin: 1.25rem 0 2rem; padding-left: 1rem; border-left: 1px solid var(--linje); font-size: var(--s0); }
+  .kommentar { margin: 1.25rem 0 2rem; padding-left: 1rem; border-left: 1px solid var(--orkide); font-size: var(--s0); }
   .kommentar .vem2 { color: var(--svag); margin-bottom: 0.2rem; }
   .kommentar .forslag { font-family: var(--hennes); font-size: var(--s1); margin: 0.3rem 0 0.5rem; }
   .sparat { color: var(--svag); font-size: var(--s-1); }
@@ -105,7 +104,7 @@
 <button class="huvud" type="button">Börja gå</button>
 <p class="hint" style="margin-top:1rem">Sätt på lurarna. Tryck när du står där du vill börja.</p>
 <button class="text-knapp" type="button">Prova vibrationen</button>
-<p class="svag" style="margin-top:3rem">Version 28</p>
+<p class="svag" style="margin-top:3rem">Version 29</p>
 
 <p class="yta">Appen, efter en testpromenad</p>
 <p class="hennes">Kom tillbaka och gå.</p>
@@ -141,7 +140,7 @@
 <p class="yta">Testsidan</p>
 <h1>Testpromenader</h1>
 <p>Sju korta promenader kvar, en fråga var. Gå dem i vilken ordning du vill. Ordningen här är den jag tror ger mest först.</p>
-<p class="svag">Glimt version 28, uppdaterad 10 oktober 2026.</p>
+<p class="svag">Glimt version 29, uppdaterad 11 oktober 2026.</p>
 <div class="test forst">
   <h3>Knacket gående</h3>
   <p class="fraga">Hörs en dubbelknack mot fickan medan du går, utan att du knackar hårdare än du vill?</p>

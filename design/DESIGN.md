@@ -4,8 +4,11 @@ One look for the four surfaces: the app (`glimt/`), the plan and the test page
 (`data/uploads/glimt-plan/` in generalassistant), and the manuscript room
 (`rummet/`). Henric 2026-10-10: "gör designen mycket mer avskalad,
 minimalistisk. Välj teckensnitt med extra stor omsorg. Ha inte med
-Held-loggan." This replaces the room's lunar punk + HELD look of 2026-10-08
-and the plan's HELD curtains.
+Held-loggan." And 2026-10-11, when the first version came out as a new
+look (the blue hour, a blue-white accent): "Ville ha kvar lunar punk-temat
+likt portalen, men mer avskalat/minimalistiskt." So: the portal's world,
+quieter. This replaces the room's lunar punk + HELD look of 2026-10-08, the
+plan's HELD curtains, and the blue hour of 2026-10-10.
 
 The tokens, the fonts and the two shared components (the name, the verdict
 marks) live in `design/glimt.css`. Every surface links that file and adds only
@@ -14,7 +17,14 @@ doubt, match it.
 
 ## The idea
 
-Two voices, two typefaces, and nothing else carries personality.
+Lunar punk, stripped. The portal's world (midnight violet, mint, a warm
+moon-white, a soft light), with everything taken away that is not colour
+and light. Lunar punk is carried by colour and light, not by objects,
+patterns or symbols: no moons, no stars as ornament, no grain, no glass
+panels, no gradients on text, no glow on anything but the one star.
+
+Inside that light, two voices, two typefaces, and nothing else carries
+personality.
 
 - **Literata** is hers: Vega's lines, the manuscript, every title. A
   contemporary book face drawn for long reading on screens, with an optical
@@ -33,25 +43,47 @@ the app works offline from the service worker and must not wait for Google.
 
 ## Colour
 
+The portal's lunar punk (`assets/lunarpunk.css` in generalassistant), with
+the ground a step lighter because the portal's paper grain, which lifts its
+darks, is gone here. Hex in `glimt.css`, the oklch source beside each.
+
 | Token | Hex | Use |
 |---|---|---|
-| `--natt` | #1a2130 | the ground: the blue hour, not black |
-| `--skymning` | #232b3c | the one raised surface: a field, a selected row, the toolbar's current item |
-| `--linje` | #323b4e | lines that mean something: a field's edge, rows in a long list |
-| `--text` | #e6e3da | text |
-| `--dampad` | #9aa0ad | secondary text |
-| `--svag` | #6d7486 | the quietest: timestamps, the build, "Demi (AI)" |
-| `--vega` | #c8d6ff | the star: the dot over the i, the one filled button per screen, focus, "held up outdoors" |
-| `--varm` | #e2b872 | what needs you: missed, unsure, waiting for an answer |
+| `--natt` | #0b0a12 | the ground: midnight violet |
+| `--skymning` | #151621 | the one raised surface: a field, a selected row, the toolbar's current item |
+| `--linje` | #323540 | lines that mean something: a field's edge, rows in a long list |
+| `--text` | #f5f3ef | text, a warm moon-white |
+| `--dampad` | #a6a59f | secondary text |
+| `--svag` | #84837e | the quietest: timestamps, the build, "Demi (AI)" |
+| `--mint` | #90d5a8 | the signature, the portal's send button: the star, the one filled button per screen, focus, "held up outdoors" |
+| `--mint-ljus` | #a6e4ba | a hovered filled button |
+| `--pa-mint` | #111813 | text on mint |
+| `--orkide` | #c097c9 | the second colour, sparingly: a proposal in the room (its hairline), a text selection |
+| `--varm` | #e9b364 | what needs you: missed, unsure, waiting for an answer |
 
-No gradients, no glow (except the star), no shadows, no translucent panels.
+Light: `--grund`, the portal's violet-to-indigo sweep at 155°, so faint it
+reads as depth rather than a gradient, and `--sken`, one soft violet glow of
+moonlight from above. `glimt.css` lays both behind every page
+(`body::before`, fixed); a surface sets no background of its own on html or
+body. A sticky bar uses `--bakgrund` (the same light, fixed to the screen,
+so it lines up); a panel or a menu that floats sits on `--natt` with a
+`--linje` edge.
+
+Never: grain or noise, a vignette, a second glow, glow on anything but the
+star, shadows, translucent or blurred panels, gradients on text or buttons,
+mint or orchid as a fill behind text other than the one filled button.
+
+Contrast, against the lightest point of the ground and against
+`--skymning`: `--text` 16:1, `--dampad` 7.3:1, `--svag` 4.7:1, `--mint`
+10:1, `--orkide` 7.3:1, `--varm` 9.5:1. All AA at 13px; keep it so when a
+token changes (the app is read outdoors, in rain and in the dark).
 
 ## Type
 
 Base 17px. Scale: 13 / 15 / 17 / 21 / 27 / 34 / 64 (`--s-1` to `--s5`).
 
 - The name: `.namn`, Literata 300 at opsz 72. Its i carries a dot of
-  `--vega` light (a dotless ı with the star over it). It is the only thing
+  `--mint` light (a dotless ı with the star over it). It is the only thing
   that glows, and it lights once on load. It replaces the HELD logo; there is
   no other mark.
 - Page title: Literata 300, `--s4`, sentence case, letter-spacing -0.01em.
@@ -93,15 +125,15 @@ Sätt på lurarna. …          <- hint, --dampad, --s0
 
 ## Controls
 
-- The primary action, one per screen: filled `--vega`, text `--natt`,
+- The primary action, one per screen: filled `--mint`, text `--pa-mint`,
   Atkinson 600 `--s1`, min-height 52px, radius 6px, full measure on a phone.
 - Other buttons: text buttons in `--dampad` with a 1px underline, or for a
   choice (Ja/Nej, ratings) a 1px `--linje` outline, radius 6px, min-height
-  44px; the pressed one is filled `--vega`.
+  44px; the pressed one is filled `--mint`.
 - Links: `--text`, underline 1px `--svag`, offset 0.2em; hover: underline
   `--text`.
-- Focus: 2px `--vega` outline, offset 3px, everywhere.
-- Radio and checkbox: `accent-color: var(--vega)`.
+- Focus: 2px `--mint` outline, offset 3px, everywhere.
+- Radio and checkbox: `accent-color: var(--mint)`.
 
 ## Status
 
@@ -109,12 +141,12 @@ Sätt på lurarna. …          <- hint, --dampad, --s0
   `.dom` with `data-dom="haller|delvis|osaker|oprovad|ide"`: full, half, a
   warm ring, a faint ring, a point. Always followed by the word.
 - A count like "19 av 32" is a sentence. If it gets a figure, a row of small
-  points (lit = held) in `--vega` and `--linje`, no glow.
+  points (lit = held) in `--mint` and `--linje`, no glow.
 - Outcomes: klarade in `--text`, missade in `--varm`, said in words.
 
 ## The room
 
-The room is a book on the blue hour: the page is the measure, the margin
+The room is a book by moonlight: the page is the measure, the margin
 holds comments. Paragraph kinds by type, not by boxes: Scenrubrik Literata
 600 `--s2`; Replik Literata `--s2`; Regi Literata italic `--dampad`;
 Variant is her line set like Replik, after its label in Atkinson `--s-1`
@@ -126,7 +158,8 @@ Who wrote a paragraph is an initial (H, L, D) in `--svag` in the left
 margin, not a coloured dot, in the paragraph's own type: Literata beside
 Scenrubrik, Replik, Regi (italic) and text, Atkinson beside Mekanik, Gren,
 Variant's label and Anteckning. Demi's comments are marked "Demi (AI)" in words,
-not with a dashed frame. The toolbar is plain text; the current item sits on
+not with a dashed frame. A comment's hairline is `--linje`; a proposal's is
+`--orkide`; two changes that met, `--varm`. The toolbar is plain text; the current item sits on
 `--skymning`.
 
 ## Motion

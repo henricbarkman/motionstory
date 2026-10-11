@@ -19,7 +19,7 @@ import { Memory, drawWorld, KEY_NAMES } from './memory.js';
 
 // The version the start screen shows, the same number as the service
 // worker's cache. Bump both together.
-const APP_VERSION = 28;
+const APP_VERSION = 29;
 
 const params = new URLSearchParams(location.search);
 const SIM = params.has('sim');
