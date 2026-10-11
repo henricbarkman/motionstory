@@ -117,10 +117,15 @@ Sätt på lurarna. …          <- hint, --dampad, --s0
 The room is a book on the blue hour: the page is the measure, the margin
 holds comments. Paragraph kinds by type, not by boxes: Scenrubrik Literata
 600 `--s2`; Replik Literata `--s2`; Regi Literata italic `--dampad`;
-Mekanik, Variant and Gren in Atkinson `--s0` `--dampad`, mechanic names
+Variant is her line set like Replik, after its label in Atkinson `--s-1`
+`--dampad`; Mekanik and Gren in Atkinson `--s0` `--dampad`, mechanic names
 with their `.dom` mark and no pill; Anteckning Atkinson `--s0` `--svag`.
+On a phone, under 40rem, Replik (and Variant with it) is `--s1`: the room
+is a page to write on, and the Scenrubrik stays `--s2` 600 above it.
 Who wrote a paragraph is an initial (H, L, D) in `--svag` in the left
-margin, not a coloured dot. Demi's comments are marked "Demi (AI)" in words,
+margin, not a coloured dot, in the paragraph's own type: Literata beside
+Scenrubrik, Replik, Regi (italic) and text, Atkinson beside Mekanik, Gren,
+Variant's label and Anteckning. Demi's comments are marked "Demi (AI)" in words,
 not with a dashed frame. The toolbar is plain text; the current item sits on
 `--skymning`.
 
