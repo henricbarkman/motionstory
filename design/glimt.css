@@ -104,7 +104,12 @@ body { background: transparent; }
 body::before {
   content: "";
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  /* the large viewport: no strip of bare ground when the browser's bar folds away */
+  height: 100vh;
+  height: 100lvh;
   z-index: -1;
   pointer-events: none;
   background: var(--sken), var(--grund);
