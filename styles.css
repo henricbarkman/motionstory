@@ -3,11 +3,8 @@
 
 * { box-sizing: border-box; }
 
-html { background: var(--natt); }
-
 body {
   margin: 0;
-  background: var(--natt);
   color: var(--text);
   font-family: var(--telefonens);
   font-size: var(--s1);
@@ -25,7 +22,7 @@ main {
 
 a { color: var(--text); text-decoration-color: var(--svag); text-decoration-thickness: 1px; text-underline-offset: 0.2em; }
 a:hover { text-decoration-color: var(--text); }
-:focus-visible { outline: 2px solid var(--vega); outline-offset: 3px; border-radius: 2px; }
+:focus-visible { outline: 2px solid var(--mint); outline-offset: 3px; border-radius: 2px; }
 
 header h1 {
   margin: 0 0 1.25rem;
@@ -51,14 +48,14 @@ header .subtitle {
   width: 100%;
   min-height: 52px;
   padding: 0 1.5rem;
-  background: var(--vega);
+  background: var(--mint);
   border: 0;
   border-radius: 6px;
-  color: var(--natt);
+  color: var(--pa-mint);
   font: 600 var(--s1)/1 var(--telefonens);
   cursor: pointer;
 }
-#start-btn:hover { background: #d9e3ff; }
+#start-btn:hover { background: var(--mint-ljus); }
 
 .hint {
   color: var(--dampad);

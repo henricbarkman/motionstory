@@ -178,8 +178,11 @@ export function drawWorld(canvas, memory, recent = memory.fresh) {
   const offX = 0, offY = (H - rows * size) / 2;
   const at = (i, j) => [offX + (j - minJ) * size, offY + (maxI - i) * size];
   // Each square walked is a point in its cell, like a star chart: faint ones
-  // first, the latest walk's in Vega's colour on top. No glow; the only glow
-  // in Glimt is the star over the i.
+  // first, the latest walk's in mint on top. No glow; the only glow in Glimt
+  // is the star over the i. The colour is read from design/glimt.css.
+  const css = typeof getComputedStyle === 'function' && typeof document !== 'undefined'
+    ? getComputedStyle(document.documentElement).getPropertyValue('--mint').trim() : '';
+  const mint = css || '#90d5a8';
   const r = Math.max(1 * dpr, (size - gap) * 0.32);
   const dot = (i, j) => {
     const [x, y] = at(i, j);
@@ -188,8 +191,9 @@ export function drawWorld(canvas, memory, recent = memory.fresh) {
     ctx.arc(x + c, y + c, r, 0, Math.PI * 2);
     ctx.fill();
   };
-  ctx.fillStyle = 'rgba(200, 214, 255, 0.3)';
+  ctx.fillStyle = mint;
+  ctx.globalAlpha = 0.3;
   for (const [i, j] of cells) if (!recent.has(`${i},${j}`)) dot(i, j);
-  ctx.fillStyle = '#c8d6ff';
+  ctx.globalAlpha = 1;
   for (const [i, j] of cells) if (recent.has(`${i},${j}`)) dot(i, j);
 }

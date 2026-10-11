@@ -133,12 +133,12 @@ PAGE = """<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>Glimt: utkast till episoderna</title>
-<meta name="theme-color" content="#1a2130">
+<meta name="theme-color" content="#0b0a12">
 <link rel="stylesheet" href="design/glimt.css">
 <style>
   /* Tokens, typefaces and the verdict marks come from design/glimt.css; the rules in design/DESIGN.md. */
   * { box-sizing: border-box; }
-  html { background: var(--natt); scroll-behavior: smooth; }
+  html { scroll-behavior: smooth; }
   @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
   body {
     margin: 0; color: var(--text); font-family: var(--telefonens);
@@ -149,7 +149,7 @@ PAGE = """<!doctype html>
   main { padding-bottom: 6rem; }
   a { color: var(--text); text-decoration-color: var(--svag); text-decoration-thickness: 1px; text-underline-offset: 0.2em; }
   a:hover { text-decoration-color: var(--text); }
-  :focus-visible { outline: 2px solid var(--vega); outline-offset: 3px; border-radius: 2px; }
+  :focus-visible { outline: 2px solid var(--mint); outline-offset: 3px; border-radius: 2px; }
   h1 { font-family: var(--hennes); font-weight: 300; font-size: var(--s4); letter-spacing: -0.01em; line-height: 1.15; margin: 0 0 1rem; font-variation-settings: "opsz" 48; }
   .lead { margin: 0 0 1rem; }
   .back { font-size: var(--s0); }

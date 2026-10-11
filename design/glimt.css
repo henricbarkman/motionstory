@@ -1,6 +1,10 @@
 /* Glimt's ground, shared by the app, the plan, the test page and the room.
    One file so the four can never drift apart. Rules and reasons: DESIGN.md.
 
+   Lunar punk, stripped: the portal's midnight violet, its mint and its warm
+   moon-white text, carried by colour and light alone. A very faint gradient
+   and one soft glow, no grain, no boxes, no ornament.
+
    Two voices, two typefaces. Literata is hers: the story, the manuscript,
    every title. Atkinson Hyperlegible Next is the phone's: buttons, numbers,
    status, instructions. A line is set in the voice of whoever says it. */
@@ -34,21 +38,47 @@
   font-display: swap;
 }
 
+/* Colours are the portal's lunar punk (generalassistant/assets/lunarpunk.css),
+   written as hex so every browser and the app's canvas can read them; the
+   oklch source is beside each. The ground is a step lighter than
+   lunarpunk.css's: there the paper grain lifts the darks, here there is no
+   grain. Every text tone clears WCAG AA on the lightest point of the ground
+   and on --skymning (--svag 4.7:1 at the least). */
 :root {
-  /* The blue hour, not black: the walks happen at dusk and after. */
-  --natt: #1a2130;
-  /* The one raised surface: a field, a selected row, the toolbar's current. */
-  --skymning: #232b3c;
-  /* Only for lines that mean something: a field's edge, a divider in a list. */
-  --linje: #323b4e;
-  --text: #e6e3da;
-  --dampad: #9aa0ad;
-  --svag: #6d7486;
-  /* Vega, the blue-white star. The dot in the name, the one filled button,
-     focus, and what held up outdoors. Nothing decorative. */
-  --vega: #c8d6ff;
-  /* What needs you: missed, unsure, waiting for an answer. */
-  --varm: #e2b872;
+  /* Midnight violet, the portal's ground. oklch(0.150 0.016 288) */
+  --natt: #0b0a12;
+  /* The one raised surface: a field, a selected row, the toolbar's current.
+     oklch(0.205 0.022 280) */
+  --skymning: #151621;
+  /* Only for lines that mean something: a field's edge, a divider in a list.
+     oklch(0.330 0.020 275) */
+  --linje: #323540;
+  /* Warm moon-white text, then two quieter steps.
+     oklch(0.965 0.006 95), (0.720 0.008 100), (0.610 0.008 100) */
+  --text: #f5f3ef;
+  --dampad: #a6a59f;
+  --svag: #84837e;
+  /* Mint, the signature: the same green as the portal's send button. The
+     star, the one filled button, focus, what held up outdoors.
+     oklch(0.815 0.094 155) */
+  --mint: #90d5a8;
+  --mint-ljus: #a6e4ba;   /* a pressed or hovered mint. oklch(0.865 0.085 155) */
+  --pa-mint: #111813;     /* text on mint. oklch(0.20 0.015 155) */
+  /* Orchid, the second colour, used sparingly: what someone proposes or
+     comments in the room, and a selection. oklch(0.731 0.084 320) */
+  --orkide: #c097c9;
+  /* What needs you: missed, unsure, waiting for an answer.
+     oklch(0.800 0.115 75) */
+  --varm: #e9b364;
+
+  /* The ground: the portal's violet-to-indigo sweep, and one soft glow of
+     moonlight from above. Nothing else is drawn on it. */
+  --grund: linear-gradient(155deg, #090810 0%, #0a0b12 45%, #0b1019 100%);
+  --sken: radial-gradient(ellipse 60rem 32rem at 50% -4rem, rgb(155 123 199 / 0.10), transparent 72%);
+  /* The same ground as a background for anything that must hide the page
+     under it but not the light (a sticky bar): fixed to the screen, so it
+     lines up with the ground behind it. */
+  --bakgrund: var(--sken) fixed, var(--grund) fixed var(--natt);
 
   --hennes: "Literata", Georgia, serif;
   --telefonens: "Atkinson Hyperlegible Next", system-ui, sans-serif;
@@ -66,7 +96,28 @@
   color-scheme: dark;
 }
 
-/* The name. The i's dot is Vega: a dotless i with a star set over it. Markup:
+/* The ground, the same on every surface. The glow and the sweep sit fixed
+   behind the page, so a long page never runs out of them; a surface sets no
+   background of its own on html or body, and a sticky bar uses --bakgrund. */
+html { background: var(--natt); }
+body { background: transparent; }
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  /* the large viewport: no strip of bare ground when the browser's bar folds away */
+  height: 100vh;
+  height: 100lvh;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--sken), var(--grund);
+}
+::selection { background: rgb(192 151 201 / 0.32); color: var(--text); }
+
+/* The name. The i's dot is a star of mint light: a dotless i with the star
+   set over it. Markup:
    <span class="namn" role="img" aria-label="Glimt">Gl<span class="i">ı</span>mt</span>
    (U+0131). The only thing on any page allowed to glow. */
 .namn {
@@ -87,8 +138,8 @@
   height: 0.14em;
   margin-left: -0.07em;
   border-radius: 50%;
-  background: var(--vega);
-  box-shadow: 0 0 0.12em var(--vega), 0 0 0.45em rgb(200 214 255 / 0.45);
+  background: var(--mint);
+  box-shadow: 0 0 0.12em var(--mint), 0 0 0.5em rgb(144 213 168 / 0.5);
   animation: tands 1.6s ease-out 0.25s both;
 }
 /* The page's one moment: the star lights once, after the word. */
@@ -112,8 +163,8 @@
   margin-right: 0.45em;
   box-sizing: border-box;
 }
-.dom[data-dom="haller"] { background: var(--vega); }
-.dom[data-dom="delvis"] { background: linear-gradient(90deg, var(--vega) 50%, transparent 50%); border: 1.5px solid var(--vega); }
+.dom[data-dom="haller"] { background: var(--mint); }
+.dom[data-dom="delvis"] { background: linear-gradient(90deg, var(--mint) 50%, transparent 50%); border: 1.5px solid var(--mint); }
 .dom[data-dom="osaker"] { border: 1.5px solid var(--varm); }
 .dom[data-dom="oprovad"] { border: 1.5px solid var(--svag); }
 .dom[data-dom="ide"] { width: 0.3em; height: 0.3em; margin: 0 0.575em 0 0.125em; background: var(--svag); vertical-align: 0.15em; }

@@ -1,7 +1,7 @@
 /* Manusrummet. The tokens, the two typefaces, the name (.namn) and the
    verdict marks (.dom) come from ../design/glimt.css; the rules and their
    reasons are in ../design/DESIGN.md, "The room"; design/referens.html shows
-   it. This file adds only the room's layout: a book on the blue hour, the page
+   it. This file adds only the room's layout: a book by moonlight, the page
    is the measure and the margin holds comments. Paragraph kinds by type, not
    by boxes. Who wrote a paragraph is an initial in the margin. */
 
@@ -15,10 +15,9 @@
 }
 
 * { box-sizing: border-box; }
-html { background: var(--natt); }
 body {
   margin: 0; min-height: 100vh;
-  color: var(--text); background: var(--natt);
+  color: var(--text);
   font-family: var(--sans); font-size: var(--s1); line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
@@ -27,7 +26,7 @@ a { color: var(--text); text-decoration-color: var(--svag); text-decoration-thic
 a:hover { text-decoration-color: var(--text); }
 button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
 button:disabled { cursor: default; }
-:focus-visible { outline: 2px solid var(--vega); outline-offset: 3px; border-radius: 2px; }
+:focus-visible { outline: 2px solid var(--mint); outline-offset: 3px; border-radius: 2px; }
 [hidden] { display: none !important; }
 
 /* --- bands: sandbox, read only, something wrong --------------------------------- */
@@ -39,7 +38,7 @@ button:disabled { cursor: default; }
 .topp {
   position: sticky; top: 0; z-index: 5;
   display: flex; align-items: center; gap: 1.75rem;
-  padding: 0.8rem 1.5rem; background: var(--natt);
+  padding: 0.8rem 1.5rem; background: var(--bakgrund);
 }
 .marke { display: flex; align-items: baseline; gap: 0.6rem; text-decoration: none; color: var(--text); }
 .marke .namn { font-size: var(--s3); }
@@ -63,7 +62,7 @@ button:disabled { cursor: default; }
   position: sticky; top: 3.6rem; z-index: 4;
   display: flex; align-items: center; gap: 0.2rem;
   padding: 0.4rem 1.5rem 0.55rem; overflow-x: auto; scrollbar-width: none;
-  background: var(--natt); font-size: var(--s0); color: var(--dampad);
+  background: var(--bakgrund); font-size: var(--s0); color: var(--dampad);
 }
 .verktyg > * { flex: none; }
 /* the paragraph's style is the toolbar's current item */
@@ -128,9 +127,9 @@ svg { width: 1.1rem; height: 1.1rem; fill: none; stroke: currentColor; stroke-wi
 .ProseMirror-hideselection *::selection { background: transparent; }
 .ProseMirror-hideselection { caret-color: transparent; }
 .ProseMirror [contenteditable="false"] { white-space: normal; }
-.ProseMirror ::selection { background: rgb(200 214 255 / 0.28); }
-.ProseMirror .text { caret-color: var(--vega); outline: none; }
-.ProseMirror-selectednode hr { background: var(--vega); }
+.ProseMirror ::selection { background: rgb(192 151 201 / 0.32); }
+.ProseMirror .text { caret-color: var(--mint); outline: none; }
+.ProseMirror-selectednode hr { background: var(--mint); }
 
 /* a paragraph: margin | words | (comments) */
 .st {
@@ -174,8 +173,8 @@ button.av:hover { color: var(--text); }
 .ring:hover::after { border-left-color: var(--text); }
 .ring.ny { border-style: dotted; border-color: var(--linje); }
 .ring.ny::after { border-left-color: var(--linje); }
-.ring.spelar { border-color: var(--vega); }
-.ring.spelar::after { left: 50%; top: 50%; width: 0.38rem; height: 0.38rem; border: 0; background: var(--vega); transform: translate(-50%, -50%); border-radius: 1px; }
+.ring.spelar { border-color: var(--mint); }
+.ring.spelar::after { left: 50%; top: 50%; width: 0.38rem; height: 0.38rem; border: 0; background: var(--mint); transform: translate(-50%, -50%); border-radius: 1px; }
 
 /* an empty paragraph says what goes there */
 .text { position: relative; }
@@ -242,8 +241,8 @@ button.av:hover { color: var(--text); }
   content: ''; display: inline-block; box-sizing: border-box;
   width: 0.55em; height: 0.55em; border-radius: 50%; vertical-align: 0.05em; margin-right: 0.45em;
 }
-.bricka.haller::before { background: var(--vega); }
-.bricka.delvis::before { background: linear-gradient(90deg, var(--vega) 50%, transparent 50%); border: 1.5px solid var(--vega); }
+.bricka.haller::before { background: var(--mint); }
+.bricka.delvis::before { background: linear-gradient(90deg, var(--mint) 50%, transparent 50%); border: 1.5px solid var(--mint); }
 .bricka.osaker::before { border: 1.5px solid var(--varm); }
 .bricka.oprovad::before { border: 1.5px solid var(--svag); }
 .bricka.ide::before { width: 0.3em; height: 0.3em; margin: 0 0.575em 0 0.125em; background: var(--svag); vertical-align: 0.15em; }
@@ -313,6 +312,8 @@ button.av:hover { color: var(--text); }
 .kom .val button { color: var(--dampad); text-decoration: underline 1px var(--svag); text-underline-offset: 0.2em; padding: 0.2rem 0; }
 .kom .val button:first-child { color: var(--text); }
 .kom .val button:hover { color: var(--text); text-decoration-color: var(--text); }
+/* a proposal: the second colour, orchid, as in the portal's changed rows */
+.kom .kort:has(> .forslag) { border-left-color: var(--orkide); }
 /* two changes that met: what needs you */
 .kom .kort.krock { border-left-color: var(--varm); }
 .kom .kort.krock b { color: var(--varm); }
@@ -361,34 +362,34 @@ button.av:hover { color: var(--text); }
   padding: 0.65rem 0.8rem;
 }
 .falt::placeholder { color: var(--svag); }
-.falt:focus { outline: 2px solid var(--vega); outline-offset: 3px; }
+.falt:focus { outline: 2px solid var(--mint); outline-offset: 3px; }
 textarea.falt { font-family: var(--serif); font-size: var(--s1); line-height: 1.55; min-height: 5.5rem; resize: vertical; }
 .kryss { display: inline-flex; align-items: center; gap: 0.5rem; font-size: var(--s0); color: var(--dampad); }
-.kryss input { accent-color: var(--vega); width: 1rem; height: 1rem; }
+.kryss input { accent-color: var(--mint); width: 1rem; height: 1rem; }
 .fel { font-size: var(--s-1); color: var(--varm); }
 .fel:empty { display: none; }
 .knappar { display: flex; flex-wrap: wrap; gap: 0.6rem; }
-/* a choice: a 1px outline; the screen's one primary action: filled Vega */
+/* a choice: a 1px outline; the screen's one primary action: filled mint */
 .knapp {
   display: inline-flex; align-items: center; justify-content: center;
   min-height: 44px; padding: 0 1.1rem; border-radius: 6px; border: 1px solid var(--linje);
   color: var(--text); font-size: var(--s0); text-decoration: none;
 }
 .knapp:hover { border-color: var(--dampad); }
-.knapp.huvud { background: var(--vega); border-color: var(--vega); color: var(--natt); font-weight: 600; }
-.knapp.huvud:hover { background: #d9e3ff; }
+.knapp.huvud { background: var(--mint); border-color: var(--mint); color: var(--pa-mint); font-weight: 600; }
+.knapp.huvud:hover { background: var(--mint-ljus); }
 .knapp.liten { min-height: 36px; padding: 0 0.8rem; font-size: var(--s-1); }
 .rad-form { flex-direction: row; align-items: center; }
 .rad-form .falt { flex: 1; }
 
-/* a switch: on is Vega */
+/* a switch: on is mint */
 .brytare { display: flex; align-items: center; gap: 0.75rem; cursor: pointer; color: var(--text); font-size: var(--s0); }
 .brytare input { position: absolute; opacity: 0; width: 1px; height: 1px; }
 .brytare .spar { position: relative; flex: none; width: 2.4rem; height: 1.35rem; border-radius: 999px; border: 1px solid var(--linje); background: var(--skymning); }
 .brytare .spar::after { content: ''; position: absolute; left: 0.18rem; top: 0.17rem; width: 0.9rem; height: 0.9rem; border-radius: 50%; background: var(--dampad); }
-.brytare input:checked + .spar { background: var(--vega); border-color: var(--vega); }
+.brytare input:checked + .spar { background: var(--mint); border-color: var(--mint); }
 .brytare input:checked + .spar::after { transform: translateX(1.05rem); background: var(--natt); }
-.brytare input:focus-visible + .spar { outline: 2px solid var(--vega); outline-offset: 3px; }
+.brytare input:focus-visible + .spar { outline: 2px solid var(--mint); outline-offset: 3px; }
 
 /* the mechanic picker and the label picker */
 .mek-lista { display: flex; flex-direction: column; gap: 1.25rem; }
@@ -408,7 +409,7 @@ textarea.falt { font-family: var(--serif); font-size: var(--s1); line-height: 1.
 .etiketter { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .etikett-val { min-height: 40px; padding: 0 0.9rem; border-radius: 6px; border: 1px solid var(--linje); font-size: var(--s0); color: var(--text); }
 .etikett-val:hover { border-color: var(--dampad); }
-.etikett-val.vald { background: var(--vega); border-color: var(--vega); color: var(--natt); }
+.etikett-val.vald { background: var(--mint); border-color: var(--mint); color: var(--pa-mint); }
 .mekanik-detaljer { display: flex; flex-direction: column; gap: 0.55rem; }
 .mekanik-detaljer strong { color: var(--text); font-weight: 600; }
 
