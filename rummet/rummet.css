@@ -149,8 +149,14 @@ svg { width: 1.1rem; height: 1.1rem; fill: none; stroke: currentColor; stroke-wi
 .st > .under-st { grid-column: 2; }
 .st > .under-st:empty { display: none; }
 
-/* who last wrote the paragraph: an initial, H, L or D, in --svag */
+/* who last wrote the paragraph: an initial, H, L or D, in --svag, in the
+   paragraph's own type as in design/referens.html: Literata beside her words
+   and the titles (italic beside Regi), Atkinson beside the phone's (Mekanik,
+   Gren, Variant's label, Anteckning, tables) */
 .av { font-size: var(--s-1); line-height: 1; color: var(--svag); min-width: 0.8em; text-align: center; }
+.st:is(.scen, .replik, .regi, .rubrik, .stycke, .punkt) > .marg { font-family: var(--serif); }
+.st.regi > .marg { font-style: italic; }
+.st.stycke[data-form="kursiv"] > .marg { font-family: var(--sans); }
 button.av { position: relative; }
 button.av::after { content: ''; position: absolute; inset: -0.7rem; }
 button.av:hover { color: var(--text); }
@@ -497,6 +503,9 @@ textarea.falt { font-family: var(--serif); font-size: var(--s1); line-height: 1.
     border-top: 1px solid var(--linje);
   }
   body.med-verktyg .blad { padding-bottom: 11rem; }
+  /* her lines at the body size: a page to write on, not only to read. The
+     Scenrubrik stays at --s2 600 above them, Regi stays at --s1. */
+  .st.replik .text, .st.variant .text { font-size: var(--s1); }
   .st.variant .rad { grid-template-columns: minmax(0, 1fr); }
   .etikett { margin: 0 0 0.2rem; }
   .blad { overflow-x: clip; }
