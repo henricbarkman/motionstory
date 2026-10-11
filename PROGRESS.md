@@ -1,5 +1,9 @@
 # PROGRESS — Motionstory
 
+## 2026-10-11
+- Jobb: **manusrummet, två rättelser efter #35** (PR #36, deployat, bygge 19b94c3): initialen i marginalen följer styckets typsnitt som i `design/referens.html` (Literata vid Scenrubrik, Replik, Regi i kursiv och text, Atkinson vid Mekanik, Gren, Variantens etikett och Anteckning). På telefon, under 40rem, är Replik och Variant `--s1` (17 px) i stället för 21 px: ungefär åtta ord per rad i stället för fem, och Scenrubriken läses nu som rubrik ovanför. Bred skärm oförändrad. `design/DESIGN.md` säger båda, och beskriver Variant som rummet redan satte den (hennes rad som Replik, etiketten i Atkinson). Sviterna gröna (141, 64, 147), skärmbilderna tagna om, provat i portalen på sandlådan (sparat och kvar efter omladdning), sandlådan nollställd.
+- → Nästa: Henric tittar på telefonbilden. Är 17 px för smått eller ska Variant vara Atkinson, är det en rad i `rummet.css` att backa.
+
 ## 2026-10-10
 - Henric: "För både appen, planen, testsidan och manusrummet - gör designen mycket mer avskalad, minimalistisk. Välj teckensnitt med extra stor omsorg. Ha inte med Held-loggan." Ersätter rummets lunar punk + HELD från 8/10.
 - Demi: **en gemensam look** för alla fyra (PR #32): `design/DESIGN.md`, `design/glimt.css`, `design/referens.html`. Två röster, två typsnitt, självhostade: Literata för hennes ord och alla rubriker, Atkinson Hyperlegible Next för telefonens. Prövade mot Newsreader, Hanken Grotesk och Inclusive Sans; Atkinsons nolla med snedstreck behålls (ingen vanlig nolla finns, och Inclusive Sans har samma plus ett barnsligt a). Blå timmen som grund (#1a2130), Vega (#c8d6ff) som enda accent, en varm färg för det som behöver dig. Ordmärket är namnet med en stjärna som i:ets prick, det enda som lyser. Domar som märken (fylld, halv, ring, svag ring, punkt), inte färger.
