@@ -8,7 +8,8 @@
 - Henric, **testpromenad Takten** (samma förmiddag, version 29, Chrome 155): klarade. Slag 115/124/107, hans steg 115/124/107, i takt 81/92/86 %. Svar: växlade mellan "Lätt" och "Det gick" och landade på Lätt; i chatten "lagom lätt". Betyg igen. Gick hela tiden, ingen dubbelknack som ingen bett om.
 - Demi: omspelad genom motorn syns att stegen når den nya takten 5-6 s efter bytet (124 från 59 s, bytet 53,5; 107 från 96 s, bytet 89,5), och stegräknarens fönster släpar själv några sekunder. Grundtakten 115 mot 127 den 28/9: den gången räknades stegen för högt, som misstänkt. Takten går från Delvis till Håller, gående. För manus: vänta fem till tio sekunder efter ett byte innan hon säger något om takten. Katalogen, planen och testsidan (Takten under Klara, fem kvar) uppdaterade.
 - Loggen sa `sensor före start: inte kollad` för att han tryckte Börja gå inom 1,5 s, medan kollen pågick (`checkSensor` skriver status först efter lyssningen). Banans egen `sensorReady` skyddade ändå. Rätta texten till "kollen pågick" vid nästa bygge.
-- → Nästa: Knacket gående på version 29. Bygget efter utkast 3 blir version 30.
+- Henric om Riktning: 12-15 s **kändes som lång tid, lite för lång tid.** Alltså byggs gyrot: svängen och vändningen läses ur telefonens vridning (rotationRate projicerat på lodlinjen), med gps:en som reserv. Byggs som jobb.
+- → Nästa: gyrobygget som nästa version, sedan går Henric Riktning igen. Knacket gående väntar kvar på version 29 eller senare.
 
 ## 2026-10-11
 - Henric: "ah, jag var otydlig. Ville ha kvar lunar punk-temat likt portalen, men mer avskalat/minimalistiskt." Felet i 10/10 var paletten och stämningen, inte avskalningen.
