@@ -19,6 +19,7 @@
 //                  what the knock detector heard
 //   sensorShare(a, b)  share of the seconds in [a, b) the motion sensor answered
 //   track()        decent fixes, last two minutes: [{t, latitude, longitude}]
+//   gyroStatus(side), gyroTurn(opts), gyroFigures()  the gyro's turn reading
 //   impactsBetween(a, b)  how hard each step landed: [{t, peak}]
 //   memo           an object that lives for the whole walk, for baselines
 //   setContact(v)  sets the contact meter (Kontakten starts her near)
@@ -65,6 +66,11 @@ export function labHelpers(walk, { now, vibrateImpl }) {
     spikesBetween: (a, b) => walk.knocks.spikes.filter(x => x.t > a && x.t <= b),
     sensorShare: (a, b) => walk.sensorShare(a, b),
     strayDoubles: windows => walk.knocks.history.filter(t => !windows.some(([a, b]) => t >= a && t <= b)).length,
+    // The gyro (engine.js, Gyro): whether it may read now, `side` for left
+    // or right; the turn it reads now, if any; and the figures it judged by.
+    gyroStatus: (side = false) => walk.gyro.status(now(), { side }),
+    gyroTurn: opts => walk.gyro.turn(now(), opts),
+    gyroFigures: () => walk.gyro.figures(),
     // Seconds the pattern lasts, or 0 when the phone would not vibrate. The
     // motor shakes the sensor, so knocks do not count until it has stopped:
     // BUZZ_TAIL after the last buzz. A pause that ends the pattern is silence
@@ -837,16 +843,39 @@ function travelBearing(ctx, t) {
   return bearing(a, b);
 }
 
+// With the gyro (engine.js, Gyro) a turn is read from the phone's own
+// rotation instead, a few seconds after it: close to half a circle
+// (VANDOM_GYRO; a walker turning back turns 150-210 degrees, a side street is
+// 90), walking before and after. The GPS reading goes on beside it for up to
+// VANDOM_CONFIRM seconds, for the log only, so a walk says what each made of
+// the turn. Without a gyro it reads alone, as before.
+const VANDOM_GYRO = { min: 135 };
+const VANDOM_CONFIRM = 15;
+
+// Gyro words for the log: what it read, or why it did not.
+const degWords = x => `${Math.round(Math.abs(x))}°`;
+function gyroWords(ctx, status) {
+  if (!status.ok) return `gyrot läser inte (${status.why})`;
+  const f = ctx.gyroFigures();
+  const hand = f.hand === null || f.evidence < 1 ? 'handen inte prövad' : `handen ${f.hand.toFixed(2).replace('.', ',')}`;
+  return `gyrot läser (${Math.round(f.rms)}°/s i gång, ${Math.round(f.vert * 100)} % runt lodlinjen, ${hand})`;
+}
+
 async function turnBack(ctx, id) {
   await ctx.play(id);
   const t0 = ctx.state().t;
   const line = travelBearing(ctx, t0);
   const p0 = meanPosition(ctx, t0 - 6, t0) || ctx.position();
-  if (line === null || !p0) return { turned: false, after: null, why: 'ingen riktning att vända från' };
-  let seen = null, inRow = 0;
+  const gyro0 = ctx.gyroStatus(false);
+  ctx.log(`vänd om: ${gyroWords(ctx, gyro0)}`);
+  const hasLine = line !== null && !!p0;
+  if (!hasLine && !gyro0.ok) return { turned: false, after: null, why: 'ingen riktning att vända från', settle: async () => null, stop: () => {} };
+  let seen = null, inRow = 0, gps = null, gy = null, stopped = false;
   // Metres along the old line; negative is back where you came from.
   const alongOf = p => haversine(p0, p) * Math.cos(angleDiff(line, bearing(p0, p)) * Math.PI / 180);
-  const turned = await ctx.until(s => {
+  const gpsStep = s => {
+    if (gps) return true;
+    if (!hasLine) return false;
     const pts = ctx.track();
     const last = pts[pts.length - 1];
     if (!last || last.t === seen) return false;
@@ -857,22 +886,48 @@ async function turnBack(ctx, id) {
     if (!s.moving) { inRow = 0; return false; }
     const here = meanPosition(ctx, s.t - 8, s.t) || last;
     inRow = alongOf(here) <= -8 ? inRow + 1 : 0;
-    return inRow >= 2;
-  }, { timeout: 45 });
+    if (inRow >= 2) gps = { at: s.t };
+    return !!gps;
+  };
+  // A turn half done a second before the word ended is an answer to it.
+  const gyroStep = s => {
+    if (gy) return true;
+    if (!ctx.gyroStatus(false).ok) return false;
+    const r = ctx.gyroTurn({ since: t0 - 1, ...VANDOM_GYRO });
+    if (r) gy = { ...r, at: s.t };
+    return !!gy;
+  };
+  const turned = await ctx.until(s => gyroStep(s) || gpsStep(s), { timeout: 45 });
   const at = ctx.state().t;
+  // The GPS goes on, for the log, while the walker walks on.
+  const confirm = gy && hasLine && !gps
+    ? ctx.until(s => stopped || gpsStep(s), { timeout: VANDOM_CONFIRM }) : Promise.resolve();
   // Where the turn shows in the track: the furthest along the old line the
   // walker got after the word, in four-second means, so the log can say how
   // long after the real turn it was read (the second turn of 2026-10-05 was
   // late, and nobody could say by how much).
-  let far = null;
-  if (turned) {
-    for (const p of ctx.track().filter(q => q.t >= t0 && q.t <= at)) {
+  const farUntil = until => {
+    let far = null;
+    if (!hasLine) return null;
+    for (const p of ctx.track().filter(q => q.t >= t0 && q.t <= until)) {
       const m = meanPosition(ctx, p.t - 2, p.t + 2);
       const a = m && alongOf(m);
       if (a !== null && (far === null || a > far.a)) far = { a, t: p.t };
     }
-  }
-  return { turned, after: at - t0, lag: far ? at - far.t : null };
+    return far;
+  };
+  const far = turned && !gy ? farUntil(at) : null;
+  return {
+    turned, after: at - t0, lag: far ? at - far.t : null, gy, why: turned ? null : gyro0.ok ? null : `inte läst, ${gyroWords(ctx, gyro0)}`,
+    stop: () => { stopped = true; },
+    // Once the GPS is done: the turn in the track, and what the GPS read.
+    settle: async () => {
+      await confirm;
+      if (!gy) return null;
+      const f = farUntil(gps ? gps.at : ctx.state().t);
+      return { lag: f ? at - f.t : null, gpsLag: f && gps ? gps.at - f.t : null, gps: !!gps, hasLine };
+    },
+  };
 }
 
 async function vandom(ctx) {
@@ -882,14 +937,25 @@ async function vandom(ctx) {
   await ctx.play(first.turned ? 'vandom-bra' : 'vandom-sen');
   await ctx.until(s => s.moving && s.movingFor >= 10, { timeout: 30 });
   await wait(ctx, 10);
+  first.stop();
   const second = await turnBack(ctx, 'vandom-igen');
   await ctx.play(second.turned ? 'vandom-slut' : 'vandom-sen');
-  const fmtTurn = r => r.turned
-    ? `läst ${sec(r.after)} efter ordet` + (r.lag !== null ? `, ${sec(r.lag)} efter vändpunkten i spåret` : '')
-    : r.why || 'inte läst';
+  const [firstGps, secondGps] = await Promise.all([first.settle(), second.settle()]);
+  const fmtTurn = (r, g) => {
+    if (!r.turned) return r.why || 'inte läst';
+    if (!r.gy) return `läst ${sec(r.after)} efter ordet` + (r.lag !== null ? `, ${sec(r.lag)} efter vändpunkten i spåret` : '');
+    const gpsPart = !g.hasLine ? 'gps: ingen linje att läsa från'
+      : g.gps ? `gps: läst ${g.gpsLag !== null ? `${sec(g.gpsLag)} efter vändpunkten i spåret` : 'men vändpunkten syns inte i spåret'}`
+      : `gps: inte läst inom ${VANDOM_CONFIRM} s`;
+    return `läst ${sec(r.after)} efter ordet (gyrot, ${degWords(r.gy.deg)} på ${sec(r.gy.dur)}, ${sec(r.gy.at - r.gy.mid)} efter vändningen)` +
+      (g.lag !== null ? `, ${sec(g.lag)} efter vändpunkten i spåret` : '') + `; ${gpsPart}`;
+  };
+  const words = [fmtTurn(first, firstGps), fmtTurn(second, secondGps)];
+  ctx.log(`vänd om: första ${words[0]}`);
+  ctx.log(`vänd om: andra ${words[1]}`);
   return {
     outcome: first.turned && second.turned ? 'klarade' : 'missade',
-    detail: `första vändningen ${fmtTurn(first)}, andra ${fmtTurn(second)}`,
+    detail: `första vändningen ${words[0]}, andra ${words[1]}`,
   };
 }
 
@@ -985,6 +1051,18 @@ function cornerAt(ctx, from, p0, here) {
   return best && best.off >= 4 ? best.t : null;
 }
 
+// With the gyro a turn is read from the phone's own rotation, a few seconds
+// after it: more than 50 degrees (as the fast GPS reading: crossings are not
+// all square) and less than 140 (more is turning back, not a side), walking
+// before and after, the new way held (engine.js, Gyro). Her answer comes at
+// once; the GPS reading goes on for up to VAGVAL_CONFIRM seconds, for the log
+// only, and the log says if the two disagree. Without a gyro the GPS reads
+// alone, as before. Left or right from the gyro only where up is known to
+// point up (Gyro's `side`).
+const VAGVAL_GYRO = { min: 50, max: 140 };
+const VAGVAL_CONFIRM = 25;
+const SIDE_WORD = { hoger: 'höger', vanster: 'vänster' };
+
 async function vagval(ctx, { fast = false } = {}) {
   const dense = t => fast && denseGps(ctx.track(), t);
   // Walking for 45 seconds before the question gives the long line; the
@@ -993,11 +1071,22 @@ async function vagval(ctx, { fast = false } = {}) {
   // are enough.
   await ctx.until(s => s.moving && s.movingFor >= (dense(s.t) ? FAST.walk : 45), { timeout: 75 });
   await ctx.play('vagval-intro');
+  const tq = ctx.state().t;
+  const gyro0 = ctx.gyroStatus(true);
+  ctx.log(`vägval: ${gyroWords(ctx, gyro0)}`);
+  let gy = null;
+  const gyroStep = s => {
+    if (gy) return true;
+    if (!ctx.gyroStatus(true).ok) return false;
+    const r = ctx.gyroTurn({ since: tq, ...VAGVAL_GYRO });
+    if (r) gy = { ...r, at: s.t };
+    return !!gy;
+  };
   const lineOf = s => (dense(s.t) ? fastLine(ctx, s) : null) ?? lineWalked(ctx, s);
-  await ctx.until(s => lineOf(s) !== null, { timeout: 30 });
+  await ctx.until(s => gyroStep(s) || lineOf(s) !== null, { timeout: 30 });
   const t0 = ctx.state().t;
   const h0 = lineOf(ctx.state());
-  if (h0 === null) {
+  if (h0 === null && !gy && !gyro0.ok) {
     await ctx.play('vagval-rakt');
     return { outcome: 'hoppade', detail: 'ingen riktning från gps:en att utgå från' };
   }
@@ -1006,8 +1095,10 @@ async function vagval(ctx, { fast = false } = {}) {
   const acc0 = median(fixes0.map(p => p.accuracy).filter(a => a !== null && a !== undefined));
   const gpsNote = `${fixes0.length} positioner på 20 s${acc0 === null ? '' : `, ±${Math.round(acc0)} m`}`;
   const p0 = meanPosition(ctx, t0 - (dense0 ? 6 : 12), t0);
-  let off = 0, sign = 0, lastT = null, seen = null, mode = null;
-  const chose = await ctx.until(s => {
+  let off = 0, sign = 0, lastT = null, seen = null, mode = null, gps = null;
+  const gpsStep = s => {
+    if (gps) return true;
+    if (h0 === null || !p0) return false;
     const dt = lastT === null ? 0 : s.t - lastT;
     lastT = s.t;
     const d0 = dense(s.t);
@@ -1029,23 +1120,56 @@ async function vagval(ctx, { fast = false } = {}) {
     seen = { d, side, dense: d0 };
     if (turned && Math.sign(d) === sign) off += dt;
     else { off = turned ? dt : 0; sign = Math.sign(d); }
-    return off >= hold;
-  }, { timeout: 150 });
-  const side = !chose ? 'rakt' : sign > 0 ? 'hoger' : 'vanster';
-  const readAt = ctx.state().t;
-  let lag = '';
-  if (chose) {
-    const corner = cornerAt(ctx, t0 - 5, p0, meanPosition(ctx, readAt - 4, readAt) || ctx.position());
-    lag = corner === null ? ', svängen syns inte i spåret' : `, ${sec(readAt - corner)} efter svängen i spåret`;
-    ctx.log(`vägval: ${seen.dense ? 'tät' : 'gles'} gps (${gpsNote} vid frågan)${lag}`);
-  }
+    if (off >= hold) gps = { sign, at: s.t, seen };
+    return !!gps;
+  };
+  const chose = gy || await ctx.until(s => gyroStep(s) || gpsStep(s), { timeout: 150 });
+  const sideOf = x => x > 0 ? 'hoger' : 'vanster';
+  const side = !chose ? 'rakt' : gy ? sideOf(gy.deg) : sideOf(gps.sign);
+  const readAt = gy ? gy.at : ctx.state().t;
+  // With the gyro's answer given, the GPS reads on beside it, for the log.
+  const confirm = gy && !gps && h0 !== null && p0
+    ? ctx.until(s => gpsStep(s), { timeout: VAGVAL_CONFIRM }) : Promise.resolve();
+  // The corner in the track: for the GPS's own answer as it stood when read,
+  // for the gyro's once the GPS is done, when the track has the stretch
+  // after it too.
+  const lagOf = (at, until) => {
+    const from = p0 || meanPosition(ctx, tq - 6, tq);
+    if (!from) return null;
+    const corner = cornerAt(ctx, (h0 === null ? tq : t0) - 5, from, meanPosition(ctx, until - 4, until) || ctx.position());
+    return corner === null ? null : at - corner;
+  };
+  const inTrack = lag => lag === null ? ', svängen syns inte i spåret' : `, ${sec(lag)} efter svängen i spåret`;
+  const gpsLag = chose && !gy ? inTrack(lagOf(readAt, readAt)) : null;
   await ctx.play(`vagval-${side}`);
+  await confirm;
+  if (!chose) {
+    return { outcome: 'missade', detail: `ingen sväng läst på 150 s (${gpsNote} vid frågan)${gyro0.ok ? '' : `, ${gyroWords(ctx, gyro0)}`}` };
+  }
+  if (!gy) {
+    const lag = gpsLag;
+    ctx.log(`vägval: ${seen.dense ? 'tät' : 'gles'} gps (${gpsNote} vid frågan)${lag}`);
+    return {
+      outcome: 'klarade',
+      detail: `valde ${SIDE_WORD[side]}, ${Math.round(Math.abs(seen.side))} m åt sidan, ${Math.round(Math.abs(seen.d))}° från linjen, läst ${sec(readAt - t0)} efter frågan${lag}` +
+        (fast ? `, ${seen.dense ? 'snabb' : 'långsam'} läsning` : '') + (gyro0.ok || !gyro0.why || /används inte/.test(gyro0.why) ? '' : `, ${gyroWords(ctx, gyro0)}`),
+    };
+  }
+  const end = gps ? gps.at : ctx.state().t;
+  const gyroLag = lagOf(gy.at, end);
+  let gpsPart;
+  if (h0 === null || !p0) gpsPart = 'gps: ingen linje att läsa från';
+  else if (!gps) gpsPart = `gps: ingen sväng läst inom ${VAGVAL_CONFIRM} s (${gpsNote} vid frågan)`;
+  else {
+    const same = sideOf(gps.sign) === side;
+    gpsPart = `gps: ${SIDE_WORD[sideOf(gps.sign)]}${inTrack(lagOf(gps.at, end))} (${gps.seen.dense ? 'tät' : 'gles'}, ${gpsNote} vid frågan)` +
+      (same ? '' : ', gyrot och gps:en säger olika håll');
+  }
+  const gyroPart = `gyrot ${SIDE_WORD[side]}, ${degWords(gy.deg)} på ${sec(gy.dur)}, läst ${sec(gy.at - gy.mid)} efter svängen`;
+  ctx.log(`vägval: ${gyroPart}${inTrack(gyroLag)}; ${gpsPart}`);
   return {
-    outcome: chose ? 'klarade' : 'missade',
-    detail: chose
-      ? `valde ${side === 'hoger' ? 'höger' : 'vänster'}, ${Math.round(Math.abs(seen.side))} m åt sidan, ${Math.round(Math.abs(seen.d))}° från linjen, läst ${sec(readAt - t0)} efter frågan${lag}` +
-        (fast ? `, ${seen.dense ? 'snabb' : 'långsam'} läsning` : '')
-      : `ingen sväng läst på 150 s (${gpsNote} vid frågan)`,
+    outcome: 'klarade',
+    detail: `valde ${SIDE_WORD[side]} (gyrot), läst ${sec(gy.at - tq)} efter frågan${inTrack(gyroLag)}, ${degWords(gy.deg)} på ${sec(gy.dur)}; ${gpsPart}`,
   };
 }
 

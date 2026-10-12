@@ -23,6 +23,7 @@ import { Walk, Waiter, cadencePace, bearing } from '../glimt/engine.js';
 import { runLab, labHelpers, LABS, PROV, ratedThisRound, chosenStations, denseGps, realTarget } from '../glimt/lab.js';
 import { Synth } from '../glimt/synth.js';
 import { makeClock, FakeAudioContext } from './fake_audio.mjs';
+import { makePocketPhone } from './sim_pocket.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const RUNS = parseInt(process.env.RUNS || '10', 10);
@@ -111,6 +112,28 @@ const PROFILES = {
   },
   'pass-chrome': { kind: 'pass', gps: CHROME_GPS, steps: true, provOnly: true },
   'fail-chrome': { kind: 'fail', gps: CHROME_GPS, steps: true, provOnly: true },
+  // The gyro (version 30): a phone in a pocket (scripts/sim_pocket.mjs) that
+  // gives rotation as Chrome does, on Chrome's dense GPS. The walker puts it
+  // in the pocket standing, the first three seconds, and turns as a person
+  // does, at 50-90 degrees a second, not all square, a few seconds late. `pass-gyro` turns as asked: read by the
+  // gyro, the right way, within seconds. `fail-gyro` does not: at the
+  // crossing it stops and looks left and right before going straight on,
+  // steps round something a little later, and at the word takes a side
+  // street instead of turning back. `pocket-gyro` takes the phone out of the
+  // pocket instead of turning, and puts it back the other way round. The rest
+  // must read as the GPS alone does, the right way: rotation in radians, the
+  // other hand of rotation, the old spec's axes, no gyro, a gyro that goes
+  // quiet at the question, and a platform where up is not known to point up
+  // (`side: false`: Vänd om by the gyro, Vägvalet by the GPS).
+  'pass-gyro': { kind: 'pass', gps: CHROME_GPS, steps: true, gyro: 'chrome', provOnly: true },
+  'fail-gyro': { kind: 'fail', gps: CHROME_GPS, steps: true, gyro: 'chrome', gyroFail: true, provOnly: true },
+  'pocket-gyro': { kind: 'pass', gps: CHROME_GPS, steps: true, gyro: 'chrome', pocket: true, provOnly: true },
+  'rad-gyro': { kind: 'pass', gps: CHROME_GPS, steps: true, gyro: 'rad', provOnly: true },
+  'flip-gyro': { kind: 'pass', gps: CHROME_GPS, steps: true, gyro: 'flip', provOnly: true },
+  'oldspec-gyro': { kind: 'pass', gps: CHROME_GPS, steps: true, gyro: 'oldspec', provOnly: true },
+  'none-gyro': { kind: 'pass', gps: CHROME_GPS, steps: true, gyro: 'none', provOnly: true },
+  'quiet-gyro': { kind: 'pass', gps: CHROME_GPS, steps: true, gyro: 'chrome', quietAt: 'vagval-intro', provOnly: true },
+  'noside-gyro': { kind: 'pass', gps: CHROME_GPS, steps: true, gyro: 'chrome', side: false, provOnly: true },
   // Knacket gående: the phone taken out and put back bumps twice, as hard
   // as a knock standing. That must count as a double, or the walk cannot
   // tell Henric whether a jolt reads as one.
@@ -177,8 +200,11 @@ function cadenceFor(speed) {
   return c;
 }
 
+const TURN_RATE = 70 * Math.PI / 180;   // rad/s
+
 function makeWalker(kind, env) {
   const w = {
+    env,
     base: 1.4, speed: null, cadenceMul: 1, heading: 0, steer: 0,
     matchBeat: false, knocks: [], events: [], buzzes: [],
   };
@@ -191,8 +217,44 @@ function makeWalker(kind, env) {
   // must clear the walking bar over the heel strikes (2026-09-28).
   const knock = (time, height = 8) => w.knocks.push({ t: time, height });
   const pass = kind === 'pass';
+  // When the walker was asked, and turned: for how long after the turn the
+  // gyro read it. A turn is half done |angle| / TURN_RATE / 2 after it starts.
+  w.marks = { asked: {}, turns: [] };
+  // The gyro's walkers turn as people do: not all as fast, nor all square,
+  // nor at the same moment. Plain walkers turn at once, as before.
+  const vary = !!env.phone;
+  w.turnRate = vary ? (50 + Math.random() * 40) * Math.PI / 180 : TURN_RATE;
+  const turn = (time, angle) => {
+    const a = vary ? angle * (1 + (Math.random() - 0.5) * (Math.abs(angle) > 2 ? 0.25 : 0.35)) : angle;
+    const at0 = vary ? time + Math.random() * 6 : time;
+    at(at0, () => { w.heading += a; w.marks.turns.push({ start: at0, angle: a, rate: w.turnRate }); });
+  };
+  // The gyro's walker puts the phone in the pocket standing (sim_pocket.mjs).
+  if (env.phone) { stopAt(0); goAt(3); }
 
   w.onLine = (id, t) => {
+    if (['vagval-intro', 'vandom-nu', 'vandom-igen'].includes(id)) (w.marks.asked[id] = w.marks.asked[id] || []).push(t);
+    if (env.quietAt === id) env.quiet = t;
+    if (env.gyroFail) {
+      // Deciding at the crossing, looking left and right on the spot, then
+      // straight on; a step round something; a side street, not back.
+      if (id === 'vagval-intro') {
+        stopAt(t + 12);
+        at(t + 13, () => { w.heading -= 70 * Math.PI / 180; });
+        at(t + 15.5, () => { w.heading += 140 * Math.PI / 180; });
+        at(t + 18, () => { w.heading -= 70 * Math.PI / 180; });
+        goAt(t + 19.5);
+        at(t + 40, () => { w.heading += 55 * Math.PI / 180; });
+        at(t + 42, () => { w.heading -= 55 * Math.PI / 180; });
+        return;
+      }
+      if (id === 'vandom-nu' || id === 'vandom-igen') { turn(t + 1.5, Math.PI / 2); return; }
+    }
+    if (env.pocket) {
+      // Out of the pocket and back, the other way round, standing.
+      if (id === 'vagval-intro') { stopAt(t + 8); env.phone.handle(t + 8.5); goAt(t + 15); return; }
+      if (id === 'vandom-nu' || id === 'vandom-igen') { stopAt(t + 1); env.phone.handle(t + 1.3); goAt(t + 8); return; }
+    }
     const off = env.sensorOff;
     if (off && id === off.from) { w.sensorOff = true; env.note('sensor off'); }
     if (off && id === off.until && w.sensorOff) at(t + (off.after || 0), () => { w.sensorOff = false; env.note('sensor on'); });
@@ -236,9 +298,9 @@ function makeWalker(kind, env) {
       case 'frys-klarade': case 'frys-rorde': case 'frys-sen': goAt(t + 0.5); break;
       case 'spoket-intro': speedAt(t + 0.5, w.base * 1.3); break;
       case 'spoket-klarade': case 'spoket-forbi': goAt(t + 0.5); break;
-      case 'vandom-nu': case 'vandom-igen': at(t + 1.5, () => { w.heading += Math.PI; }); break;
+      case 'vandom-nu': case 'vandom-igen': turn(t + 1.5, Math.PI); break;
       // Right, or left when the run says so (the test walk asks for left).
-      case 'vagval-intro': at(t + 12, () => { w.heading += env.left ? -Math.PI / 2 : Math.PI / 2; }); break;
+      case 'vagval-intro': turn(t + 12, env.left ? -Math.PI / 2 : Math.PI / 2); break;
       // Kontakten: two stops of 28 s, the walk between long enough for her
       // to come all the way back.
       case 'kontakt-intro': stopAt(t + 10); goAt(t + 38); stopAt(t + 80); goAt(t + 108); break;
@@ -306,7 +368,9 @@ function makeWalker(kind, env) {
 function simulate(labNo, name, run, abortIn = null, { stations = null, noBuzz = null, prov = null } = {}) {
   reseed(labNo, name, run, abortIn ? `${abortIn.id}@${abortIn.after}` : '', stations ? stations.join(',') : '', prov || '');
   const profile = PROFILES[name];
-  const walk = new Walk();
+  const walk = new Walk(profile.gyro ? { gyro: { enabled: true, side: profile.side !== false } } : {});
+  const phone = profile.gyro ? makePocketPhone(profile.gyro, Math.random) : null;
+  let facing = null;          // where the walker faces, turning at TURN_RATE towards the heading
   const waiter = new Waiter();
   const log = [];
   const results = [];
@@ -348,6 +412,7 @@ function simulate(labNo, name, run, abortIn = null, { stations = null, noBuzz = 
     : profile.sensorOff && profile.sensorOff[labNo];
   const walker = makeWalker(profile.kind, {
     bpm, target: () => target, sensorOff, jolt: !!profile.jolt, briefRun: !!profile.briefRun, left: run % 2 === 0,
+    phone, gyroFail: !!profile.gyroFail, pocket: !!profile.pocket, quietAt: profile.quietAt || null, quiet: null,
     note: msg => log.push(`${fmt(t)}  ~ ${msg}`),
   });
   let station = null, stationAt = 0, aborted = null;
@@ -411,11 +476,14 @@ function simulate(labNo, name, run, abortIn = null, { stations = null, noBuzz = 
       }
       const pos = walk.position();
       const { speed, cadence, heading, soft } = walker.step(t, pos || { latitude: lat, longitude: lon });
+      if (facing === null || !phone) facing = heading;
       // The accelerometer at 50 Hz: one wave per step at the walker's
       // cadence, noise, a sharp spike per knock, and while standing on the
       // field phone a bump every second or so from handling it.
       if (profile.steps && !walker.sensorOff) {
         for (let u = t - 0.24; u <= t + 1e-9; u += 0.02) {
+          // A person turns at some 70 degrees a second, not at once.
+          if (phone) facing += Math.max(-walker.turnRate * 0.02, Math.min(walker.turnRate * 0.02, heading - facing));
           // Integrate the step phase so a cadence change does not jump it.
           phase += cadence / 60 * 0.02;
           let m = 9.81 + (Math.random() - 0.5) * 0.3;
@@ -446,12 +514,18 @@ function simulate(labNo, name, run, abortIn = null, { stations = null, noBuzz = 
             if (u >= nextBump + 0.15) nextBump = u + 0.8 + Math.random() * 0.8;
             if (u >= nextBump) m += 1.6;
           }
-          walk.motion(u, m);
+          if (phone) {
+            const sensor = phone.sample(u, { heading: facing, phase, walking: cadence > 0, mag: m });
+            if (walker.env.quiet !== null && u >= walker.env.quiet) sensor.rate = null;
+            walk.motion(u, m, sensor);
+          } else {
+            walk.motion(u, m);
+          }
         }
       }
       if (Number.isInteger(t)) {
-        lat += (speed * Math.cos(heading)) / 111320;
-        lon += (speed * Math.sin(heading)) / (111320 * Math.cos(lat * Math.PI / 180));
+        lat += (speed * Math.cos(facing)) / 111320;
+        lon += (speed * Math.sin(facing)) / (111320 * Math.cos(lat * Math.PI / 180));
         const g = profile.gps;
         if (drift) {
           const k = Math.sqrt(2 / drift.tau) * drift.sigma;
@@ -486,7 +560,7 @@ function simulate(labNo, name, run, abortIn = null, { stations = null, noBuzz = 
       const before = trace.findLast(x => x.t <= k - 3) || {};
       return `${fmt(k)} ${at.station} band ${at.band}, ${at.speed?.toFixed(1)} m/s (3 s before: ${before.band}, ${before.speed?.toFixed(1)} m/s)`;
     });
-    return { log, results, ended, t, station, strays, buzzed, sound: { ...after, liveAtEnd } };
+    return { log, results, ended, t, station, strays, buzzed, marks: walker.marks, sound: { ...after, liveAtEnd } };
   })();
 
   // What finish() in app.js does to the sound and the waits, then five
@@ -607,13 +681,23 @@ const PROV_EXPECT = {
   'pass-chrome': id => DIRECTION.includes(id) ? { want: 'klarade', rate: 0.9 } : null,
   'fail-chrome': id => DIRECTION.includes(id) ? { want: 'missade', rate: 0.95 } : null,
   jolt: id => id === 'knackgang' ? 'missade' : null,
+  'pass-gyro': () => ({ want: 'klarade', rate: 1 }),
+  'fail-gyro': () => ({ want: 'missade', rate: 0.95 }),
+  'pocket-gyro': () => ({ want: 'missade', rate: 0.95 }),
+  'rad-gyro': () => ({ want: 'klarade', rate: 0.9 }),
+  'flip-gyro': () => ({ want: 'klarade', rate: 0.9 }),
+  'oldspec-gyro': () => ({ want: 'klarade', rate: 0.9 }),
+  'none-gyro': () => ({ want: 'klarade', rate: 0.9 }),
+  'quiet-gyro': () => ({ want: 'klarade', rate: 0.9 }),
+  'noside-gyro': () => ({ want: 'klarade', rate: 0.9 }),
   'brief-run': id => id === 'vaxla' ? 'missade' : null,
   'screen-prov': () => null,
   abort: () => null,
 };
 const PROV_PROFILES = {
   pass: Object.keys(PROV), fail: Object.keys(PROV), 'gps-only': [...SENSOR_PROV, 'vaxla'],
-  'pass-chrome': ['riktning'], 'fail-chrome': ['riktning'], jolt: ['knack'], 'brief-run': ['vaxla'], 'screen-prov': Object.keys(PROV), abort: Object.keys(PROV),
+  'pass-chrome': ['riktning'], 'fail-chrome': ['riktning'], jolt: ['knack'],
+  ...Object.fromEntries(Object.keys(PROFILES).filter(n => PROFILES[n].gyro).map(n => [n, ['riktning']])), 'brief-run': ['vaxla'], 'screen-prov': Object.keys(PROV), abort: Object.keys(PROV),
 };
 // What a pass walk's results and log must say, so the walk answers its
 // question from the log alone.
@@ -631,6 +715,46 @@ const PROV_SAYS = {
     /växla 3 \(gå\): gång läst [\d,]+ s efter ordet/, /Flykten och Spöket räknar från gångfarten [\d,]+ km\/h/, /Gå och spring gicks blandat \(löpning \d+ %/],
   vakten: [/tyst (redan under ordet|[\d,]+ s efter ordet), hon bad om att få säga till [\d,]+ s (senare|efter ordet), sensorn tillbaka efter/],
 };
+
+// Riktning with a phone that has a gyro, or on Chrome's GPS: the side read
+// must be the side turned, every time; whether the gyro may read at all is
+// the profile's; and when it reads, how long after the turn was half done.
+const GYRO_READS = { 'pass-gyro': ['vagval', 'vandom'], 'noside-gyro': ['vandom'] };
+function gyroRun(r, run, profile, where, problems, lags) {
+  const name = Object.keys(PROFILES).find(n => PROFILES[n] === profile);
+  const reads = GYRO_READS[name] || [];
+  const num = x => parseFloat(x.replace(',', '.'));
+  const vagval = r.results.find(x => x.id === 'vagval');
+  const vandom = r.results.find(x => x.id === 'vandom');
+  const left = run % 2 === 0;
+  if (vagval && vagval.outcome === 'klarade' && profile.kind === 'pass' && !profile.pocket) {
+    const said = /valde (vänster|höger)/.exec(vagval.detail);
+    if (!said || (said[1] === 'vänster') !== left) problems.push(`${where}: turned ${left ? 'left' : 'right'}, read ${said && said[1]} (${vagval.detail})`);
+  }
+  const byGyro = { vagval: !!vagval && /\(gyrot\)/.test(vagval.detail), vandom: !!vandom && /\(gyrot,/.test(vandom.detail) };
+  for (const id of ['vagval', 'vandom']) {
+    const x = id === 'vagval' ? vagval : vandom;
+    if (!x || x.outcome !== 'klarade' && reads.includes(id)) { if (reads.includes(id)) problems.push(`${where}: ${id} ${x ? x.outcome : 'missing'}, the gyro should have read it (${x && x.detail})`); continue; }
+    if (reads.includes(id) && !byGyro[id]) problems.push(`${where}: ${id} not read by the gyro (${x.detail})`);
+    if (!reads.includes(id) && byGyro[id]) problems.push(`${where}: ${id} read by the gyro, which should not have read (${x.detail})`);
+  }
+  // How long after the turn was half done, from what the walker did.
+  const halfDone = after => {
+    const turn = r.marks.turns.find(k => k.start >= after);
+    return turn ? turn.start + Math.abs(turn.angle) / turn.rate / 2 : null;
+  };
+  if (byGyro.vagval && reads.includes('vagval')) {
+    const asked = r.marks.asked['vagval-intro'][0];
+    const m = /läst ([\d,]+) s efter frågan/.exec(vagval.detail);
+    const half = halfDone(asked);
+    if (m && half !== null) lags.vagval.push(asked + num(m[1]) - half);
+  }
+  if (byGyro.vandom && reads.includes('vandom')) {
+    const words = r.marks.asked['vandom-nu'].concat(r.marks.asked['vandom-igen'] || []);
+    const reads2 = [...vandom.detail.matchAll(/läst ([\d,]+) s efter ordet \(gyrot/g)].map(m => num(m[1]));
+    reads2.forEach((x, i) => { const half = halfDone(words[i]); if (half !== null) lags.vandom.push(words[i] + x - half); });
+  }
+}
 
 async function provChecks(only) {
   let failed = 0;
@@ -664,6 +788,7 @@ async function provChecks(only) {
       const runs = profile.abort ? stations.flatMap(id => profile.abort.map(after => ({ id, after })))
         : Array.from({ length: byRate ? RATE_RUNS : Math.min(RUNS, 4) }, () => null);
       const tally = {}, problems = [], lags = [], took = [];
+      const gyroLags = { vagval: [], vandom: [] };
       let firstLog = null;
       for (let run = 0; run < runs.length; run++) {
         const abortIn = runs[run];
@@ -689,6 +814,7 @@ async function provChecks(only) {
         }
         const missing = stations.filter(id => !r.results.some(x => x.id === id));
         if (missing.length) problems.push(`${where}: never finished ${missing.join(', ')}`);
+        if (prov === 'riktning' && (profile.gyro || name.endsWith('-chrome'))) gyroRun(r, run, profile, where, problems, gyroLags);
         const text = r.log.join('\n');
         if (name === 'pass') for (const re of PROV_SAYS[prov]) if (!re.test(text)) problems.push(`${where}: the log never says ${re}`);
         // The sensor's silence, said within seconds (3 s, plus the 2 s it
@@ -721,6 +847,16 @@ async function provChecks(only) {
         if (!lags.length || med > 13 || worst > 20) problems.push(`vagval read ${med} s after the corner (median), ${worst} s at worst`);
         if (lags.length < read) problems.push(`the corner was found in ${lags.length} of ${read} turns read`);
         console.log(`  vagval on dense GPS: read ${med} s after the corner (median), ${worst} s at worst, ${lags.length} turns`);
+      }
+      if (name === 'pass-gyro') {
+        // Read within a few seconds of the turn: half within four, none
+        // later than six (GPS: 11,8 s median, 17,8 at worst).
+        for (const [id, xs] of Object.entries(gyroLags)) {
+          const sorted = [...xs].sort((a, b) => a - b);
+          const med = sorted[Math.floor(sorted.length / 2)], worst = sorted[sorted.length - 1];
+          if (!xs.length || med > 4 || worst > 6) problems.push(`${id} read by the gyro ${med} s after the turn (median), ${worst} s at worst`);
+          console.log(`  ${id} by the gyro: read ${med?.toFixed(1)} s after the turn was half done (median), ${worst?.toFixed(1)} s at worst, ${xs.length} turns`);
+        }
       }
       const summary = Object.entries(tally).map(([id, outs]) => `${id} ${Object.entries(outs.reduce((a, o) => ({ ...a, [o]: (a[o] || 0) + 1 }), {})).map(([o, n]) => `${o} ${n}/${outs.length}`).join(', ')}`).join('; ');
       const minutes = took.length ? `${(Math.max(...took) / 60).toFixed(1)} min at most` : '';
