@@ -19,7 +19,7 @@ import { Memory, drawWorld, KEY_NAMES } from './memory.js';
 
 // The version the start screen shows, the same number as the service
 // worker's cache. Bump both together.
-const APP_VERSION = 29;
+const APP_VERSION = 30;
 
 const params = new URLSearchParams(location.search);
 const SIM = params.has('sim');
@@ -67,6 +67,11 @@ const CAN_VIBRATE = typeof navigator.vibrate === 'function' && !FIREFOX;
 // way. So the start screen says it and offers a way out: an intent link that
 // hands the same address to Chrome.
 const ANDROID_FIREFOX = FIREFOX && /Android/.test(UA);
+// The gyro reads turns (engine.js, Gyro) only where its rotationRate is known:
+// Chrome on Android, which fills alpha, beta, gamma from the gyroscope's x,
+// y, z in degrees a second. Other browsers have read the spec otherwise, or
+// not been seen; there the GPS reads turns as before.
+const GYRO_OK = /Android/.test(UA) && /Chrome\//.test(UA) && !FIREFOX && !/SamsungBrowser|EdgA|OPR\//.test(UA);
 const chromeIntent = () =>
   `intent://${location.host}${location.pathname}${location.search}#Intent;scheme=https;package=com.android.chrome;end`;
 
@@ -189,7 +194,9 @@ const GPS_LOG_EVERY = 30;
 // half-minute summaries cannot say what would tell them apart (2026-09-28).
 // Kept in memory only; the walker saves it from the end screen.
 const REC_MAX = 200000;       // samples, about 55 minutes at 60 Hz
-const rec = { t: [], m: [], fixes: [], log: [], origin: null };
+// From version 30 also the acceleration's direction and the gyro's rotation,
+// so a walk's turns can be replayed as the gyro read them.
+const rec = { t: [], m: [], ax: [], ay: [], az: [], ra: [], rb: [], rg: [], fixes: [], log: [], origin: null };
 const ms = s => Math.round(s * 1000);
 
 const now = () => (performance.now() - t0) / 1000;
@@ -334,7 +341,7 @@ async function start() {
   await mixer.resume();
   t0 = performance.now();
   walkId = new Date().toISOString();
-  walk = new Walk();
+  walk = new Walk({ gyro: { enabled: GYRO_OK, side: GYRO_OK } });
   waiter = new Waiter();
   world = defaultWorld();
   // A simulated walk does not go into her world: its squares are made up.
@@ -359,7 +366,10 @@ async function start() {
   if (!SIM) log(`gps före start: ${gpsStatus()}`);
   // What the test walk's start screen found, so its log says it without the
   // walker having to.
-  if (def.prov && def.prov.sensor && !SIM) log(`sensor före start: ${sensorCheck.status}`);
+  if (def.prov && def.prov.sensor && !SIM) log(`sensor före start: ${sensorStatus()}`);
+  if (walkStations(def).some(id => id === 'vagval' || id === 'vandom')) {
+    log(`gyro: ${GYRO_OK ? 'läser svängar, gps:en kontrollerar' : 'används inte i den här webbläsaren, gps:en läser svängar'}`);
+  }
   if (def.prov && def.prov.map && !SIM) log(`karta före start: ${mapCheck.status}`);
   // Only when this walk has Hon knackar, and the phone could have been tried.
   if (!SIM && CAN_VIBRATE && walkStations(def).includes('vibration')) log(`vibration före start: ${vibraStatus()}`);
@@ -760,9 +770,18 @@ function checkGps(fresh = true) {
 // The sensor: a second and a half of listening. Android hands it out
 // without asking; it answers about sixty times a second while the screen
 // is lit, and not at all in a page out of sight.
-const sensorCheck = { status: 'inte kollad' };
+//
+// Walking off before the second and a half is up used to log "inte kollad"
+// (Riktning, 2026-10-12): the check was under way, so the log says that, with
+// what it had heard so far. It also counts the samples that carried a
+// rotation, which the gyro needs.
+const sensorCheck = { status: 'inte kollad', busy: false, n: 0, rot: 0 };
+const rotWords = rot => rot ? `, ${rot} med vridning` : ', ingen vridning';
+const sensorStatus = () => sensorCheck.busy
+  ? `kollen pågick (${sensorCheck.n} värden hittills${sensorCheck.n ? rotWords(sensorCheck.rot) : ''})`
+  : sensorCheck.status;
 function checkSensor() {
-  if (!TEST || !TEST.sensor || SIM) return;
+  if (!TEST || !TEST.sensor || SIM || sensorCheck.busy) return;
   const note = $('sensor-note');
   note.hidden = false;
   if (typeof DeviceMotionEvent === 'undefined') {
@@ -771,12 +790,19 @@ function checkSensor() {
     return;
   }
   note.textContent = 'Lyssnar efter rörelsesensorn…';
-  let n = 0;
-  const on = e => { const a = e.accelerationIncludingGravity; if (a && a.x != null) n++; };
+  Object.assign(sensorCheck, { busy: true, n: 0, rot: 0 });
+  const on = e => {
+    const a = e.accelerationIncludingGravity, r = e.rotationRate;
+    if (a && a.x != null) sensorCheck.n++;
+    if (r && [r.alpha, r.beta, r.gamma].every(Number.isFinite)) sensorCheck.rot++;
+  };
   window.addEventListener('devicemotion', on);
   setTimeout(() => {
     window.removeEventListener('devicemotion', on);
-    sensorCheck.status = n >= 20 ? `svarar, ${n} värden på 1,5 s` : n ? `svarar glest, ${n} värden på 1,5 s` : 'svarar inte';
+    const { n, rot } = sensorCheck;
+    sensorCheck.busy = false;
+    sensorCheck.status = (n >= 20 ? `svarar, ${n} värden på 1,5 s` : n ? `svarar glest, ${n} värden på 1,5 s` : 'svarar inte') +
+      (n ? rotWords(rot) : '');
     note.textContent = n >= 20 ? 'Rörelsesensorn svarar.'
       : 'Rörelsesensorn svarar inte. Testet behöver den: ha skärmen tänd och sidan öppen i Chrome. Tryck här för att kolla igen.';
   }, 1500);
@@ -970,14 +996,19 @@ function onMotion(e) {
   const a = e.accelerationIncludingGravity;
   if (!a || a.x == null || a.y == null || a.z == null) return;
   const t = now(), m = Math.hypot(a.x, a.y, a.z);
-  record(t, m);
-  walk.motion(t, m);
+  const r = e.rotationRate;
+  record(t, m, a, r);
+  walk.motion(t, m, { acc: a, rate: r });
 }
 
-function record(t, m) {
+const centi = v => v == null || !Number.isFinite(+v) ? null : Math.round(v * 100);
+function record(t, m, a = null, r = null) {
   if (rec.t.length >= REC_MAX) return;
   rec.t.push(ms(t));
   rec.m.push(Math.round(m * 100));
+  rec.ax.push(a && centi(a.x)); rec.ay.push(a && centi(a.y)); rec.az.push(a && centi(a.z));
+  const whole = r && [r.alpha, r.beta, r.gamma].every(v => centi(v) !== null);
+  rec.ra.push(whole ? centi(r.alpha) : null); rec.rb.push(whole ? centi(r.beta) : null); rec.rg.push(whole ? centi(r.gamma) : null);
 }
 
 function recordFix(t, c) {
@@ -997,7 +1028,7 @@ function recordFix(t, c) {
 function saveRecording() {
   const stamp = new Date().toISOString().slice(0, 16).replace('T', '-').replace(':', '');
   const body = JSON.stringify({
-    kind: 'glimt-sensor', version: 1, build: $('build').textContent, browser: BROWSER,
+    kind: 'glimt-sensor', version: 2, build: $('build').textContent, browser: BROWSER,
     chapter: chapterNo, station: ONLY_STATION, saved: new Date().toISOString(),
     prov: PROV_ID && {
       id: PROV_ID, title: TEST.title, appVersion: APP_VERSION, answers: provAnswers,
@@ -1005,9 +1036,15 @@ function saveRecording() {
     },
     units: {
       t: 'ms since start', m: 'centi m/s², |acceleration including gravity|', fixes: '[t, north m, east m, accuracy m, speed m/s]',
+      'ax, ay, az': "centi m/s², acceleration including gravity along the phone's x, y, z (version 2 on; null where the simulator made the sample)",
+      'ra, rb, rg': 'centi deg/s, rotationRate alpha, beta, gamma as the browser gave them (Chrome: about x, y, z); null where the phone gave none, left out when it never did',
+      gyro: 'whether this walk read turns from the gyro: enabled, and side (left or right too)',
       vibrationCheck: "the start screen's try-out: t in ms from the call to vibrate, m as above",
     },
-    t: rec.t, m: rec.m, fixes: rec.fixes, log: rec.log,
+    gyro: { enabled: GYRO_OK, side: GYRO_OK },
+    t: rec.t, m: rec.m, ax: rec.ax, ay: rec.ay, az: rec.az,
+    ...(rec.ra.some(v => v !== null) ? { ra: rec.ra, rb: rec.rb, rg: rec.rg } : {}),
+    fixes: rec.fixes, log: rec.log,
     vibrationCheck: vibra.trace && { ...vibra.trace, answer: vibra.answer },
   });
   const a = document.createElement('a');

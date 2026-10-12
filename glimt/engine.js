@@ -815,7 +815,9 @@ export function simulatedMagnitude(t, speed) {
 //    gyro must say the same: a fixed direction seen from a turning phone
 //    turns the other way, d(up)/dt = -ω × up. A gyro reporting the other
 //    hand of rotation would read every left turn as right. Without enough
-//    handling to judge, Chrome's documented convention stands.
+//    handling to judge, the gyro still reads turning back (its sign does not
+//    matter) but not left or right: those wait for the check, and the GPS
+//    tells them meanwhile. A fault must never give the wrong side.
 // And the side (left or right) also needs up to point up, which Android
 // promises and other platforms have not been seen to (Walk's gyro.side).
 const GYRO_BIN = 0.25;        // s per bin of yaw and up kept
@@ -854,6 +856,16 @@ const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 const norm = a => { const n = Math.hypot(a[0], a[1], a[2]); return n > 0 ? [a[0] / n, a[1] / n, a[2] / n] : null; };
 const angleBetween = (a, b) => Math.acos(Math.max(-1, Math.min(1, dot(a, b)))) * 180 / Math.PI;
+
+// Sample i of a saved sensor file as Walk.motion takes it, or null: files
+// before version 2 (app version 30) kept only |a|, and replay them as before.
+// ax, ay, az centi m/s²; ra, rb, rg centi deg/s, absent or null without a gyro.
+export function savedSensor(rec, i) {
+  if (!rec.ax || rec.ax[i] == null) return null;
+  const acc = { x: rec.ax[i] / 100, y: rec.ay[i] / 100, z: rec.az[i] / 100 };
+  const r = rec.ra && rec.ra[i] != null ? { alpha: rec.ra[i] / 100, beta: rec.rb[i] / 100, gamma: rec.rg[i] / 100 } : null;
+  return { acc, rate: r };
+}
 
 export class Gyro {
   // `enabled`: this browser's rotationRate is known (Chrome on Android).
@@ -961,6 +973,7 @@ export class Gyro {
     if (f.vert > GYRO_VERT_MAX) return no(`axlarna stämmer inte (${Math.round(f.vert * 100)} % av vridningen runt lodlinjen)`);
     if (f.evidence >= HAND_EVIDENCE && f.hand < HAND_MIN) return no(`gyrot och accelerometern är oense om vridningen (${f.hand.toFixed(2)})`);
     if (side && !this.side) return no('höger och vänster bara i Chrome på Android');
+    if (side && f.evidence < HAND_EVIDENCE) return no('höger och vänster inte prövade (telefonen stoppades inte i fickan stående)');
     return { ok: true, why: null };
   }
 

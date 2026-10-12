@@ -181,9 +181,11 @@ export const PROV = {
     asks: [{ id: 'hart', text: 'Hur hårt fick du knacka?', options: ['Lätt', 'Ganska hårt', 'Väldigt hårt'] }],
   },
   riktning: {
-    title: 'Riktning', minutes: 4, stations: ['vagval', 'vandom'], opts: { vagval: { fast: true } },
-    question: 'Läser Chrome en sväng åt vänster, och en vändning, snabbt nog?',
-    todo: 'Sväng vänster vid första korsningen efter att hon frågat. Vänd sedan om när hon säger vänd, två gånger.',
+    // sensor: the gyro reads the turns from version 30, so the start screen
+    // checks the motion sensor too.
+    title: 'Riktning', minutes: 4, sensor: true, stations: ['vagval', 'vandom'], opts: { vagval: { fast: true } },
+    question: 'Läser telefonen en sväng åt vänster, och en vändning, inom några sekunder nu när gyrot läser dem?',
+    todo: 'Stoppa telefonen i fickan medan du står still, och börja sedan gå. Sväng vänster vid första korsningen efter att hon frågat. Vänd sedan om när hon säger vänd, två gånger.',
     asks: [{ id: 'svang', text: 'Åt vilket håll svängde du vid korsningen?', options: ['Vänster', 'Höger', 'Rakt fram'] }],
   },
   kompass: {

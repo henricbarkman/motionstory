@@ -84,6 +84,9 @@ export function makePocketPhone(kind, random) {
       const again = qmul(axis([0, 0, 1], back * D), now);
       handling = { at, hold, out: now, back: again };
     },
+    // Into the pocket at `at` instead of at the start, held in the hand
+    // until then.
+    pocketAt(at) { place = { from: hand, to: pocket, start: at, len: 2.5 }; },
     placeAt(t) {
       if (handling && t >= handling.at) {
         const h = handling, k = t - h.at;

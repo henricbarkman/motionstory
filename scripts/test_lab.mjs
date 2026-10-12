@@ -134,6 +134,10 @@ const PROFILES = {
   'none-gyro': { kind: 'pass', gps: CHROME_GPS, steps: true, gyro: 'none', provOnly: true },
   'quiet-gyro': { kind: 'pass', gps: CHROME_GPS, steps: true, gyro: 'chrome', quietAt: 'vagval-intro', provOnly: true },
   'noside-gyro': { kind: 'pass', gps: CHROME_GPS, steps: true, gyro: 'chrome', side: false, provOnly: true },
+  // Walks off with the phone in the hand and pockets it ten seconds on,
+  // walking, so the hand of rotation is never tried: Vänd om by the gyro,
+  // Vägvalet's side by the GPS.
+  'walkpocket-gyro': { kind: 'pass', gps: CHROME_GPS, steps: true, gyro: 'chrome', walkPocket: true, provOnly: true },
   // Knacket gående: the phone taken out and put back bumps twice, as hard
   // as a knock standing. That must count as a double, or the walk cannot
   // tell Henric whether a jolt reads as one.
@@ -230,7 +234,8 @@ function makeWalker(kind, env) {
     at(at0, () => { w.heading += a; w.marks.turns.push({ start: at0, angle: a, rate: w.turnRate }); });
   };
   // The gyro's walker puts the phone in the pocket standing (sim_pocket.mjs).
-  if (env.phone) { stopAt(0); goAt(3); }
+  if (env.phone && !env.walkPocket) { stopAt(0); goAt(3); }
+  if (env.walkPocket) env.phone.pocketAt(10);
 
   w.onLine = (id, t) => {
     if (['vagval-intro', 'vandom-nu', 'vandom-igen'].includes(id)) (w.marks.asked[id] = w.marks.asked[id] || []).push(t);
@@ -412,7 +417,7 @@ function simulate(labNo, name, run, abortIn = null, { stations = null, noBuzz = 
     : profile.sensorOff && profile.sensorOff[labNo];
   const walker = makeWalker(profile.kind, {
     bpm, target: () => target, sensorOff, jolt: !!profile.jolt, briefRun: !!profile.briefRun, left: run % 2 === 0,
-    phone, gyroFail: !!profile.gyroFail, pocket: !!profile.pocket, quietAt: profile.quietAt || null, quiet: null,
+    phone, gyroFail: !!profile.gyroFail, pocket: !!profile.pocket, walkPocket: !!profile.walkPocket, quietAt: profile.quietAt || null, quiet: null,
     note: msg => log.push(`${fmt(t)}  ~ ${msg}`),
   });
   let station = null, stationAt = 0, aborted = null;
@@ -690,6 +695,7 @@ const PROV_EXPECT = {
   'none-gyro': () => ({ want: 'klarade', rate: 0.9 }),
   'quiet-gyro': () => ({ want: 'klarade', rate: 0.9 }),
   'noside-gyro': () => ({ want: 'klarade', rate: 0.9 }),
+  'walkpocket-gyro': () => ({ want: 'klarade', rate: 0.9 }),
   'brief-run': id => id === 'vaxla' ? 'missade' : null,
   'screen-prov': () => null,
   abort: () => null,
@@ -719,7 +725,11 @@ const PROV_SAYS = {
 // Riktning with a phone that has a gyro, or on Chrome's GPS: the side read
 // must be the side turned, every time; whether the gyro may read at all is
 // the profile's; and when it reads, how long after the turn was half done.
-const GYRO_READS = { 'pass-gyro': ['vagval', 'vandom'], 'noside-gyro': ['vandom'] };
+const GYRO_READS = { 'pass-gyro': ['vagval', 'vandom'], 'noside-gyro': ['vandom'], 'walkpocket-gyro': ['vandom'] };
+// May read, and must say why: the walker who pockets the phone walking
+// sometimes stands or loses step long enough for the hand to be tried
+// (2 runs in 100). Then the side may come from the gyro, never otherwise.
+const GYRO_MAY = { 'walkpocket-gyro': ['vagval'] };
 function gyroRun(r, run, profile, where, problems, lags) {
   const name = Object.keys(PROFILES).find(n => PROFILES[n] === profile);
   const reads = GYRO_READS[name] || [];
@@ -736,7 +746,13 @@ function gyroRun(r, run, profile, where, problems, lags) {
     const x = id === 'vagval' ? vagval : vandom;
     if (!x || x.outcome !== 'klarade' && reads.includes(id)) { if (reads.includes(id)) problems.push(`${where}: ${id} ${x ? x.outcome : 'missing'}, the gyro should have read it (${x && x.detail})`); continue; }
     if (reads.includes(id) && !byGyro[id]) problems.push(`${where}: ${id} not read by the gyro (${x.detail})`);
-    if (!reads.includes(id) && byGyro[id]) problems.push(`${where}: ${id} read by the gyro, which should not have read (${x.detail})`);
+    const may = (GYRO_MAY[name] || []).includes(id);
+    if (may && byGyro[id]) {
+      lags.may = (lags.may || 0) + 1;
+      const tried = r.log.find(l => /vägval: gyrot läser \(.*handen -?[\d,]+\)/.test(l));
+      if (!tried) problems.push(`${where}: ${id} took its side from the gyro with the hand untried (${x.detail})`);
+    }
+    if (!reads.includes(id) && !may && byGyro[id]) problems.push(`${where}: ${id} read by the gyro, which should not have read (${x.detail})`);
   }
   // How long after the turn was half done, from what the walker did.
   const halfDone = after => {
@@ -794,6 +810,7 @@ async function provChecks(only) {
         const abortIn = runs[run];
         const r = await simulate(null, name, run, abortIn, { prov });
         if (!firstLog) firstLog = r.log;
+        if (process.env.DUMP === `${name}:${run}`) console.log(r.log.join('\n'));
         const where = abortIn ? `stop ${abortIn.after} s into ${abortIn.id}` : `run ${run}`;
         if (r.sound.playing || r.sound.intervals || r.sound.started || r.sound.raised) problems.push(`${where}: sound on after the end`);
         if (abortIn) continue;
@@ -848,6 +865,8 @@ async function provChecks(only) {
         if (lags.length < read) problems.push(`the corner was found in ${lags.length} of ${read} turns read`);
         console.log(`  vagval on dense GPS: read ${med} s after the corner (median), ${worst} s at worst, ${lags.length} turns`);
       }
+      // The side waits for the hand: most of these go by the GPS.
+      if (GYRO_MAY[name] && (gyroLags.may || 0) > runs.length / 10) problems.push(`the side came from the gyro in ${gyroLags.may} of ${runs.length} runs, the hand untried in most`);
       if (name === 'pass-gyro') {
         // Read within a few seconds of the turn: half within four, none
         // later than six (GPS: 11,8 s median, 17,8 at worst).
