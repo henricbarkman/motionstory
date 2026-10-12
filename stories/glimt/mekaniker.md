@@ -99,7 +99,8 @@ Ett stopp är det tydligaste vandraren kan säga.
 ### Takten
 **Du gör:** går i takt med ett slag i lurarna, som blir lite fortare och lite lugnare.
 **I berättelsen:** musik växer fram när du går i takt. Används bara i enstaka skarpa lägen: täckningen kräver aldrig takt.
-**Omdöme:** Delvis. Henric: "himla häftig". Gången innan stegräknaren rättades, så den ska gås om. *Bara gående.*
+**Omdöme:** Håller, gående. Henric följde både fortare och lugnare (i takt 92 och 86 % av tiden) och tyckte det var lagom lätt (12/10). Första gången: "himla häftig". *Bara gående.*
+**Tänk på:** en ny takt, 7-8 % från den förra, hittas på ungefär fem sekunder. Låt henne vänta fem till tio sekunder efter ett byte innan hon säger något om den.
 
 ### Tassa
 **Du gör:** går mjukt och tyst i samma fart.
