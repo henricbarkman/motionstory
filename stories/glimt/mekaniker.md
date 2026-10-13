@@ -158,13 +158,13 @@ Allt här läser gps och ska gås i Chrome.
 ### Vänd om
 **Du gör:** vänder och går tillbaka när hon säger till.
 **I berättelsen:** du bär något åt henne och lämnar det där du vände.
-**Omdöme:** Håller, gående. I Chrome lästes båda vändningarna 13 och 15 sekunder efter att vandraren vänt (12/10). I Firefox lästes en av två sent.
+**Omdöme:** Håller, gående. I Chrome lästes båda vändningarna 13 och 15 sekunder efter att vandraren vänt (12/10). I Firefox lästes en av två sent. Från version 30 läser telefonens egen vridning vändningen, i simuleringen några sekunder efter den; byggt men inte gånget än.
 **Tänk på:** räkna med ungefär femton sekunder från ordet tills hon vet att du vänt. Ge henne något att säga under tiden.
 
 ### Vägvalet
 **Du gör:** svänger vänster eller höger vid nästa korsning.
 **I berättelsen:** hon följer dina svängar. Dina steg blir hennes ögon.
-**Omdöme:** Håller, gående, i Chrome. Vänster lästes tolv sekunder efter svängen (12/10); höger lästes två gånger förut, men med den gamla, långsamma läsningen. I Firefox är gps:en så gles att svaret kommer ungefär en minut efter svängen.
+**Omdöme:** Håller, gående, i Chrome. Vänster lästes tolv sekunder efter svängen (12/10); höger lästes två gånger förut, men med den gamla, långsamma läsningen. I Firefox är gps:en så gles att svaret kommer ungefär en minut efter svängen. Från version 30 läser telefonens egen vridning svängen i Chrome på Android, i simuleringen ungefär tre sekunder efter den; byggt men inte gånget än. Gps:en finns kvar som reserv och kontroll.
 **Tänk på:** hon vet vart du svängde tidigast tio till femton sekunder efter svängen. Låt henne prata om något annat tills svaret kommer.
 
 ### Ljudkompassen
