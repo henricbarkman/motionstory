@@ -10,8 +10,9 @@
 //   node scripts/test_recordings.mjs
 
 import { readFileSync } from 'node:fs';
-import { Walk, buzzReading } from '../glimt/engine.js';
+import { Walk, buzzReading, savedSensor, savedOrient } from '../glimt/engine.js';
 import { labHelpers } from '../glimt/lab.js';
+import { makePocketPhone } from './sim_pocket.mjs';
 
 // Her knocks as these walks were buzzed (v18-v19): 180 ms on, 320 off. The
 // station's pattern has changed since; the recordings have not. From v22 they
@@ -28,7 +29,7 @@ const check = (ok, what) => { console.log(`${ok ? 'ok  ' : 'FAIL'}  ${what}`); i
 // (the detector keeps ten seconds of knocks, so not afterwards).
 function replay(file, { buzzes = [], pattern = knockPattern } = {}) {
   const rec = JSON.parse(readFileSync(new URL(`./recordings/${file}`, import.meta.url), 'utf8'));
-  const walk = new Walk();
+  const walk = new Walk({ gyro: rec.gyro || {} });
   let clock = 0, bi = 0;
   const lab = labHelpers(walk, { now: () => clock, vibrateImpl: () => true });
   const overs = [], got = [];
@@ -51,6 +52,8 @@ function replay(file, { buzzes = [], pattern = knockPattern } = {}) {
       next = Math.round((next + 0.25) * 1000) / 1000;
     }
   };
+  const orients = savedOrient(rec);
+  let oi = 0;
   for (let i = 0; i < rec.t.length; i++) {
     const t = rec.t[i] / 1000;
     while (bi < buzzes.length && buzzes[bi].at <= t) {
@@ -61,7 +64,8 @@ function replay(file, { buzzes = [], pattern = knockPattern } = {}) {
       bi++;
     }
     tickUntil(t);
-    walk.motion(t, rec.m[i] / 100);
+    while (oi < orients.length && orients[oi].t <= t) { walk.orient(orients[oi].t, orients[oi].o); oi++; }
+    walk.motion(t, rec.m[i] / 100, savedSensor(rec, i));
   }
   tickUntil(rec.t[rec.t.length - 1] / 1000 + 1);
   const samples = rec.t.map((t, i) => ({ t: t / 1000, m: rec.m[i] / 100 }));
@@ -273,6 +277,52 @@ function replay(file, { buzzes = [], pattern = knockPattern } = {}) {
   const fmt = xs => xs.map(x => x.toFixed(2)).join(', ') || 'none';
   const stray = doubles.filter(d => d > 1 && !(d >= 276.4 && d <= 276.8));
   check(stray.length === 0, `nothing he did is a double, the one version 26 heard aside (${fmt(doubles)})`);
+}
+
+// A file of version 2 (app version 30), written as app.js writes it: the
+// acceleration and the rotation in centi units, rounded. No pocket gyro has
+// been recorded yet, so this one is made: a phone in a pocket (sim_pocket.mjs),
+// pocketed standing, a walk north, a left turn of 90 degrees at 20 s, on to
+// 35 s, with its orientation events. Played back through savedSensor and
+// savedOrient it must read that turn, on that side, with every check passed,
+// and the version 1 files above must still read as they did.
+{
+  let seed = 7;
+  const random = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+  const phone = makePocketPhone('chrome', random);
+  const rec = { kind: 'glimt-sensor', version: 2, gyro: { enabled: true, side: true }, t: [], m: [], ax: [], ay: [], az: [], ra: [], rb: [], rg: [], orient: [], fixes: [] };
+  const c = v => Math.round(v * 100);
+  let phase = 0;
+  for (let t = 0; t <= 35; t += 1 / 60) {
+    const walking = t >= 3;
+    const heading = t < 20 ? 0 : t < 21.5 ? -(t - 20) / 1.5 * Math.PI / 2 : -Math.PI / 2;
+    if (walking) phase += 1.8 / 60;
+    const mag = 9.81 + (walking ? 3 * Math.sin(2 * Math.PI * phase) : 0);   // one wave a step
+    const { acc, rate, orient } = phone.sample(t, { heading, phase, walking, mag });
+    rec.orient.push([Math.round(t * 1000) - 4, c(orient.alpha), c(orient.beta), c(orient.gamma)]);
+    rec.t.push(Math.round(t * 1000)); rec.m.push(c(mag));
+    rec.ax.push(c(acc.x)); rec.ay.push(c(acc.y)); rec.az.push(c(acc.z));
+    rec.ra.push(c(rate.alpha)); rec.rb.push(c(rate.beta)); rec.rg.push(c(rate.gamma));
+  }
+  const walk = new Walk({ gyro: rec.gyro });
+  const reads = [];
+  const orients = savedOrient(rec);
+  let next = 0.25, oi = 0;
+  for (let i = 0; i < rec.t.length; i++) {
+    const t = rec.t[i] / 1000;
+    while (oi < orients.length && orients[oi].t <= t) { walk.orient(orients[oi].t, orients[oi].o); oi++; }
+    while (next <= t) {
+      walk.tick(next);
+      const g = walk.gyro.turn(next, { min: 50 });
+      if (g && !reads.some(r => Math.abs(r.mid - g.mid) < 1)) reads.push({ ...g, at: next, ok: walk.gyro.status(next, { side: true }).ok });
+      next += 0.25;
+    }
+    walk.motion(t, rec.m[i] / 100, savedSensor(rec, i));
+  }
+  const r = reads[0];
+  check(reads.length === 1 && r.deg < -70 && r.deg > -110 && r.ok && r.at < 26,
+    `a version 2 file replays the gyro: one turn, ${r ? `${Math.round(r.deg)}° (left), read at ${r.at.toFixed(1)} s, checks ${r.ok ? 'passed' : 'not passed'}` : 'none'}`);
+  check(savedSensor({ t: [0], m: [981] }, 0) === null, 'and a version 1 file has no vectors to give');
 }
 
 if (failures) { console.log(`\n${failures} failed`); process.exit(1); }

@@ -93,7 +93,16 @@ PHONE = """
     if (cfg.motion === false) return;
     const e = new Event('devicemotion');
     e.accelerationIncludingGravity = { x: 0, y: 0, z: 9.81 + extra + (Math.random() - 0.5) * 0.04 };
+    // A gyro at rest: a degree a second of noise, as Chrome hands it over.
+    e.rotationRate = cfg.rotation === false ? null
+      : { alpha: (Math.random() - 0.5) * 2, beta: (Math.random() - 0.5) * 2, gamma: (Math.random() - 0.5) * 2 };
     window.dispatchEvent(e);
+    // And its orientation, lying flat.
+    if (cfg.rotation !== false) {
+      const o = new Event('deviceorientation');
+      Object.assign(o, { alpha: 30 + (Math.random() - 0.5) * 0.1, beta: (Math.random() - 0.5) * 0.1, gamma: (Math.random() - 0.5) * 0.1 });
+      window.dispatchEvent(o);
+    }
   }, 16);
 })();
 """
@@ -141,7 +150,7 @@ def serve():
 BRIDGE = {"elements": [{"type": "way", "tags": {"bridge": "yes"}, "center": {"lat": 59.38, "lon": 13.5 + 180 / (111320 * 0.5096)}}]}
 
 
-def open_page(browser, base, ua=CHROME_UA, url="?banor=vagval,kompass,vibration", init="", answer=True, shake=1.5, lag=0, ring=0, motion=True, overpass=None):
+def open_page(browser, base, ua=CHROME_UA, url="?banor=vagval,kompass,vibration", init="", answer=True, shake=1.5, lag=0, ring=0, motion=True, overpass=None, rotation=True):
     ctx = browser.new_context(
         user_agent=ua,
         viewport={"width": 412, "height": 915},
@@ -163,7 +172,7 @@ def open_page(browser, base, ua=CHROME_UA, url="?banor=vagval,kompass,vibration"
     errors = []
     page.on("pageerror", lambda e: errors.append(str(e)))
     page.on("response", lambda r: errors.append(f"{r.status} {r.url}") if r.status >= 400 else None)
-    phone = json.dumps({"answer": answer, "shake": shake, "lag": lag, "ring": ring, "motion": motion})
+    phone = json.dumps({"answer": answer, "shake": shake, "lag": lag, "ring": ring, "motion": motion, "rotation": rotation})
     page.add_init_script(PHONE % phone + init)
     page.goto(f"{base}/glimt/{url}")
     page.wait_for_function("document.getElementById('start-btn').textContent === 'Börja gå'", timeout=30000)
@@ -588,7 +597,47 @@ def provstart(browser, base):
     check(note == "Rörelsesensorn svarar.", f"Frys, a sensor that answers: said so before the walk ({note!r})")
     page.click("#start-btn")
     line = wait_log(page, "sensor före start")
-    check("svarar" in line and "inte" not in line, f"and the walk logs it: {line!r}")
+    check("svarar" in line and "inte" not in line and "med vridning" in line, f"and the walk logs it, the gyro's rotation too: {line!r}")
+    # Stopped a few seconds in: the file has what the gyro needs to be
+    # replayed, and says what it is (version 2, app version 30).
+    page.wait_for_timeout(3000)
+    page.click("#stop-btn")
+    page.wait_for_function("!document.getElementById('done').hidden", timeout=15000)
+    with page.expect_download() as dl:
+        page.click("#save-btn")
+    body = json.loads(Path(dl.value.path()).read_text())
+    n = len(body.get("t", []))
+    vectors = all(len(body.get(k) or []) == n for k in ("ax", "ay", "az", "ra", "rb", "rg"))
+    told = all(k in body.get("units", {}) for k in ("ax, ay, az", "ra, rb, rg", "gyro", "orient"))
+    orient = body.get("orient") or []
+    told = told and len(orient) > 100 and len(orient[0]) == 4 and abs(orient[len(orient) // 2][1] - 3000) < 50
+    flat = n and abs(body["az"][n // 2] - 981) < 10 and body["ra"][n // 2] is not None
+    check(body.get("version") == 2 and n > 100 and vectors and told and flat and body.get("gyro") == {"enabled": True, "side": True},
+          f"the saved file carries the acceleration's direction and the rotation, and its units say so (version {body.get('version')}, {n} samples)")
+    ctx.close()
+    # No gyro in the phone: the rotation is left out of the file, not a column of nulls.
+    ctx, page, errors = open_page(browser, base, url="?prov=frys", rotation=False)
+    page.wait_for_timeout(1800)
+    page.click("#start-btn")
+    line = wait_log(page, "sensor före start")
+    check("ingen vridning" in line, f"a phone without a gyro: the log says so ({line!r})")
+    page.wait_for_timeout(1500)
+    page.click("#stop-btn")
+    page.wait_for_function("!document.getElementById('done').hidden", timeout=15000)
+    with page.expect_download() as dl:
+        page.click("#save-btn")
+    body = json.loads(Path(dl.value.path()).read_text())
+    check("ra" not in body and len(body.get("ax") or []) == len(body.get("t", [])), "and its file has the acceleration but no rotation columns")
+    ctx.close()
+    # Börja gå pressed while the start screen still listens: the log says the
+    # check was under way, and what it had heard. The check's 1.5 s is
+    # stretched here so the press surely lands inside it.
+    stretch = "const _st = window.setTimeout; window.setTimeout = (f, ms, ...a) => _st(f, ms === 1500 ? 20000 : ms, ...a);"
+    ctx, page, errors = open_page(browser, base, url="?prov=frys", init=stretch)
+    page.wait_for_timeout(500)
+    page.click("#start-btn")
+    line = wait_log(page, "sensor före start")
+    check("kollen pågick" in line and "inte kollad" not in line and "hittills" in line, f"started during the check: the log says it was under way ({line!r})")
     ctx.close()
     ctx, page, errors = open_page(browser, base, url="?prov=frys", motion=False)
     page.wait_for_timeout(2000)

@@ -10,8 +10,13 @@
 // Each spike line says how far it sits from the nearest detected step, which
 // is the question Knacket's first walks left open: are the stray "knocks"
 // heel strikes, and do real knocks land between steps?
+//
+// Files from version 30 on carry the acceleration's direction and the
+// gyro's rotation too, and the gyro is replayed as the phone had it: every
+// turn it would read (50 degrees or more, held) is listed as GYRO, with the
+// figures behind its checks at the end.
 import { readFileSync } from 'node:fs';
-import { Walk } from '../glimt/engine.js';
+import { Walk, savedSensor, savedOrient } from '../glimt/engine.js';
 
 const args = process.argv.slice(2);
 const file = args.find(a => !a.startsWith('--') && !/^\d/.test(a));
@@ -24,7 +29,9 @@ if (!file) { console.error('usage: replay_sensor.mjs <file.json> [--from s] [--t
 const rec = JSON.parse(readFileSync(file, 'utf8'));
 if (rec.kind !== 'glimt-sensor') { console.error(`${file}: not a Glimt sensor file`); process.exit(2); }
 
-const walk = new Walk();
+const walk = new Walk({ gyro: rec.gyro || {} });
+const turns = [];
+let lastTurn = -Infinity;
 const spikes = [], steps = [], doubles = [], bands = [];
 const origSpike = walk.knocks._spike.bind(walk.knocks);
 walk.knocks._spike = (t, peak) => {
@@ -52,13 +59,18 @@ const tickUntil = t => {
     const s = walk.tick(nextTick);
     if (s.band !== band) { bands.push({ t: nextTick, band: s.band, cadence: walk.steps.cadence(nextTick), source: s.paceSource }); band = s.band; }
     if (s.lastDoubleKnockAt > lastDouble) { lastDouble = s.lastDoubleKnockAt; doubles.push(lastDouble); }
+    const g = walk.gyro.enabled && walk.gyro.turn(nextTick, { since: lastTurn + 1, min: 50 });
+    if (g) { turns.push({ t: nextTick, ...g, ok: walk.gyro.status(nextTick, { side: true }) }); lastTurn = g.mid; }
     nextTick = Math.round((nextTick + 0.25) * 1000) / 1000;
   }
 };
+const orients = savedOrient(rec);
+let oi = 0;
 for (let i = 0; i < rec.t.length; i++) {
   const t = rec.t[i] / 1000;
   tickUntil(t);
-  walk.motion(t, rec.m[i] / 100);
+  while (oi < orients.length && orients[oi].t <= t) { walk.orient(orients[oi].t, orients[oi].o); oi++; }
+  walk.motion(t, rec.m[i] / 100, savedSensor(rec, i));
 }
 tickUntil(rec.t.length ? rec.t[rec.t.length - 1] / 1000 + 1 : 0);
 
@@ -80,11 +92,17 @@ const dur = rec.t.length ? rec.t[rec.t.length - 1] / 1000 : 0;
 console.log(`${file}\n  build ${rec.build}, kapitel ${rec.chapter}${rec.station ? `, bara ${rec.station}` : ''}, sparad ${rec.saved}`);
 console.log(`  ${rec.t.length} samples over ${clock(dur)}, median ${medGap} ms apart (${medGap ? Math.round(1000 / medGap) : '?'} Hz), ${gaps.filter(g => g > 1000).length} gaps over 1 s, ${fixes.length} fixes`);
 console.log(`  ${steps.length} steps, ${spikes.length} spikes, ${spikes.filter(s => s.knock).length} knocks, ${doubles.length} doubles`);
+if (walk.gyro.rateSeen) {
+  const g = walk.gyro.figures(), r = x => x === null ? '-' : x.toFixed(2);
+  console.log(`  gyro: ${turns.length} turns, ${r(g.rms)} deg/s rms walking, ${r(g.vert)} of it about up, hand ${r(g.hand)} on ${r(g.evidence)} rad`);
+  console.log(`  against the orientation, per axis: ${g.axes.map(a => `${r(a.corr)} at ${r(a.ratio)} deg/rad, ${r(a.rms)} rad/s`).join('; ')}; up ${r(g.oUp)}, ${r(g.oEvidence)} rad seen`);
+} else if (rec.ax) console.log('  gyro: no rotation in the file');
 
 const events = [];
 for (const [t, msg] of rec.log || []) events.push({ t: t / 1000, line: `LOG     ${msg}` });
 for (const b of bands) events.push({ t: b.t, line: `BAND    ${b.band} (${Math.round(b.cadence)} steg/min, ${b.source})` });
 for (const d of doubles) events.push({ t: d, line: 'DOUBLE  heard' });
+for (const g of turns) events.push({ t: g.t, line: `GYRO    ${g.deg > 0 ? 'höger' : 'vänster'} ${Math.round(Math.abs(g.deg))}° på ${f1(g.dur)} s, halvvägs ${clock(g.mid)}${g.ok.ok ? '' : ` (läser inte: ${g.ok.why})`}` });
 for (const s of spikes) {
   if (!all && !s.knock && !s.muted) continue;
   const near = nearestStep(s.t);
