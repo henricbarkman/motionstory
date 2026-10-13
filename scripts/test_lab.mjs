@@ -19,7 +19,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { Walk, Waiter, cadencePace, bearing } from '../glimt/engine.js';
+import { Walk, Waiter, Gyro, cadencePace, bearing } from '../glimt/engine.js';
 import { runLab, labHelpers, LABS, PROV, ratedThisRound, chosenStations, denseGps, realTarget } from '../glimt/lab.js';
 import { Synth } from '../glimt/synth.js';
 import { makeClock, FakeAudioContext } from './fake_audio.mjs';
@@ -148,6 +148,10 @@ const PROFILES = {
   'flipy-gyro': { kind: 'pass', gps: CHROME_GPS, steps: true, gyro: 'flipy', provOnly: true },
   'gravdown-gyro': { kind: 'pass', gps: CHROME_GPS, steps: true, gyro: 'gravdown', provOnly: true },
   'noorient-gyro': { kind: 'pass', gps: CHROME_GPS, steps: true, gyro: 'noorient', provOnly: true },
+  // A right gyro with the orientation late and sparse: 80 ms behind, 25 a
+  // second. It must still read both (review, 2026-10-13: a right gyro was
+  // blocked at 40 ms when one sample was set against the last rate seen).
+  'lateorient-gyro': { kind: 'pass', gps: CHROME_GPS, steps: true, gyro: 'chrome', orient: { orientLag: 0.08, orientEvery: 2 }, provOnly: true },
   // Knacket gående: the phone taken out and put back bumps twice, as hard
   // as a knock standing. That must count as a double, or the walk cannot
   // tell Henric whether a jolt reads as one.
@@ -389,7 +393,7 @@ function simulate(labNo, name, run, abortIn = null, { stations = null, noBuzz = 
   reseed(labNo, name, run, abortIn ? `${abortIn.id}@${abortIn.after}` : '', stations ? stations.join(',') : '', prov || '');
   const profile = PROFILES[name];
   const walk = new Walk(profile.gyro ? { gyro: { enabled: true, side: profile.side !== false } } : {});
-  const phone = profile.gyro ? makePocketPhone(profile.gyro, Math.random) : null;
+  const phone = profile.gyro ? makePocketPhone(profile.gyro, Math.random, profile.orient || {}) : null;
   let facing = null;          // where the walker faces, turning at TURN_RATE towards the heading
   const waiter = new Waiter();
   const log = [];
@@ -721,6 +725,7 @@ const PROV_EXPECT = {
   'flipy-gyro': () => ({ want: 'klarade', rate: 0.9 }),
   'gravdown-gyro': () => ({ want: 'klarade', rate: 0.9 }),
   'noorient-gyro': () => ({ want: 'klarade', rate: 0.9 }),
+  'lateorient-gyro': () => ({ want: 'klarade', rate: 1 }),
   'brief-run': id => id === 'vaxla' ? 'missade' : null,
   'screen-prov': () => null,
   abort: () => null,
@@ -750,7 +755,7 @@ const PROV_SAYS = {
 // Riktning with a phone that has a gyro, or on Chrome's GPS: the side read
 // must be the side turned, every time; whether the gyro may read at all is
 // the profile's; and when it reads, how long after the turn was half done.
-const GYRO_READS = { 'uturn-gyro': ['vandom'], 'pass-gyro': ['vagval', 'vandom'], 'noside-gyro': ['vandom'], 'walkpocket-gyro': ['vagval', 'vandom'], 'noorient-gyro': ['vandom'] };
+const GYRO_READS = { 'uturn-gyro': ['vandom'], 'pass-gyro': ['vagval', 'vandom'], 'noside-gyro': ['vandom'], 'walkpocket-gyro': ['vagval', 'vandom'], 'noorient-gyro': ['vandom'], 'lateorient-gyro': ['vagval', 'vandom'] };
 
 // Why the gyro stood aside, as the log must say it: a fault handed to the
 // GPS silently would look like a gyro that works and reads nothing.
@@ -762,7 +767,7 @@ const GYRO_WHY = {
   'gravdown-gyro': /gyrot läser inte \(accelerometern och telefonens riktning är oense om vad som är upp/,
   'noorient-gyro': /vägval: gyrot läser inte \(telefonen ger ingen riktning att pröva/,
   'none-gyro': /gyrot läser inte \(telefonen ger ingen vridning\)/,
-  'quiet-gyro': /gyrot läser inte \(tyst\)/,
+  'quiet-gyro': /gyrot läser inte \(tyst[;)]/,
   'noside-gyro': /vägval: gyrot läser inte \(höger och vänster bara i Chrome/,
 };
 function gyroRun(r, run, profile, where, problems, lags) {
@@ -824,6 +829,42 @@ async function provChecks(only) {
   check(pick({ skog: { lat: null, lon: null } }) === null, 'a kind without a position is not a place to walk to');
   const told = realTarget({ skog: at(500), bro: at(90) }, here).seen.join(', ');
   check(/^skog \d{3} m, en bro \d{2} m$/.test(told), `and what the map found is told, near and far (${told})`);
+
+  // The gyro's checks, each on forty pockets walked straight for 40 s: a
+  // right gyro passes them all, late orientation or not, every fault is
+  // stopped, and every check stops some fault on its own, so none of them is
+  // there for nothing (Gyro.faults lists them all, not only the first).
+  const CHECKS = {
+    units: /inte grader/, axes: /axlarna/, hand: /accelerometern är oense om vridningen/,
+    corr: /oense om (alpha|beta|gamma) \(/, ratio: /storleken på/, dead: /ger ingen vridning om/,
+    residual: /% av vridningen skiljer/, up: /vad som är upp/, carry: /varje axel som bär upp/,
+  };
+  const pockets = (kind, orient = {}) => Array.from({ length: 40 }, (_, k) => {
+    let s = (k + 1) * 7919;
+    const random = () => ((s = (s * 1103515245 + 12345) % 2147483648) / 2147483648);
+    const ph = makePocketPhone(kind, random, orient);
+    const g = new Gyro({ enabled: true, side: true });
+    let phase = 0;
+    for (let t = 0; t < 40; t += 1 / 60) {
+      const walking = t > 3;
+      if (walking) phase += 1.8 / 60;
+      const x = ph.sample(t, { heading: 0, phase, walking, mag: 9.81 + (walking ? 3 * Math.sin(2 * Math.PI * phase) : 0) });
+      g.orient(t - 0.004, x.orient);
+      g.push(t, x.acc, x.rate, walking);
+    }
+    return g.faults(40, { side: true });
+  });
+  for (const [label, orient] of [['on time', { orientLag: 0 }], ['40 ms late', {}], ['80 ms late, 30 a second', { orientLag: 0.08, orientEvery: 2 }]]) {
+    const bad = pockets('chrome', orient).filter(f => f.length);
+    check(!bad.length, `a right gyro passes every check, orientation ${label}${bad.length ? ` (${bad.length} of 40 stopped: ${bad[0][0]})` : ''}`);
+  }
+  const stops = {};
+  for (const kind of ['rad', 'flip', 'oldspec', 'flipy', 'gravdown', 'skew', 'dead']) {
+    const all = pockets(kind);
+    check(all.every(f => f.length), `a gyro with ${kind} is stopped in every pocket (${all.filter(f => f.length).length} of 40)`);
+    for (const f of all) for (const [c, re] of Object.entries(CHECKS)) if (f.some(w => re.test(w))) (stops[c] = stops[c] || new Set()).add(kind);
+  }
+  for (const c of Object.keys(CHECKS)) check(!!stops[c], `the ${c} check stops a fault (${stops[c] ? [...stops[c]].join(', ') : 'none'})`);
 
   for (const [name, ids] of Object.entries(PROV_PROFILES)) {
     const profile = name === 'abort' ? PROFILES.abort : PROFILES[name];

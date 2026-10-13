@@ -856,13 +856,17 @@ const VANDOM_CONFIRM = 15;
 
 // Gyro words for the log: what it read, or why it did not.
 const degWords = x => `${Math.round(Math.abs(x))}°`;
+// The figures go into the log when the gyro stands aside too, once the
+// orientation has judged it: the thresholds are set from a simulated phone,
+// and the first real walk is what they will be set from next.
 function gyroWords(ctx, status) {
-  if (!status.ok) return `gyrot läser inte (${status.why})`;
   const f = ctx.gyroFigures();
   const two = x => x.toFixed(2).replace('.', ',');
+  const judged = f.oCorr !== null && f.oEvidence >= ORIENT_EVIDENCE;
+  const ori = !judged ? (f.orientSeen ? 'riktningen inte prövad än' : 'ingen riktning')
+    : `riktningen ${f.axes.map(a => a.corr === null ? '-' : two(a.corr)).join('/')}, ${f.axes.map(a => a.ratio === null ? '-' : Math.round(a.ratio)).join('/')}°/rad, ${Math.round(f.oRes * 100)} % skiljer, ${Math.round(f.oLag * 1000)} ms efter, upp ${two(f.oUp)}`;
+  if (!status.ok) return `gyrot läser inte (${status.why}${judged ? `; ${ori}` : ''})`;
   const hand = f.hand === null || f.evidence < HAND_EVIDENCE ? 'handen inte prövad' : `handen ${two(f.hand)}`;
-  const ori = f.oCorr === null || f.oEvidence < ORIENT_EVIDENCE ? (f.orientSeen ? 'riktningen inte prövad än' : 'ingen riktning')
-    : `riktningen ${f.axes.map(a => a.corr === null ? '-' : two(a.corr)).join('/')}, ${f.axes.map(a => a.ratio === null ? '-' : Math.round(a.ratio)).join('/')}°/rad, ${Math.round(f.oRes * 100)} % skiljer, upp ${two(f.oUp)}`;
   return `gyrot läser (${Math.round(f.rms)}°/s i gång, ${Math.round(f.vert * 100)} % runt lodlinjen, ${hand}, ${ori})`;
 }
 

@@ -1060,6 +1060,9 @@ function saveRecording() {
 }
 
 function startMotion() {
+  // The permission can answer after the walk has ended; the listeners would
+  // then stay on with nothing to take them off (review, 2026-10-13).
+  if (finished) return;
   if (typeof DeviceMotionEvent === 'undefined') { log('rörelsesensor: stöds inte, gps avgör gång och stilla'); return; }
   window.addEventListener('devicemotion', onMotion);
   // The phone's orientation: the gyro's turns are checked against it, axis
