@@ -730,6 +730,16 @@ const GYRO_READS = { 'pass-gyro': ['vagval', 'vandom'], 'noside-gyro': ['vandom'
 // sometimes stands or loses step long enough for the hand to be tried
 // (2 runs in 100). Then the side may come from the gyro, never otherwise.
 const GYRO_MAY = { 'walkpocket-gyro': ['vagval'] };
+// Why the gyro stood aside, as the log must say it: a fault handed to the
+// GPS silently would look like a gyro that works and reads nothing.
+const GYRO_WHY = {
+  'rad-gyro': /gyrot läser inte \(vridningen i gång bara [\d.]+\/s, inte grader/,
+  'flip-gyro': /gyrot läser inte \(gyrot och accelerometern är oense/,
+  'oldspec-gyro': /gyrot läser inte \((axlarna stämmer inte|gyrot och accelerometern är oense)/,
+  'none-gyro': /gyrot läser inte \(telefonen ger ingen vridning\)/,
+  'quiet-gyro': /gyrot läser inte \(tyst\)/,
+  'noside-gyro': /vägval: gyrot läser inte \(höger och vänster bara i Chrome/,
+};
 function gyroRun(r, run, profile, where, problems, lags) {
   const name = Object.keys(PROFILES).find(n => PROFILES[n] === profile);
   const reads = GYRO_READS[name] || [];
@@ -753,6 +763,11 @@ function gyroRun(r, run, profile, where, problems, lags) {
       if (!tried) problems.push(`${where}: ${id} took its side from the gyro with the hand untried (${x.detail})`);
     }
     if (!reads.includes(id) && !may && byGyro[id]) problems.push(`${where}: ${id} read by the gyro, which should not have read (${x.detail})`);
+  }
+  const why = GYRO_WHY[name];
+  if (why && !r.log.some(l => why.test(l))) problems.push(`${where}: the log never says why the gyro stood aside (${why})`);
+  if (name === 'walkpocket-gyro' && !byGyro.vagval && !r.log.some(l => /vägval: gyrot läser inte \(höger och vänster inte prövade/.test(l))) {
+    problems.push(`${where}: the side went to the GPS and the log does not say the hand was untried`);
   }
   // How long after the turn was half done, from what the walker did.
   const halfDone = after => {
