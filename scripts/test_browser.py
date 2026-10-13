@@ -97,6 +97,12 @@ PHONE = """
     e.rotationRate = cfg.rotation === false ? null
       : { alpha: (Math.random() - 0.5) * 2, beta: (Math.random() - 0.5) * 2, gamma: (Math.random() - 0.5) * 2 };
     window.dispatchEvent(e);
+    // And its orientation, lying flat.
+    if (cfg.rotation !== false) {
+      const o = new Event('deviceorientation');
+      Object.assign(o, { alpha: 30 + (Math.random() - 0.5) * 0.1, beta: (Math.random() - 0.5) * 0.1, gamma: (Math.random() - 0.5) * 0.1 });
+      window.dispatchEvent(o);
+    }
   }, 16);
 })();
 """
@@ -602,7 +608,9 @@ def provstart(browser, base):
     body = json.loads(Path(dl.value.path()).read_text())
     n = len(body.get("t", []))
     vectors = all(len(body.get(k) or []) == n for k in ("ax", "ay", "az", "ra", "rb", "rg"))
-    told = all(k in body.get("units", {}) for k in ("ax, ay, az", "ra, rb, rg", "gyro"))
+    told = all(k in body.get("units", {}) for k in ("ax, ay, az", "ra, rb, rg", "gyro", "orient"))
+    orient = body.get("orient") or []
+    told = told and len(orient) > 100 and len(orient[0]) == 4 and abs(orient[len(orient) // 2][1] - 3000) < 50
     flat = n and abs(body["az"][n // 2] - 981) < 10 and body["ra"][n // 2] is not None
     check(body.get("version") == 2 and n > 100 and vectors and told and flat and body.get("gyro") == {"enabled": True, "side": True},
           f"the saved file carries the acceleration's direction and the rotation, and its units say so (version {body.get('version')}, {n} samples)")

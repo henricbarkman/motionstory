@@ -24,7 +24,15 @@
 //   flip     the other hand of rotation: every rate negated
 //   oldspec  alpha about z, beta about x, gamma about y (the spec before)
 //   none     rotationRate null: no gyro in the phone
+//   flipy    one axis mirrored: beta negated, the axis nearest up in a pocket
+//   gravdown accelerationIncludingGravity pointing down instead of up
+//   noorient no deviceorientation events
 // A sensor fault (`quiet`) is the caller's: it passes no rate.
+//
+// The orientation, as deviceorientation gives it: alpha, beta, gamma such
+// that Rz(alpha)·Rx(beta)·Ry(gamma) is the phone's orientation, worked out
+// from the same quaternion, with a hundredth of a degree of noise (Android's
+// fused orientation is smooth).
 //
 // The model is mine, not a recording: no gyro has been recorded in a pocket
 // yet (2026-10-12). It shares the code's reading of the spec, so it tests the
@@ -99,7 +107,7 @@ export function makePocketPhone(kind, random) {
     },
     // One sample at t. `heading` compass radians (clockwise from north),
     // `phase` steps taken (fractional), `walking` the feet going, `mag` the
-    // step model's |a|. Returns {acc, rate} as the page would get them.
+    // step model's |a|. Returns {acc, rate, orient} as the page would get them.
     sample(t, { heading, phase, walking, mag }) {
       const dt = prevT === null ? 0.02 : t - prevT;
       swing += ((walking ? 25 * D : 0) - swing) * Math.min(1, dt / 0.4);
@@ -112,7 +120,17 @@ export function makePocketPhone(kind, random) {
       const n = walking ? 0.08 : 0.01;
       const dir = up.map(v => v + n * gauss());
       const len = Math.hypot(...dir);
-      const acc = { x: mag * dir[0] / len, y: mag * dir[1] / len, z: mag * dir[2] / len };
+      const sign = kind === 'gravdown' ? -1 : 1;
+      const acc = { x: sign * mag * dir[0] / len, y: sign * mag * dir[1] / len, z: sign * mag * dir[2] / len };
+      // The matrix's columns are the phone's axes in the earth's.
+      const [c0, c1, c2] = [[1, 0, 0], [0, 1, 0], [0, 0, 1]].map(e => rot(q, e));
+      const R = [[c0[0], c1[0], c2[0]], [c0[1], c1[1], c2[1]], [c0[2], c1[2], c2[2]]];
+      const n2 = () => 0.01 * gauss();
+      const orient = kind === 'noorient' ? null : {
+        alpha: Math.atan2(-R[0][1], R[1][1]) / D + n2(),
+        beta: Math.atan2(R[2][1], Math.hypot(R[2][0], R[2][2])) / D + n2(),
+        gamma: Math.atan2(-R[2][0], R[2][2]) / D + n2(),
+      };
       // Rotation between samples, in the phone's axes: q_prev⁻¹ q.
       let w = [0, 0, 0];
       if (prev) {
@@ -129,8 +147,9 @@ export function makePocketPhone(kind, random) {
       else if (kind === 'rad') rate = { alpha: deg[0] * D, beta: deg[1] * D, gamma: deg[2] * D };
       else if (kind === 'flip') rate = { alpha: -deg[0], beta: -deg[1], gamma: -deg[2] };
       else if (kind === 'oldspec') rate = { alpha: deg[2], beta: deg[0], gamma: deg[1] };
+      else if (kind === 'flipy') rate = { alpha: deg[0], beta: -deg[1], gamma: deg[2] };
       else rate = { alpha: deg[0], beta: deg[1], gamma: deg[2] };
-      return { acc, rate };
+      return { acc, rate, orient };
     },
   };
   return phone;

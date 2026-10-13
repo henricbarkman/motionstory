@@ -16,7 +16,7 @@
 // turn it would read (50 degrees or more, held) is listed as GYRO, with the
 // figures behind its checks at the end.
 import { readFileSync } from 'node:fs';
-import { Walk, savedSensor } from '../glimt/engine.js';
+import { Walk, savedSensor, savedOrient } from '../glimt/engine.js';
 
 const args = process.argv.slice(2);
 const file = args.find(a => !a.startsWith('--') && !/^\d/.test(a));
@@ -64,9 +64,12 @@ const tickUntil = t => {
     nextTick = Math.round((nextTick + 0.25) * 1000) / 1000;
   }
 };
+const orients = savedOrient(rec);
+let oi = 0;
 for (let i = 0; i < rec.t.length; i++) {
   const t = rec.t[i] / 1000;
   tickUntil(t);
+  while (oi < orients.length && orients[oi].t <= t) { walk.orient(orients[oi].t, orients[oi].o); oi++; }
   walk.motion(t, rec.m[i] / 100, savedSensor(rec, i));
 }
 tickUntil(rec.t.length ? rec.t[rec.t.length - 1] / 1000 + 1 : 0);
@@ -92,6 +95,7 @@ console.log(`  ${steps.length} steps, ${spikes.length} spikes, ${spikes.filter(s
 if (walk.gyro.rateSeen) {
   const g = walk.gyro.figures(), r = x => x === null ? '-' : x.toFixed(2);
   console.log(`  gyro: ${turns.length} turns, ${r(g.rms)} deg/s rms walking, ${r(g.vert)} of it about up, hand ${r(g.hand)} on ${r(g.evidence)} rad`);
+  console.log(`  against the orientation, per axis: ${g.axes.map(a => `${r(a.corr)} at ${r(a.ratio)} deg/rad, ${r(a.rms)} rad/s`).join('; ')}; up ${r(g.oUp)}, ${r(g.oEvidence)} rad seen`);
 } else if (rec.ax) console.log('  gyro: no rotation in the file');
 
 const events = [];

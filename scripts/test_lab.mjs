@@ -135,9 +135,19 @@ const PROFILES = {
   'quiet-gyro': { kind: 'pass', gps: CHROME_GPS, steps: true, gyro: 'chrome', quietAt: 'vagval-intro', provOnly: true },
   'noside-gyro': { kind: 'pass', gps: CHROME_GPS, steps: true, gyro: 'chrome', side: false, provOnly: true },
   // Walks off with the phone in the hand and pockets it ten seconds on,
-  // walking, so the hand of rotation is never tried: Vänd om by the gyro,
-  // Vägvalet's side by the GPS.
+  // walking, so the hand of rotation is never tried; the orientation's
+  // check is made walking, so both are read by the gyro all the same.
   'walkpocket-gyro': { kind: 'pass', gps: CHROME_GPS, steps: true, gyro: 'chrome', walkPocket: true, provOnly: true },
+  // Faults that pass every check but the orientation's (review, 2026-10-12):
+  // one axis mirrored, up pointing down. And a phone with no orientation:
+  // Vänd om by the gyro, the side by the GPS.
+  // Turns back slowly at the crossing, half a turn over six seconds, walking
+  // round: no side, read before it is done it would be one (GYRO_STEADY).
+  // Then turns back as asked.
+  'uturn-gyro': { kind: 'pass', gps: CHROME_GPS, steps: true, gyro: 'chrome', uturn: true, provOnly: true },
+  'flipy-gyro': { kind: 'pass', gps: CHROME_GPS, steps: true, gyro: 'flipy', provOnly: true },
+  'gravdown-gyro': { kind: 'pass', gps: CHROME_GPS, steps: true, gyro: 'gravdown', provOnly: true },
+  'noorient-gyro': { kind: 'pass', gps: CHROME_GPS, steps: true, gyro: 'noorient', provOnly: true },
   // Knacket gående: the phone taken out and put back bumps twice, as hard
   // as a knock standing. That must count as a double, or the walk cannot
   // tell Henric whether a jolt reads as one.
@@ -254,6 +264,11 @@ function makeWalker(kind, env) {
         return;
       }
       if (id === 'vandom-nu' || id === 'vandom-igen') { turn(t + 1.5, Math.PI / 2); return; }
+    }
+    if (env.uturn && id === 'vagval-intro') {
+      at(t + 12, () => { w.turnRate = 30 * Math.PI / 180; w.heading += env.left ? -Math.PI : Math.PI; });
+      at(t + 20, () => { w.turnRate = 70 * Math.PI / 180; });
+      return;
     }
     if (env.pocket) {
       // Out of the pocket and back, the other way round, standing.
@@ -417,7 +432,7 @@ function simulate(labNo, name, run, abortIn = null, { stations = null, noBuzz = 
     : profile.sensorOff && profile.sensorOff[labNo];
   const walker = makeWalker(profile.kind, {
     bpm, target: () => target, sensorOff, jolt: !!profile.jolt, briefRun: !!profile.briefRun, left: run % 2 === 0,
-    phone, gyroFail: !!profile.gyroFail, pocket: !!profile.pocket, walkPocket: !!profile.walkPocket, quietAt: profile.quietAt || null, quiet: null,
+    phone, gyroFail: !!profile.gyroFail, pocket: !!profile.pocket, walkPocket: !!profile.walkPocket, uturn: !!profile.uturn, quietAt: profile.quietAt || null, quiet: null,
     note: msg => log.push(`${fmt(t)}  ~ ${msg}`),
   });
   let station = null, stationAt = 0, aborted = null;
@@ -522,6 +537,7 @@ function simulate(labNo, name, run, abortIn = null, { stations = null, noBuzz = 
           if (phone) {
             const sensor = phone.sample(u, { heading: facing, phase, walking: cadence > 0, mag: m });
             if (walker.env.quiet !== null && u >= walker.env.quiet) sensor.rate = null;
+            walk.orient(u - 0.004, sensor.orient);
             walk.motion(u, m, sensor);
           } else {
             walk.motion(u, m);
@@ -696,6 +712,15 @@ const PROV_EXPECT = {
   'quiet-gyro': () => ({ want: 'klarade', rate: 0.9 }),
   'noside-gyro': () => ({ want: 'klarade', rate: 0.9 }),
   'walkpocket-gyro': () => ({ want: 'klarade', rate: 0.9 }),
+  // A slow turn-back at the question: the gyro reads no side, and the GPS
+  // reads none past 140 degrees. Its short means can still catch the swing
+  // halfway, 90 to 135 degrees out and ten metres to that side (8 of 100,
+  // 2026-10-13); that is the side the walker went, and the pass check
+  // below fails any read as the other.
+  'uturn-gyro': id => id === 'vagval' ? { want: 'missade', rate: 0.85 } : { want: 'klarade', rate: 0.9 },
+  'flipy-gyro': () => ({ want: 'klarade', rate: 0.9 }),
+  'gravdown-gyro': () => ({ want: 'klarade', rate: 0.9 }),
+  'noorient-gyro': () => ({ want: 'klarade', rate: 0.9 }),
   'brief-run': id => id === 'vaxla' ? 'missade' : null,
   'screen-prov': () => null,
   abort: () => null,
@@ -725,17 +750,17 @@ const PROV_SAYS = {
 // Riktning with a phone that has a gyro, or on Chrome's GPS: the side read
 // must be the side turned, every time; whether the gyro may read at all is
 // the profile's; and when it reads, how long after the turn was half done.
-const GYRO_READS = { 'pass-gyro': ['vagval', 'vandom'], 'noside-gyro': ['vandom'], 'walkpocket-gyro': ['vandom'] };
-// May read, and must say why: the walker who pockets the phone walking
-// sometimes stands or loses step long enough for the hand to be tried
-// (2 runs in 100). Then the side may come from the gyro, never otherwise.
-const GYRO_MAY = { 'walkpocket-gyro': ['vagval'] };
+const GYRO_READS = { 'uturn-gyro': ['vandom'], 'pass-gyro': ['vagval', 'vandom'], 'noside-gyro': ['vandom'], 'walkpocket-gyro': ['vagval', 'vandom'], 'noorient-gyro': ['vandom'] };
+
 // Why the gyro stood aside, as the log must say it: a fault handed to the
 // GPS silently would look like a gyro that works and reads nothing.
 const GYRO_WHY = {
   'rad-gyro': /gyrot läser inte \(vridningen i gång bara [\d.]+\/s, inte grader/,
   'flip-gyro': /gyrot läser inte \(gyrot och accelerometern är oense/,
-  'oldspec-gyro': /gyrot läser inte \((axlarna stämmer inte|gyrot och accelerometern är oense)/,
+  'oldspec-gyro': /gyrot läser inte \((axlarna stämmer inte|gyrot och (accelerometern|telefonens riktning) är oense)/,
+  'flipy-gyro': /gyrot läser inte \((gyrot och (accelerometern|telefonens riktning) är oense|axlarna stämmer inte)/,
+  'gravdown-gyro': /gyrot läser inte \(accelerometern och telefonens riktning är oense om vad som är upp/,
+  'noorient-gyro': /vägval: gyrot läser inte \(telefonen ger ingen riktning att pröva/,
   'none-gyro': /gyrot läser inte \(telefonen ger ingen vridning\)/,
   'quiet-gyro': /gyrot läser inte \(tyst\)/,
   'noside-gyro': /vägval: gyrot läser inte \(höger och vänster bara i Chrome/,
@@ -756,19 +781,10 @@ function gyroRun(r, run, profile, where, problems, lags) {
     const x = id === 'vagval' ? vagval : vandom;
     if (!x || x.outcome !== 'klarade' && reads.includes(id)) { if (reads.includes(id)) problems.push(`${where}: ${id} ${x ? x.outcome : 'missing'}, the gyro should have read it (${x && x.detail})`); continue; }
     if (reads.includes(id) && !byGyro[id]) problems.push(`${where}: ${id} not read by the gyro (${x.detail})`);
-    const may = (GYRO_MAY[name] || []).includes(id);
-    if (may && byGyro[id]) {
-      lags.may = (lags.may || 0) + 1;
-      const tried = r.log.find(l => /vägval: gyrot läser \(.*handen -?[\d,]+\)/.test(l));
-      if (!tried) problems.push(`${where}: ${id} took its side from the gyro with the hand untried (${x.detail})`);
-    }
-    if (!reads.includes(id) && !may && byGyro[id]) problems.push(`${where}: ${id} read by the gyro, which should not have read (${x.detail})`);
+    if (!reads.includes(id) && byGyro[id]) problems.push(`${where}: ${id} read by the gyro, which should not have read (${x.detail})`);
   }
   const why = GYRO_WHY[name];
   if (why && !r.log.some(l => why.test(l))) problems.push(`${where}: the log never says why the gyro stood aside (${why})`);
-  if (name === 'walkpocket-gyro' && !byGyro.vagval && !r.log.some(l => /vägval: gyrot läser inte \(höger och vänster inte prövade/.test(l))) {
-    problems.push(`${where}: the side went to the GPS and the log does not say the hand was untried`);
-  }
   // How long after the turn was half done, from what the walker did.
   const halfDone = after => {
     const turn = r.marks.turns.find(k => k.start >= after);
@@ -880,8 +896,6 @@ async function provChecks(only) {
         if (lags.length < read) problems.push(`the corner was found in ${lags.length} of ${read} turns read`);
         console.log(`  vagval on dense GPS: read ${med} s after the corner (median), ${worst} s at worst, ${lags.length} turns`);
       }
-      // The side waits for the hand: most of these go by the GPS.
-      if (GYRO_MAY[name] && (gyroLags.may || 0) > runs.length / 10) problems.push(`the side came from the gyro in ${gyroLags.may} of ${runs.length} runs, the hand untried in most`);
       if (name === 'pass-gyro') {
         // Read within a few seconds of the turn: half within four, none
         // later than six (GPS: 11,8 s median, 17,8 at worst).

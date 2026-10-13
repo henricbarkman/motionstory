@@ -196,7 +196,7 @@ const GPS_LOG_EVERY = 30;
 const REC_MAX = 200000;       // samples, about 55 minutes at 60 Hz
 // From version 30 also the acceleration's direction and the gyro's rotation,
 // so a walk's turns can be replayed as the gyro read them.
-const rec = { t: [], m: [], ax: [], ay: [], az: [], ra: [], rb: [], rg: [], fixes: [], log: [], origin: null };
+const rec = { t: [], m: [], ax: [], ay: [], az: [], ra: [], rb: [], rg: [], orient: [], fixes: [], log: [], origin: null };
 const ms = s => Math.round(s * 1000);
 
 const now = () => (performance.now() - t0) / 1000;
@@ -1039,11 +1039,13 @@ function saveRecording() {
       'ax, ay, az': "centi m/s², acceleration including gravity along the phone's x, y, z (version 2 on; null where the simulator made the sample)",
       'ra, rb, rg': 'centi deg/s, rotationRate alpha, beta, gamma as the browser gave them (Chrome: about x, y, z); null where the phone gave none, left out when it never did',
       gyro: 'whether this walk read turns from the gyro: enabled, and side (left or right too)',
+      orient: '[t, alpha, beta, gamma]: deviceorientation, t as above, the angles in centidegrees (version 2 on, Chrome on Android)',
       vibrationCheck: "the start screen's try-out: t in ms from the call to vibrate, m as above",
     },
     gyro: { enabled: GYRO_OK, side: GYRO_OK },
     t: rec.t, m: rec.m, ax: rec.ax, ay: rec.ay, az: rec.az,
     ...(rec.ra.some(v => v !== null) ? { ra: rec.ra, rb: rec.rb, rg: rec.rg } : {}),
+    orient: rec.orient,
     fixes: rec.fixes, log: rec.log,
     vibrationCheck: vibra.trace && { ...vibra.trace, answer: vibra.answer },
   });
@@ -1060,6 +1062,16 @@ function saveRecording() {
 function startMotion() {
   if (typeof DeviceMotionEvent === 'undefined') { log('rörelsesensor: stöds inte, gps avgör gång och stilla'); return; }
   window.addEventListener('devicemotion', onMotion);
+  // The phone's orientation: the gyro's turns are checked against it, axis
+  // by axis, before it may say left or right (engine.js, Gyro).
+  if (GYRO_OK) window.addEventListener('deviceorientation', onOrient);
+}
+
+function onOrient(e) {
+  if (![e.alpha, e.beta, e.gamma].every(Number.isFinite)) return;
+  const t = now();
+  if (rec.orient.length < REC_MAX) rec.orient.push([ms(t), Math.round(e.alpha * 100), Math.round(e.beta * 100), Math.round(e.gamma * 100)]);
+  walk.orient(t, { alpha: e.alpha, beta: e.beta, gamma: e.gamma });
 }
 
 // ---------- simulator ----------
@@ -1114,6 +1126,7 @@ function finish() {
   clearInterval(simId);
   clearInterval(motionSimId);
   window.removeEventListener('devicemotion', onMotion);
+  window.removeEventListener('deviceorientation', onOrient);
   if (waiter) waiter.abort();
   if (mixer) mixer.stopVoice();
   if (sfx) sfx.close();

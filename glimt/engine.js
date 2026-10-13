@@ -814,12 +814,32 @@ export function simulatedMagnitude(t, speed) {
 //    pocket at the start), the up direction moves in the phone's axes, and the
 //    gyro must say the same: a fixed direction seen from a turning phone
 //    turns the other way, d(up)/dt = -ω × up. A gyro reporting the other
-//    hand of rotation would read every left turn as right. Without enough
-//    handling to judge, the gyro still reads turning back (its sign does not
-//    matter) but not left or right: those wait for the check, and the GPS
-//    tells them meanwhile. A fault must never give the wrong side.
-// And the side (left or right) also needs up to point up, which Android
-// promises and other platforms have not been seen to (Walk's gyro.side).
+//    hand of rotation correlates negatively (about -0.7 in the simulated
+//    pocket); a right one positively, if less than 1, for the quick up lags
+//    the gyro by HAND_TAU. So only a negative correlation blocks.
+//  - the phone's orientation (deviceorientation): Android works it out from
+//    the same sensors inside the phone, before any browser has mapped an
+//    axis, so it is a second opinion on every number the turns are made of.
+//    From two orientations a few hundredths of a second apart comes the
+//    rotation in the phone's own axes, and each of the gyro's three axes must
+//    rise and fall with it (correlation ORIENT_MIN) at its size
+//    (ORIENT_RATIO: degrees from the gyro per radian, 57.3), on every axis
+//    that turns enough to judge (ORIENT_RMS), and every
+//    axis that carries up must be among them. The thigh's swing turns one
+//    axis, the hips' twist the one along up. And up from the accelerometer
+//    must be up from the orientation (ORIENT_UP). Each axis on its own,
+//    because a test of ω·up alone was fooled: with one axis mirrored the
+//    swing leaks into it in step with the twist (2026-10-12, 2 pockets in
+//    40). And the whole vector too (ORIENT_RESIDUAL): a gait turns the phone
+//    mostly about one axis, so with the axes swapped each one can still rise
+//    and fall with the orientation, only at the wrong size (0.94/0.97/0.90 at
+//    51/85/38 deg/rad in one simulated pocket). It catches one axis mirrored (rotation about up is invisible to the
+//    handedness check), up pointing down, units, axes swapped (review,
+//    2026-10-12: the first two gave the wrong side with every other check
+//    passing). The side, left or right, is read only once this check has had
+//    ORIENT_EVIDENCE to judge by, and agreed; until then the gyro reads
+//    turning back (its sign does not matter) and the GPS tells the side. A
+//    fault must never give the wrong side.
 const GYRO_BIN = 0.25;        // s per bin of yaw and up kept
 const GYRO_KEEP = 40;         // s of bins kept
 const GRAV_TAU = 1.0;         // s: the up direction, averaged over a stride
@@ -828,8 +848,18 @@ const GYRO_STAT_TAU = 20;     // s: how far back units and axes are judged
 const GYRO_STAT_MIN = 5;      // s of walking before they are judged at all
 const GYRO_UNITS_MIN = 8;     // deg/s rms walking
 const GYRO_VERT_MAX = 0.35;   // share of the walking rotation along up
-const HAND_EVIDENCE = 1.0;    // rad the up direction must have turned (predicted)
-const HAND_MIN = 0.5;         // correlation below this, with evidence: wrong hand
+export const HAND_EVIDENCE = 1.0;    // rad the up direction must have turned (predicted)
+const HAND_MIN = 0;           // correlation below this, with evidence: wrong hand
+const ORIENT_GAP = 0.2;       // s between orientation events, longer: no rate from them
+const ORIENT_BASE = 0.04;     // s at least between the two orientations a rate is taken from
+const ORIENT_FRESH = 0.1;     // s an orientation rate is paired with motion samples
+export const ORIENT_EVIDENCE = 6.0;  // rad turned walking, by the orientation (some 4 s of gait)
+const ORIENT_MIN = 0.8;       // correlation per axis, gyro against orientation
+const ORIENT_RATIO = [45, 70];  // deg/s of gyro per rad/s of orientation: 57.3 if degrees; a lag of 50 ms at a stride's 1 Hz gives 54
+const ORIENT_RESIDUAL = 0.3;  // of the orientation's rotation left over when the gyro's (in rad/s) is taken from it
+const ORIENT_RMS = 0.05;      // rad/s (3 deg/s) rms on an axis, walking, to judge it: twice a phone gyro's noise at worst
+const ORIENT_CARRY = 0.3;     // of up along an axis: it carries turns, so it must be judged
+const ORIENT_UP = 0.9;        // mean cosine, up from the accelerometer against the orientation's
 const GYRO_SILENT = 1.0;      // s without a rotation sample: the gyro is quiet
 // The reading. A turn is the mean yaw over the last GYRO_AFTER seconds
 // against the mean over GYRO_BEFORE seconds of walking at least GYRO_GAP
@@ -855,11 +885,29 @@ const GYRO_HANDLED = 30;      // degrees
 const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 const norm = a => { const n = Math.hypot(a[0], a[1], a[2]); return n > 0 ? [a[0] / n, a[1] / n, a[2] / n] : null; };
+// The spec's device orientation as a matrix, phone axes to earth axes:
+// Rz(alpha)·Rx(beta)·Ry(gamma), degrees.
+export function rotationOf(alpha, beta, gamma) {
+  const r = Math.PI / 180;
+  const ca = Math.cos(alpha * r), sa = Math.sin(alpha * r), cb = Math.cos(beta * r), sb = Math.sin(beta * r);
+  const cg = Math.cos(gamma * r), sg = Math.sin(gamma * r);
+  return [
+    [ca * cg - sa * sb * sg, -sa * cb, ca * sg + sa * sb * cg],
+    [sa * cg + ca * sb * sg, ca * cb, sa * sg - ca * sb * cg],
+    [-cb * sg, sb, cb * cg],
+  ];
+}
 const angleBetween = (a, b) => Math.acos(Math.max(-1, Math.min(1, dot(a, b)))) * 180 / Math.PI;
 
 // Sample i of a saved sensor file as Walk.motion takes it, or null: files
 // before version 2 (app version 30) kept only |a|, and replay them as before.
 // ax, ay, az centi m/s²; ra, rb, rg centi deg/s, absent or null without a gyro.
+// The orientation events of a saved file, [{t, o}], or [] before version 2:
+// `orient` is [ms, alpha, beta, gamma] with the angles in centidegrees.
+export function savedOrient(rec) {
+  return (rec.orient || []).map(([t, a, b, g]) => ({ t: t / 1000, o: { alpha: a / 100, beta: b / 100, gamma: g / 100 } }));
+}
+
 export function savedSensor(rec, i) {
   if (!rec.ax || rec.ax[i] == null) return null;
   const acc = { x: rec.ax[i] / 100, y: rec.ay[i] / 100, z: rec.az[i] / 100 };
@@ -884,6 +932,35 @@ export class Gyro {
     this.walkW = 0; this.walkE = 0; this.walkV = 0;
     // Handling: predicted and seen movement of the quick up.
     this.hDot = 0; this.hPred = 0; this.hSeen = 0; this.hPath = 0;
+    // The orientation: its last rotation matrix and its turning about up,
+    // and sums of the gyro's ω·up against it, walking.
+    this.baseR = null; this.baseT = null; this.lastOT = null; this.oRate = null; this.orientSeen = false;
+    this.oDot = [0, 0, 0]; this.oM = [0, 0, 0]; this.oO = [0, 0, 0]; this.oPath = 0;
+    this.oUp = 0; this.oUpW = 0; this.oRes = 0;
+  }
+
+  // One deviceorientation event, {alpha, beta, gamma} in degrees. The spec's
+  // rotation from the phone's axes to the earth's (x east, y north, z up) is
+  // Rz(alpha)·Rx(beta)·Ry(gamma). Built as a matrix, not used as angles: in a
+  // trouser pocket beta is near 90 degrees, where alpha and gamma lose their
+  // meaning but the matrix keeps it.
+  orient(t, o) {
+    if (!o || ![o.alpha, o.beta, o.gamma].every(v => v !== null && v !== undefined && Number.isFinite(+v))) return;
+    if (this.lastOT !== null && t <= this.lastOT) return;
+    const gap = this.lastOT === null ? Infinity : t - this.lastOT;
+    this.lastOT = t; this.orientSeen = true;
+    const R = rotationOf(+o.alpha, +o.beta, +o.gamma);
+    if (gap > ORIENT_GAP) { this.baseR = R; this.baseT = t; this.oRate = null; return; }
+    const dt = t - this.baseT;
+    if (dt < ORIENT_BASE) return;
+    // pᵀ·R is the turn between the two in the phone's own axes; for a small
+    // one its skew part over dt is the angular velocity there, rad/s, right-
+    // handed. Up in the phone's axes is the earth's z: R's bottom row.
+    const p = this.baseR;
+    const D = (i, j) => p[0][i] * R[0][j] + p[1][i] * R[1][j] + p[2][i] * R[2][j];
+    const w = [(D(2, 1) - D(1, 2)) / 2 / dt, (D(0, 2) - D(2, 0)) / 2 / dt, (D(1, 0) - D(0, 1)) / 2 / dt];
+    this.oRate = { t: t - dt / 2, w, up: R[2] };
+    this.baseR = R; this.baseT = t;
   }
 
   // One motion sample. `acc` {x, y, z}: accelerationIncludingGravity; `rate`
@@ -903,7 +980,10 @@ export class Gyro {
     }
     // A gap in the samples: start the averages afresh. What turned during
     // it is not known, so its bins stay empty and no turn spans them.
-    if (dt === null || dt <= 0 || dt > 0.5) {
+    // Two samples stamped alike (two events in one tick): the second is
+    // skipped, not taken for a gap, which would throw the averages away.
+    if (dt !== null && dt <= 0) { this.lastT = t - dt; return; }
+    if (dt === null || dt > 0.5) {
       this.up = a; this.quick = a;
       return;
     }
@@ -926,6 +1006,15 @@ export class Gyro {
       this.walkW = this.walkW * d + dt;
       this.walkE = this.walkE * d + dot(w, w) * dt;
       this.walkV = this.walkV * d + vert * vert * dt;
+      const o = this.oRate;
+      if (o && t - o.t <= ORIENT_FRESH) {
+        for (let i = 0; i < 3; i++) {
+          this.oDot[i] += w[i] * o.w[i] * dt; this.oM[i] += w[i] * w[i] * dt; this.oO[i] += o.w[i] * o.w[i] * dt;
+          this.oRes += (w[i] * Math.PI / 180 - o.w[i]) ** 2 * dt;
+        }
+        this.oPath += Math.hypot(o.w[0], o.w[1], o.w[2]) * dt;
+        this.oUp += dot(this.up, o.up) * dt; this.oUpW += dt;
+      }
     } else if (Math.abs(mag - 9.81) < 2) {
       // Standing, and little besides gravity in the reading: how far the
       // gyro says the quick up should have moved, against how far it did.
@@ -957,7 +1046,19 @@ export class Gyro {
     const vert = this.walkE ? this.walkV / this.walkE : null;
     const evidence = this.hPath;
     const hand = this.hPred && this.hSeen ? this.hDot / Math.sqrt(this.hPred * this.hSeen) : null;
-    return { rms, vert, evidence, hand, walking: this.walkW };
+    // Per axis: correlation and size against the orientation, and how much
+    // the orientation saw it turn (rms, rad/s).
+    const axes = [0, 1, 2].map(i => ({
+      corr: this.oM[i] && this.oO[i] ? this.oDot[i] / Math.sqrt(this.oM[i] * this.oO[i]) : null,
+      ratio: this.oO[i] ? this.oDot[i] / this.oO[i] : null,
+      rms: this.oUpW ? Math.sqrt(this.oO[i] / this.oUpW) : 0,
+    }));
+    const judged = axes.filter(a => a.rms >= ORIENT_RMS && a.corr !== null);
+    const oCorr = judged.length ? Math.min(...judged.map(a => a.corr)) : null;
+    const oUp = this.oUpW ? this.oUp / this.oUpW : null;
+    const oAll = this.oO[0] + this.oO[1] + this.oO[2];
+    const oRes = oAll ? this.oRes / oAll : null;
+    return { rms, vert, evidence, hand, walking: this.walkW, axes, oCorr, oUp, oRes, oEvidence: this.oPath, orientSeen: this.orientSeen };
   }
 
   // Whether the gyro may read a turn at t: {ok, why}. `side`: left or right
@@ -971,9 +1072,28 @@ export class Gyro {
     if (f.walking < GYRO_STAT_MIN) return no('för lite gång än för att kolla det');
     if (f.rms < GYRO_UNITS_MIN) return no(`vridningen i gång bara ${f.rms.toFixed(1)}/s, inte grader (radianer?)`);
     if (f.vert > GYRO_VERT_MAX) return no(`axlarna stämmer inte (${Math.round(f.vert * 100)} % av vridningen runt lodlinjen)`);
-    if (f.evidence >= HAND_EVIDENCE && f.hand < HAND_MIN) return no(`gyrot och accelerometern är oense om vridningen (${f.hand.toFixed(2)})`);
+    if (f.evidence >= HAND_EVIDENCE && f.hand !== null && f.hand < HAND_MIN) return no(`gyrot och accelerometern är oense om vridningen (${f.hand.toFixed(2)})`);
+    const judged = f.oEvidence >= ORIENT_EVIDENCE;
+    if (judged) {
+      const names = ['alpha', 'beta', 'gamma'];
+      for (let i = 0; i < 3; i++) {
+        const a = f.axes[i];
+        if (a.rms < ORIENT_RMS || a.corr === null) continue;
+        if (a.corr < ORIENT_MIN) return no(`gyrot och telefonens riktning är oense om ${names[i]} (${a.corr.toFixed(2)})`);
+        if (a.ratio < ORIENT_RATIO[0] || a.ratio > ORIENT_RATIO[1]) return no(`gyrot och telefonens riktning är oense om storleken på ${names[i]} (${a.ratio.toFixed(1)} per radian, inte 57)`);
+      }
+      if (f.oRes !== null && f.oRes > ORIENT_RESIDUAL) return no(`gyrot och telefonens riktning är oense (${Math.round(f.oRes * 100)} % av vridningen skiljer)`);
+      if (f.oUp !== null && f.oUp < ORIENT_UP) return no(`accelerometern och telefonens riktning är oense om vad som är upp (${f.oUp.toFixed(2)})`);
+    }
     if (side && !this.side) return no('höger och vänster bara i Chrome på Android');
-    if (side && f.evidence < HAND_EVIDENCE) return no('höger och vänster inte prövade (telefonen stoppades inte i fickan stående)');
+    if (side && !judged) {
+      return no(this.orientSeen ? 'höger och vänster inte prövade mot telefonens riktning än' : 'telefonen ger ingen riktning att pröva höger och vänster mot');
+    }
+    // Every axis up leans along must have been judged: a mirrored one that
+    // barely turned while walking would still turn the reading round.
+    if (side && this.up && f.axes.some((a, i) => Math.abs(this.up[i]) >= ORIENT_CARRY && (a.rms < ORIENT_RMS || a.corr === null))) {
+      return no('höger och vänster inte prövade på varje axel som bär upp');
+    }
     return { ok: true, why: null };
   }
 
@@ -1004,16 +1124,20 @@ export class Gyro {
     const full = b => b && b.n > 0 && b.rate > b.n / 2;
     const walked = b => full(b) && b.walk > b.n / 2;
     const mean = bs => bs.reduce((a, b) => a + b.yaw, 0) / bs.reduce((a, b) => a + b.rate, 0);
+    // A window is steady when its halves agree: the heading held, not still
+    // turning. Both windows must be, or a slow turn is measured from its
+    // middle: half a turn back over six seconds read as 114 degrees to one
+    // side, a Vägval (2026-10-13, a simulated walker turning back at the
+    // crossing).
+    const steady = bs => Math.abs(mean(bs.slice(0, bs.length / 2)) - mean(bs.slice(bs.length / 2))) <= GYRO_STEADY;
     const after = span(end - GYRO_AFTER, end);
-    if (!after.every(walked)) return null;
-    const half = after.length / 2;
+    if (!after.every(walked) || !steady(after)) return null;
     const yawAfter = mean(after);
-    if (Math.abs(mean(after.slice(0, half)) - mean(after.slice(half))) > GYRO_STEADY) return null;
-    // The latest stretch of walking far enough before.
+    // The latest steady stretch of walking far enough before.
     let before = null, beforeEnd = null;
     for (let e = end - GYRO_AFTER - GYRO_GAP; e - GYRO_BEFORE >= end - GYRO_SPAN - 1e-9; e -= GYRO_BIN) {
       const bs = span(e - GYRO_BEFORE, e);
-      if (bs.every(walked)) { before = bs; beforeEnd = e; break; }
+      if (bs.every(walked) && steady(bs)) { before = bs; beforeEnd = e; break; }
     }
     if (!before) return null;
     // Nothing missing between, and the phone where it was.
@@ -1085,6 +1209,9 @@ export class Walk {
   // Called for every accelerometer sample: |acceleration including gravity|,
   // and, when the page has them, `sensor` {acc: {x, y, z}, rate: {alpha,
   // beta, gamma} or null} for the gyro. Without them nothing else changes.
+  // A deviceorientation event, for the gyro's second opinion.
+  orient(t, o) { this.gyro.orient(t, o); }
+
   motion(t, magnitude, sensor = null) {
     // While the phone's own motor runs the sample is the motor's. The sway
     // is given nothing and keeps its verdict (Sway.hold). The feet are given

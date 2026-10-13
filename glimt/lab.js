@@ -32,7 +32,7 @@
 //
 // Every station returns { outcome: 'klarade' | 'missade' | 'hoppade', detail }.
 
-import { haversine, bearing, angleDiff } from './engine.js';
+import { haversine, bearing, angleDiff, HAND_EVIDENCE, ORIENT_EVIDENCE } from './engine.js';
 
 // How long after a pattern's last buzz the motor is taken to be running
 // still. The browser asks for each buzz in turn and the motor has to stop, so
@@ -185,7 +185,7 @@ export const PROV = {
     // checks the motion sensor too.
     title: 'Riktning', minutes: 4, sensor: true, stations: ['vagval', 'vandom'], opts: { vagval: { fast: true } },
     question: 'Läser telefonen en sväng åt vänster, och en vändning, inom några sekunder nu när gyrot läser dem?',
-    todo: 'Stoppa telefonen i fickan medan du står still, och börja sedan gå. Sväng vänster vid första korsningen efter att hon frågat. Vänd sedan om när hon säger vänd, två gånger.',
+    todo: 'Telefonen i fickan, skärmen olåst. Sväng vänster vid första korsningen efter att hon frågat. Vänd sedan om när hon säger vänd, två gånger.',
     asks: [{ id: 'svang', text: 'Åt vilket håll svängde du vid korsningen?', options: ['Vänster', 'Höger', 'Rakt fram'] }],
   },
   kompass: {
@@ -859,8 +859,11 @@ const degWords = x => `${Math.round(Math.abs(x))}°`;
 function gyroWords(ctx, status) {
   if (!status.ok) return `gyrot läser inte (${status.why})`;
   const f = ctx.gyroFigures();
-  const hand = f.hand === null || f.evidence < 1 ? 'handen inte prövad' : `handen ${f.hand.toFixed(2).replace('.', ',')}`;
-  return `gyrot läser (${Math.round(f.rms)}°/s i gång, ${Math.round(f.vert * 100)} % runt lodlinjen, ${hand})`;
+  const two = x => x.toFixed(2).replace('.', ',');
+  const hand = f.hand === null || f.evidence < HAND_EVIDENCE ? 'handen inte prövad' : `handen ${two(f.hand)}`;
+  const ori = f.oCorr === null || f.oEvidence < ORIENT_EVIDENCE ? (f.orientSeen ? 'riktningen inte prövad än' : 'ingen riktning')
+    : `riktningen ${f.axes.map(a => a.corr === null ? '-' : two(a.corr)).join('/')}, ${f.axes.map(a => a.ratio === null ? '-' : Math.round(a.ratio)).join('/')}°/rad, ${Math.round(f.oRes * 100)} % skiljer, upp ${two(f.oUp)}`;
+  return `gyrot läser (${Math.round(f.rms)}°/s i gång, ${Math.round(f.vert * 100)} % runt lodlinjen, ${hand}, ${ori})`;
 }
 
 async function turnBack(ctx, id) {
@@ -1118,7 +1121,13 @@ async function vagval(ctx, { fast = false } = {}) {
     const d = angleDiff(h0, h);
     // Metres to the side of the line walked at the question, right positive.
     const side = haversine(p0, here) * Math.sin(angleDiff(h0, bearing(p0, here)) * Math.PI / 180);
-    const turned = Math.abs(d) > angle && Math.abs(side) >= sideMin && Math.sign(side) === Math.sign(d);
+    // Not past VAGVAL_GYRO.max either: a walker heading back the way they
+    // came is turning back, not choosing a side, and the side the means then
+    // show is drift. A slow turn-back in the simulated walks (uturn-gyro) was
+    // read as a side in 30 of 100 runs, often the wrong one (2026-10-13); a
+    // side turn reads 70 to 110 degrees on the GPS, so 140 leaves it room.
+    const turned = Math.abs(d) > angle && Math.abs(d) < VAGVAL_GYRO.max
+      && Math.abs(side) >= sideMin && Math.sign(side) === Math.sign(d);
     seen = { d, side, dense: d0 };
     if (turned && Math.sign(d) === sign) off += dt;
     else { off = turned ? dt : 0; sign = Math.sign(d); }
