@@ -1,13 +1,19 @@
 // Web Audio layer. Three paths into one master:
 //   bed   : the atmosphere loop, always under, seamless via AudioBufferSource loop
 //   fx    : the riser before the first line
-//   voice : Vega, through a lowpass filter and a gain that follow contact
+//   voice : Vega, through a lowpass filter and a gain that follow contact.
+//           Episode 1's opening credits come down the same path: the song is
+//           heard through the line, and goes dull with her voice.
 //
 // Contact 1 is her voice clean and close. Contact 0 is a far, dull murmur:
 // the same recording heard through a wall.
 
 const VOICE_FLOOR_HZ = 300;
 const VOICE_CEIL_HZ = 18000;
+// A line she says to herself (Henric 2026-10-16: lower, turned away from the
+// line): never clearer than this contact, and at this share of the level.
+const ASIDE_CONTACT = 0.7;
+const ASIDE_GAIN = 0.7;
 
 export class Mixer {
   constructor() {
@@ -35,8 +41,11 @@ export class Mixer {
 
     this.contact = 1;
     this.clear = false;
+    this.aside = false;
     this.applyContact();
     this.bedSource = null;
+    this.bedShare = 1;
+    this.bedMuted = false;
   }
 
   resume() { return this.ctx.resume(); }
@@ -69,10 +78,22 @@ export class Mixer {
   // Steps the bed back under another layer (episode 1: her side) and brings
   // it up again. `share` is of the level the bed started at.
   setBed(share, seconds = 0.5) {
+    this.bedShare = share;
+    this.applyBed(seconds);
+  }
+
+  // Takes the bed away while a song plays over the line (episode 1's
+  // credits), whatever share her side has asked for, and brings it back.
+  muteBed(on, seconds = 1) {
+    this.bedMuted = !!on;
+    this.applyBed(seconds);
+  }
+
+  applyBed(seconds) {
     if (this.bedLevel === undefined || this.fading) return;
     const now = this.ctx.currentTime;
     this.bedGain.gain.cancelScheduledValues(now);
-    this.bedGain.gain.setTargetAtTime(this.bedLevel * share, now, seconds);
+    this.bedGain.gain.setTargetAtTime(this.bedMuted ? 0 : this.bedLevel * this.bedShare, now, seconds);
   }
 
   // Plays a one-shot through the fx path. Returns the AudioContext time it
@@ -87,18 +108,20 @@ export class Mixer {
   }
 
   // Plays a voice line. Resolves when it ends. `clear` overrides contact for
-  // the duration; `at` schedules the start (AudioContext time).
+  // the duration; `aside` holds it lower and duller, a line she says to
+  // herself; `at` schedules the start (AudioContext time).
   //
   // A wall-clock watchdog resolves the promise even if the AudioContext is
   // suspended (screen off without a wake lock) and onended never fires, so
   // the chapter cannot stall on one line. It resolves 'timeout' in that case
   // so the log shows what happened.
-  playVoice(buffer, { clear = false, at = null } = {}) {
+  playVoice(buffer, { clear = false, aside = false, at = null } = {}) {
     return new Promise(resolve => {
       const src = this.ctx.createBufferSource();
       src.buffer = buffer;
       src.connect(this.voiceFilter);
       if (clear) { this.clear = true; this.applyContact(); }
+      if (aside) { this.aside = true; this.applyContact(); }
       const startAt = at === null ? this.ctx.currentTime : at;
       const lead = Math.max(0, startAt - this.ctx.currentTime);
       let done = false;
@@ -107,6 +130,7 @@ export class Mixer {
         done = true;
         clearTimeout(watchdog);
         if (clear) { this.clear = false; this.applyContact(); }
+        if (aside) { this.aside = false; this.applyContact(); }
         if (this.currentVoice === src) this.currentVoice = null;
         resolve(why);
       };
@@ -131,9 +155,10 @@ export class Mixer {
   }
 
   applyContact() {
-    const c = this.clear ? 1 : this.contact;
+    let c = this.clear ? 1 : this.contact;
+    if (this.aside) c = Math.min(c, ASIDE_CONTACT);
     const freq = VOICE_FLOOR_HZ * Math.pow(VOICE_CEIL_HZ / VOICE_FLOOR_HZ, c);
-    const gain = 0.25 + 0.75 * Math.pow(c, 0.7);
+    const gain = (0.25 + 0.75 * Math.pow(c, 0.7)) * (this.aside ? ASIDE_GAIN : 1);
     const now = this.ctx.currentTime;
     this.voiceFilter.frequency.setTargetAtTime(freq, now, 0.4);
     this.voiceGain.gain.setTargetAtTime(gain, now, 0.4);

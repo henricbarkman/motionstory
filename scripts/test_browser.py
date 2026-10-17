@@ -680,11 +680,13 @@ def provstart(browser, base):
     ctx.close()
 
 
-# Episode 1's walkers. Both set off at her first line and turn for home in
-# scene 3, so the bell comes on the distance. `asked` stops when she asks
-# (scene 2, then at the tree, where it lights the lamp); `own` never does,
-# and stops by themselves among the trees and when the other woman comes.
-# Offsets are seconds from the start of the line, which the log marks.
+# Episode 1's walkers. Both set off at her first line and turn for home at
+# the end of scene 1, so the end comes on the distance. `asked` stops when
+# she asks (both questions in scene 0, then at the tree, where it lights the
+# lamp) and once where a stop is harmless, while she sits in scene 3; `own`
+# never does, and stops by themselves among the trees and when she gets up
+# in scene 4. Offsets are seconds from the start of the line, which the log
+# marks.
 EPISODE_WALKER = """
 (() => {
   const who = %s;
@@ -702,20 +704,21 @@ EPISODE_WALKER = """
   });
   const on = {
     asked: {
-      's0': walkOn,
-      's2-1': () => { later(24, stop); later(34, walkOn); },
-      's2-yes-1': () => later(1.5, () => sample('still')),
-      's2-yes-2': () => later(8, () => sample('walking')),
-      's3-1': () => later(60, () => $('sim-turn').click()),
-      's3-ask': () => { later(9, stop); later(24, walkOn); },
-      's6-all': () => later(25, stop),
+      's0-1': walkOn,
+      's0-ask1': () => { later(12.5, stop); later(22, walkOn); },
+      's0-yes1-b': () => { later(15.5, stop); later(25, walkOn); },
+      's1-3': () => later(10, () => $('sim-turn').click()),
+      's2-ask': () => { later(9, stop); later(24, walkOn); },
+      's3-1': () => { later(1, stop); later(4, () => sample('still')); later(12, walkOn); },
+      's3-2': () => later(5, () => sample('walking')),
+      's4-all': () => later(39, stop),
     },
     own: {
-      's0': walkOn,
-      's3-1': () => later(60, () => $('sim-turn').click()),
-      's3-5': () => { later(1, stop); later(16, walkOn); },
-      's5-1': () => { later(14, stop); later(32, walkOn); },
-      's6-all': () => later(25, stop),
+      's0-1': walkOn,
+      's1-3': () => later(10, () => $('sim-turn').click()),
+      's2-5': () => { later(1, stop); later(14, walkOn); },
+      's4-2': () => { later(2, stop); later(15, walkOn); },
+      's4-all': () => later(39, stop),
     },
   }[who];
   const seen = new WeakSet();
@@ -733,16 +736,17 @@ EPISODE_WALKER = """
 
 EPISODE_WANT = {
     "asked": {
-        "has": ["s0", "s1-walk", "s1-2", "s2-1", "s2-yes-1", "s2-yes-2", "s3-1", "s3-2", "s3-3", "s3-4", "s3-5", "s3-6", "s3-ask",
-                "x-avvikelse (hennes sida)", "s3-lamp-1", "s4-1", "s5-1", "s5-2", "s5-hon-walk", "s5-ok-walk", "s6-1", "s6-yes", "s6-all",
-                "s6-other (hennes sida)"],
-        "not": ["s2-no", "s3-no", "s3-lamp-2", "s5-lamp-sten", "s6-never-1", "r-hjalp"],
+        "has": ["s0-1", "s0-2", "s0-ask1", "s0-yes1-a", "s0-yes1-b", "s0-yes2", "s1-walk", "s1-2", "s1-q1", "s1-q1-no",
+                "s1-self", "s1-q2", "s1-q2-no", "s1-3", "s2-1", "s2-2", "s2-3", "s2-4", "s2-5", "s2-6", "s2-ask",
+                "x-avvikelse (hennes sida)", "s2-lamp-plea", "s2-lamp-1", "s3-1", "s3-near", "s3-2", "s4-1", "s4-2", "s4-3",
+                "s4-ok", "s4-yes", "s4-all"],
+        "not": ["s0-no1", "s0-no2", "s2-no", "s2-lamp-2", "s4-lamp-1", "s4-lamp-2", "s4-never-1", "r-hjalp"],
         "lamps": 1, "memory": {"svarade": True, "misstanke": False, "klar": True},
     },
     "own": {
-        "has": ["s2-no", "s3-5", "s3-6", "x-avvikelse (hennes sida)", "s3-lamp-1", "s5-1", "s5-hon-fraga (hennes sida)", "s5-lamp-sten",
-                "s5-lamp-after", "s6-never-1", "s6-never-no", "s6-all", "s6-other (hennes sida)"],
-        "not": ["s2-yes-1", "s3-ask", "s3-no", "s3-lamp-2", "s5-hon-walk", "s5-ok-walk", "s6-yes"],
+        "has": ["s0-no1", "s0-no2", "s2-5", "s2-6", "x-avvikelse (hennes sida)", "s2-lamp-1", "s4-lamp-1", "s4-lamp-2",
+                "s4-never-1", "s4-never-no", "s4-all"],
+        "not": ["s0-yes1-a", "s2-ask", "s2-no", "s2-lamp-2", "s4-ok", "s4-3", "s4-yes"],
         "lamps": 2, "memory": {"svarade": False, "misstanke": True, "klar": True},
     },
 }
@@ -820,14 +824,16 @@ def episod(browser, base):
         check(not extra, f"episod, {who}: and none of the other branches ({extra})")
         lamps = sum(1 for h in heard if h.startswith("x-avvikelse"))
         check(lamps == want["lamps"], f"episod, {who}: the lamp lights {lamps} time(s)")
-        scenes = [line.split("  ", 1)[1] for line in log if re.search(r"  (scene \d|end)", line)]
+        scenes = [line.split("  ", 1)[1] for line in log if re.search(r"  (scene \d|end|credits)", line)]
         order = [x for x in scenes if re.fullmatch(r"scene \d|end", x)]
-        check(order == ["scene 1", "scene 2", "scene 3", "scene 5", "scene 6", "end"],
-              f"episod, {who}: the scenes come in order ({order})")
-        check(any(x.startswith("scene 4: ") for x in scenes), f"episod, {who}: scene 4 names light, weather and landmark ({[x for x in scenes if x.startswith('scene 4')]})")
+        check(order == ["scene 1", "scene 2", "scene 4", "end"] and next((i for i, x in enumerate(scenes) if x.startswith("credits")), 99) < scenes.index("scene 1"),
+              f"episod, {who}: the scenes come in order, the credits before scene 1 ({order})")
+        check(any(x.startswith("scene 3: ") for x in scenes), f"episod, {who}: scene 3 names light, weather and landmark ({[x for x in scenes if x.startswith('scene 3')]})")
+        credits = [line for line in log if "▶ förtexter" in line]
+        check(len(credits) == 1 and "(68 s)" in credits[0], f"episod, {who}: the credits play once, the whole stand-in ({credits})")
         stood = [clock(line) for line in log if "she stands still" in line]
-        counted = [clock(line) for line in log if line.endswith("▶ s3-3")]
-        cue = json.loads((REPO / "stories/glimt/episod-1.json").read_text())["cues"]["s3-3"]["trettio"]
+        counted = [clock(line) for line in log if line.endswith("▶ s2-3")]
+        cue = json.loads((REPO / "stories/glimt/episod-1.json").read_text())["cues"]["s2-3"]["trettio"]
         half = counted[-1] + cue - stood[-1] if stood and counted else None
         check(half is not None and abs(half - 30) <= 2, f"episod, {who}: from her last step to \"trettio\" is half a minute ({half})")
         missing_files = [line for line in log if "replik saknas" in line or "nådde aldrig slutet" in line or "fel:" in line]

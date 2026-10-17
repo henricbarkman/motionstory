@@ -19,7 +19,7 @@ import { Memory, drawWorld, KEY_NAMES } from './memory.js';
 
 // The version the start screen shows, the same number as the service
 // worker's cache. Bump both together.
-const APP_VERSION = 31;
+const APP_VERSION = 32;
 
 const params = new URLSearchParams(location.search);
 const SIM = params.has('sim');
@@ -84,12 +84,15 @@ const CHAPTERS = {
     url: '../stories/glimt/episod-1.json',
     voices: '../audio/glimt/vega/glimt-e1',
     side: '../audio/glimt/side',
-    first: 's0',
+    first: 's0-1',
     run: runEpisode1,
-    subtitle: 'Episod 1. Ungefär tolv minuter. Gå eller spring. Hon hörs när du går.',
+    // The opening credits after scene 0: a song down the line. The public
+    // build has a stand-in of the same length; the song itself is never in
+    // this repo.
+    credits: '../audio/glimt/music/fortexter.opus',
+    subtitle: 'Episod 1. Ungefär tolv minuter, med förtexter. Gå eller spring. Hon hörs när du går.',
     scenes: {
-      s0: 'Start', s1: 'Slingan', s2: 'Frågan', s3: 'Trädet',
-      s4: 'Himlen', s5: 'Någon kommer', s6: 'Klockan',
+      s0: 'Start', s1: 'Slingan', s2: 'Trädet', s3: 'Himlen', s4: 'Klockan',
     },
   },
   // Only reached by a ?prov= link; there is no radio for it.
@@ -169,6 +172,7 @@ let lastDoubleSeen = -Infinity, doublesLogged = 0;
 // station's line is playing; it waits its turn instead of talking over it.
 let voiceChain = Promise.resolve();
 let bedBuf = null, riserBuf = null;
+let creditsRaw = null;          // a promise of the credits' bytes, fetched with the chapter
 let walk, waiter, world;
 let memory = null;
 // A walk shorter than this is not remembered: opening the app and pressing
@@ -268,6 +272,7 @@ async function preload() {
 
     // The rest streams in behind the start button.
     lib.loadAll(Object.keys(chapter.lines));
+    creditsRaw = def.credits ? mixer.fetchBuffer(def.credits).catch(() => null) : null;
 
     const notes = [];
     if (!bedBuf) notes.push('ingen bädd');
@@ -428,7 +433,8 @@ async function start() {
     // leave the scene's name standing.
     if (!def.lab && (def.scenes[id.slice(0, 2)] || !def.side)) $('scene').textContent = def.scenes[id.slice(0, 2)] || id;
     log(`▶ ${id}`);
-    const why = await mixer.playVoice(buf, { clear: contact ? false : clear || !!def.lab, at });
+    const aside = (chapter.asides || []).includes(id);
+    const why = await mixer.playVoice(buf, { clear: contact ? false : clear || !!def.lab, aside, at });
     if (why === 'timeout') log(`ljud: ${id} nådde aldrig slutet, går vidare`);
   }
 
@@ -472,8 +478,9 @@ async function start() {
     Object.assign(ctx, {
       side: {
         walk: (surface, o) => her.walk(surface, o),
-        other: (where, seconds) => her.other(where, seconds),
+        other: (where, seconds, o) => her.other(where, seconds, o),
         hand: () => her.hand(),
+        breath: () => her.breath(),
         tone: on => her.tone(on),
         bell: () => her.bell(),
         lift: on => her.lift(on),
@@ -486,6 +493,27 @@ async function start() {
         },
       },
       cut() { cutSeq++; mixer.stopVoice(); },
+      // The opening credits: the whole song down the line, Vega silent. It
+      // goes dull when the walker stands still, as she does, and the bed
+      // steps out for it. A song that could not be fetched is skipped.
+      credits() {
+        const turn = voiceChain.then(async () => {
+          if (finished) return;
+          const raw = await creditsRaw;
+          if (!raw) { log('förtexter saknas, går vidare'); return; }
+          let buf;
+          try { buf = await mixer.decode(raw); } catch (err) { log('förtexter: ' + err.message); return; }
+          if (finished) return;
+          $('scene').textContent = 'Förtexter';
+          log(`▶ förtexter (${Math.round(buf.duration)} s)`);
+          mixer.muteBed(true);
+          const why = await mixer.playVoice(buf);
+          mixer.muteBed(false);
+          if (why === 'timeout') log('ljud: förtexterna nådde aldrig slutet, går vidare');
+        });
+        voiceChain = turn.catch(() => {});
+        return turn;
+      },
       seconds: id => (chapter.seconds || {})[id] || 0,
       cue: (id, word) => ((chapter.cues || {})[id] || {})[word] || 0,
       remember(facts) {
@@ -500,7 +528,7 @@ async function start() {
         } catch (_) {}
         if (facts.klar) {
           log(`minne till episod 2: ${facts.svarade ? 'stannade när hon bad om det' : 'stannade aldrig på begäran'}, ` +
-            `${facts.misstanke ? 'lampan tändes när lojalisten kom' : 'ingen misstanke'}`);
+            `${facts.misstanke ? 'lampan tändes när skiftet kom' : 'ingen misstanke'}`);
         }
       },
     });

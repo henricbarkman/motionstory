@@ -1,6 +1,6 @@
 // Bump CACHE whenever audio or app files change, otherwise an installed PWA
 // keeps serving the old files forever.
-const CACHE = 'motionstory-v31';
+const CACHE = 'motionstory-v32';
 
 // Relative to the service worker scope. Absolute paths ('/audio/...') broke on
 // GitHub Pages where the app lives under /motionstory/, so addAll failed and
@@ -45,13 +45,14 @@ const CHAPTER_FILES = ['./stories/glimt/kapitel-1.json', './stories/glimt/kapite
   './stories/glimt/episod-1.json', './stories/glimt/labb.json'];
 
 // Vega's lines come from the chapter files so the list cannot drift from them.
-// An episode's file also names the sounds of her side.
+// An episode's file also names the sounds of her side and its credits.
 async function chapterAssets(file) {
   try {
     const res = await fetch(file, { cache: 'reload' });
     const chapter = await res.json();
     return Object.keys(chapter.lines).map(id => `./audio/glimt/vega/${chapter.id}/${id}.mp3`)
-      .concat(Object.values(chapter.sfx || {}).map(sound => `./audio/glimt/side/${sound.file}`));
+      .concat(Object.values(chapter.sfx || {}).map(sound => `./audio/glimt/side/${sound.file}`))
+      .concat(chapter.credits ? [`./audio/glimt/music/${chapter.credits.file}`] : []);
   } catch (err) {
     console.warn('SW could not read chapter file:', file, err);
     return [];
