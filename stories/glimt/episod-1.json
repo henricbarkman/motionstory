@@ -2,17 +2,14 @@
   "id": "glimt-e1",
   "title": "Det är när du går",
   "source": "stories/glimt/episod-1.md",
-  "style": "Nära och talspråklig, en person i en dålig telefonlinje. En regel från andra sidan i sagoton i scen 3. Beslut 2026-09-13.",
-  "targetMinutes": 11,
+  "style": "Nära och talspråklig, en person i en dålig telefonlinje. En regel från andra sidan i sagoton i scen 3. Beslut 2026-09-13. För sig själv: lägre, snabbare, mumlande, vänd bort från linjen (beslut 2026-10-16).",
+  "targetMinutes": 12,
   "voices": {
     "vega": "87k5z55REKK0AXyOShss",
-    "other": "nEJYXtiAMFuP7hh9yoi4",
-    "snackan": "2z4pujvcLHrr5ilDhLnD",
-    "lojalist": "qR801wfGbt4yozOoeFIY"
+    "snackan": "2z4pujvcLHrr5ilDhLnD"
   },
   "voiceNotes": {
-    "snackan": "Karin, Steady and grounded. Rendered at stability 1.0 and without tags so it stays flat; the app plays it through an earpiece filter (glimt/herside.js). Never cute, never a threat.",
-    "lojalist": "Elin, Assured and poised. Friendly in the wrong way: bright, sure of herself."
+    "snackan": "Karin, Steady and grounded. Rendered at stability 1.0 and without tags so it stays flat; the app plays it through an earpiece filter (glimt/herside.js). Never cute, never a threat."
   },
   "voiceSettings": {
     "snackan": {
@@ -21,60 +18,73 @@
   },
   "lineVoices": {
     "x-avvikelse": "snackan",
-    "r-hjalp": "snackan",
-    "s5-hon-walk": "lojalist",
-    "s5-hon-run": "lojalist",
-    "s5-hon-fraga": "lojalist",
-    "s6-other": "other"
+    "r-hjalp": "snackan"
+  },
+  "asides": [
+    "s0-1",
+    "s0-yes1-a",
+    "s1-self"
+  ],
+  "credits": {
+    "file": "fortexter.opus",
+    "seconds": 67.8
   },
   "lines": {
-    "s0": "[quietly] ...sju, åtta, nio, tio... nej. Nej, de där är inte mina.\n\nDet är någon som går. Det går någon här, och det är inte jag.\n\n[rushed] Hallå? Nej, stanna inte! Gå, snälla, gå. Det är när du går jag hör dig.\n\n[quietly] Jag vet inte vem du är. Jag vet inte om du hör det här. Jag hör steg, det är allt. Rakt in i örat, där det bara brukar vara... nej. Det tar vi sen.\n\nFortsätt gå, om du kan. Jag pratar så länge.",
+    "s0-1": "[mutters to herself, quick and low] Jag måste. Jag tror... Ok.",
+    "s0-2": "[shouts] Hallå! Vänta!\n\n[rushed] Eller nej, jag menar... Fortsätt, stanna inte. Du försvinner för mig när du är stilla. Jag försöker hänga på dig.\n\nJag vet inte vem du är. Jag vet inte om du hör det här. Från dig hör jag ingenting, inte ett ljud. Jag ser bara glimtar av dig. Och din värld.\n\nMen jag måste få veta. Ser du mig? Hör du mig? Jag tror kanske det.",
+    "s0-ask1": "Ok. Om du ser mig - stanna i ett par sekunder när jag säger nu, men fortsätt att gå sen, annars ser jag dig inte. [short pause] Nu.",
+    "s0-yes1-a": "[mutters to herself, quick and low] Va? Det kan inte stämma. Den kan inte se mig.",
+    "s0-yes1-b": "Du vill bara svara, va? Det är snällt. Men ok. Hör du mig? Om du hör mig, stanna i ett par sekunder när jag säger nu. [short pause] Nu.",
+    "s0-no1": "[resigned] Nä. Jag trodde nog inte det heller. Men ok. Hör du mig? Om du hör mig, stanna i ett par sekunder när jag säger nu. [short pause] Nu.",
+    "s0-yes2": "[excited] Ja! Ja! Du hör mig! Jag kan inte... Hur... Haha!\n\n[softly] Jag ser dig.\n\n[quietly] Och du hör mig. Du hör mig.",
+    "s0-no2": "Nej. Nej, det är klart. Du är steg, inte öron. [chuckles] Jag pratar ändå. Det har aldrig hindrat mig förut.",
     "s1-walk": "[calmly] Så. Nu är du tydlig.\n\nDu går lugnt. Som någon som får gå vart den vill.",
     "s1-run": "[calmly] Så. Nu är du tydlig.\n\nDu springer. Det gör ingen här. Det är inte förbjudet, det är bara ingen som har något att springa till.",
-    "s1-2": "Gå som du vill. Och måste du stanna för något där du är, så stannar du. Din väg går före min.\n\nJag går också. Det gör alla här, efter skiftet. Slingan runt, fyrtio minuter. Hälsofrämjande rörelse, det står på väggen. [deadpan] Vi är väldigt friska.\n\nVi har en snäcka i örat, allihop. Den läser hur vi går. Går man för sakta säger den till. Går man fel säger den till. Det enda den aldrig har sagt är att det går någon annan här inne.\n\nMen det gör det. Du går här inne. Fast du inte är här.",
-    "s2-1": "Jag måste få veta en sak, annars blir jag tokig. Jag har pratat för mig själv här länge. Jag vet hur det låter när ingen lyssnar. Det här låter inte så.\n\nSå. Om det finns någon där. Om du hör vad jag säger. Stanna. Bara ett par sekunder, sen går du igen.",
-    "s2-yes-1": "[quietly] ...det blev tyst. Du stannade.",
-    "s2-yes-2": "[breathless] Du stannade när jag bad om det. Du hör mig. Det finns en människa i mitt öra som... okej. Okej. Jag behöver gå en bit utan att säga något nu.",
-    "s2-no": "Nej. Nej, det är klart. Du är steg, inte öron. [chuckles] Jag pratar ändå. Det har aldrig hindrat mig förut.",
-    "s3-1": "Jag har tänkt på en sak. Jag går här och pratar rakt ut med någon som inte finns, och snäckan säger ingenting. Den har inte sagt ett ord sen du kom.\n\nSå nu provar jag något dumt. Litet, men dumt. Fortsätt gå, om du kan.",
-    "s3-2": "Jag står still.\n\n[whispers] En halv minut utan steg, sen frågar den vad man håller på med. Jag räknar.",
-    "s3-3": "[whispers] ...tjugosju. Tjugoåtta. Tjugonio. Trettio. [short pause] Trettioett. [short pause] Trettiotvå.",
-    "s3-4": "[amazed] Den frågar inte. Du går, och den tror att det är jag.\n\n[laughs] Fyra år har jag gått runt här, varenda kväll, åt samma håll. Och nu står jag som en stolpe. Det är det bästa jag har gjort sen jag kom hit.\n\nVänta. Jag ska prova en sak till.",
-    "s3-5": "Jag har klivit av gruset. Man går inte av gruset. Det står träd här, tre meter in. Jag har gått förbi dem tusen gånger.",
-    "s3-6": "Det är plast. [short pause] Trädet är av plast. Det visste jag ju. Jag blir rörd ändå, det är inte klokt.",
-    "s3-ask": "Stanna en stund, om du kan. Jag vill inte gå härifrån än. Och jag vill inte att du går ifrån mig medan jag är här.",
-    "s3-lamp-plea": "[whispers] ...nej. Nej, nej. Gå! Gå, snälla!",
-    "s3-lamp-1": "[exhales] Det var lampan. Den tändes när du stannade.\n\n[slowly] När du går ser de en arbetare på sin runda. När du står still ser de mig.\n\nDu går, alltså syns jag inte. ... Det låter som något man ristar i en vägg.",
-    "s3-lamp-2": "Och du stannade när jag bad om det. [short pause] Du hör mig.",
-    "s3-no": "Inte? [chuckles] Nej. Det var kanske klokast. Jag vet inte vad som händer om du står still medan jag är här ute. Jag tror inte att jag vill veta det i kväll.",
-    "s4-1": "Jag sitter ner nu. Under plastträdet. Bara så du vet vad dina steg går till.",
-    "s4-dark": "Det är mörkt hos dig. Fråga inte hur jag vet. Här är det alltid kväll men aldrig mörkt. De säger att det är lugnande.\n\nHar ni stjärnor? Här ser man aldrig en enda. Jag har inte sett en stjärna sen jag kom.",
-    "s4-light": "Det är ljust hos dig. Fråga inte hur jag vet. Här är det alltid kväll. De säger att det är lugnande.\n\nHar ni sol? En riktig, som bränns? Vi har en lampa som heter Dagsljus. Den gör så gott den kan.",
-    "s4-rain": "Och det regnar hos dig. Här har vattnet varit vatten väldigt många gånger. Hos dig faller det bara. Rakt ner, på vem som helst.",
-    "s4-dry": "Och det är torrt hos dig. Här regnar det aldrig. Det vore slöseri.",
-    "s4-bro": "Slingan är byggd efter ett riktigt ställe, säger de. Så att vi ska känna oss hemma.\n\nDet finns en bro här. Den går över ingenting. Någon ritade av bron och glömde ån.\n\nFinns det en sådan där du går? [short pause] Nej. Svara inte. Det ser ut som här, men det är inte här. Det får vara så ett tag till.",
-    "s4-vatten": "Slingan är byggd efter ett riktigt ställe, säger de. Så att vi ska känna oss hemma.\n\nDet finns vatten här. Det låter som vatten i alla fall. Jag har hittat högtalaren.\n\nFinns det en sådan där du går? [short pause] Nej. Svara inte. Det ser ut som här, men det är inte här. Det får vara så ett tag till.",
-    "s4-skog": "Slingan är byggd efter ett riktigt ställe, säger de. Så att vi ska känna oss hemma.\n\nDet finns skog här, längst bort. Platt som en tavla, men det susar i den. Det har de fått till.\n\nFinns det en sådan där du går? [short pause] Nej. Svara inte. Det ser ut som här, men det är inte här. Det får vara så ett tag till.",
-    "s4-berg": "Slingan är byggd efter ett riktigt ställe, säger de. Så att vi ska känna oss hemma.\n\nDet finns en höjd här. Man får inte gå upp på den. Jag tror inte att den håller.\n\nFinns det en sådan där du går? [short pause] Nej. Svara inte. Det ser ut som här, men det är inte här. Det får vara så ett tag till.",
-    "s4-kyrkogard": "Slingan är byggd efter ett riktigt ställe, säger de. Så att vi ska känna oss hemma.\n\nDet finns en kyrkogård här. Utan gravar. Någon tyckte väl att den var fin.\n\nFinns det en sådan där du går? [short pause] Nej. Svara inte. Det ser ut som här, men det är inte här. Det får vara så ett tag till.",
-    "s5-1": "[rushed] Tyst. ... Det sa jag till mig själv.\n\nDet kommer någon på slingan. Jag känner igen gången. Hon går som om gruset vore hennes. Hon är en av dem som skriver upp. Inte snäckan, en människa. Det är värre.\n\nJag måste tillbaka på gruset innan hon kommer runt kröken. Gå nu, om du kan. Inte stanna, inte just nu.",
-    "s5-2": "[whispers] ...gå, gå, gå...",
-    "s5-hon-walk": "[cheerfully] God kväll, Vega. Du går fint i kväll.",
-    "s5-hon-run": "[cheerfully] God kväll, Vega. Vilken fart du har i kväll.",
-    "s5-ok-walk": "[exhales] Du går fint i kväll. [deadpan] Jag har stått som en stolpe, klappat ett träd och suttit på marken. Jag går fint i kväll.",
-    "s5-ok-run": "[exhales] Vilken fart. [deadpan] Jag har stått som en stolpe, klappat ett träd och suttit på marken. Vilken fart jag har.",
-    "s5-hon-fraga": "[cheerfully] Är allt som det ska, Vega?",
-    "s5-lamp-sten": "[casually] En sten i skon.",
-    "s5-lamp-after": "[quietly] Hon skrev upp det. Jag såg det, hon skriver upp allt. En sten i skon. Det får jag höra mer om.",
-    "s6-1": "Där är klockan. Slingan stänger, jag måste in.",
-    "s6-back": "Du är på väg hem. Det hörs, stegen blir bestämda. Man går annorlunda när man vet vart man ska.",
-    "s6-yes": "Jag vet inte vad du är. Men du hör mig, och du stannade när jag bad om det. Det är mer än jag vet om de flesta här.\n\nJag vet en sak till om dig, och det är att du går. Så du får heta Vandraren.\n\nJag heter Vega. Det hörde du redan, men jag ville säga det själv.",
-    "s6-never-1": "Jag vet inte vad du är. Ett fel i snäckan, kanske. Eller någon som är ute och går och inte har en aning om vad den gjorde i kväll.\n\nJag frågar en gång till, sen ger jag mig. Om du hör mig: stanna.",
-    "s6-never-yes-1": "[quietly] ...där.",
-    "s6-never-yes-2": "[laughs] Hela kvällen! Du har hört mig hela kvällen. Och jag som har pratat om plastträd.\n\nDu går, det är det jag vet om dig. Så du får heta Vandraren. Jag heter Vega. Det hörde du redan, men jag ville säga det själv.",
-    "s6-never-no": "Nej. Okej. Då är du steg. Det räcker långt, det har jag sett i kväll.\n\nDu får heta Vandraren ändå. Jag heter Vega, om någon undrar.",
-    "s6-all": "Det finns folk här som viskar. Vid pressarna, där det låter mest. De slutar när jag kommer. Jag har aldrig kunnat gå dit de går.\n\n[short pause] Nu kanske jag kan det.\n\nKom tillbaka och gå. Om du vill. Jag klarar mig annars, det har jag gjort länge. Men kom.",
-    "s6-other": "[whispers] ...jag hör dig också.",
+    "s1-2": "Gå som du vill. Och måste du stanna för något där du är, så stannar du. Din väg går före min.\n\nJag går också. Det gör alla här, efter skiftet. Slingan runt, fyrtio minuter. Hälsofrämjande rörelse, det står på väggen. [deadpan] Vi är väldigt friska.\n\nJag vet ingenting om dig. Får jag fråga? Stanna för ja, som förut. Det är ingen fara nu, jag går min runda som vanligt.",
+    "s1-q1": "[slowly, curious] Går du ofta så här?",
+    "s1-q1-yes": "Jag också. Varje kväll, samma runda. Det är nog därför jag såg dig. Jag har gått här så många gånger att jag märker när något är annorlunda.",
+    "s1-q1-no": "Inte jag heller. Alltså, jag går varje kväll. Men inte så här. Inte för att jag vill.",
+    "s1-self": "[mutters to herself, quick and low] Fråga något riktigt nu. ...Ok.",
+    "s1-q2": "Är du ensam? Där du går, alltså.",
+    "s1-q2-yes": "Jag också. Fast vi är fyrtio stycken på slingan. [chuckles] Det är inte samma sak.",
+    "s1-q2-no": "Då går någon bredvid dig. [long pause] Det låter fint. De hör ju inte mig. Det är bara du.",
+    "s1-3": "Här går alla samma runda, varje kväll. Och de vet hur vi går. Varje steg. Går man för sakta vet de det. Går man fel vet de det. Det enda de inte vet är att det går någon annan här inne.\n\nMen det gör det. [pause] Och nu har jag en idé. En dum idé.",
+    "s2-1": "Jag har tänkt på en sak. Jag går här och pratar rakt ut med någon som inte finns, och ingen har sagt något. Inte ett ord sen du kom.\n\nSå nu provar jag något dumt. Litet, men dumt. Fortsätt gå, om du kan.",
+    "s2-2": "Jag står still.\n\n[whispers] En halv minut utan steg, sen undrar de vad man håller på med. Jag räknar.",
+    "s2-3": "[whispers] ...tjugosju. Tjugoåtta. Tjugonio. Trettio. [short pause] Trettioett. [short pause] Trettiotvå.",
+    "s2-4": "[amazed] De undrar inte. Du går, och de tror att det är jag.\n\n[laughs] Fyra år har jag gått runt här, varenda kväll, åt samma håll. Och nu står jag som en stolpe. Det är det bästa jag har gjort sen jag kom hit.\n\nVänta. Jag ska prova en sak till.",
+    "s2-5": "Jag har klivit av gruset. Man går inte av gruset. Det står träd här, tre meter in. Jag har gått förbi dem tusen gånger.",
+    "s2-6": "Det är plast. [short pause] Trädet är av plast. Det visste jag ju. Jag blir rörd ändå, det är inte klokt.",
+    "s2-ask": "Stanna en stund, om du kan. Jag vill inte gå härifrån än. Och jag vill inte att du går ifrån mig medan jag är här.",
+    "s2-lamp-plea": "[whispers] ...nej. Nej, nej. Gå! Gå, snälla!",
+    "s2-lamp-1": "[exhales] Det var lampan. Den tändes när du stannade.\n\n[slowly] När du går ser de en arbetare på sin runda. När du står still ser de mig.\n\nDu går, alltså syns jag inte. ... Det låter som något man ristar i en vägg.",
+    "s2-lamp-2": "Och du stannade när jag bad om det. [short pause] Du hör mig.",
+    "s2-no": "Inte? [chuckles] Nej. Det var kanske klokast. Jag vet inte vad som händer om du står still medan jag är här ute. Jag tror inte att jag vill veta det i kväll.",
+    "s3-1": "Jag sitter ner nu. Under plastträdet. Och när jag sitter still ser jag mer av dig. Inte dig. Det runt omkring.",
+    "s3-dark": "Det är mörkt hos dig. Här är det alltid kväll men aldrig mörkt. De säger att det är lugnande.\n\nHar ni stjärnor? Här ser man aldrig en enda. Jag har inte sett en stjärna sen jag kom.",
+    "s3-light": "Det är ljust hos dig. Det bländar i kanten. Här är det alltid kväll. De säger att det är lugnande.\n\nHar ni sol? En riktig, som bränns? Vi har en lampa som heter Dagsljus. Den gör så gott den kan.",
+    "s3-rain": "Och det regnar hos dig. Det ligger som ett brus över allting. Här har vattnet varit vatten väldigt många gånger. Hos dig faller det bara. Rakt ner, på vem som helst.",
+    "s3-dry": "Och det är torrt hos dig. Här regnar det aldrig. Det vore slöseri.",
+    "s3-near": "[slowly] Och det finns något nära dig.",
+    "s3-bro": "En bro. Jag ser den suddigt, som ett blyertsstreck. [pause] Vi har en bro här också. Den går över ingenting. Någon ritade av bron och glömde ån.",
+    "s3-vatten": "Vatten. Det blänker. [pause] Vi har vatten här också. Det låter som vatten i alla fall. Jag har hittat högtalaren.",
+    "s3-skog": "Skog, tät. [pause] Vi har skog här också, längst bort. Platt som en tavla, men det susar i den. Det har de fått till.",
+    "s3-berg": "En höjd. [pause] Vi har en höjd här också. Man får inte gå upp på den. Jag tror inte att den håller.",
+    "s3-kyrkogard": "En kyrkogård. [pause] Vi har en kyrkogård här också. Utan gravar. Någon tyckte väl att den var fin.",
+    "s3-2": "[after a silence] Slingan är byggd efter ett riktigt ställe, säger de. Så att vi ska känna oss hemma.\n\nDet ser ut som där du är. Men det är inte där du är. [pause] Det får vara så ett tag till.",
+    "s4-1": "[quietly] Där är klockan. Slingan stänger.",
+    "s4-2": "[hurried] Om en minut kommer hela skiftet runt kröken, och jag sitter under ett träd. Gå nu, om du kan. Inte stanna, inte just nu.",
+    "s4-3": "[whispers] ...gå, gå...",
+    "s4-ok": "[exhales] På gruset. En arbetare på sin runda, det är allt de ser. [deadpan] Jag har stått som en stolpe, klappat ett träd och suttit på marken. Och ingen såg något.",
+    "s4-lamp-1": "[whispers] ...nej. Inte nu.",
+    "s4-lamp-2": "[quietly] Jag hann upp. Men den skrev upp det. En avvikelse. Det får jag höra mer om.",
+    "s4-back": "Du är på väg hem. Det syns, du går rakare. Man går annorlunda när man vet vart man ska.",
+    "s4-yes": "Jag vet inte vad du är. Men du hör mig, och du stannade när jag bad om det. Det är mer än jag vet om de flesta här.\n\nJag vet en sak till om dig, och det är att du går. Så du får heta Vandraren.\n\nJag heter Vega. Om du undrade.",
+    "s4-never-1": "Jag vet inte vad du är. Ett fel i snäckan, kanske. Eller någon som är ute och går och inte har en aning om vad den gjorde i kväll.\n\nJag frågar en gång till, sen ger jag mig. Om du hör mig: stanna.",
+    "s4-never-yes-1": "[quietly] ...där.",
+    "s4-never-yes-2": "[laughs] Hela kvällen! Du har hört mig hela kvällen. Och jag som har pratat om plastträd.\n\nDu går, det är det jag vet om dig. Så du får heta Vandraren. Jag heter Vega. Om du undrade.",
+    "s4-never-no": "Nej. Okej. Då är du steg. Det räcker långt, det har jag sett i kväll.\n\nDu får heta Vandraren ändå. Jag heter Vega, om någon undrar.",
+    "s4-all": "Det finns folk här som viskar. Vid pressarna, där det låter mest. De slutar när jag kommer. Jag har aldrig kunnat gå dit de går.\n\n[short pause] Nu kanske jag kan det.\n\nEn sak till. Hos dig finns det stjärnor, ibland. Gå ut någon natt när det är klart. Jag vill veta om jag ser en.\n\nKom tillbaka och gå. Om du vill. Jag klarar mig annars, det har jag gjort länge. Men kom.",
     "r-hjalp": "Vega. Du står still. Behöver du hjälp?",
     "r-vilar": "Nej tack. Jag vilar.",
     "x-avvikelse": "Avvikelse. Steg utanför sträckan."
@@ -307,83 +317,103 @@
     }
   },
   "cueWords": {
-    "s2-1": [
-      "stanna"
+    "s0-ask1": [
+      "last:nu"
     ],
-    "s3-3": [
+    "s0-yes1-b": [
+      "last:nu"
+    ],
+    "s0-no1": [
+      "last:nu"
+    ],
+    "s2-3": [
       "trettio"
     ],
-    "s3-ask": [
+    "s2-ask": [
       "stanna"
     ],
-    "s6-never-1": [
+    "s4-never-1": [
       "stanna"
     ]
   },
   "seconds": {
-    "s0": 41.25,
+    "s0-1": 4.52,
+    "s0-2": 32.68,
+    "s0-ask1": 11.73,
+    "s0-yes1-a": 4.44,
+    "s0-yes1-b": 14.76,
+    "s0-no1": 12.28,
+    "s0-yes2": 11.47,
+    "s0-no2": 9.4,
     "s1-walk": 6.92,
     "s1-run": 9.72,
-    "s1-2": 40.83,
-    "s2-1": 22.05,
-    "s2-yes-1": 3.0,
-    "s2-yes-2": 14.52,
-    "s2-no": 9.4,
-    "s3-1": 19.41,
-    "s3-2": 9.09,
-    "s3-3": 12.51,
-    "s3-4": 20.51,
-    "s3-5": 10.27,
-    "s3-6": 9.72,
-    "s3-ask": 7.89,
-    "s3-lamp-plea": 4.36,
-    "s3-lamp-1": 17.48,
-    "s3-lamp-2": 4.91,
-    "s3-no": 10.68,
-    "s4-1": 6.27,
-    "s4-dark": 17.95,
-    "s4-light": 16.67,
-    "s4-rain": 9.8,
-    "s4-dry": 6.19,
-    "s4-bro": 27.09,
-    "s4-vatten": 24.45,
-    "s4-skog": 27.17,
-    "s4-berg": 26.67,
-    "s4-kyrkogard": 27.25,
-    "s5-1": 30.75,
-    "s5-2": 3.0,
-    "s5-hon-walk": 2.43,
-    "s5-hon-run": 2.85,
-    "s5-ok-walk": 9.87,
-    "s5-ok-run": 11.0,
-    "s5-hon-fraga": 2.51,
-    "s5-lamp-sten": 2.27,
-    "s5-lamp-after": 8.67,
-    "s6-1": 3.87,
-    "s6-back": 7.31,
-    "s6-yes": 22.83,
-    "s6-never-1": 16.59,
-    "s6-never-yes-1": 2.27,
-    "s6-never-yes-2": 21.24,
-    "s6-never-no": 10.61,
-    "s6-all": 22.05,
-    "s6-other": 2.12,
+    "s1-2": 32.99,
+    "s1-q1": 1.8,
+    "s1-q1-yes": 9.8,
+    "s1-q1-no": 6.53,
+    "s1-self": 3.79,
+    "s1-q2": 2.93,
+    "s1-q2-yes": 4.83,
+    "s1-q2-no": 8.44,
+    "s1-3": 22.44,
+    "s2-1": 16.12,
+    "s2-2": 8.36,
+    "s2-3": 12.51,
+    "s2-4": 20.43,
+    "s2-5": 10.27,
+    "s2-6": 9.72,
+    "s2-ask": 7.89,
+    "s2-lamp-plea": 4.36,
+    "s2-lamp-1": 17.48,
+    "s2-lamp-2": 4.91,
+    "s2-no": 10.68,
+    "s3-1": 8.52,
+    "s3-dark": 14.84,
+    "s3-light": 20.69,
+    "s3-rain": 14.03,
+    "s3-dry": 6.19,
+    "s3-near": 2.12,
+    "s3-bro": 13.79,
+    "s3-vatten": 9.56,
+    "s3-skog": 11.47,
+    "s3-berg": 8.59,
+    "s3-kyrkogard": 9.33,
+    "s3-2": 12.83,
+    "s4-1": 3.16,
+    "s4-2": 8.36,
+    "s4-3": 2.69,
+    "s4-ok": 12.36,
+    "s4-lamp-1": 1.8,
+    "s4-lamp-2": 7.31,
+    "s4-back": 7.89,
+    "s4-yes": 19.96,
+    "s4-never-1": 16.59,
+    "s4-never-yes-1": 2.27,
+    "s4-never-yes-2": 16.77,
+    "s4-never-no": 10.61,
+    "s4-all": 35.71,
     "r-hjalp": 3.4,
     "r-vilar": 1.65,
     "x-avvikelse": 3.08
   },
   "cues": {
-    "s3-3": {
+    "s2-3": {
       "trettio": 6.96
     },
-    "s2-1": {
-      "stanna": 18.18
-    },
-    "s3-ask": {
+    "s2-ask": {
       "stanna": 0.1
     },
-    "s6-never-1": {
+    "s4-never-1": {
       "stanna": 16.08
+    },
+    "s0-ask1": {
+      "last:nu": 11.26
+    },
+    "s0-yes1-b": {
+      "last:nu": 14.34
+    },
+    "s0-no1": {
+      "last:nu": 10.54
     }
   }
 }
