@@ -42,14 +42,30 @@ Varianter i hakparentes väljs av telefonen: `[ljust]`, `[mörkt]`, `[regn]`, `[
 >
 > Ok. Om du ser mig - stanna i ett par sekunder när jag säger nu, men fortsätt att gå sen, annars ser jag dig inte. Nu.
 >
-> [stannar] (för sig själv) Va? Det kan inte stämma. Den kan inte se mig. (rakt till dig) Du vill bara svara, va? Det är snällt. Men ok. Hör du mig? Om du hör mig, stanna i ett par sekunder när jag säger nu. Nu.
-> [gång] Nä. Jag trodde nog inte det heller. Men ok. Hör du mig? Om du hör mig, stanna i ett par sekunder när jag säger nu. Nu.
-> [stannar] (uppjagad) Ja! Ja! Du hör mig! Jag kan inte... Hur... Haha! 
-> [gång] Nej. Nej, det är klart. Du är steg, inte öron. (kort skratt som inte håller) Jag pratar ändå. Det har aldrig hindrat mig förut.
+> (väntar)
+>
+> **Ja, vandraren stannar:**
+>
+> (för sig själv) Va? Det kan inte stämma. Den kan inte se mig. (rakt till dig) Du vill bara svara, va? Det är snällt. Men ok. Hör du mig? Om du hör mig, stanna i ett par sekunder när jag säger nu. Nu.
+>
+> **Nej, vandraren går vidare:**
+> Nä. Jag trodde nog inte det heller. Men ok. Hör du mig? Om du hör mig, stanna i ett par sekunder när jag säger nu. Nu.
+>
+> (båda svaren går vidare hit)
+>
+> (väntar)
+>
+> **Ja, vandraren stannar:**
+> (uppjagad) Ja! Ja! Du hör mig! Jag kan inte... Hur... Haha!
 >
 > Jag ser dig.
 >
 > Och du hör mig. Du hör mig. 
+>
+> **Nej, vandraren går vidare:**
+> Nej. Nej, det är klart. Du är steg, inte öron. (kort skratt som inte håller) Jag pratar ändå. Det har aldrig hindrat mig förut.
+>
+> (båda svaren går vidare hit)
 >
 > (Förtexterna: en hel HELD-låt med sång, som introt till ett spel. Vega är tyst så länge den spelar. Vilken låt väljer Henric.)
 
