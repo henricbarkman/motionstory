@@ -78,6 +78,12 @@ Ett stopp är det tydligaste vandraren kan säga.
 **Omdöme:** Håller, gående. På stegen blev ja, ja, nej rätt alla tre och kändes i tid (8/10).
 **Tänk på:** ett ja hörs ungefär tre sekunder efter att vandraren stannat (två för att märka stoppet, en att stå), så räkna med fem till sju sekunder från frågan. Ett nej hörs när vandraren gått vidare i tio sekunder efter frågan (version 26, Henrics val 8/10; på gps tjugo). Ge henne något att säga medan hon väntar. Ett nej är också ett svar som ska ha en gren.
 
+### Hopp
+**Du gör:** hoppar ett litet skutt när hon ber om det, mitt i gången, och går vidare.
+**I berättelsen:** Vega ser hur du rör dig, så ett hopp är att ropa medan att stanna är ett tyst ja.
+**Omdöme:** Oprövad. Byggd i version 31 och inte gången. I de nio sparade promenaderna blir gång aldrig hopp. Om löpsteg kan läsas som hopp är inte mätt.
+**Tänk på:** hon ber om hoppet och säger att ett litet skutt räcker. Hon befaller det aldrig, och ingen scen får hänga på ett hopp där det kan vara halt eller nära trafik. Hoppet läses i samma stund som vandraren landar, så hon kan svara direkt. Ett knack direkt efter ett hopp hörs inte, knacken är döva en sekund. Ett kliv ner från en trottoarkant eller ett trappsteg kan läsas som ett hopp, så be inte om ett hopp där sådana finns. Grenen för den som inte hoppar ska vara en lika bra scen.
+
 ### Frys
 **Du gör:** stannar tvärt när hon säger nu, och står blickstilla tills något har passerat.
 **I berättelsen:** rädsla ni delar. Står ni båda still finns inget att se, och då gömmer ni er ihop.
@@ -226,7 +232,7 @@ Det här är glimtarna: vad Vega ser av din värld utan att du gör något.
 | Utkik | Vägvalet, Vänd om, Platser nära dig |
 | Bud | Vänd om, Ljudkompassen |
 | Kod | Kroppsmorse, Stanna för ja |
-| Svar | Knack, Hon knackar, Stanna för ja |
+| Svar | Knack, Hon knackar, Stanna för ja, Hopp |
 | Kartläggning | Hennes värld växer |
 | Fynd | Ljudkompassen, Hitta, Gå till platsen hon minns |
 | Störning | Fortare, Flykten |
