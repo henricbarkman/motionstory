@@ -22,6 +22,10 @@ import { Memory, drawWorld, KEY_NAMES } from './memory.js';
 const APP_VERSION = 32;
 
 const params = new URLSearchParams(location.search);
+// ?klarhet=0.5 overrides how clear the line is (0 the whole radio, 1 clean),
+// so a walk can try another level without a new build.
+const KLARHET_URL = params.has('klarhet') && Number.isFinite(parseFloat(params.get('klarhet')))
+  ? Math.min(1, Math.max(0, parseFloat(params.get('klarhet')))) : null;
 const SIM = params.has('sim');
 // A test walk wins over everything else the link says.
 const PROV_ID = Object.hasOwn(PROV, params.get('prov') || '') ? params.get('prov') : null;
@@ -366,6 +370,9 @@ async function start() {
     : `kapitel ${chapterNo}, variant ${variant.toUpperCase()}`;
   log(`start, ${what}${SIM ? ', simulerad' : ''}`);
   log(`webbläsare: ${BROWSER}`);
+  if (!def.lab && (KLARHET_URL !== null || chapter.klarhet !== undefined)) {
+    log(`linjens klarhet ${KLARHET_URL ?? chapter.klarhet}${KLARHET_URL !== null ? ' (från länken)' : ''}`);
+  }
   clearTimeout(gpsCheckTimer);
   gpsTrouble = null;
   if (!SIM) log(`gps före start: ${gpsStatus()}`);
@@ -434,6 +441,10 @@ async function start() {
     if (!def.lab && (def.scenes[id.slice(0, 2)] || !def.side)) $('scene').textContent = def.scenes[id.slice(0, 2)] || id;
     log(`▶ ${id}`);
     const aside = (chapter.asides || []).includes(id);
+    // The line's clarity: the link, else the scene's, else the episode's,
+    // else clean. The lab is always clean.
+    mixer.setKlarhet(def.lab ? 1
+      : KLARHET_URL ?? (chapter.klarhetPerScen || {})[id.slice(0, 2)] ?? chapter.klarhet ?? 1);
     const why = await mixer.playVoice(buf, { clear: contact ? false : clear || !!def.lab, aside, at });
     if (why === 'timeout') log(`ljud: ${id} nådde aldrig slutet, går vidare`);
   }
@@ -495,7 +506,8 @@ async function start() {
       cut() { cutSeq++; mixer.stopVoice(); },
       // The opening credits: the whole song down the line, Vega silent. It
       // goes dull when the walker stands still, as she does, and the bed
-      // steps out for it. A song that could not be fetched is skipped.
+      // steps out for it. It is not on her radio: the song sounds like the
+      // song. A song that could not be fetched is skipped.
       credits() {
         const turn = voiceChain.then(async () => {
           if (finished) return;
@@ -507,7 +519,7 @@ async function start() {
           $('scene').textContent = 'Förtexter';
           log(`▶ förtexter (${Math.round(buf.duration)} s)`);
           mixer.muteBed(true);
-          const why = await mixer.playVoice(buf);
+          const why = await mixer.playVoice(buf, { radio: false });
           mixer.muteBed(false);
           if (why === 'timeout') log('ljud: förtexterna nådde aldrig slutet, går vidare');
         });

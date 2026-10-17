@@ -796,6 +796,18 @@ def episodstart(browser, base):
     side = page.evaluate("window.glimt && window.glimt.side")
     check(bool(line) and side is None and not errors, f"chapter 1 starts as before, without her side ({line!r}, {errors[:2]})")
     check(any("kapitel 1, variant" in x for x in walk_log(page)), "and its log names the chapter and the variant")
+    check(page.evaluate("window.glimt.mixer.klarhet") == 1, "a chapter without a klarhet keeps her voice clean")
+    ctx.close()
+    # The line's clarity from the link: her lines on the radio, the hiss under them.
+    ctx, page, errors = open_page(browser, base, url="?kapitel=episod1&sim&klarhet=0.2")
+    page.click("#start-btn")
+    line = wait_log(page, "▶ s0-1", 30000)
+    page.wait_for_timeout(1500)
+    k = page.evaluate("({ k: window.glimt.mixer.klarhet, hiss: window.glimt.mixer.hissGain.gain.value, lp: window.glimt.mixer.radioLp.frequency.value })")
+    check(bool(line) and k["k"] == 0.2 and k["hiss"] > 0.01 and k["lp"] < 5000,
+          f"?klarhet=0.2: her first line on the radio, with the hiss under it ({k})")
+    check(any("linjens klarhet 0.2 (från länken)" in x for x in walk_log(page)), "and the log says the link set it")
+    check(not errors, f"no page errors ({errors[:2]})")
     ctx.close()
 
 
@@ -843,6 +855,9 @@ def episod(browser, base):
         ok = memory is not None and all(memory.get(k) == v for k, v in want["memory"].items())
         check(ok and real is None, f"episod, {who}: episode 2 is told the right things, and a simulated walk leaves the real memory alone ({memory})")
         check(any("minne till episod 2" in line for line in log), f"episod, {who}: and the log says what it was told")
+        check(any("linjens klarhet 0.45" in line for line in log) and page.evaluate("window.glimt.mixer.klarhet") == 0.45,
+              f"episod, {who}: her voice on the episode's line, klarhet 0.45")
+        check(page.evaluate("window.glimt.mixer.hissGain.gain.value") < 0.001, f"episod, {who}: and no hiss once she is silent")
         if who == "asked":
             mix = {m["label"]: m for m in page.evaluate("window.__mix")}
             still, walking = mix.get("still"), mix.get("walking")
