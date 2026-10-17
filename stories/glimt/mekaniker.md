@@ -224,7 +224,7 @@ Det här är glimtarna: vad Vega ser av din värld utan att du gör något.
 
 ### Linjens klarhet
 
-**I berättelsen:** hur tydligt hennes röst kommer genom linjen, som en lätt radio: smalare band, lite mättnad och ett svagt sus som bara ligger under hennes repliker. Ett reglage, klarhet, från 0 (hela radion) till 1 (ren röst), med ett värde per episod som kan skrivas över per scen. Den ska bli klarare ju längre berättelsen kommer. Kontakten ligger ovanpå: när du stannar blir hon dov precis som förut. Förtexternas låt går inte genom radion.
+**I berättelsen:** hur tydligt hennes röst kommer genom linjen, som en lätt radio: smalare band, lite mättnad och ett svagt sus som bara ligger under hennes repliker. Ett reglage, klarhet, från 0 (hela radion) till 1 (ren röst), med ett värde per episod som kan skrivas över per scen, åt båda hållen. Klarheten är både teknik och relation: linjen blir bättre med tiden, och den speglar hur nära Vega och vandraren är varandra. Den stiger när de kommer närmare och kan gå tillbaka när något går sönder mellan dem, så den behöver inte bara stiga. Kontakten ligger ovanpå: när du stannar blir hon dov precis som förut. Förtexternas låt går inte genom radion.
 
 **Omdöme:** Oprövad. Episod 1 har klarhet 0,45 (17/10). Står ?klarhet=0.6 i länken provar promenaden en annan nivå.
 
