@@ -173,3 +173,20 @@ export function makePocketPhone(kind, random, { orientLag = 0.04, orientEvery = 
   };
   return phone;
 }
+
+// A hop as a pocket would feel it (Hoppet), its flight starting at t0: the
+// push-off a wave over 0.15 s, the flight near weightless (the leg moves
+// under the body, so not quite nothing), the landing a sharp blow that dies
+// away in a tenth, and the next step after it, `second` harder than a step.
+// A guess: no pocket has been recorded jumping. Null outside it.
+export function hopAt(t, t0, air, { landing = 35, second = 22, flight = 1.2, random = Math.random } = {}) {
+  if (t >= t0 - 0.15 && t < t0) return 9.81 + 8 * Math.sin(Math.PI * (t - t0 + 0.15) / 0.15);
+  if (t >= t0 && t < t0 + air) return flight + (random() - 0.5) * 0.8;
+  const dt = t - t0 - air;
+  if (dt >= 0 && dt < 0.4) {
+    let m = 9.81 + (landing - 9.81) * Math.exp(-dt / 0.025);
+    if (Math.abs(dt - 0.25) < 0.01) m += second;
+    return m;
+  }
+  return null;
+}

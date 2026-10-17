@@ -11,7 +11,7 @@ import { runChapter1 } from './chapter1.js';
 import { runChapter2 } from './chapter2.js';
 import { runEpisode1 } from './episod1.js';
 import { HerSide, SilentSide } from './herside.js';
-import { runLab, labHelpers, LABS, TITLES, PROV, ratedThisRound, RESUMABLE, chosenStations, knockPattern, buzzWords, realTarget } from './lab.js';
+import { runLab, labHelpers, LABS, TITLES, PROV, ratedThisRound, RESUMABLE, chosenStations, knockPattern, buzzWords, realTarget, strayJumpsNote } from './lab.js';
 import { Synth, SilentSynth } from './synth.js';
 import { Mixer, Library } from './audio.js';
 import { chooseWorld, defaultWorld, fetchLandmarks, nearestByName } from './world.js';
@@ -19,7 +19,7 @@ import { Memory, drawWorld, KEY_NAMES } from './memory.js';
 
 // The version the start screen shows, the same number as the service
 // worker's cache. Bump both together.
-const APP_VERSION = 30;
+const APP_VERSION = 31;
 
 const params = new URLSearchParams(location.search);
 const SIM = params.has('sim');
@@ -1080,11 +1080,16 @@ function onOrient(e) {
 // ---------- simulator ----------
 function startSim() {
   // The slider's speed as footsteps too, so ?sim exercises the step path.
+  // A hop (Hoppet): a quarter second near weightless, then one landing.
+  let jumpAt = null;
+  $('sim-jump').addEventListener('click', () => { jumpAt = now(); log('sim: hoppar'); });
   motionSimId = setInterval(() => {
     // "sensorn tyst" in the sim box: as when the screen locks.
     if ($('sim-sensor-off').checked) return;
     const t = now();
-    const m = simulatedMagnitude(t, parseFloat($('sim-speed').value));
+    let m = simulatedMagnitude(t, parseFloat($('sim-speed').value));
+    if (jumpAt !== null && t - jumpAt < 0.25) m = 1.2;
+    else if (jumpAt !== null) { m = 35; jumpAt = null; }
     record(t, m);
     walk.motion(t, m);
   }, 20);
@@ -1161,6 +1166,8 @@ function finish() {
       const windows = labMemo.knockWindows || [];
       const stray = walk.knocks.history.filter(t => !windows.some(([a, b]) => t >= a && t <= b)).length;
       log(`knack: ${stray} dubbelknack utan att någon bad om det`);
+      const jumpWindows = labMemo.jumpWindows || [];
+      log(strayJumpsNote(walk.jumps.history.filter(j => !jumpWindows.some(([a, b]) => j.t >= a && j.t <= b)), walk.jumps.falls));
     }
     showLabResults();
   }

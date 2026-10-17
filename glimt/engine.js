@@ -732,6 +732,113 @@ export class Knocks {
 
   // Knocks in (from, to]. For "knock as many times as I did".
   countBetween(from, to) { return this.times.filter(k => k > from && k <= to).length; }
+
+  // Forgets every knock from `from` on, and the doubles they made: they were
+  // a jump's blows (Jumps), not a hand on the pocket.
+  forget(from) {
+    this.retract(from);
+    const kept = this.times.filter(k => k < from);
+    this.count -= this.times.length - kept.length;
+    this.times = kept;
+    this.spikes.forEach(s => { if (s.t >= from) s.knock = false; });
+  }
+}
+
+// A jump (Hoppet, 2026-10-17). While both feet are off the ground the phone
+// falls with the walker, and a falling phone feels almost nothing: the
+// magnitude of accelerationIncludingGravity drops from 9.8 towards zero, then
+// the landing hits. Air time is 2·sqrt(2h/g): 0.20 s for a skip of 5 cm,
+// 0.29 for 10, 0.40 for 20.
+//
+// A gait dips too, between push-off and heel strike, but briefly. In the nine
+// recorded walks (scripts/recordings, some 33 minutes of walking, standing,
+// knocking and turning, no running) the longest stretch under JUMP_FALL, from
+// the first sample under it to the first back over, was 134 ms (labb 2,
+// 1/10, 2:42); the five longest 116-134. Under 3 m/s² it was 106 ms, under 5
+// already 165. So a jump is JUMP_AIR under JUMP_FALL: 46 ms over the longest
+// a gait gave, and a hop of 4 cm still clears it. The bar is 4, not 3,
+// because a pocket in the air is not quite weightless: the leg moves under
+// the body while it flies, and a single sample over the bar ends the fall.
+//
+// Then a landing within JUMP_LAND of the fall's end, over JUMP_LANDING. It
+// says the fall ended on the feet, not that it was no step: the gait's own
+// longest dips ended in 16-58 m/s², and the half-second maxima of the walks
+// had a median of 20 and a 90th percentile of 43. A landing cannot be told
+// from a heel strike by its height, only by the fall before it. 15 (one and a
+// half g) is what a 5 cm drop stopped over some 5 cm of bent knees gives
+// (v²/2d + g, about 20) with room for a softer one.
+//
+// Running has flights of its own, about a tenth of a second when jogging, and
+// no recording has any: whether a run's falls stay under JUMP_AIR is not
+// known. Hoppet logs the longest of them.
+//
+// Every fall of JUMP_KEEP or more is kept in `falls` so the lab can log what
+// the sensor saw. A gap in the samples ends a fall: what the phone felt
+// meanwhile is not known.
+const JUMP_FALL = 4.0;        // m/s²
+const JUMP_AIR = 0.18;        // s under JUMP_FALL
+const JUMP_LAND = 0.3;        // s after the fall for the landing
+const JUMP_LANDING = 15;      // m/s²
+const JUMP_GAP = 0.1;         // s between samples that breaks a fall
+const JUMP_KEEP = 0.03;       // s; shorter falls are not kept
+// The landing is as sharp as a knock and harder, and the first steps after
+// it strike hard too: knocks are deaf for JUMP_DEAF after it, and any knock
+// from JUMP_BEFORE before the take-off on is forgotten (the push-off and the
+// landing are a pair of blows a few tenths apart, a double nobody knocked).
+export const JUMP_DEAF = 1.0;  // s
+const JUMP_BEFORE = 0.5;       // s
+
+export class Jumps {
+  constructor() {
+    this.lastT = null;
+    this.fallFrom = null;      // t of the first sample under the bar, in a fall
+    this.pending = null;       // {from, air, end}: a fall long enough, waiting for its landing
+    this.open = null;          // the jump whose landing window is still running
+    this.falls = [];           // {t, air, jump}, last ten minutes
+    this.history = [];         // {t, from, air, landing} per jump this walk (capped)
+    this.count = 0;
+  }
+
+  // One sample. Returns the jump read on it, or null: read on the first
+  // sample of the landing over JUMP_LANDING, so the knocks can be told before
+  // they judge the landing.
+  push(t, mag) {
+    if (!Number.isFinite(mag)) return null;
+    if (this.lastT !== null && t - this.lastT > JUMP_GAP) { this.fallFrom = null; this.pending = null; this.open = null; }
+    if (this.lastT !== null && t <= this.lastT) return null;
+    this.lastT = t;
+    if (this.open) {
+      if (t - this.open.end <= JUMP_LAND) this.open.landing = Math.max(this.open.landing, mag);
+      else this.open = null;
+    }
+    if (mag < JUMP_FALL) {
+      if (this.fallFrom === null) this.fallFrom = t;
+      return null;
+    }
+    if (this.fallFrom !== null) {
+      const air = t - this.fallFrom;
+      const fall = { t: this.fallFrom, air, jump: false };
+      if (air >= JUMP_KEEP) {
+        this.falls.push(fall);
+        while (this.falls.length && this.falls[0].t < t - 600) this.falls.shift();
+      }
+      if (air >= JUMP_AIR) this.pending = { from: this.fallFrom, air, end: t, fall };
+      this.fallFrom = null;
+    }
+    const p = this.pending;
+    if (!p) return null;
+    if (t - p.end > JUMP_LAND) { this.pending = null; return null; }
+    if (mag < JUMP_LANDING) return null;
+    this.pending = null;
+    p.fall.jump = true;
+    const jump = { t, from: p.from, air: p.air, end: p.end, landing: mag };
+    this.open = jump;
+    this.count++;
+    if (this.history.length < 2000) this.history.push(jump);
+    return jump;
+  }
+
+  lastAt() { return this.history.length ? this.history[this.history.length - 1].t : -Infinity; }
 }
 
 // Heading from GPS: the bearing from the newest fix back to the last one at
@@ -1234,6 +1341,7 @@ export class Walk {
     this.steps = new Steps();
     this.sway = new Sway();
     this.knocks = new Knocks({ walking: t => this.sway.walkingAt(t) });
+    this.jumps = new Jumps();
     this.gyro = new Gyro(opts.gyro || {});
     this.track = [];            // decent fixes, last two minutes: {t, latitude, longitude, accuracy}
     this.odo = 0;               // metres, the pace integrated over time
@@ -1283,6 +1391,14 @@ export class Walk {
     const own = t < this.buzzUntil;
     this.steps.push(t, own && this.steps.slow !== null ? this.steps.slow : magnitude);
     if (!own) this.sway.push(t, magnitude);
+    // A jump is read on its landing's first sample, before the knocks judge
+    // the landing (they judge a sample once the next has come): they are
+    // deaf from then, and forget what the push-off gave (Jumps).
+    const jump = this.jumps.push(t, magnitude);
+    if (jump) {
+      this.knocks.forget(jump.from - JUMP_BEFORE);
+      this.knocks.mute(t + JUMP_DEAF);
+    }
     this.knocks.push(t, magnitude);
     if (sensor) this.gyro.push(t, sensor.acc, sensor.rate, this.steps.cadence(t) > 0);
     if (Number.isFinite(magnitude)) {
@@ -1425,6 +1541,8 @@ export class Walk {
       sensorLive: this.steps.live(t),
       knocks: this.knocks.count,
       lastDoubleKnockAt: this.knocks.lastDoubleAt(),
+      jumps: this.jumps.count,
+      lastJumpAt: this.jumps.lastAt(),
     };
   }
 }

@@ -59,6 +59,7 @@ Labbens banor, detektorerna och inspelade promenader, och startskärmen i en rik
 ```bash
 node scripts/test_lab.mjs              # båda labben, alla gåarprofiler (ett par minuter)
 node scripts/test_knocks.mjs           # knack, gungning, motorns surr
+node scripts/test_jumps.mjs            # hopp, och att landningen inte blir knack
 node scripts/test_steps.mjs && node scripts/test_recordings.mjs
 python3 scripts/test_browser.py        # vibrationsprovet, Hon knackar, testpromenaderna och episod 1, drygt tjugo minuter
 python3 scripts/test_browser.py episodstart,episod   # bara episoden: startskärmen, och två vandrare hela vägen

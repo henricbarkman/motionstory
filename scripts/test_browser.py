@@ -13,7 +13,7 @@ knock back. The motor there starts late and rings on, as a real one may.
     pip install playwright && playwright install chromium
     python3 scripts/test_browser.py                # all of it, about four minutes
     python3 scripts/test_browser.py first,resume   # some scenarios
-    python3 scripts/test_browser.py prov            # the ten test walks, about five minutes
+    python3 scripts/test_browser.py prov            # the test walks, about five minutes
     python3 scripts/test_browser.py episod          # episode 1 walked twice side by side, about twelve minutes
     GLIMT_SHOTS=/tmp/shots python3 scripts/test_browser.py first   # with screenshots
 
@@ -480,6 +480,8 @@ WALKER = """
     'vaxla-ga': () => later(1, walkOn), 'vaxla-ga-igen': () => later(1, walkOn),
     'knackgang-nu': () => { later(1.2, () => $('sim-knock').click()); later(1.5, () => $('sim-knock').click()); },
     'knackgang-ficka': () => { later(1, stop); later(8, walkOn); },
+    'hopp-nu': () => later(1.5, () => $('sim-jump').click()), 'hopp-igen': () => later(1.5, () => $('sim-jump').click()),
+    'hopp-jogga': () => later(1, () => speed(3)), 'hopp-jogga-nu': () => later(1.5, () => $('sim-jump').click()), 'hopp-ga': () => later(1, walkOn),
     'vagval-intro': () => later(12, () => $('sim-left').click()),
     'vandom-nu': () => later(2, () => $('sim-turn').click()), 'vandom-igen': () => later(2, () => $('sim-turn').click()),
     'kompass-intro': toward, 'hitta-intro-bro': toward, 'hitta-intro-plats': toward, 'hitta-intro-vatten': toward,
@@ -510,7 +512,7 @@ PROV_WANT = {
     "frys": {"frys": "klarade"}, "ja": {"ja": "klarade"}, "kontakt": {"kontakt": "klarade"}, "vaxla": {"vaxla": "klarade"},
     "knack": {"knackgang": "klarade"}, "riktning": {"vagval": "klarade", "vandom": "klarade"},
     "kompass": {"kompass": "klarade"}, "takten": {"takten": None}, "hitta": {"hitta": "klarade"},
-    "tassa": {"tassa": None}, "vakten": {"vakten": "klarade"},
+    "tassa": {"tassa": None}, "vakten": {"vakten": "klarade"}, "hopp": {"hopp": "klarade"},
 }
 # GLIMT_PROV=frys,ja walks only those.
 PROV_IDS = [x for x in PROV_WANT if not os.environ.get("GLIMT_PROV") or x in os.environ["GLIMT_PROV"].split(",")]
@@ -583,7 +585,7 @@ def prov(browser, base):
 
 
 TITLE = {"frys": "Frys", "ja": "Stanna för ja", "kontakt": "Kontakten", "knackgang": "Knacket gående", "vagval": "Vägvalet",
-         "vandom": "Vänd om", "kompass": "Ljudkompassen", "takten": "Takten", "hitta": "Hitta", "tassa": "Tassa", "vakten": "Sensorvakten", "vaxla": "Gå och spring"}
+         "vandom": "Vänd om", "kompass": "Ljudkompassen", "takten": "Takten", "hitta": "Hitta", "tassa": "Tassa", "vakten": "Sensorvakten", "vaxla": "Gå och spring", "hopp": "Hoppet"}
 
 
 def provstart(browser, base):

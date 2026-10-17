@@ -163,6 +163,16 @@
     "vaxla-ga": "Och gå igen.",
     "vaxla-spring-igen": "Spring igen.",
     "vaxla-ga-igen": "Gå. Hämta andan.",
-    "vaxla-slut": "Tack. Nu vet jag hur dina steg låter när du springer."
+    "vaxla-slut": "Tack. Nu vet jag hur dina steg låter när du springer.",
+
+    "hopp-intro": "Hoppet. Tre gånger ber jag dig hoppa, ett litet skutt mitt i gången, och sen går du vidare. Mer än så behövs inte. Är det halt, eller nära trafik, så låt bli. Det gör inget.",
+    "hopp-nu": "Kan du hoppa nu? Ett litet skutt räcker. Gå vidare sen.",
+    "hopp-igen": "En gång till. Ett litet hopp, när du kan.",
+    "hopp-hord": "[excited] Där. Jag såg dig hoppa.",
+    "hopp-inget": "Jag såg inget hopp. Det gör inget, gå vidare.",
+    "hopp-jogga": "Nu får du jogga en stund. Lugnt, så att du orkar prata. Jag säger till när det är dags att hoppa.",
+    "hopp-jogga-nu": "Hoppa en gång nu, medan du joggar. Bara ett litet skutt.",
+    "hopp-ga": "Och gå igen. Hämta andan.",
+    "hopp-slut": "Tack. Nu vet jag hur ett hopp ser ut härifrån."
   }
 }
