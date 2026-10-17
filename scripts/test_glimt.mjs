@@ -452,6 +452,13 @@ const EPISODE_WALKERS = {
     has: ['s0-no1'], not: ['s0-yes1-a', 'r-hjalp'],
     lamps: 0, memory: { svarade: false, misstanke: false },
   },
+  // Terrible GPS all the way (80 m), steps on: the contact is capped at half,
+  // and scene 1 must still come straight after the credits.
+  fog: {
+    walk: t => ({ ...out()(t), accuracy: 80, steps: true }), stops: END_STOP,
+    has: ['s1-walk', 's2-no'], afterCredits: 15,
+    lamps: 0, memory: { svarade: false, misstanke: false },
+  },
   // The walker who stops when asked, on the field phone: a fix every six
   // seconds, a wandering speed, and the feet deciding moving or still.
   field: {
@@ -646,6 +653,9 @@ function episodeProblems(name, run) {
     if (scene1 !== null && scene1 < c + E_CREDITS - 1) problems.push(`scene 1 began at ${fmt2(scene1)}, inside the credits`);
     const over = played.find(x => x.t > c && x.t < c + E_CREDITS);
     if (over) problems.push(`${over.id} plays over the credits`);
+    if (p.afterCredits !== undefined && scene1 !== null && scene1 - (c + E_CREDITS) > p.afterCredits) {
+      problems.push(`scene 1 came ${fmt2(scene1 - c - E_CREDITS)} after the credits`);
+    }
     const s0last = played.filter(x => x.id.startsWith('s0-')).pop();
     if (!s0last || s0last.t > c) problems.push('the credits came before scene 0 was over');
   }

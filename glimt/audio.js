@@ -126,7 +126,8 @@ export class Mixer {
       const n = 2048, curve = new Float32Array(n), t = Math.tanh(drive);
       for (let i = 0; i < n; i++) curve[i] = Math.tanh(drive * (i / (n - 1) * 2 - 1)) / t;
       this.radioShape.curve = curve;
-      this.radioMakeup.gain.value = (t / drive) * Math.pow(10, (16 * r ** 4 + 1.5 * r * (1 - r)) / 20);
+      // Never past full scale: the curve peaks at 1 (only near klarhet 0 would it).
+      this.radioMakeup.gain.value = Math.min(1, (t / drive) * Math.pow(10, (16 * r ** 4 + 1.5 * r * (1 - r)) / 20));
     }
     this.hissLevel = RADIO_HISS * r;
     if (this.voicesOn > 0) this.hissGain.gain.setTargetAtTime(this.hissLevel, now, 0.05);
@@ -135,8 +136,13 @@ export class Mixer {
   // The hiss comes in with a line on the radio and goes when the last ends.
   hiss(on, at = null) {
     this.voicesOn = Math.max(0, this.voicesOn + (on ? 1 : -1));
-    const when = Math.max(this.ctx.currentTime, at === null ? 0 : at);
-    this.hissGain.gain.setTargetAtTime(this.voicesOn > 0 ? this.hissLevel : 0, when, on ? 0.08 : 0.15);
+    const now = this.ctx.currentTime;
+    const when = Math.max(now, at === null ? 0 : at);
+    // A line cut before its scheduled start must not leave its "on" pending.
+    const g = this.hissGain.gain;
+    g.cancelScheduledValues(now);
+    g.setValueAtTime(g.value, now);
+    g.setTargetAtTime(this.voicesOn > 0 ? this.hissLevel : 0, when, on ? 0.08 : 0.15);
   }
 
   async fetchBuffer(url) {

@@ -709,7 +709,7 @@ EPISODE_WALKER = """
       's0-yes1-b': () => { later(15.5, stop); later(25, walkOn); },
       's1-3': () => later(10, () => $('sim-turn').click()),
       's2-ask': () => { later(9, stop); later(24, walkOn); },
-      's3-1': () => { later(1, stop); later(4, () => sample('still')); later(12, walkOn); },
+      's3-1': () => { later(1, stop); later(10, () => sample('still')); later(13, walkOn); },
       's3-2': () => later(5, () => sample('walking')),
       's4-all': () => later(39, stop),
     },
@@ -801,7 +801,7 @@ def episodstart(browser, base):
     # The line's clarity from the link: her lines on the radio, the hiss under them.
     ctx, page, errors = open_page(browser, base, url="?kapitel=episod1&sim&klarhet=0.2")
     page.click("#start-btn")
-    line = wait_log(page, "▶ s0-1", 30000)
+    line = wait_log(page, "▶ s0-2", 60000)
     page.wait_for_timeout(1500)
     k = page.evaluate("({ k: window.glimt.mixer.klarhet, hiss: window.glimt.mixer.hissGain.gain.value, lp: window.glimt.mixer.radioLp.frequency.value })")
     check(bool(line) and k["k"] == 0.2 and k["hiss"] > 0.01 and k["lp"] < 5000,

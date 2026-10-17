@@ -40,6 +40,7 @@ UT = Path.home() / "generalassistant" / "data" / "uploads" / "glimt-episod1"
 # files. Not the manuscripts, the room, the scripts or the voice tryouts.
 TREE = ["index.html", "main.js", "styles.css", "manifest.json", "service-worker.js", "design", "glimt", "audio"]
 STORIES = "stories/glimt"
+MARK = ".glimt-privat"  # written into every copy: only a folder with it is ever replaced
 LOUDNESS = "loudnorm=I=-17:TP=-1.5:LRA=11"  # level with the stand-in and her voice
 INDEX = """<!doctype html>
 <html lang="sv">
@@ -62,7 +63,7 @@ def credits_path() -> Path:
 
 def transcode(song: Path, out: Path) -> None:
     subprocess.run(
-        ["ffmpeg", "-v", "error", "-y", "-i", str(song), "-vn", "-af", LOUDNESS,
+        ["ffmpeg", "-v", "error", "-y", "-i", str(song), "-vn", "-map_metadata", "-1", "-af", LOUDNESS,
          "-ar", "48000", "-c:a", "libopus", "-b:a", "128k", str(out)],
         check=True,
     )
@@ -74,11 +75,25 @@ def seconds(path: Path) -> float:
     return float(out)
 
 
+def check_target(ut: Path) -> None:
+    """The copy holds the song: never inside the repo, never over a folder
+    this script did not make."""
+    ut = ut.resolve()
+    repo = REPO.resolve()
+    if ut == repo or repo in ut.parents or ut in repo.parents:
+        sys.exit(f"{ut} is inside the repo or holds it: the song must never come near it")
+    if ut.exists() and not (ut / MARK).is_file():
+        sys.exit(f"{ut} exists and was not made by this script; refusing to replace it")
+
+
 def deploy(song: Path, ut: Path) -> str:
+    check_target(ut)
     credits = credits_path()
     stand_in = (REPO / credits).read_bytes()
-    with tempfile.TemporaryDirectory() as tmp:
-        build = Path(tmp) / "glimt-episod1"
+    ut.parent.mkdir(parents=True, exist_ok=True)
+    # Built next to the target, so the swap below is a rename on one disk.
+    with tempfile.TemporaryDirectory(dir=ut.parent, prefix=f".{ut.name}-") as tmp:
+        build = Path(tmp) / ut.name
         build.mkdir()
         for name in TREE:
             src = REPO / name
@@ -101,16 +116,13 @@ def deploy(song: Path, ut: Path) -> str:
             sys.exit("service-worker.js has no CACHE line to rename")
         sw.write_text(text, encoding="utf-8")
         (build / "index.html").write_text(INDEX, encoding="utf-8")
-        # Swap in whole: the old copy goes only once the new one is complete.
-        ut.parent.mkdir(parents=True, exist_ok=True)
-        old = ut.with_name(ut.name + ".gammal")
-        if old.exists():
-            shutil.rmtree(old)
+        (build / MARK).write_text("Made by motionstory scripts/glimt_privat_deploy.py. Holds an unreleased song: never publish.\n",
+                                  encoding="utf-8")
+        # Swap in whole: the old copy moves into the temporary folder (and
+        # goes with it) only once the new one is complete.
         if ut.exists():
-            ut.rename(old)
-        shutil.move(str(build), str(ut))
-        if old.exists():
-            shutil.rmtree(old)
+            ut.rename(Path(tmp) / "gammal")
+        build.rename(ut)
     return re.search(r"const CACHE = '([^']+)'", (ut / "service-worker.js").read_text(encoding="utf-8")).group(1)
 
 

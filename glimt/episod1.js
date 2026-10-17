@@ -46,6 +46,9 @@ const SHORT_WAIT = 2.5 * MIN; // s a scene waits for a walker who is not walking
 const LONG_WAIT = 10 * MIN;   // the same, when the feet say the walker stands
 const PATIENCE = 30;        // s a walker who stood before she asked gets to walk first
 const FULL = 0.95;          // the contact scene 1 waits for after the credits
+// Poor GPS (over 40 m) caps the contact at half (engine.js, Contact), so full
+// is measured against the cap, or scene 1 would wait out its deadline in silence.
+const full = s => s.contact >= FULL * (s.accuracy != null && s.accuracy > 40 ? 0.5 : 1);
 
 // When each scene may open at the earliest, in seconds from the start: the
 // episode's pace for a walker who walks all the way, with the credits in it.
@@ -225,7 +228,7 @@ export async function runEpisode1(ctx) {
   await ctx.credits();
 
   // 1. The loop. When the song is over and the contact is full.
-  await ctx.until(s => s.contact >= FULL && s.moving && s.movingFor >= 3, { timeout: SHORT_WAIT });
+  await ctx.until(s => full(s) && s.moving && s.movingFor >= 3, { timeout: SHORT_WAIT });
   ctx.log('scene 1');
   await ctx.play(ctx.state().band === 'run' ? 's1-run' : 's1-walk');
   await ctx.play('s1-2');

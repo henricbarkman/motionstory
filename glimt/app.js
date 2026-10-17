@@ -471,6 +471,10 @@ async function start() {
     },
   };
 
+  // The credits' song, decoded while scene 0 plays so it starts on time.
+  const creditsBuf = (creditsRaw || Promise.resolve(null)).then(raw => raw
+    ? mixer.decode(raw).catch(err => { log('förtexter: ' + err.message); return null; }) : null);
+
   if (def.side) {
     // A line on her side: the flat voice in her ear, the woman beside her,
     // the other voice. Without her side it comes down the line instead, so
@@ -511,17 +515,18 @@ async function start() {
       credits() {
         const turn = voiceChain.then(async () => {
           if (finished) return;
-          const raw = await creditsRaw;
-          if (!raw) { log('förtexter saknas, går vidare'); return; }
-          let buf;
-          try { buf = await mixer.decode(raw); } catch (err) { log('förtexter: ' + err.message); return; }
+          const buf = await creditsBuf;
+          if (!buf) { log('förtexter saknas, går vidare'); return; }
           if (finished) return;
           $('scene').textContent = 'Förtexter';
           log(`▶ förtexter (${Math.round(buf.duration)} s)`);
           mixer.muteBed(true);
-          const why = await mixer.playVoice(buf, { radio: false });
-          mixer.muteBed(false);
-          if (why === 'timeout') log('ljud: förtexterna nådde aldrig slutet, går vidare');
+          try {
+            const why = await mixer.playVoice(buf, { radio: false });
+            if (why === 'timeout') log('ljud: förtexterna nådde aldrig slutet, går vidare');
+          } finally {
+            mixer.muteBed(false);
+          }
         });
         voiceChain = turn.catch(() => {});
         return turn;
