@@ -1166,7 +1166,7 @@ function finish() {
       const windows = labMemo.knockWindows || [];
       const stray = walk.knocks.history.filter(t => !windows.some(([a, b]) => t >= a && t <= b)).length;
       log(`knack: ${stray} dubbelknack utan att någon bad om det`);
-      log(strayJumpsNote(walk.jumps.unasked(labMemo.jumpAnswers, labMemo.jumpAsking ?? null), walk.jumps.longestFall()));
+      log(strayJumpsNote(walk.jumps.unasked(labMemo.jumpWindows, labMemo.jumpAsking ?? null), walk.jumps.longestFall()));
     }
     showLabResults();
   }

@@ -71,11 +71,11 @@ export function labHelpers(walk, { now, vibrateImpl }) {
     // The jumps read in (a, b], {t, from, air, landing}, t the landing; the
     // falls that began in (a, b], {t, air, jump}, jumps or not (the last ten
     // minutes); the longest fall that was no jump, the whole walk; and the
-    // jumps nobody asked for, given memo.jumpAnswers and memo.jumpAsking.
+    // jumps nobody asked for, given memo.jumpWindows and memo.jumpAsking.
     jumpsBetween: (a, b) => walk.jumps.history.filter(j => j.t > a && j.t <= b),
     fallsBetween: (a, b) => walk.jumps.falls.filter(f => f.t > a && f.t <= b),
     longestFall: () => walk.jumps.longestFall(),
-    strayJumps: memo => walk.jumps.unasked(memo.jumpAnswers, memo.jumpAsking ?? null),
+    strayJumps: memo => walk.jumps.unasked(memo.jumpWindows, memo.jumpAsking ?? null),
     // The gyro (engine.js, Gyro): whether it may read now, `side` for left
     // or right; the turn it reads now, if any; and the figures it judged by.
     gyroStatus: (side = false) => walk.gyro.status(now(), { side }),
@@ -1670,7 +1670,8 @@ export function strayJumpsNote(stray, top) {
 }
 
 const HOPP_WAIT = 10;      // s after her word for a jump
-const HOPP_EAGER = 3;      // s, when one already came during her word
+const HOPP_EAGER = 5;      // s, when one already came during her word
+const HOPP_SECOND = 1;     // s after the wait a skip's second hop is still part of it
 const HOPP_JOG = 20;       // s of jogging before she asks for the jog's jump
 const HOPP_JOG_AFTER = 10; // s of jogging after it
 const ms = x => `${Math.round(x * 1000)} ms`;
@@ -1685,27 +1686,32 @@ function longestFall(falls) {
 }
 // Her word, and the jump that answers it: the first after she has finished,
 // or, if none comes, the last during her line (an eager walker jumps before
-// she is done). One during the line may be a false one too, so a jump after
-// it is still waited for, if only HOPP_EAGER. Every other jump is one
-// nobody asked for (Jumps.unasked); while she waits, none is.
+// she is done). One during the line may be a false one, so a jump after it
+// is still waited for, if only HOPP_EAGER. The jumps from her word to
+// HOPP_SECOND after the wait were asked for, a skip's second hop with them
+// (memo.jumpWindows); every other one nobody asked for (Jumps.unasked).
+// While she waits none is, so a walk stopped then does not count her jump.
 async function hoppa(ctx, line) {
   const from = ctx.state().t;
   ctx.memo.jumpAsking = from;
-  await ctx.play(line);
-  const said = ctx.state().t;
-  const eager = ctx.jumpsBetween(from, said).length > 0;
-  await ctx.until(s => s.lastJumpAt > said, { timeout: eager ? HOPP_EAGER : HOPP_WAIT });
-  const to = ctx.state().t;
-  const j = ctx.jumpsBetween(said, to)[0] || ctx.jumpsBetween(from, said).at(-1) || null;
-  if (j) ctx.memo.jumpAnswers.push(j.t);
-  ctx.memo.jumpAsking = null;
-  return { heard: !!j, j, from, said, to };
+  try {
+    await ctx.play(line);
+    const said = ctx.state().t;
+    const eager = ctx.jumpsBetween(from, said).length > 0;
+    await ctx.until(s => s.lastJumpAt > said, { timeout: eager ? HOPP_EAGER : HOPP_WAIT });
+    const to = ctx.state().t;
+    ctx.memo.jumpWindows.push([from, to + HOPP_SECOND]);
+    const j = ctx.jumpsBetween(said, to)[0] || ctx.jumpsBetween(from, said).at(-1) || null;
+    return { heard: !!j, j, from, said, to };
+  } finally {
+    ctx.memo.jumpAsking = null;
+  }
 }
 
 async function hopp(ctx) {
   if (!await sensorReady(ctx)) return deaf(ctx);
   const began = ctx.state().t;
-  ctx.memo.jumpAnswers = ctx.memo.jumpAnswers || [];
+  ctx.memo.jumpWindows = ctx.memo.jumpWindows || [];
   await ctx.play('hopp-intro');
   const walks = [];
   for (let i = 0; i < 3; i++) {

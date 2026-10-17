@@ -160,14 +160,21 @@ const longest = walk => walk.jumps.falls.reduce((a, f) => Math.max(a, f.air), 0)
   check(j.falls.every(f => f.t > 1) && Math.abs(j.longestFall() - 0.18) < 0.03, `an early long fall is still the longest after ten minutes (${f2(j.longestFall())} s)`);
 }
 
-// Which jumps nobody asked for: one taken as an answer, and one a skip's
-// second within a second of it, are not; one long after is; while a
-// question is open, none after it is.
+// Which jumps nobody asked for: those in a window one was asked for in are
+// not; one outside is; while a question is open, none after it is.
 {
   const j = new Jumps();
   j.history = [{ t: 10 }, { t: 10.6 }, { t: 20 }, { t: 30 }];
-  check(j.unasked([10]).map(x => x.t).join() === '20,30', `an answer and its second skip are asked for (${j.unasked([10]).map(x => x.t).join()})`);
-  check(j.unasked([10], 25).map(x => x.t).join() === '20', 'a jump after an open question is not counted as stray');
+  check(j.unasked([[9, 11]]).map(x => x.t).join() === '20,30', `an answer and its second skip are asked for (${j.unasked([[9, 11]]).map(x => x.t).join()})`);
+  check(j.unasked([[9, 11]], 25).map(x => x.t).join() === '20', 'a jump after an open question is not counted as stray');
+}
+
+// A fall the samples stop in does not hold the knocks.
+{
+  const j = new Jumps();
+  j.push(0, 9.8);
+  for (let i = 1; i <= 10; i++) j.push(i * 0.02, 2);
+  check(j.falling(0.25) && !j.falling(0.5), 'a fall holds the knocks only while samples come');
 }
 
 // Deaf for JUMP_DEAF only: a double knocked three seconds after a landing

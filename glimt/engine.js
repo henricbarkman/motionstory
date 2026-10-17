@@ -787,8 +787,6 @@ const JUMP_EDGE = 0.04;       // s a fall may last past its last sample under th
 // (review, 2026-10-17). A gait's dips last up to 0.134 s, so this delays a
 // walking double by a few hundredths at most.
 const JUMP_HOLD = 0.1;        // s
-// A skip may come as two: the second within this of the answer is part of it.
-const JUMP_ANSWER = 1.0;      // s
 // The landing is as sharp as a knock and harder, and the first steps after
 // it strike hard too: knocks are deaf for JUMP_DEAF after it, and any knock
 // from JUMP_BEFORE before the take-off on is forgotten (the push-off and the
@@ -864,19 +862,22 @@ export class Jumps {
   }
 
   // In a fall that has lasted `min` seconds at t: the knocks wait to close
-  // their groups until it is over (Walk.tick).
-  falling(t, min = JUMP_HOLD) { return this.fallFrom !== null && t - this.fallFrom >= min; }
+  // their groups until it is over (Walk.tick). Not once the samples have
+  // stopped: a fall the sensor went quiet in is no longer known to go on.
+  falling(t, min = JUMP_HOLD) {
+    return this.fallFrom !== null && t - this.fallFrom >= min && t - this.lastT <= JUMP_GAP;
+  }
 
   // The longest fall that was no jump, this whole walk.
   longestFall() { return this.falls.reduce((a, f) => f.jump ? a : Math.max(a, f.air), this.older); }
 
   lastAt() { return this.history.length ? this.history[this.history.length - 1].t : -Infinity; }
 
-  // The jumps nobody asked for: not within JUMP_ANSWER of one taken as an
-  // answer (`answers`, their t), and not after `asking`, when a question is
-  // still open (a walk stopped mid-question).
-  unasked(answers = [], asking = null) {
-    return this.history.filter(j => !answers.some(a => j.t >= a && j.t <= a + JUMP_ANSWER) && !(asking !== null && j.t > asking));
+  // The jumps nobody asked for: outside every window [a, b] one was asked
+  // for in, and not after `asking`, when a question is still open (a walk
+  // stopped mid-question).
+  unasked(windows = [], asking = null) {
+    return this.history.filter(j => !windows.some(([a, b]) => j.t >= a && j.t <= b) && !(asking !== null && j.t > asking));
   }
 }
 
