@@ -270,13 +270,14 @@ function answerErrors(log, profile) {
 
 const EPISODE = JSON.parse(readFileSync(join(ROOT, 'stories/glimt/episod-1.json'), 'utf8'));
 const E_SECONDS = EPISODE.seconds || {};
-const E_CUE = (EPISODE.cues && EPISODE.cues['s3-3'] && EPISODE.cues['s3-3'].trettio) || 0;
+const E_CUE = (EPISODE.cues && EPISODE.cues['s2-3'] && EPISODE.cues['s2-3'].trettio) || 0;
+const E_CREDITS = (EPISODE.credits && EPISODE.credits.seconds) || 0;
 
 // What a walker does when a line is heard: `[when, from, to]`, a stop from
 // `from` to `to` seconds after the line's 'start' or 'end'. A list of them
 // for more than one stop.
 const ANSWER = ['end', 2, 12];
-const END_STOP = { 's6-all': ['end', 3, Infinity] };
+const END_STOP = { 's4-all': ['end', 3, Infinity] };
 const out = (speed = 1.4, turn = 330) => t => ({ speed: t < 5 ? 0 : speed, heading: t < turn ? 0 : Math.PI });
 
 // `has`: lines that must be heard. `not`: lines that must not. `twice`:
@@ -286,164 +287,183 @@ const EPISODE_WALKERS = {
   // Never stops, not even at the end: every no-branch, and the end on the clock.
   never: {
     walk: out(), stops: {},
-    has: ['s1-walk', 's2-no', 's3-ask', 's3-no', 's4-dark', 's4-dry', 's4-skog', 's5-hon-walk', 's5-ok-walk',
-      's6-back', 's6-never-1', 's6-never-no', 's6-all', 's6-other'],
-    not: ['s2-yes-1', 's3-lamp-1', 's3-lamp-2', 's5-lamp-sten', 's6-yes', 's6-never-yes-1', 'r-hjalp'],
+    has: ['s0-no1', 's0-no2', 's1-walk', 's1-q1-no', 's1-q2-no', 's2-ask', 's2-no', 's3-dark', 's3-dry', 's3-near', 's3-skog',
+      's4-ok', 's4-back', 's4-never-1', 's4-never-no', 's4-all'],
+    not: ['s0-yes1-a', 's0-yes2', 's1-q1-yes', 's1-q2-yes', 's2-lamp-1', 's2-lamp-2', 's4-lamp-2', 's4-yes', 's4-never-yes-1', 'r-hjalp'],
     lamps: 0, memory: { svarade: false, misstanke: false },
   },
   // Stops every time she asks, and at the end.
   asked: {
-    walk: out(), stops: { 's2-1': ANSWER, 's3-ask': ANSWER, ...END_STOP },
-    has: ['s2-yes-1', 's2-yes-2', 's3-ask', 'x-avvikelse', 's3-lamp-plea', 's3-lamp-1', 's5-hon-walk', 's6-yes'],
-    not: ['s2-no', 's3-no', 's3-lamp-2', 's5-lamp-sten', 's6-never-1'],
+    walk: out(), stops: { 's0-ask1': ANSWER, 's0-yes1-b': ANSWER, 's1-q1': ANSWER, 's1-q2': ANSWER, 's2-ask': ANSWER, ...END_STOP },
+    has: ['s0-yes1-a', 's0-yes1-b', 's0-yes2', 's1-q1-yes', 's1-q2-yes', 's2-ask', 'x-avvikelse', 's2-lamp-plea', 's2-lamp-1', 's4-ok', 's4-yes'],
+    not: ['s0-no1', 's0-no2', 's1-q1-no', 's1-q2-no', 's2-no', 's2-lamp-2', 's4-lamp-2', 's4-never-1'],
     lamps: 1, memory: { svarade: true, misstanke: false },
   },
-  // Stops by themselves: among the trees in scene 3 and when the other woman
-  // comes in scene 5. Never when she asks.
+  // Sees her but walks on when she asks "hör du mig?", then stops when she
+  // asks at the tree: she learns there that the walker hears her.
+  deaf: {
+    walk: out(), stops: { 's0-ask1': ANSWER, 's2-ask': ANSWER, ...END_STOP },
+    has: ['s0-yes1-a', 's0-yes1-b', 's0-no2', 's2-lamp-1', 's2-lamp-2', 's4-yes'],
+    not: ['s0-no1', 's0-yes2', 's2-no', 's4-never-1'],
+    lamps: 1, memory: { svarade: true, misstanke: false },
+  },
+  // Stops by themselves: among the trees in scene 2 and when she gets up in
+  // scene 4. Never when she asks.
   own: {
-    walk: out(), stops: { 's3-5': ['start', 1, 14], 's5-1': ['start', 14, 28], ...END_STOP },
-    has: ['s2-no', 's3-5', 's3-6', 's3-lamp-1', 's5-hon-fraga', 's5-lamp-sten', 's5-lamp-after', 's6-never-1', 's6-never-no'],
-    not: ['s3-ask', 's3-no', 's3-lamp-2', 's5-hon-walk', 's5-ok-walk', 's5-2', 's6-yes'],
+    walk: out(), stops: { 's2-5': ['start', 1, 14], 's4-2': ['start', 2, 15], ...END_STOP },
+    has: ['s0-no2', 's2-5', 's2-6', 's2-lamp-1', 's4-lamp-1', 's4-lamp-2', 's4-never-1', 's4-never-no'],
+    not: ['s2-ask', 's2-no', 's2-lamp-2', 's4-ok', 's4-3', 's4-yes'],
     lamps: 2, memory: { svarade: false, misstanke: true },
   },
   // Stops just as she steps off the gravel: the lamp cuts her first line
   // among the trees short, and she says it again afterwards.
   early: {
-    walk: out(), stops: { 's3-4': ['start', 14, 32], ...END_STOP },
-    has: ['s3-lamp-1', 's3-6'], not: ['s3-ask', 's3-lamp-2'], twice: ['s3-5'],
+    walk: out(), stops: { 's2-4': ['start', 14, 32], ...END_STOP },
+    has: ['s2-lamp-1', 's2-6'], not: ['s2-ask', 's2-lamp-2'], twice: ['s2-5'],
     lamps: 1, memory: { svarade: false, misstanke: false },
   },
   // Runs all the way.
   runner: {
     walk: out(2.8, 300), stops: END_STOP,
-    has: ['s1-run', 's5-hon-run', 's5-ok-run', 's6-never-no'],
-    not: ['s1-walk', 's5-hon-walk', 's5-ok-walk'],
+    has: ['s1-run', 's4-ok', 's4-never-no'],
+    not: ['s1-walk'],
     lamps: 0, memory: { svarade: false, misstanke: false },
   },
-  // Walks on in scene 2, stops when she asks at the tree.
+  // Walks on at every question, stops when she asks at the tree.
   late: {
-    walk: out(), stops: { 's3-ask': ANSWER, ...END_STOP },
-    has: ['s2-no', 's3-lamp-1', 's3-lamp-2', 's6-yes'], not: ['s3-no', 's6-never-1'],
+    walk: out(), stops: { 's2-ask': ANSWER, ...END_STOP },
+    has: ['s0-no2', 's1-q1-no', 's2-lamp-1', 's2-lamp-2', 's4-yes'], not: ['s2-no', 's4-never-1'],
     lamps: 1, memory: { svarade: true, misstanke: false },
   },
   // Only stops the last time she asks.
-  sixth: {
-    walk: out(), stops: { 's6-never-1': ANSWER, ...END_STOP },
-    has: ['s2-no', 's3-no', 's6-never-yes-1', 's6-never-yes-2'], not: ['s6-never-no', 's6-yes'],
+  last: {
+    walk: out(), stops: { 's4-never-1': ANSWER, ...END_STOP },
+    has: ['s0-no2', 's2-no', 's4-never-yes-1', 's4-never-yes-2'], not: ['s4-never-no', 's4-yes'],
     lamps: 0, memory: { svarade: true, misstanke: false },
   },
-  // Stops where a stop costs nothing: when she asks in scene 2, while she
-  // counts, while she sits, after the other woman has passed. No lamp, and
-  // nothing she says is cut short.
+  // Stops where a stop costs nothing: when she asks if she is seen, while she
+  // stands still in scene 2, while she sits, when she is back on the gravel.
+  // No lamp, and nothing she says is cut short.
   harmless: {
-    walk: out(), stops: { 's2-1': ANSWER, 's3-2': ['start', 1, 10], 's4-1': ['start', 1, 12], 's5-ok-walk': ['start', 0, 9], ...END_STOP },
-    has: ['s2-yes-1', 's3-no', 's5-hon-walk', 's6-yes'], not: ['r-hjalp'],
+    walk: out(), stops: { 's0-ask1': ANSWER, 's2-2': ['start', 1, 10], 's3-1': ['start', 1, 12], 's4-ok': ['start', 0, 9], ...END_STOP },
+    has: ['s0-yes1-a', 's0-no2', 's2-no', 's4-ok', 's4-yes'], not: ['r-hjalp'],
     lamps: 0, cuts: 0, memory: { svarade: true, misstanke: false },
   },
-  // Stands still for forty seconds while she sits under the tree: the
+  // Stands still for forty-seven seconds while she sits under the tree: the
   // snäcka asks, she rests, and the line it cut is said again.
   rests: {
-    walk: out(), stops: { 's4-1': ['start', 8, 55], ...END_STOP },
-    has: ['r-hjalp', 'r-vilar'], twice: ['s4-skog'],
+    walk: out(), stops: { 's3-1': ['start', 8, 55], ...END_STOP },
+    has: ['r-hjalp', 'r-vilar'], twice: ['s3-skog'],
     lamps: 0, memory: { svarade: false, misstanke: false },
   },
   // Stands still through her count: the snäcka does ask, and she counts again.
   stands: {
-    walk: out(), stops: { 's3-1': ['end', 0, 45], ...END_STOP },
-    has: ['r-hjalp', 'r-vilar', 's3-4'], twice: ['s3-2', 's3-3'],
+    walk: out(), stops: { 's2-1': ['end', 0, 45], ...END_STOP },
+    has: ['r-hjalp', 'r-vilar', 's2-4'], twice: ['s2-2', 's2-3'],
     lamps: 0, memory: { svarade: false, misstanke: false },
   },
-  // Stands at a kerb from early in her question and forty seconds on, then
-  // walks: a stop that began before she asked is no answer, and while she
-  // walks her round it is nothing to the snäcka either.
+  // Stands at a kerb from early in her first question and forty seconds on,
+  // then walks: a stop that began before she asked is no answer, and while
+  // she walks her round it is nothing to the snäcka either.
   kerb: {
-    walk: out(), stops: { 's2-1': ['start', 5, 45], ...END_STOP },
-    has: ['s2-no', 's6-never-1'], not: ['s2-yes-1', 'r-hjalp'],
+    walk: out(), stops: { 's0-ask1': ['start', 5, 45], ...END_STOP },
+    has: ['s0-no1', 's4-never-1'], not: ['s0-yes1-a', 'r-hjalp'],
     lamps: 0, memory: { svarade: false, misstanke: false },
   },
   // The same kerb, a shorter wait, and then the stop she asked for.
   again: {
-    walk: out(), stops: { 's2-1': [['start', 5, 26], ['start', 34, 44]], ...END_STOP },
-    has: ['s2-yes-1', 's2-yes-2', 's6-yes'], not: ['s2-no'],
+    walk: out(), stops: { 's0-ask1': [['start', 3, 15], ['start', 20, 30]], ...END_STOP },
+    has: ['s0-yes1-a', 's4-yes'], not: ['s0-no1'],
     lamps: 0, memory: { svarade: true, misstanke: false },
   },
-  // Stops on the word and walks again before she has finished the line.
+  // Stops on the word and walks again a few seconds later, on the feet.
   quick: {
-    walk: t => ({ ...out()(t), steps: true }), stops: { 's2-1': ['start', 17.5, 21.5], ...END_STOP },
-    has: ['s2-yes-1', 's2-yes-2', 's6-yes'], not: ['s2-no'],
+    walk: t => ({ ...out()(t), steps: true }), stops: { 's0-ask1': ['start', 10.6, 14.6], ...END_STOP },
+    has: ['s0-yes1-a', 's4-yes'], not: ['s0-no1'],
     lamps: 0, memory: { svarade: true, misstanke: false },
   },
-  // A red light between scene 2 and 3: forty seconds still while she walks.
+  // A red light between scene 1 and 2: forty-two seconds still while she walks.
   light: {
-    walk: out(), stops: { 's2-no': ['end', 2, 44], ...END_STOP },
-    has: ['s3-no'], not: ['r-hjalp'],
+    walk: out(), stops: { 's1-3': ['end', 2, 44], ...END_STOP },
+    has: ['s2-no'], not: ['r-hjalp'],
     lamps: 0, memory: { svarade: false, misstanke: false },
   },
-  // Home and standing from the bell on: the last time she asks, a walker
-  // who already stood there has not answered.
+  // A red light in the credits: the song goes dull, nothing else happens.
+  song: {
+    walk: out(), stops: { 's0-no2': ['end', 20, 50], ...END_STOP },
+    has: ['s1-walk', 's2-no'], not: ['r-hjalp'],
+    lamps: 0, memory: { svarade: false, misstanke: false },
+  },
+  // Home and standing once she is back on the gravel: the last time she
+  // asks, a walker who already stood there has not answered.
   home: {
-    walk: out(), stops: { 's6-1': ['start', 0, Infinity] },
-    has: ['s6-never-1', 's6-never-no', 's6-other'], not: ['s6-never-yes-1', 's6-yes'],
+    walk: out(), stops: { 's4-ok': ['end', 0, Infinity] },
+    has: ['s4-never-1', 's4-never-no'], not: ['s4-never-yes-1', 's4-yes'],
     lamps: 0, memory: { svarade: false, misstanke: false },
   },
   // Walks on when she asks at the tree, and stops a moment later, while she
   // is still out there.
   after: {
-    walk: out(), stops: { 's3-no': ['end', 3, 15], ...END_STOP },
-    has: ['s3-ask', 's3-no', 'x-avvikelse', 's3-lamp-1'], not: ['s3-lamp-2', 's6-yes'],
+    walk: out(), stops: { 's2-no': ['end', 3, 15], ...END_STOP },
+    has: ['s2-ask', 's2-no', 'x-avvikelse', 's2-lamp-1'], not: ['s2-lamp-2', 's4-yes'],
     lamps: 1, memory: { svarade: false, misstanke: false },
   },
   // Stops a moment before she would ask at the tree. The stop shows as the
   // lamp before she has asked for anything, so it is not her answer.
   brink: {
-    walk: out(), stops: { 's3-6': ['start', 4.5, 22], ...END_STOP },
-    has: ['s3-6', 'x-avvikelse', 's3-lamp-1'], not: ['s3-ask', 's3-no', 's3-lamp-2', 's6-yes'],
+    walk: out(), stops: { 's2-6': ['start', 4.5, 22], ...END_STOP },
+    has: ['s2-6', 'x-avvikelse', 's2-lamp-1'], not: ['s2-ask', 's2-no', 's2-lamp-2', 's4-yes'],
     lamps: 1, cuts: 0, memory: { svarade: false, misstanke: false },
   },
   // A stop that shows in the moment between her line and her hand on the
   // trunk: after the lamp she still reaches out and touches it.
   pat: {
-    walk: out(), stops: { 's3-5': ['start', 4.5, 25], ...END_STOP },
-    has: ['s3-5', 's3-6', 'x-avvikelse', 's3-lamp-1'], not: ['s3-ask', 's3-lamp-2'],
+    walk: out(), stops: { 's2-5': ['start', 4.5, 25], ...END_STOP },
+    has: ['s2-5', 's2-6', 'x-avvikelse', 's2-lamp-1'], not: ['s2-ask', 's2-lamp-2'],
     lamps: 1, cuts: 0, memory: { svarade: false, misstanke: false },
   },
   // Sits down on a bench for twelve minutes while she sits under the tree,
   // on the field phone: the feet say so, and the story waits. The snäcka
   // asks three times and then lets her be.
   sits: {
-    walk: t => ({ ...out()(t), ...FIELD_2, handling: true }), stops: { 's4-1': ['start', 8, 8 + 12 * 60], ...END_STOP },
-    has: ['r-vilar', 's5-hon-walk'], twice: ['s4-skog'], reserves: 3,
+    walk: t => ({ ...out()(t), ...FIELD_2, handling: true }), stops: { 's3-1': ['start', 8, 8 + 12 * 60], ...END_STOP },
+    has: ['r-vilar', 's4-ok'], twice: ['s3-skog'], reserves: 3,
     lamps: 0, memory: { svarade: false, misstanke: false },
   },
-  // Stands so long that scene 5 stops waiting. Someone who stood there all
+  // Stands so long that scene 4 stops waiting. Someone who stood there all
   // along has not stopped: no lamp, and no suspicion for episode 2.
   gone: {
-    walk: t => ({ ...out()(t), ...FIELD_2, handling: true }), stops: { 's4-1': ['start', 8, 8 + 21 * 60], ...END_STOP },
-    has: ['s5-hon-walk'], not: ['s5-lamp-sten'], twice: ['s4-skog'], reserves: 3, logs: ['scene 5: the walker stands'],
+    walk: t => ({ ...out()(t), ...FIELD_2, handling: true }), stops: { 's3-1': ['start', 8, 8 + 21 * 60], ...END_STOP },
+    has: ['s4-ok'], not: ['s4-lamp-2'], twice: ['s3-skog'], reserves: 3, logs: ['scene 4: the walker stands'],
     lamps: 0, memory: { svarade: false, misstanke: false },
   },
   // The same long stand on GPS alone, which cannot be trusted on a stop:
-  // scene 5 gives up after the short wait, and still lights no lamp.
+  // scene 4 gives up after the short wait, and still lights no lamp.
   stalls: {
-    walk: out(), stops: { 's4-1': ['start', 8, 8 + 12 * 60], ...END_STOP },
-    has: ['r-vilar', 's5-hon-walk'], not: ['s5-lamp-sten'], twice: ['s4-skog'], logs: ['scene 5: the walker stands'],
+    walk: out(), stops: { 's3-1': ['start', 8, 8 + 12 * 60], ...END_STOP },
+    has: ['r-vilar', 's4-ok'], not: ['s4-lamp-2'], twice: ['s3-skog'], logs: ['scene 4: the walker stands'],
     lamps: 0, memory: { svarade: false, misstanke: false },
   },
   // Waits at a kerb through her question and shifts their weight just after
-  // it: the phone sees a new stop, but nobody walked, so it is no answer.
-  // Whether the phone sees it hangs on the bumps, hence the seed: with this
-  // one the stop was taken as her answer before `ask` asked for steps first.
+  // it: the phone may see a new stop, but nobody walked, so it is no answer.
   shuffle: {
     seed: 3,
-    walk: t => ({ ...out()(t), ...FIELD_2, handling: true }), stops: { 's2-1': [['start', 5, 24], ['start', 25.4, 50]], ...END_STOP },
-    has: ['s2-no'], not: ['s2-yes-1', 'r-hjalp'],
+    walk: t => ({ ...out()(t), ...FIELD_2, handling: true }), stops: { 's0-ask1': [['start', 3, 13.7], ['start', 15.1, 40]], ...END_STOP },
+    has: ['s0-no1'], not: ['s0-yes1-a', 'r-hjalp'],
+    lamps: 0, memory: { svarade: false, misstanke: false },
+  },
+  // Terrible GPS all the way (80 m), steps on: the contact is capped at half,
+  // and scene 1 must still come straight after the credits.
+  fog: {
+    walk: t => ({ ...out()(t), accuracy: 80, steps: true }), stops: END_STOP,
+    has: ['s1-walk', 's2-no'], afterCredits: 15,
     lamps: 0, memory: { svarade: false, misstanke: false },
   },
   // The walker who stops when asked, on the field phone: a fix every six
   // seconds, a wandering speed, and the feet deciding moving or still.
   field: {
-    walk: t => ({ ...out()(t), ...FIELD_2, handling: true }), stops: { 's2-1': ANSWER, 's3-ask': ANSWER, ...END_STOP },
-    has: ['s2-yes-1', 'x-avvikelse', 's3-lamp-1', 's6-yes'], not: ['s3-lamp-2', 's5-lamp-sten'],
+    walk: t => ({ ...out()(t), ...FIELD_2, handling: true }), stops: { 's0-ask1': ANSWER, 's0-yes1-b': ANSWER, 's2-ask': ANSWER, ...END_STOP },
+    has: ['s0-yes1-a', 's0-yes2', 'x-avvikelse', 's2-lamp-1', 's4-yes'], not: ['s2-lamp-2', 's4-lamp-2'],
     lamps: 1, memory: { svarade: true, misstanke: false },
   },
 };
@@ -458,7 +478,7 @@ const EPISODE_WORLDS = [
 for (const w of EPISODE_WORLDS) {
   EPISODE_WALKERS[`world-${w.landmark}`] = {
     walk: out(), stops: END_STOP, world: w,
-    has: [`s4-${w.light}`, w.rain ? 's4-rain' : 's4-dry', `s4-${w.landmark}`],
+    has: [`s3-${w.light}`, w.rain ? 's3-rain' : 's3-dry', `s3-${w.landmark}`],
     lamps: 0, memory: { svarade: false, misstanke: false },
   };
 }
@@ -488,6 +508,7 @@ function simulateEpisode(name) {
   const stops = [];           // {from, to}
   let memory = null;
   let cuts = 0;
+  const credited = [];        // when the credits started
   let current = null;
   let t = 0;
   let lat = 59.38, lon = 13.5;
@@ -529,9 +550,14 @@ function simulateEpisode(name) {
     seconds: id => E_SECONDS[id] || 0,
     cue: (id, word) => ((EPISODE.cues || {})[id] || {})[word] || 0,
     remember: facts => { memory = { ...facts }; },
+    credits() {
+      log.push(`${fmt(t)}  ▶ förtexter`);
+      credited.push(t);
+      return waiter.until(() => false, { timeout: E_CREDITS }).then(() => {});
+    },
     side: {
       walk: call('walk'), other: call('other'), hand: call('hand'), tone: call('tone'),
-      bell: call('bell'), lift: call('lift'), pin: call('pin'), fade: call('fade'),
+      bell: call('bell'), lift: call('lift'), pin: call('pin'), fade: call('fade'), breath: call('breath'),
       say: (id, kind) => sound(id, ` (her side, ${kind})`).done,
     },
   };
@@ -575,12 +601,12 @@ function simulateEpisode(name) {
     }
     await Promise.race([done, Promise.resolve()]);
     Math.random = random;
-    return { log, ended, t, played, sideCalls, memory, cuts };
+    return { log, ended, t, played, sideCalls, memory, cuts, credited };
   })();
 }
 
-const E_ORDER = ['scene 1', 'scene 2', 'scene 3', 'scene 3: she stands still', 'scene 3: she counts',
-  'scene 3: off the gravel', 'scene 4', 'scene 5', 'scene 6', 'end'];
+const E_ORDER = ['scene 0: does the walker see her', 'credits', 'scene 1', 'scene 2', 'scene 2: she stands still',
+  'scene 2: she counts', 'scene 2: off the gravel', 'scene 3', 'scene 4', 'scene 4: the end', 'end'];
 const logTime = line => { const [m, s] = line.trim().split(/\s+/)[0].split(':').map(Number); return m * 60 + s; };
 
 function episodeProblems(name, run) {
@@ -608,17 +634,35 @@ function episodeProblems(name, run) {
   for (const want of p.logs || []) if (!log.some(l => l.includes(want))) problems.push(`the log never says "${want}"`);
   if (p.cuts !== undefined && run.cuts !== p.cuts) problems.push(`${run.cuts} lines cut short, wanted ${p.cuts}`);
 
-  // The lamp only between her stepping off the gravel and scene 4, and in
-  // scene 5. Whatever the profile expects, a lamp anywhere else is wrong.
-  const off = at('scene 3: off the gravel'), s4 = at('scene 4'), s5 = at('scene 5'), s6 = at('scene 6');
+  // The lamp only between her stepping off the gravel and scene 3, and in
+  // scene 4 before she is back on the gravel. Whatever the profile expects,
+  // a lamp anywhere else is wrong.
+  const off = at('scene 2: off the gravel'), s3 = at('scene 3'), s4 = at('scene 4'), s4end = at('scene 4: the end');
   for (const x of played.filter(x => x.id === 'x-avvikelse')) {
-    const ok = (off !== null && x.t >= off && (s4 === null || x.t <= s4)) || (s5 !== null && x.t >= s5 && (s6 === null || x.t <= s6));
+    const ok = (off !== null && x.t >= off && (s3 === null || x.t <= s3)) || (s4 !== null && x.t >= s4 && (s4end === null || x.t <= s4end));
     if (!ok) problems.push(`the lamp lit at ${fmt2(x.t)}, where a stop is harmless`);
+  }
+
+  // The credits once, after scene 0's last line and before scene 1, and
+  // nothing of hers while the song plays.
+  const scene1 = at('scene 1');
+  if (run.credited.length !== 1) problems.push(`the credits played ${run.credited.length} times`);
+  else {
+    const c = run.credited[0];
+    // The log is read back in whole seconds, so a second's grace.
+    if (scene1 !== null && scene1 < c + E_CREDITS - 1) problems.push(`scene 1 began at ${fmt2(scene1)}, inside the credits`);
+    const over = played.find(x => x.t > c && x.t < c + E_CREDITS);
+    if (over) problems.push(`${over.id} plays over the credits`);
+    if (p.afterCredits !== undefined && scene1 !== null && scene1 - (c + E_CREDITS) > p.afterCredits) {
+      problems.push(`scene 1 came ${fmt2(scene1 - c - E_CREDITS)} after the credits`);
+    }
+    const s0last = played.filter(x => x.id.startsWith('s0-')).pop();
+    if (!s0last || s0last.t > c) problems.push('the credits came before scene 0 was over');
   }
 
   // From her last step to "trettio": half a minute, on the last count she made.
   const stood = log.filter(l => l.includes('she stands still')).map(logTime).pop();
-  const counting = played.filter(x => x.id === 's3-3').pop();
+  const counting = played.filter(x => x.id === 's2-3').pop();
   if (stood === undefined || !counting) problems.push('she never counted');
   else {
     const half = counting.t + E_CUE - stood;
@@ -626,16 +670,20 @@ function episodeProblems(name, run) {
   }
 
   // Her side. The tone never left on, and after the lamp at the tree she
-  // does not take another step until scene 5: that is what makes a second
+  // does not take another step until scene 4: that is what makes a second
   // stop harmless there.
   let tone = false;
   for (const c of sideCalls) if (c.what === 'tone') tone = !!c.args[0];
   if (tone) problems.push('the lamp tone was left on');
-  const lamp3 = at('scene 3: lamp');
-  if (lamp3 !== null && s5 !== null) {
-    const step = sideCalls.find(c => c.what === 'walk' && c.args[0] && c.t > lamp3 && c.t < s5);
-    if (step) problems.push(`she walks (${step.args[0]}) at ${fmt2(step.t)}, after the lamp and before scene 5`);
+  const lamp2 = at('scene 2: lamp');
+  if (lamp2 !== null && s4 !== null) {
+    const step = sideCalls.find(c => c.what === 'walk' && c.args[0] && c.t > lamp2 && c.t < s4);
+    if (step) problems.push(`she walks (${step.args[0]}) at ${fmt2(step.t)}, after the lamp and before scene 4`);
   }
+  // The shift's steps are taken away before the end, and the breath comes once.
+  const others = sideCalls.filter(c => c.what === 'other');
+  if (others.length && others[others.length - 1].args[0] !== null) problems.push('the other steps are left walking');
+  if (sideCalls.filter(c => c.what === 'breath').length !== 1) problems.push(`the breath at the end ${sideCalls.filter(c => c.what === 'breath').length} times`);
   const stoodCall = sideCalls.find(c => c.what === 'walk' && c.args[0] === null);
   if (!stoodCall) problems.push('her steps never stop');
   if (!sideCalls.some(c => c.what === 'bell')) problems.push('no bell');
@@ -663,7 +711,12 @@ function coverageProblems(heard) {
     if (!existsSync(join(ROOT, 'audio/glimt/side', sfx.file))) problems.push(`her side: ${sfx.file} is missing`);
     if (sfx.steps && !(sfx.slices && sfx.slices.length >= 4)) problems.push(`her side: ${name} is not cut into steps`);
   }
-  if (!(E_CUE > 0)) problems.push('no measured cue for "trettio" in s3-3');
+  if (!(E_CUE > 0)) problems.push('no measured cue for "trettio" in s2-3');
+  for (const id of ['s0-ask1', 's0-yes1-b', 's0-no1']) {
+    if (!(((EPISODE.cues || {})[id] || {})['last:nu'] > 0)) problems.push(`no measured cue for the last "nu" in ${id}`);
+  }
+  if (!(E_CREDITS > 60)) problems.push('the credits have no length');
+  if (!existsSync(join(ROOT, 'audio/glimt/music', EPISODE.credits.file))) problems.push('the credits stand-in is missing');
   return problems;
 }
 

@@ -47,8 +47,9 @@ const FIL = {
   mekaniker: las('stories/glimt/mekaniker.md'),
 };
 const SLAG = { 1: 'episod', 2: 'episod', varld: 'fri', mekaniker: 'fri' };
-// Episode 1 as it was recorded (the text episod-1.json was made from).
-const INSPELAD = execFileSync('git', ['-C', REPO, 'show', 'ece9bb0:stories/glimt/episod-1.md'], { encoding: 'utf8' });
+// Episode 1 as it was recorded (the text episod-1.json was made from): since
+// the new form of 2026-10-17 that is the file as it stands.
+const INSPELAD = FIL[1];
 const JSON1 = las('stories/glimt/episod-1.json');
 const TIDER = JSON.parse(las('rummet/ljudtider.json'));
 
@@ -84,7 +85,7 @@ for (const [namn, text] of Object.entries(FIL)) {
 {
   const d = Dk.tolka(FIL[1], 'episod');
   const typer = (t) => d.paras.filter((p) => p.typ === t);
-  ok(typer('scen').length === 6 && typer('mekanik').length === 6, 'episode 1: six scenes, six Mekanik paragraphs');
+  ok(typer('scen').length === 5 && typer('mekanik').length === 5, 'episode 1: five scenes, five Mekanik paragraphs');
   ok(typer('variant').every((p) => p.attrs.etikett) && typer('variant').length === 15, 'episode 1: fifteen variants, each with its label');
   const t = d.paras[0];
   ok(t.typ === 'rubrik' && t.attrs.prefix === 'Glimt, episod 1: ' && !t.text.startsWith('Glimt'), 'the title is written without its "Glimt, episod 1:" prefix, which stays');
@@ -173,10 +174,10 @@ const KAT = K.tolkaKatalog(FIL.mekaniker);
   const v = K.varianter(KAT).map((x) => x.etikett).sort().join(',');
   ok(v === ['bro', 'berg', 'gång', 'kyrkogård', 'ljust', 'löpning', 'mörkt', 'regn', 'skog', 'torrt', 'vatten'].sort().join(','), 'the variant labels come from the catalogue');
   // Hand count of the chips (2026-10-08): the catalogue's names in the Mekanik paragraphs.
-  //   episode 1: Kontakten at lines 29, 44, 60, 77, 130; lampan at 77, 156 = 7
+  //   episode 1 (2026-10-17): Kontakten at lines 29, 73, 117, 170; lampan at 117, 196 = 6
   //   episode 2: Kontakten at 33, 51 (twice), 121; fortare at 121, 283 (twice); lampan at 89 = 8
   const brickor = (t) => Dk.tolka(t, 'episod').paras.filter((p) => p.typ === 'mekanik').flatMap((p) => K.hittaNamn(p.text, KAT).map((h) => `${p.rad + 1}:${h.mekanik.namn}`));
-  ok(brickor(FIL[1]).join(' ') === '29:Kontakten 44:Kontakten 60:Kontakten 77:Kontakten 77:Farligt stopp (lampan) 130:Kontakten 156:Farligt stopp (lampan)', 'episode 1: the chips are exactly the hand count');
+  ok(brickor(FIL[1]).join(' ') === '29:Kontakten 73:Kontakten 117:Kontakten 117:Farligt stopp (lampan) 170:Kontakten 196:Farligt stopp (lampan)', 'episode 1: the chips are exactly the hand count');
   ok(brickor(FIL[2]).join(' ') === '33:Kontakten 51:Kontakten 51:Kontakten 89:Farligt stopp (lampan) 121:Kontakten 121:Fortare 283:Fortare 283:Fortare', 'episode 2: the chips are exactly the hand count');
   ok(!K.hittaNamn('vandraren går i sin egen takt och hittar hem', KAT).some((h) => h.mekanik.namn === 'Takten'), 'no chip for "takt" (not the name Takten)');
   ok(K.hittaNamn('Hon knackar två gånger', KAT).map((h) => h.mekanik.namn).join() === 'Hon knackar', 'the longest name wins');
@@ -198,7 +199,7 @@ const KAT = K.tolkaKatalog(FIL.mekaniker);
   const talade = d.paras.filter((p) => ['replik', 'variant', 'regi'].includes(p.typ));
   const lagen = { tyst: 0, inspelad: 0, ej: 0 };
   for (const p of talade) lagen[L.ljudFor(kropp(p), ljud).lage]++;
-  ok(lagen.ej === 0 && lagen.inspelad >= 70, `episode 1 as recorded: every spoken paragraph has its recording (${lagen.inspelad} recorded, ${lagen.tyst} silent)`);
+  ok(lagen.ej === 0 && lagen.inspelad >= 50, `episode 1 as recorded: every spoken paragraph has its recording (${lagen.inspelad} recorded, ${lagen.tyst} silent)`);
   const p = talade.find((x) => x.text.startsWith('Jag vet inte vem du är.'));
   ok(L.ljudFor(kropp({ ...p, text: p.text.replace('vem du är', 'vad du är') }), ljud).lage === 'ej', 'change one word and it is not recorded any more');
 }
@@ -388,7 +389,7 @@ const replik = (ed, borjan) => ed.hitta((p) => p.typ === 'replik' && p.text.star
   const h = await oppna(adapterFor(m, 'henric'), '1');
   const l = await oppna(adapterFor(m, 'liv'), '1');
   const ph = replik(h.ed, 'Jag vet inte vem du är');
-  const pl = replik(l.ed, 'Fortsätt gå');
+  const pl = replik(l.ed, 'Men jag måste få veta');
   h.ed.skriv(ph.id, 'Henrics rad.');
   l.ed.skriv(pl.id, 'Livs rad.');
   await h.d.spara();
@@ -421,7 +422,7 @@ const replik = (ed, borjan) => ed.hitta((p) => p.typ === 'replik' && p.text.star
   const p = replik(h.ed, 'Jag vet inte vem du är');
   h.ed.skriv(p.id, 'I rummet.');
   const raa = rader(FIL[1]);
-  const i = raa.findIndex((r) => r.startsWith('> Fortsätt gå'));
+  const i = raa.findIndex((r) => r.startsWith('> Men jag måste få veta'));
   raa[i] = '> Ändrad i filpanelen.';
   utifran(m, 'manus:1', raa.join('\n'));
   await h.d.spara();
@@ -454,7 +455,7 @@ const replik = (ed, borjan) => ed.hitta((p) => p.typ === 'replik' && p.text.star
   a.fore = async (plats) => {
     if (plats !== 'manus:1' || gang++) return;
     const raa = rader(text(m, 'manus:1'));
-    raa[raa.findIndex((r) => r.startsWith('> Fortsätt gå'))] = '> Emellan.';
+    raa[raa.findIndex((r) => r.startsWith('> Men jag måste få veta'))] = '> Emellan.';
     utifran(m, 'manus:1', raa.join('\n'));
   };
   await h.d.spara();
@@ -474,7 +475,7 @@ const replik = (ed, borjan) => ed.hitta((p) => p.typ === 'replik' && p.text.star
   a.efterLas = async (plats) => {
     if (plats !== 'manus:1' || gang++) return;
     const raa = rader(text(m, 'manus:1'));
-    raa[raa.findIndex((r) => r.startsWith('> Fortsätt gå'))] = '> Strax efter läsningen.';
+    raa[raa.findIndex((r) => r.startsWith('> Men jag måste få veta'))] = '> Strax efter läsningen.';
     utifran(m, 'manus:1', raa.join('\n'));
   };
   await h.d.spara();
@@ -489,7 +490,7 @@ const replik = (ed, borjan) => ed.hitta((p) => p.typ === 'replik' && p.text.star
   const m = minne({ 'manus:1': FIL[1] });
   const h = await oppna(adapterFor(m), '1');
   // A first save, so the room's notes know the paragraphs by name.
-  h.ed.skriv(replik(h.ed, 'Fortsätt gå').id, 'Fortsätt gå, du.');
+  h.ed.skriv(replik(h.ed, 'Men jag måste få veta').id, 'Men jag måste få veta, du.');
   await h.d.spara();
   const p = replik(h.ed, 'Jag vet inte vem du är');
   h.ed.skriv(p.id, 'Skrivet här, inte sparat.');
@@ -578,7 +579,7 @@ const replik = (ed, borjan) => ed.hitta((p) => p.typ === 'replik' && p.text.star
   h.d.andrat();
   ok(!text(m, 'manus:1').includes('Inte sparad än.'), 'typed, not yet saved');
   const raa = rader(FIL[1]);
-  raa[raa.findIndex((r) => r.startsWith('> Fortsätt gå'))] = '> Medan fönstret var stängt.';
+  raa[raa.findIndex((r) => r.startsWith('> Men jag måste få veta'))] = '> Medan fönstret var stängt.';
   utifran(m, 'manus:1', raa.join('\n'));
   const h2 = await oppna(a, '1', { lager: lg });
   ok(h2.ed.hitta((x) => x.text === 'Inte sparad än.'), 'after a reload the unsaved text is there');
@@ -626,19 +627,19 @@ const replik = (ed, borjan) => ed.hitta((p) => p.typ === 'replik' && p.text.star
   const h = await oppna(adapterFor(m, 'henric'), '1');
   const l = await oppna(adapterFor(m, 'liv'), '1');
   const a = replik(h.ed, 'Jag vet inte vem du är');
-  const b = replik(h.ed, 'Fortsätt gå');
+  const b = replik(h.ed, 'Men jag måste få veta');
   h.ed.flytta(b.id, a.id);
   await h.d.spara();
   const flyttad = text(m, 'manus:1');
-  ok(flyttad.indexOf('> Fortsätt gå') < flyttad.indexOf('> Jag vet inte vem du är') && flyttad !== FIL[1], 'a paragraph moved here is saved in its new place');
+  ok(flyttad.indexOf('> Men jag måste få veta') < flyttad.indexOf('> Jag vet inte vem du är') && flyttad !== FIL[1], 'a paragraph moved here is saved in its new place');
   await l.d.hamta();
   const ordn = l.ed.ordning();
   ok(ordn.indexOf(b.id) < ordn.indexOf(a.id), 'the other window takes the new order when it reads the file');
   ok(!l.d.harOsparat(), 'and has nothing unsaved because of it');
-  l.ed.skriv(replik(l.ed, 'Fortsätt gå').id, 'Fortsätt gå, sa Liv.');
+  l.ed.skriv(replik(l.ed, 'Men jag måste få veta').id, 'Men jag måste få veta, sa Liv.');
   await l.d.spara();
   const t = text(m, 'manus:1');
-  ok(t.indexOf('> Fortsätt gå, sa Liv.') >= 0 && t.indexOf('> Fortsätt gå, sa Liv.') < t.indexOf('> Jag vet inte vem du är'), 'its next save keeps the order the other one made');
+  ok(t.indexOf('> Men jag måste få veta, sa Liv.') >= 0 && t.indexOf('> Men jag måste få veta, sa Liv.') < t.indexOf('> Jag vet inte vem du är'), 'its next save keeps the order the other one made');
   ok(Dk.skriv(Dk.tolka(t, 'episod')) === t, 'and the file still reads back as itself');
 }
 
@@ -647,7 +648,7 @@ const replik = (ed, borjan) => ed.hitta((p) => p.typ === 'replik' && p.text.star
   const m = minne({ 'manus:1': FIL[1] });
   const h = await oppna(adapterFor(m), '1');
   const a = replik(h.ed, 'Jag vet inte vem du är');
-  const b = replik(h.ed, 'Fortsätt gå');
+  const b = replik(h.ed, 'Men jag måste få veta');
   h.ed.flytta(b.id, a.id);
   const raa = rader(FIL[1]);
   raa[raa.indexOf('> Så. Nu är du tydlig.')] = '> Ändrad utifrån.';
@@ -657,7 +658,7 @@ const replik = (ed, borjan) => ed.hitta((p) => p.typ === 'replik' && p.text.star
   ok(o.indexOf(b.id) < o.indexOf(a.id) && h.ed.hitta((x) => x.text === 'Ändrad utifrån.'), 'a move made here stands while the other change comes in');
   await h.d.spara();
   const t = text(m, 'manus:1');
-  ok(t.indexOf('> Fortsätt gå') < t.indexOf('> Jag vet inte vem du är') && t.includes('> Ändrad utifrån.'), 'and both are in the file after the save');
+  ok(t.indexOf('> Men jag måste få veta') < t.indexOf('> Jag vet inte vem du är') && t.includes('> Ändrad utifrån.'), 'and both are in the file after the save');
 }
 
 {
@@ -665,7 +666,7 @@ const replik = (ed, borjan) => ed.hitta((p) => p.typ === 'replik' && p.text.star
   const m = minne({ 'manus:1': FIL[1] });
   const a = adapterFor(m);
   const h = await oppna(a, '1');
-  h.ed.skriv(replik(h.ed, 'Fortsätt gå').id, 'Fortsätt gå, först.');
+  h.ed.skriv(replik(h.ed, 'Men jag måste få veta').id, 'Men jag måste få veta, först.');
   await h.d.spara();
   const p = replik(h.ed, 'Jag vet inte vem du är');
   let en = true;
@@ -776,7 +777,7 @@ async function provserver(rot) {
       if (forsta && o.method === 'POST' && JSON.parse(o.body).path.endsWith('episod-1.md')) {
         forsta = false;
         const raa = readFileSync(filen, 'utf8').split('\n');
-        raa[raa.findIndex((r) => r.startsWith('> Fortsätt gå'))] = '> Ändrad i filpanelen.';
+        raa[raa.findIndex((r) => r.startsWith('> Men jag måste få veta'))] = '> Ändrad i filpanelen.';
         writeFileSync(filen, raa.join('\n'));
         const s = statSync(filen);
         utimesSync(filen, s.atime, new Date(s.mtimeMs + 2000));

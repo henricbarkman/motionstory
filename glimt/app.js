@@ -19,9 +19,13 @@ import { Memory, drawWorld, KEY_NAMES } from './memory.js';
 
 // The version the start screen shows, the same number as the service
 // worker's cache. Bump both together.
-const APP_VERSION = 31;
+const APP_VERSION = 32;
 
 const params = new URLSearchParams(location.search);
+// ?klarhet=0.5 overrides how clear the line is (0 the whole radio, 1 clean),
+// so a walk can try another level without a new build.
+const KLARHET_URL = params.has('klarhet') && Number.isFinite(parseFloat(params.get('klarhet')))
+  ? Math.min(1, Math.max(0, parseFloat(params.get('klarhet')))) : null;
 const SIM = params.has('sim');
 // A test walk wins over everything else the link says.
 const PROV_ID = Object.hasOwn(PROV, params.get('prov') || '') ? params.get('prov') : null;
@@ -84,12 +88,15 @@ const CHAPTERS = {
     url: '../stories/glimt/episod-1.json',
     voices: '../audio/glimt/vega/glimt-e1',
     side: '../audio/glimt/side',
-    first: 's0',
+    first: 's0-1',
     run: runEpisode1,
-    subtitle: 'Episod 1. Ungefär tolv minuter. Gå eller spring. Hon hörs när du går.',
+    // The opening credits after scene 0: a song down the line. The public
+    // build has a stand-in of the same length; the song itself is never in
+    // this repo.
+    credits: '../audio/glimt/music/fortexter.opus',
+    subtitle: 'Episod 1. Ungefär tolv minuter, med förtexter. Gå eller spring. Hon hörs när du går.',
     scenes: {
-      s0: 'Start', s1: 'Slingan', s2: 'Frågan', s3: 'Trädet',
-      s4: 'Himlen', s5: 'Någon kommer', s6: 'Klockan',
+      s0: 'Start', s1: 'Slingan', s2: 'Trädet', s3: 'Himlen', s4: 'Klockan',
     },
   },
   // Only reached by a ?prov= link; there is no radio for it.
@@ -169,6 +176,7 @@ let lastDoubleSeen = -Infinity, doublesLogged = 0;
 // station's line is playing; it waits its turn instead of talking over it.
 let voiceChain = Promise.resolve();
 let bedBuf = null, riserBuf = null;
+let creditsRaw = null;          // a promise of the credits' bytes, fetched with the chapter
 let walk, waiter, world;
 let memory = null;
 // A walk shorter than this is not remembered: opening the app and pressing
@@ -268,6 +276,7 @@ async function preload() {
 
     // The rest streams in behind the start button.
     lib.loadAll(Object.keys(chapter.lines));
+    creditsRaw = def.credits ? mixer.fetchBuffer(def.credits).catch(() => null) : null;
 
     const notes = [];
     if (!bedBuf) notes.push('ingen bädd');
@@ -361,6 +370,9 @@ async function start() {
     : `kapitel ${chapterNo}, variant ${variant.toUpperCase()}`;
   log(`start, ${what}${SIM ? ', simulerad' : ''}`);
   log(`webbläsare: ${BROWSER}`);
+  if (!def.lab && (KLARHET_URL !== null || chapter.klarhet !== undefined)) {
+    log(`linjens klarhet ${KLARHET_URL ?? chapter.klarhet}${KLARHET_URL !== null ? ' (från länken)' : ''}`);
+  }
   clearTimeout(gpsCheckTimer);
   gpsTrouble = null;
   if (!SIM) log(`gps före start: ${gpsStatus()}`);
@@ -428,7 +440,12 @@ async function start() {
     // leave the scene's name standing.
     if (!def.lab && (def.scenes[id.slice(0, 2)] || !def.side)) $('scene').textContent = def.scenes[id.slice(0, 2)] || id;
     log(`▶ ${id}`);
-    const why = await mixer.playVoice(buf, { clear: contact ? false : clear || !!def.lab, at });
+    const aside = (chapter.asides || []).includes(id);
+    // The line's clarity: the link, else the scene's, else the episode's,
+    // else clean. The lab is always clean.
+    mixer.setKlarhet(def.lab ? 1
+      : KLARHET_URL ?? (chapter.klarhetPerScen || {})[id.slice(0, 2)] ?? chapter.klarhet ?? 1);
+    const why = await mixer.playVoice(buf, { clear: contact ? false : clear || !!def.lab, aside, at });
     if (why === 'timeout') log(`ljud: ${id} nådde aldrig slutet, går vidare`);
   }
 
@@ -454,6 +471,10 @@ async function start() {
     },
   };
 
+  // The credits' song, decoded while scene 0 plays so it starts on time.
+  const creditsBuf = (creditsRaw || Promise.resolve(null)).then(raw => raw
+    ? mixer.decode(raw).catch(err => { log('förtexter: ' + err.message); return null; }) : null);
+
   if (def.side) {
     // A line on her side: the flat voice in her ear, the woman beside her,
     // the other voice. Without her side it comes down the line instead, so
@@ -472,8 +493,9 @@ async function start() {
     Object.assign(ctx, {
       side: {
         walk: (surface, o) => her.walk(surface, o),
-        other: (where, seconds) => her.other(where, seconds),
+        other: (where, seconds, o) => her.other(where, seconds, o),
         hand: () => her.hand(),
+        breath: () => her.breath(),
         tone: on => her.tone(on),
         bell: () => her.bell(),
         lift: on => her.lift(on),
@@ -486,6 +508,29 @@ async function start() {
         },
       },
       cut() { cutSeq++; mixer.stopVoice(); },
+      // The opening credits: the whole song down the line, Vega silent. It
+      // goes dull when the walker stands still, as she does, and the bed
+      // steps out for it. It is not on her radio: the song sounds like the
+      // song. A song that could not be fetched is skipped.
+      credits() {
+        const turn = voiceChain.then(async () => {
+          if (finished) return;
+          const buf = await creditsBuf;
+          if (!buf) { log('förtexter saknas, går vidare'); return; }
+          if (finished) return;
+          $('scene').textContent = 'Förtexter';
+          log(`▶ förtexter (${Math.round(buf.duration)} s)`);
+          mixer.muteBed(true);
+          try {
+            const why = await mixer.playVoice(buf, { radio: false });
+            if (why === 'timeout') log('ljud: förtexterna nådde aldrig slutet, går vidare');
+          } finally {
+            mixer.muteBed(false);
+          }
+        });
+        voiceChain = turn.catch(() => {});
+        return turn;
+      },
       seconds: id => (chapter.seconds || {})[id] || 0,
       cue: (id, word) => ((chapter.cues || {})[id] || {})[word] || 0,
       remember(facts) {
@@ -500,7 +545,7 @@ async function start() {
         } catch (_) {}
         if (facts.klar) {
           log(`minne till episod 2: ${facts.svarade ? 'stannade när hon bad om det' : 'stannade aldrig på begäran'}, ` +
-            `${facts.misstanke ? 'lampan tändes när lojalisten kom' : 'ingen misstanke'}`);
+            `${facts.misstanke ? 'lampan tändes när skiftet kom' : 'ingen misstanke'}`);
         }
       },
     });

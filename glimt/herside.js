@@ -2,10 +2,12 @@
 //
 //   hum    : the loop's own drone, always there, low
 //   steps  : her walk on gravel or on soft ground, one recorded step at a time
-//   other  : someone else's steps, even and hard, coming closer and passing
+//   other  : someone else's steps, even and hard, coming closer and passing;
+//            or many, the shift far off round the bend
 //   hand   : her hand against the plastic tree
 //   tone   : the soft tone of the lamp, pulsing while she is seen
 //   bell   : the bell that closes the loop
+//   breath : one breath under the hum at the very end, not hers, no words
 //   say    : a voice on her side: the flat one in her ear, the woman beside
 //            her, the other voice at the very end
 //
@@ -23,12 +25,16 @@ const LIFTED = 0.7;     // under, but brought up: the count, someone coming
 const FORWARD = 1.0;    // the walker stands still
 const STEP_PEAK = 0.3;  // every step is levelled to this before the bus
 
-// Where the other woman is: [level, lowpass Hz, pan].
+// Where the other steps are: [level, lowpass Hz, pan]. 'distant' is the
+// shift coming round the bend: heard, never close.
 const OTHER = {
   far: [0.0001, 700, -0.7],
+  distant: [0.35, 1400, -0.5],
   near: [1.1, 7000, -0.15],
   past: [0.0001, 900, 0.7],
 };
+// Paces of the shift's walkers, so many steps never fall as one.
+const CROWD = [104, 112, 121];
 
 // `timers` is for the simulation, which runs this on a fake clock.
 export class HerSide {
@@ -235,9 +241,10 @@ export class HerSide {
     this._cut('hand', this.ctx.currentTime + 0.05, this.out, 1.4);
   }
 
-  // The other woman. 'near' and 'past' start her walking (if she is not) and
-  // move her there over `seconds`; 'stop' halts her where she is, 'go' sets
-  // her off again, null takes her away at once.
+  // The other steps. 'distant', 'near' and 'past' start them walking (if they
+  // are not) and move them there over `seconds`; 'stop' halts them where they
+  // are, 'go' sets them off again, null takes them away at once. `many`: the
+  // whole shift, several walkers out of step, instead of one woman.
   _otherChain() {
     const c = this.ctx;
     this.otherGain = c.createGain();
@@ -256,11 +263,13 @@ export class HerSide {
     }
   }
 
-  other(where, seconds = 4) {
+  other(where, seconds = 4, { many = false } = {}) {
     if (this.closed) return;
     const start = () => {
       if (this.otherWalk) return;
-      this.otherWalk = this._loop(() => 112, when => this._cut('harda', when, this.otherTone, 1));
+      const stops = (many ? CROWD : [112]).map(rate =>
+        this._loop(() => rate, when => this._cut('harda', when, this.otherTone, many ? 0.6 : 1)));
+      this.otherWalk = () => stops.forEach(stop => stop());
     };
     const halt = () => { if (this.otherWalk) { this.otherWalk(); this.otherWalk = null; } };
     if (where === null || where === 'stop') { halt(); return; }
@@ -347,6 +356,37 @@ export class HerSide {
       }
     }
     return (strikes - 1) * gap + 3.6;
+  }
+
+  // --- the breath ----------------------------------------------------------
+
+  // A second of breath under the hum, on the bus: noise through a band, in
+  // and out. It is not hers and it does not belong to the loop.
+  breath() {
+    if (this.closed) return;
+    const c = this.ctx;
+    const length = 1.3;
+    const buffer = c.createBuffer(1, Math.ceil(length * c.sampleRate), c.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    const src = c.createBufferSource();
+    src.buffer = buffer;
+    const band = c.createBiquadFilter();
+    band.type = 'bandpass';
+    band.frequency.value = 1100;
+    band.Q.value = 0.9;
+    const g = c.createGain();
+    const when = c.currentTime + 0.05;
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.linearRampToValueAtTime(0.22, when + 0.5);
+    g.gain.linearRampToValueAtTime(0.0001, when + length);
+    src.connect(band);
+    band.connect(g);
+    g.connect(this.out);
+    src.onended = () => this.sources.delete(src);
+    src.start(when);
+    src.stop(when + length);
+    this.sources.add(src);
   }
 
   // --- voices on her side --------------------------------------------------
@@ -464,6 +504,7 @@ export class SilentSide {
   other() {}
   tone() {}
   bell() { return 0; }
+  breath() {}
   say() { return Promise.resolve('silent'); }
   fade() {}
   close() {}

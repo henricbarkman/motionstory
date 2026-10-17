@@ -30,18 +30,47 @@ Varianter i hakparentes väljs av telefonen: `[ljust]`, `[mörkt]`, `[regn]`, `[
 
 > (brus. Hennes röst, låg, för sig själv)
 >
-> ...sju, åtta, nio, tio... nej. Nej, de där är inte mina.
+> (pratar för sig själv) Jag måste. Jag tror... Ok.
 >
-> (närmare) Det är någon som går. Inte här. Någon annanstans, men jag ser det. Som en skugga som rör sig i kanten av allt.
+> (ropar) Hallå! Vänta! 
 >
-> (rakt till dig, snabbt) Hallå? Nej, stanna inte! Gå, snälla, gå. Det är när du går jag ser dig.
+> (rakt till dig, snabbt) Eller nej, jag menar... Fortsätt, stanna inte. Du försvinner för mig när du är stilla. Jag försöker hänga på dig.
 >
-> Jag vet inte vem du är. Jag vet inte om du hör det här. Från dig hör jag ingenting, inte ett ljud. Jag ser bara att du går.
+> Jag vet inte vem du är. Jag vet inte om du hör det här. Från dig hör jag ingenting, inte ett ljud. Jag ser bara glimtar av dig. Och din värld.
 >
-> Fortsätt gå, om du kan. Jag pratar så länge.
+> Men jag måste få veta. Ser du mig? Hör du mig? Jag tror kanske det.
+>
+> Ok. Om du ser mig - stanna i ett par sekunder när jag säger nu, men fortsätt att gå sen, annars ser jag dig inte. Nu.
+>
+> (väntar)
+>
+> **Ja, vandraren stannar:**
+>
+> (för sig själv) Va? Det kan inte stämma. Den kan inte se mig. (rakt till dig) Du vill bara svara, va? Det är snällt. Men ok. Hör du mig? Om du hör mig, stanna i ett par sekunder när jag säger nu. Nu.
+>
+> **Nej, vandraren går vidare:**
+> Nä. Jag trodde nog inte det heller. Men ok. Hör du mig? Om du hör mig, stanna i ett par sekunder när jag säger nu. Nu.
+>
+> (båda svaren går vidare hit)
+>
+> (väntar)
+>
+> **Ja, vandraren stannar:**
+> (uppjagad) Ja! Ja! Du hör mig! Jag kan inte... Hur... Haha!
+>
+> Jag ser dig.
+>
+> Och du hör mig. Du hör mig. 
+>
+> **Nej, vandraren går vidare:**
+> Nej. Nej, det är klart. Du är steg, inte öron. (kort skratt som inte håller) Jag pratar ändå. Det har aldrig hindrat mig förut.
+>
+> (båda svaren går vidare hit)
+>
+> (Förtexterna: en hel HELD-låt med sång, som introt till ett spel. Vega är tyst så länge den spelar. Vilken låt väljer Henric.)
 
 ## 1. Slingan
-*Trigger: kontakten stark första gången, efter ungefär en minut i rörelse.*
+*Trigger: efter förtexterna, när kontakten är full. Stoppen är ofarliga här, hon går sin runda som vanligt.*
 
 > Så. Nu är du tydlig.
 >
@@ -52,31 +81,42 @@ Varianter i hakparentes väljs av telefonen: `[ljust]`, `[mörkt]`, `[regn]`, `[
 >
 > Jag går också. Det gör alla här, efter skiftet. Slingan runt, fyrtio minuter. Hälsofrämjande rörelse, det står på väggen. (torrt) Vi är väldigt friska.
 >
-> Vi har en snäcka i örat, allihop. Den räknar våra steg. Går man för sakta säger den till. Går man fel säger den till. Det enda den aldrig har sagt är att det går någon annan här inne.
+> Jag vet ingenting om dig. Får jag fråga? Stanna för ja, som förut. Det är ingen fara nu, jag går min runda som vanligt.
 >
-> Men det gör det. Något går här inne, och jag ser det. Fast du inte är här.
-
-## 2. Frågan
-*Trigger: kontakten stark, runt minut två och en halv. Hon väntar tjugo sekunder på ett stopp. Hon går sin runda som vanligt, så stoppet är ofarligt. Rösten blir dov medan vandraren står.*
-
-> Jag måste få veta en sak, annars blir jag tokig. Jag har pratat för mig själv här länge. Jag vet hur det känns när ingen lyssnar. Det här känns inte så.
->
-> Så. Om det finns någon där. Om du hör vad jag säger. Stanna. Bara ett par sekunder, sen går du igen.
+> Går du ofta så här?
 >
 > (väntar)
 >
 > **Ja, vandraren stannar:**
-> (dovt, långt borta) ...det står still. Du stannade.
->
-> (vandraren går igen, rösten tillbaka, andfådd fast hon inte har sprungit) Du stannade när jag bad om det. Du hör mig. Det finns en människa där ute som... okej. Okej. Jag behöver gå en bit utan att säga något nu.
+> Jag också. Varje kväll, samma runda. Det är nog därför jag såg dig. Jag har gått här så många gånger att jag märker när något är annorlunda.
 >
 > **Nej, vandraren går vidare:**
-> Nej. Nej, det är klart. Du är steg, inte öron. (kort skratt som inte håller) Jag pratar ändå. Det har aldrig hindrat mig förut.
+> Inte jag heller. Alltså, jag går varje kväll. Men inte så här. Inte för att jag vill.
+>
+> (båda svaren går vidare hit)
+>
+> (för sig själv) Fråga något riktigt nu. ...Ok.
+>
+> (rakt till dig) Är du ensam? Där du går, alltså.
+>
+> (väntar)
+>
+> **Ja, vandraren stannar:**
+> Jag också. Fast vi är fyrtio stycken på slingan. (kort skratt) Det är inte samma sak.
+>
+> **Nej, vandraren går vidare:**
+> Då går någon bredvid dig. (tyst en stund) Det låter fint. De hör ju inte mig. Det är bara du.
+>
+> (båda svaren går vidare hit)
+>
+> Här går alla samma runda, varje kväll. Och de vet hur vi går. Varje steg. Går man för sakta vet de det. Går man fel vet de det. Det enda de inte vet är att det går någon annan här inne.
+>
+> Men det gör det. (paus) Och nu har jag en idé. En dum idé.
 
-## 3. Trädet
-*Trigger: kontakten stark, runt minut fyra. Först står hon still medan vandraren går. Från att hon stannar tills hon säger trettio ska det gå en halv minut på riktigt. Sedan kliver hon av gruset, och från och med då tänder ett stopp lampan.*
+## 2. Trädet
+*Trigger: kontakten stark, runt minut fem. Först står hon still medan vandraren går. Från att hon stannar tills hon säger trettio ska det gå en halv minut på riktigt. Sedan kliver hon av gruset, och från och med då tänder ett stopp lampan.*
 
-> Jag har tänkt på en sak. Jag går här och pratar rakt ut med någon som inte finns, och snäckan säger ingenting. Den har inte sagt ett ord sen du kom.
+> Jag har tänkt på en sak. Jag går här och pratar rakt ut med någon som inte finns, och ingen har sagt något. Inte ett ord sen du kom.
 >
 > Så nu provar jag något dumt. Litet, men dumt. Fortsätt gå, om du kan.
 >
@@ -84,13 +124,13 @@ Varianter i hakparentes väljs av telefonen: `[ljust]`, `[mörkt]`, `[regn]`, `[
 >
 > Jag står still.
 >
-> (viskar) En halv minut utan steg, sen frågar den vad man håller på med. Jag räknar.
+> (viskar) En halv minut utan steg, sen undrar de vad man håller på med. Jag räknar.
 >
 > (hon räknar under andan. Slingans surr)
 >
 > ...tjugosju. Tjugoåtta. Tjugonio. Trettio. (paus) Trettioett. (paus) Trettiotvå.
 >
-> (häpen) Den frågar inte. Du går, och den tror att det är jag.
+> (häpen) De undrar inte. Du går, och de tror att det är jag.
 >
 > (skratt, det första riktiga) Fyra år har jag gått runt här, varenda kväll, åt samma håll. Och nu står jag som en stolpe. Det är det bästa jag har gjort sen jag kom hit.
 >
@@ -119,15 +159,15 @@ Varianter i hakparentes väljs av telefonen: `[ljust]`, `[mörkt]`, `[regn]`, `[
 >
 > Du går, alltså syns jag inte. ... Det låter som något man ristar i en vägg.
 >
-> [svarade inte i scen 2] Och du stannade när jag bad om det. (paus) Du hör mig.
+> [svarade nej i starten] Och du stannade när jag bad om det. (paus) Du hör mig.
 >
 > **Vandraren går vidare:**
 > Inte? (litet skratt) Nej. Det var kanske klokast. Jag vet inte vad som händer om du står still medan jag är här ute. Jag tror inte att jag vill veta det i kväll.
 
 *Stannar vandraren av sig själv medan hon går mellan träden spelas samma gren, från tonen och framåt.*
 
-## 4. Himlen
-*Trigger: kontakten stark, runt minut sex. Hon sitter still under trädet, så ett kort stopp är ofarligt här. Ljus och väder väljs vid start. Landmärket kommer ur kartan, inom några hundra meter från vandraren, annars slumpat. Första gången hon ser något mer än att du rör dig.*
+## 3. Himlen
+*Trigger: kontakten stark, runt minut åtta. Hon sitter still under trädet, så ett kort stopp är ofarligt här. Ljus och väder väljs vid start. Landmärket kommer ur kartan, inom några hundra meter från vandraren, annars slumpat. Första gången hon ser något mer än att du rör dig.*
 
 > Jag sitter ner nu. Under plastträdet. Och när jag sitter still ser jag mer av dig. Inte dig. Det runt omkring.
 >
@@ -152,8 +192,8 @@ Varianter i hakparentes väljs av telefonen: `[ljust]`, `[mörkt]`, `[regn]`, `[
 >
 > Det ser ut som där du är. Men det är inte där du är. (paus) Det får vara så ett tag till.
 
-## 5. Klockan
-*Trigger: runt minut åtta, när vandraren går. Hon sitter fortfarande under trädet och måste upp på gruset innan skiftet kommer runt kröken. Ett stopp tänder lampan tills hon är på gruset. Sedan går hon in, och resten är ofarligt. Slutet spelas på vandrarens eget stopp: när avståndet till starten är under ungefär 300 meter, efter minut tio, eller vid ett stopp längre än 30 sekunder efter minut nio. Rösten får tona bort.*
+## 4. Klockan
+*Trigger: runt minut nio och en halv, när vandraren går. Hon sitter fortfarande under trädet och måste upp på gruset innan skiftet kommer runt kröken. Ett stopp tänder lampan tills hon är på gruset. Sedan går hon in, och resten är ofarligt. Slutet spelas på vandrarens eget stopp: när avståndet till starten är under ungefär 300 meter, efter minut elva och en halv, eller vid ett stopp längre än 30 sekunder efter minut elva. Rösten får tona bort.*
 
 > (en klocka på hennes sida, dov) Där är klockan. Slingan stänger.
 >

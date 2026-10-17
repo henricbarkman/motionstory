@@ -9,7 +9,8 @@ For every line in the chapter JSON:
 
 Writes the measured lengths back into the JSON under "seconds", and the word
 offsets named under "cueWords" into "cues" (episode 1 needs to know when the
-word "trettio" falls inside the counting line). The tests read both.
+word "trettio" falls inside the counting line). A cue word written "last:nu"
+is the last "nu" of the line, not the first. The tests read both.
 
 Usage:
     python3 scripts/check_glimt_audio.py stories/glimt/episod-1.json [--listen [--cached]] [--only s3-3]
@@ -126,8 +127,12 @@ def main() -> int:
             if ratio < MATCH_FLOOR:
                 problems.append(f"{line_id}: heard {ratio:.2f} of the script: {result.get('text', '').strip()!r}")
             for cue_word in chapter.get("cueWords", {}).get(line_id, []):
-                hit = next((w for w in result.get("words", [])
-                            if w.get("type") == "word" and words(w.get("text", "")) == [cue_word]), None)
+                # "last:nu" is the last "nu" in the line: "när jag säger nu. Nu."
+                last = cue_word.startswith("last:")
+                bare = cue_word.removeprefix("last:")
+                hits = [w for w in result.get("words", [])
+                        if w.get("type") == "word" and words(w.get("text", "")) == [bare]]
+                hit = (hits[-1] if last else hits[0]) if hits else None
                 if hit is None:
                     problems.append(f"{line_id}: cue word {cue_word!r} not heard")
                 else:
