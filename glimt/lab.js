@@ -17,7 +17,8 @@
 //   position()     the newest decent fix, positionAgo(s) an older one
 //   knocksBetween(a, b), knockTimes(a, b), spikesBetween(a, b), strayDoubles(w)
 //                  what the knock detector heard
-//   jumpsBetween(a, b), fallsBetween(a, b), strayJumps(w)  what the jump reader read
+//   jumpsBetween(a, b), fallsBetween(a, b), longestFall(), strayJumps(memo)
+//                  what the jump reader read
 //   sensorShare(a, b)  share of the seconds in [a, b) the motion sensor answered
 //   track()        decent fixes, last two minutes: [{t, latitude, longitude}]
 //   gyroStatus(side), gyroTurn(opts), gyroFigures()  the gyro's turn reading
@@ -68,11 +69,13 @@ export function labHelpers(walk, { now, vibrateImpl }) {
     sensorShare: (a, b) => walk.sensorShare(a, b),
     strayDoubles: windows => walk.knocks.history.filter(t => !windows.some(([a, b]) => t >= a && t <= b)).length,
     // The jumps read in (a, b], {t, from, air, landing}, t the landing; the
-    // falls that began in (a, b], {t, air, jump}, jumps or not; and the jumps
-    // outside every window one was asked for in.
+    // falls that began in (a, b], {t, air, jump}, jumps or not (the last ten
+    // minutes); the longest fall that was no jump, the whole walk; and the
+    // jumps nobody asked for, given memo.jumpAnswers and memo.jumpAsking.
     jumpsBetween: (a, b) => walk.jumps.history.filter(j => j.t > a && j.t <= b),
     fallsBetween: (a, b) => walk.jumps.falls.filter(f => f.t > a && f.t <= b),
-    strayJumps: windows => walk.jumps.history.filter(j => !windows.some(([a, b]) => j.t >= a && j.t <= b)),
+    longestFall: () => walk.jumps.longestFall(),
+    strayJumps: memo => walk.jumps.unasked(memo.jumpAnswers, memo.jumpAsking ?? null),
     // The gyro (engine.js, Gyro): whether it may read now, `side` for left
     // or right; the turn it reads now, if any; and the figures it judged by.
     gyroStatus: (side = false) => walk.gyro.status(now(), { side }),
@@ -1660,14 +1663,14 @@ async function vaxla(ctx) {
 // half of what it is for.
 // Jumps nobody asked for over a whole walk, and the longest fall that was no
 // jump, for the log's last lines (runLab, and app.js for a walk stopped early).
-export function strayJumpsNote(stray, falls) {
-  const top = falls.filter(f => !f.jump).reduce((a, f) => Math.max(a, f.air), 0);
+export function strayJumpsNote(stray, top) {
   return `hopp: ${stray.length} utan att någon bad om det` +
     (stray.length ? ` (${stray.map(j => `${Math.round(j.air * 1000)} ms`).join(', ')})` : '') +
     `, längsta fria fall som inte var hopp ${Math.round(top * 1000)} ms`;
 }
 
 const HOPP_WAIT = 10;      // s after her word for a jump
+const HOPP_EAGER = 3;      // s, when one already came during her word
 const HOPP_JOG = 20;       // s of jogging before she asks for the jog's jump
 const HOPP_JOG_AFTER = 10; // s of jogging after it
 const ms = x => `${Math.round(x * 1000)} ms`;
@@ -1680,23 +1683,29 @@ function longestFall(falls) {
   const top = falls.filter(f => !f.jump).reduce((a, f) => !a || f.air > a.air ? f : a, null);
   return top ? `längsta fria fall som inte var hopp ${ms(top.air)}` : 'inga fria fall';
 }
-// Her word, and the jump after it: counted from the start of the line (an
-// eager walker jumps before she has finished) to HOPP_WAIT after it.
+// Her word, and the jump that answers it: the first after she has finished,
+// or, if none comes, the last during her line (an eager walker jumps before
+// she is done). One during the line may be a false one too, so a jump after
+// it is still waited for, if only HOPP_EAGER. Every other jump is one
+// nobody asked for (Jumps.unasked); while she waits, none is.
 async function hoppa(ctx, line) {
   const from = ctx.state().t;
+  ctx.memo.jumpAsking = from;
   await ctx.play(line);
   const said = ctx.state().t;
-  await ctx.until(s => s.lastJumpAt > from, { timeout: HOPP_WAIT });
+  const eager = ctx.jumpsBetween(from, said).length > 0;
+  await ctx.until(s => s.lastJumpAt > said, { timeout: eager ? HOPP_EAGER : HOPP_WAIT });
   const to = ctx.state().t;
-  ctx.memo.jumpWindows.push([from, to + 1]);
-  const j = ctx.jumpsBetween(from, to).at(-1) || null;
+  const j = ctx.jumpsBetween(said, to)[0] || ctx.jumpsBetween(from, said).at(-1) || null;
+  if (j) ctx.memo.jumpAnswers.push(j.t);
+  ctx.memo.jumpAsking = null;
   return { heard: !!j, j, from, said, to };
 }
 
 async function hopp(ctx) {
   if (!await sensorReady(ctx)) return deaf(ctx);
   const began = ctx.state().t;
-  ctx.memo.jumpWindows = ctx.memo.jumpWindows || [];
+  ctx.memo.jumpAnswers = ctx.memo.jumpAnswers || [];
   await ctx.play('hopp-intro');
   const walks = [];
   for (let i = 0; i < 3; i++) {
@@ -1729,14 +1738,14 @@ async function hopp(ctx) {
   await ctx.play('hopp-ga');
   // The jog's own falls and jumps, without the one she asked for.
   const jogFalls = ctx.fallsBetween(jogFrom, jogTo).filter(f => !(jog.j && f.t === jog.j.from));
-  const jogStray = ctx.jumpsBetween(jogFrom, jogTo).filter(j => j !== jog.j);
+  const jogStray = ctx.strayJumps(ctx.memo).filter(j => j.t > jogFrom && j.t <= jogTo);
   ctx.log(`hopp joggande: ${jog.heard ? `hört, ${jumpWords(jog.j, jog.said)}` : 'inte hört'}; ` +
     `${runningBefore ? 'sprang' : 'sprang inte'} före, ${runningAfter ? 'sprang' : 'sprang inte'} efter`);
   ctx.log(`hopp: under joggen (${sec(jogTo - jogFrom)}) ${longestFall(jogFalls)} (ett hopp är minst 180 ms), ` +
     `${jogFalls.filter(f => !f.jump && f.air >= 0.1).length} över 100 ms, ${jogStray.length} lästa som hopp utan att jag bad om det`);
   await ctx.play('hopp-slut');
 
-  const stray = ctx.strayJumps(ctx.memo.jumpWindows).filter(j => j.t > began);
+  const stray = ctx.strayJumps(ctx.memo).filter(j => j.t > began);
   const heard = walks.filter(w => w.heard && w.walked).length;
   const knocked = walks.reduce((a, w) => a + w.knocked, 0) + ctx.doublesBetween(jog.from, jog.to + 1);
   const air = walks.filter(w => w.heard).map(w => Math.round(w.j.air * 1000));
@@ -1881,7 +1890,7 @@ export async function runLab(ctx, no, { only = null, stations = null, opening = 
   // detector made of plain walking.
   const stray = ctx.strayDoubles(ctx.memo.knockWindows);
   ctx.log(`knack: ${stray} dubbelknack utan att någon bad om det`);
-  ctx.log(strayJumpsNote(ctx.strayJumps(ctx.memo.jumpWindows || []), ctx.fallsBetween(-Infinity, Infinity)));
+  ctx.log(strayJumpsNote(ctx.strayJumps(ctx.memo), ctx.longestFall()));
 
   ctx.station(null);
   if (test) {

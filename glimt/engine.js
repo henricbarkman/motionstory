@@ -781,6 +781,14 @@ const JUMP_LAND = 0.3;        // s after the fall for the landing
 const JUMP_LANDING = 15;      // m/s²
 const JUMP_GAP = 0.1;         // s between samples that breaks a fall
 const JUMP_KEEP = 0.03;       // s; shorter falls are not kept
+const JUMP_EDGE = 0.04;       // s a fall may last past its last sample under the bar
+// A fall this long holds the knocks' groups open until it ends: a push-off
+// pair settled mid-flight was a double for the moment until the landing
+// (review, 2026-10-17). A gait's dips last up to 0.134 s, so this delays a
+// walking double by a few hundredths at most.
+const JUMP_HOLD = 0.1;        // s
+// A skip may come as two: the second within this of the answer is part of it.
+const JUMP_ANSWER = 1.0;      // s
 // The landing is as sharp as a knock and harder, and the first steps after
 // it strike hard too: knocks are deaf for JUMP_DEAF after it, and any knock
 // from JUMP_BEFORE before the take-off on is forgotten (the push-off and the
@@ -792,16 +800,22 @@ export class Jumps {
   constructor() {
     this.lastT = null;
     this.fallFrom = null;      // t of the first sample under the bar, in a fall
+    this.lastUnder = null;     // t of the last sample under it
     this.pending = null;       // {from, air, end}: a fall long enough, waiting for its landing
     this.open = null;          // the jump whose landing window is still running
     this.falls = [];           // {t, air, jump}, last ten minutes
+    this.older = 0;            // s, the longest fall no jump that has left `falls`
     this.history = [];         // {t, from, air, landing} per jump this walk (capped)
     this.count = 0;
+    this.flights = 0;          // falls of JUMP_AIR or more, landed or not
+    this.flightFrom = null;    // when the last of them began
   }
 
   // One sample. Returns the jump read on it, or null: read on the first
   // sample of the landing over JUMP_LANDING, so the knocks can be told before
-  // they judge the landing.
+  // they judge the landing. A fall long enough to be one counts in `flights`
+  // as it ends, landing or not: a soft landing is still the end of a flight,
+  // and its push-off still a blow (review, 2026-10-17).
   push(t, mag) {
     if (!Number.isFinite(mag)) return null;
     if (this.lastT !== null && t - this.lastT > JUMP_GAP) { this.fallFrom = null; this.pending = null; this.open = null; }
@@ -813,16 +827,27 @@ export class Jumps {
     }
     if (mag < JUMP_FALL) {
       if (this.fallFrom === null) this.fallFrom = t;
+      this.lastUnder = t;
       return null;
     }
     if (this.fallFrom !== null) {
-      const air = t - this.fallFrom;
+      // To the first sample back over the bar, but no more than JUMP_EDGE
+      // past the last one under it: sparse samples (a throttled sensor) would
+      // otherwise stretch a gait's dip by most of an interval.
+      const air = Math.min(t, this.lastUnder + JUMP_EDGE) - this.fallFrom;
       const fall = { t: this.fallFrom, air, jump: false };
       if (air >= JUMP_KEEP) {
         this.falls.push(fall);
-        while (this.falls.length && this.falls[0].t < t - 600) this.falls.shift();
+        while (this.falls.length && this.falls[0].t < t - 600) {
+          const old = this.falls.shift();
+          if (!old.jump) this.older = Math.max(this.older, old.air);
+        }
       }
-      if (air >= JUMP_AIR) this.pending = { from: this.fallFrom, air, end: t, fall };
+      if (air >= JUMP_AIR) {
+        this.pending = { from: this.fallFrom, air, end: t, fall };
+        this.flights++;
+        this.flightFrom = this.fallFrom;
+      }
       this.fallFrom = null;
     }
     const p = this.pending;
@@ -838,7 +863,21 @@ export class Jumps {
     return jump;
   }
 
+  // In a fall that has lasted `min` seconds at t: the knocks wait to close
+  // their groups until it is over (Walk.tick).
+  falling(t, min = JUMP_HOLD) { return this.fallFrom !== null && t - this.fallFrom >= min; }
+
+  // The longest fall that was no jump, this whole walk.
+  longestFall() { return this.falls.reduce((a, f) => f.jump ? a : Math.max(a, f.air), this.older); }
+
   lastAt() { return this.history.length ? this.history[this.history.length - 1].t : -Infinity; }
+
+  // The jumps nobody asked for: not within JUMP_ANSWER of one taken as an
+  // answer (`answers`, their t), and not after `asking`, when a question is
+  // still open (a walk stopped mid-question).
+  unasked(answers = [], asking = null) {
+    return this.history.filter(j => !answers.some(a => j.t >= a && j.t <= a + JUMP_ANSWER) && !(asking !== null && j.t > asking));
+  }
 }
 
 // Heading from GPS: the bearing from the newest fix back to the last one at
@@ -1394,9 +1433,10 @@ export class Walk {
     // A jump is read on its landing's first sample, before the knocks judge
     // the landing (they judge a sample once the next has come): they are
     // deaf from then, and forget what the push-off gave (Jumps).
+    const flights = this.jumps.flights;
     const jump = this.jumps.push(t, magnitude);
-    if (jump) {
-      this.knocks.forget(jump.from - JUMP_BEFORE);
+    if (jump || this.jumps.flights > flights) {
+      this.knocks.forget((jump ? jump.from : this.jumps.flightFrom) - JUMP_BEFORE);
       this.knocks.mute(t + JUMP_DEAF);
     }
     this.knocks.push(t, magnitude);
@@ -1505,7 +1545,7 @@ export class Walk {
       this.knocks.mute(t + 1);
     }
     this.running = running;
-    this.knocks.settle(t);
+    if (!this.jumps.falling(t)) this.knocks.settle(t);
     this.contact.step(dt, { moving: this.tempo.moving, accuracy: this.gps.accuracy });
     return this.state();
   }
