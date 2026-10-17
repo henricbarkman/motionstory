@@ -9,10 +9,10 @@
 //
 //   node scripts/test_recordings.mjs
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { Walk, buzzReading, savedSensor, savedOrient } from '../glimt/engine.js';
 import { labHelpers } from '../glimt/lab.js';
-import { makePocketPhone } from './sim_pocket.mjs';
+import { makePocketPhone, hopAt } from './sim_pocket.mjs';
 
 // Her knocks as these walks were buzzed (v18-v19): 180 ms on, 320 off. The
 // station's pattern has changed since; the recordings have not. From v22 they
@@ -27,7 +27,9 @@ const check = (ok, what) => { console.log(`${ok ? 'ok  ' : 'FAIL'}  ${what}`); i
 // in the samples' seconds: the engine is told of each the way the station
 // tells it, and the knocks back are counted when the station counted them
 // (the detector keeps ten seconds of knocks, so not afterwards).
-function replay(file, { buzzes = [], pattern = knockPattern } = {}) {
+// `splice(t, m)`, when given, says what the sensor gave instead (a hop put
+// into a real pocket); null keeps the recorded sample.
+function replay(file, { buzzes = [], pattern = knockPattern, splice = null } = {}) {
   const rec = JSON.parse(readFileSync(new URL(`./recordings/${file}`, import.meta.url), 'utf8'));
   const walk = new Walk({ gyro: rec.gyro || {} });
   let clock = 0, bi = 0;
@@ -65,7 +67,8 @@ function replay(file, { buzzes = [], pattern = knockPattern } = {}) {
     }
     tickUntil(t);
     while (oi < orients.length && orients[oi].t <= t) { walk.orient(orients[oi].t, orients[oi].o); oi++; }
-    walk.motion(t, rec.m[i] / 100, savedSensor(rec, i));
+    const spliced = splice && splice(t, rec.m[i] / 100);
+    walk.motion(t, spliced ?? rec.m[i] / 100, spliced == null ? savedSensor(rec, i) : null);
   }
   tickUntil(rec.t[rec.t.length - 1] / 1000 + 1);
   const samples = rec.t.map((t, i) => ({ t: t / 1000, m: rec.m[i] / 100 }));
@@ -323,6 +326,31 @@ function replay(file, { buzzes = [], pattern = knockPattern } = {}) {
   check(reads.length === 1 && r.deg < -70 && r.deg > -110 && r.ok && r.at < 26,
     `a version 2 file replays the gyro: one turn, ${r ? `${Math.round(r.deg)}° (left), read at ${r.at.toFixed(1)} s, checks ${r.ok ? 'passed' : 'not passed'}` : 'none'}`);
   check(savedSensor({ t: [0], m: [981] }, 0) === null, 'and a version 1 file has no vectors to give');
+}
+
+// Hoppet (2026-10-17): no recording has a jump in it, and none must read
+// one. The longest fall in them was 134 ms; a jump is 180 (Jumps, engine.js).
+{
+  const files = readdirSync(new URL('./recordings/', import.meta.url)).filter(f => f.endsWith('.json')).sort();
+  check(files.length >= 9, `all the recordings are walked (${files.length})`);
+  for (const file of files) {
+    const { walk } = replay(file);
+    const top = walk.jumps.falls.reduce((a, f) => Math.max(a, f.air), 0);
+    check(walk.jumps.count === 0, `${file}: no jump (longest fall ${Math.round(top * 1000)} ms)`);
+  }
+}
+
+// Two hops put into his real walking pocket (Knacket gående 9/10, walking
+// from 0:30 to 0:56): read, and their landings no double knock.
+{
+  const hops = [{ t: 38, air: 0.20 }, { t: 47, air: 0.26, landing: 45, second: 30 }];
+  const { walk, doubles } = replay('knackgang-2026-10-09.json', {
+    splice: (t, m) => { for (const h of hops) { const x = hopAt(t, h.t, h.air, h); if (x !== null) return x; } return null; },
+  });
+  const fmt = xs => xs.map(x => x.toFixed(2)).join(', ') || 'none';
+  check(walk.jumps.history.length === 2 && walk.jumps.history.every((j, i) => Math.abs(j.t - hops[i].t - hops[i].air) < 0.1),
+    `both hops in his walk are read as they land (${walk.jumps.history.map(j => `${j.t.toFixed(2)}, ${Math.round(j.air * 1000)} ms`).join(' / ')})`);
+  check(!doubles.some(d => d > 36 && d < 52), `and no landing is a double knock (${fmt(doubles.filter(d => d > 36 && d < 52))})`);
 }
 
 if (failures) { console.log(`\n${failures} failed`); process.exit(1); }

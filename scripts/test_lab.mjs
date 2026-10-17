@@ -23,7 +23,7 @@ import { Walk, Waiter, Gyro, cadencePace, bearing } from '../glimt/engine.js';
 import { runLab, labHelpers, LABS, PROV, ratedThisRound, chosenStations, denseGps, realTarget } from '../glimt/lab.js';
 import { Synth } from '../glimt/synth.js';
 import { makeClock, FakeAudioContext } from './fake_audio.mjs';
-import { makePocketPhone } from './sim_pocket.mjs';
+import { makePocketPhone, hopAt } from './sim_pocket.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const RUNS = parseInt(process.env.RUNS || '10', 10);
@@ -224,7 +224,7 @@ function makeWalker(kind, env) {
   const w = {
     env,
     base: 1.4, speed: null, cadenceMul: 1, heading: 0, steer: 0,
-    matchBeat: false, knocks: [], events: [], buzzes: [],
+    matchBeat: false, knocks: [], events: [], buzzes: [], hops: [],
   };
   const at = (time, fn) => w.events.push({ time, fn });
   const stopAt = time => at(time, () => { w.speed = 0; });
@@ -234,6 +234,8 @@ function makeWalker(kind, env) {
   // Walking ones are as hard as Henric's recorded pocket gave, 18-60: they
   // must clear the walking bar over the heel strikes (2026-09-28).
   const knock = (time, height = 8) => w.knocks.push({ t: time, height });
+  // A small skip (sim_pocket.mjs, hopAt), its flight from `time`.
+  const hop = (time, air = 0.22, opts = {}) => w.hops.push({ t: time, air, ...opts });
   const pass = kind === 'pass';
   // When the walker was asked, and turned: for how long after the turn the
   // gyro read it. A turn is half done |angle| / TURN_RATE / 2 after it starts.
@@ -301,6 +303,8 @@ function makeWalker(kind, env) {
       // look like a step back.
       if (id === 'vandom-nu' || id === 'vandom-igen') { stopAt(t + 1); goAt(t + 40); }
       if (id === 'normalt-marktes' || id === 'normalt-klarade') goAt(t + 0.5);
+      if (id === 'hopp-jogga') speedAt(t + 1, 3.0);
+      if (id === 'hopp-ga') goAt(t + 1);
       return;
     }
     switch (id) {
@@ -333,6 +337,12 @@ function makeWalker(kind, env) {
       // Gå och spring: a jog, 10,8 km/h, a second after each word.
       case 'vaxla-spring': case 'vaxla-spring-igen': speedAt(t + 1, 3.0); if (env.briefRun) goAt(t + 7); break;
       case 'vaxla-ga': case 'vaxla-ga-igen': goAt(t + 1); break;
+      // Hoppet: a skip of 6 cm a second and a half after each word, walking
+      // on; then a jog, and a higher one in it, landing harder.
+      case 'hopp-nu': case 'hopp-igen': hop(t + 1.5); break;
+      case 'hopp-jogga': speedAt(t + 1, 3.0); break;
+      case 'hopp-jogga-nu': hop(t + 1.5, 0.26, { landing: 45, second: 30 }); break;
+      case 'hopp-ga': goAt(t + 1); break;
       case 'knackgang-ficka':
         stopAt(t + 1); goAt(t + 8);
         if (env.jolt) { knock(t + 3, 8); knock(t + 3.4, 8); }
@@ -525,6 +535,7 @@ function simulate(labNo, name, run, abortIn = null, { stations = null, noBuzz = 
             const [h, sigma] = speed > 2 ? [10, 0.02] : [4, 0.025];
             m += stepHard * (soft ? 0.5 : 1) * h * Math.exp(-(dt * dt) / (2 * sigma * sigma));
           }
+          for (const h of walker.hops) { const x = hopAt(u, h.t, h.air, h); if (x !== null) m = x; }
           for (const k of walker.knocks) if (u >= k.t - 0.01 && u < k.t + 0.01) m += k.height;
           // The phone's own motor: every other sample up, every other down
           // while it runs, and dying away after each buzz.
@@ -702,7 +713,7 @@ const PROV_EXPECT = {
   pass: () => 'klarade',
   fail: () => 'missade',
   // Without a sensor the walks that need one step aside; the rest run on GPS.
-  'gps-only': (id, prov) => ['frys', 'knackgang', 'takten', 'tassa', 'vakten'].includes(id) ? 'hoppade' : null,
+  'gps-only': (id, prov) => ['frys', 'knackgang', 'takten', 'tassa', 'vakten', 'hopp'].includes(id) ? 'hoppade' : null,
   'pass-chrome': id => DIRECTION.includes(id) ? { want: 'klarade', rate: 0.9 } : null,
   'fail-chrome': id => DIRECTION.includes(id) ? { want: 'missade', rate: 0.95 } : null,
   jolt: id => id === 'knackgang' ? 'missade' : null,
@@ -749,6 +760,9 @@ const PROV_SAYS = {
   tassa: [/före: \d+ steg, styrka/],
   vaxla: [/växla 2 \(spring\): löpning läst [\d,]+ s efter ordet, annat band \d+ % .*\d+ steg\/min, gps [\d,]+ km\/h, stegen avgjorde/,
     /växla 3 \(gå\): gång läst [\d,]+ s efter ordet/, /Flykten och Spöket räknar från gångfarten [\d,]+ km\/h/, /Gå och spring gicks blandat \(löpning \d+ %/],
+  hopp: [/hopp 1: hört, \d+ ms i luften, landning \d+, ([\d,]+ s efter ordet|under ordet); gång, \d+ steg\/min, gick vidare/,
+    /hopp joggande: hört, \d+ ms i luften/, /hopp: under joggen \([\d,]+ s\) (längsta fria fall som inte var hopp \d+ ms|inga fria fall)/,
+    /hopp: 0 utan att någon bad om det/, /knack: 0 dubbelknack utan/, /gående 3 av 3 hörda/],
   vakten: [/tyst (redan under ordet|[\d,]+ s efter ordet), hon bad om att få säga till [\d,]+ s (senare|efter ordet), sensorn tillbaka efter/],
 };
 
@@ -1002,6 +1016,8 @@ async function main() {
         } else if (said('sensor-tyst')) {
           problems.push(`run ${run}: she said the sensor went quiet while it answered\n    ${log.filter(l => l.includes('sensor-')).join('\n    ')}`);
         }
+        const jumped = log.find(l => /hopp: \d+ utan att någon bad om det/.test(l));
+        if (!jumped || !/hopp: 0 utan/.test(jumped)) problems.push(`run ${run}: ${jumped ? jumped.trim() : 'the log never says how many jumps nobody asked for'}`);
         const stray = log.find(l => l.includes('dubbelknack utan'));
         if (stray && !/ 0 dubbelknack/.test(stray)) problems.push(`run ${run}: ${stray.trim()}\n    ${strays.join('\n    ')}`);
         for (const r of results) {
