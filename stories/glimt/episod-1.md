@@ -114,7 +114,7 @@ Varianter i hakparentes väljs av telefonen: `[ljust]`, `[mörkt]`, `[regn]`, `[
 > Men det gör det. (paus) Och nu har jag en idé. En dum idé.
 
 ## 2. Trädet
-*Trigger: kontakten stark, runt minut fyra. Först står hon still medan vandraren går. Från att hon stannar tills hon säger trettio ska det gå en halv minut på riktigt. Sedan kliver hon av gruset, och från och med då tänder ett stopp lampan.*
+*Trigger: kontakten stark, runt minut fem. Först står hon still medan vandraren går. Från att hon stannar tills hon säger trettio ska det gå en halv minut på riktigt. Sedan kliver hon av gruset, och från och med då tänder ett stopp lampan.*
 
 > Jag har tänkt på en sak. Jag går här och pratar rakt ut med någon som inte finns, och ingen har sagt något. Inte ett ord sen du kom.
 >
@@ -167,7 +167,7 @@ Varianter i hakparentes väljs av telefonen: `[ljust]`, `[mörkt]`, `[regn]`, `[
 *Stannar vandraren av sig själv medan hon går mellan träden spelas samma gren, från tonen och framåt.*
 
 ## 3. Himlen
-*Trigger: kontakten stark, runt minut sex. Hon sitter still under trädet, så ett kort stopp är ofarligt här. Ljus och väder väljs vid start. Landmärket kommer ur kartan, inom några hundra meter från vandraren, annars slumpat. Första gången hon ser något mer än att du rör dig.*
+*Trigger: kontakten stark, runt minut åtta. Hon sitter still under trädet, så ett kort stopp är ofarligt här. Ljus och väder väljs vid start. Landmärket kommer ur kartan, inom några hundra meter från vandraren, annars slumpat. Första gången hon ser något mer än att du rör dig.*
 
 > Jag sitter ner nu. Under plastträdet. Och när jag sitter still ser jag mer av dig. Inte dig. Det runt omkring.
 >
@@ -193,7 +193,7 @@ Varianter i hakparentes väljs av telefonen: `[ljust]`, `[mörkt]`, `[regn]`, `[
 > Det ser ut som där du är. Men det är inte där du är. (paus) Det får vara så ett tag till.
 
 ## 4. Klockan
-*Trigger: runt minut åtta, när vandraren går. Hon sitter fortfarande under trädet och måste upp på gruset innan skiftet kommer runt kröken. Ett stopp tänder lampan tills hon är på gruset. Sedan går hon in, och resten är ofarligt. Slutet spelas på vandrarens eget stopp: när avståndet till starten är under ungefär 300 meter, efter minut tio, eller vid ett stopp längre än 30 sekunder efter minut nio. Rösten får tona bort.*
+*Trigger: runt minut nio och en halv, när vandraren går. Hon sitter fortfarande under trädet och måste upp på gruset innan skiftet kommer runt kröken. Ett stopp tänder lampan tills hon är på gruset. Sedan går hon in, och resten är ofarligt. Slutet spelas på vandrarens eget stopp: när avståndet till starten är under ungefär 300 meter, efter minut elva och en halv, eller vid ett stopp längre än 30 sekunder efter minut elva. Rösten får tona bort.*
 
 > (en klocka på hennes sida, dov) Där är klockan. Slingan stänger.
 >
