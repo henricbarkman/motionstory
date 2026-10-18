@@ -1,6 +1,6 @@
 # Glimt, episod 1: Det är när du går
 
-Utkast 3, 2026-10-08. Skrivet om efter Henrics första promenad (version 25) och hans fyra intryck samma morgon. Vad som ändrats sedan utkast 2 står sist.
+Utkast 4, 2026-10-17, i appen som version 32: fem scener (0-4), ja och nej genom att stanna, och förtexterna efter scen 0. Utkast 3 (2026-10-08) skrevs om efter Henrics första promenad (version 25) och hans fyra intryck samma morgon; vad som ändrades då står sist.
 
 **Vad episoden ska göra:** Vega och vandraren möts. Vandraren ska förstå tre saker utan att någon förklarar dem: hon ser glimtar av din värld men hör dig aldrig, hon hörs bara när du går, och dina steg gömmer henne.
 
@@ -8,13 +8,13 @@ Utkast 3, 2026-10-08. Skrivet om efter Henrics första promenad (version 25) och
 
 **Stil:** som kapitel 1. Nära och talspråklig, en person i en dålig telefonlinje. En regel från andra sidan i sagoton, i scen 3. Hon säger "här" och "hos dig", aldrig vilket år det är och aldrig var "här" ligger. Hon beskriver bara det hon kan se av din värld: ljuset, vädret, hur du rör dig och det kartan har nära dig. Aldrig människor, bilar eller saker.
 
-**Riktlängd:** cirka tio minuter. Ungefär fyra och en halv minuts tal. Inget i episoden kräver fart, så den går lika bra att gå som att springa.
+**Riktlängd:** cirka tolv minuter (simulerat 11,6-12,2 i version 32). Ungefär åtta minuters tal och en dryg minuts förtexter. Inget i episoden kräver fart, så den går lika bra att gå som att springa.
 
 **Logiken, så att scenerna håller ihop:**
 - Vega ser glimtar av vandrarens värld: rörelsen (går, springer, står), ljuset, vädret och det kartan har nära vandraren. Suddigt, i kanten, aldrig människor eller föremål. Inget ljud går över. Hon vet alltså när vandraren går och står, men hör aldrig vad vandraren säger. Vandraren svarar henne bara med att stanna.
 - Arbetarna har en snäcka i örat som räknar deras steg. När vandraren går räknar den vandrarens steg i stället för hennes, och Företaget ser en arbetare på sin runda, vad hon än gör. Snäckan hör inte heller vad hon säger så länge vandraren går.
 - När vandraren står still räknar den hennes egna steg. Tar hon dem där hon inte får gå tänds lampan.
-- Står hon också still finns inga steg att räkna. Det håller i en halv minut, sedan frågar snäckan vad hon håller på med. Därför är ett kort stopp ofarligt när hon går sin runda som vanligt (scen 2) och när hon sitter still (scen 4), men farligt när hon rör sig där hon inte får vara (scen 3 och början av scen 5).
+- Står hon också still finns inga steg att räkna. Det håller i en halv minut, sedan frågar snäckan vad hon håller på med. Därför är ett kort stopp ofarligt när hon går sin runda som vanligt (scen 0 och 1, och scen 2 tills hon kliver av gruset) och när hon sitter still (scen 3), men farligt när hon rör sig där hon inte får vara (scen 2 från gruset och början av scen 4).
 - Rösten blir alltid dov när vandraren står still. Då hörs i stället hennes sida: slingans surr, en ton, en platt röst.
 - Hennes steg hörs bara när de betyder något: när hon stannar, kliver av gruset eller skyndar tillbaka. Annars bara surret, svagt.
 - Reserv i alla scener: står vandraren still längre än en halv minut medan hon också står still, frågar snäckan "Vega. Du står still. Behöver du hjälp?". Hon svarar "Nej tack. Jag vilar." och berättelsen går vidare när vandraren går.
@@ -265,25 +265,23 @@ Står vandraren kvar ungefär tio sekunder till:
 
 | Scen | Mekanik | Läget ute |
 |---|---|---|
-| 0 | Kontakten byggs från lågt. Kroken inom en halv minut. | Fungerade i version 25. |
-| 1 | Gång eller löpning läses vid start. | Fungerade i version 25. |
-| 2 | Stanna för ja. | Gick i version 25. Testet Stanna för ja väntar. |
-| 3 | Dov röst vid stopp, och hennes sida som hörs i stället. | Gick i version 25. Hennes steg glesas ut i utkast 3. |
-| 4 | Ljus, väder och landmärke ur kartan, nu som det hon ser. | Gick i version 25. |
-| 5 | Stopp som fel i ett skarpt läge, sedan "tillbaka" ur avståndet till starten och slut på vandrarens eget stopp. | Båda delarna gick i version 25, då som två scener. |
+| 0 | Kontakten byggs från lågt. Stanna för ja, två frågor. Sedan förtexterna. | Kontakten håller, Stanna för ja håller gående. Två frågor i början är nytt i version 32 och inte gånget. |
+| 1 | Gång eller löpning läses vid start. Stanna för ja, två frågor, ofarligt. | Gång eller löpning fungerade i version 25. |
+| 2 | Hon står still en halv minut medan du går. Dov röst vid stopp, och hennes sida som hörs i stället. Från gruset Farligt stopp (lampan), och hon ber dig stanna. | Gick i version 25. Lampan gick en gång (8/10) och är oprövad. |
+| 3 | Ljust eller mörkt, Regn eller torrt och landmärket ur kartan, som det hon ser. Ett kort stopp är ofarligt. | Gick i version 25. Ljust eller mörkt håller, regn har aldrig hänt, kartan är osäker. |
+| 4 | Farligt stopp (lampan) tills hon är på gruset, sedan "tillbaka" ur avståndet till starten och slut på vandrarens eget stopp. | Gick i version 25, då som två scener. Lampan är oprövad. |
 
-**Följer med till episod 2:** om vandraren stannat på hennes begäran någon gång (scen 2, 3 eller 5), och om lampan tändes när klockan ringt (scen 5). Episod 2 behöver alltså lojalistens första möte, och dess repliker där Vega "hör" vandraren ska ses över.
+**Följer med till episod 2:** om vandraren har stannat på någon fråga eller begäran (scen 0, 1, 2 eller 4), och om lampan tändes när klockan ringt (scen 4). Episod 2 läser det som `[svarade]` och `[misstanke]`.
 
 ## Planterat
 
 | Vad | Var | Tanke |
 |---|---|---|
-| "Fast du inte är här" | 1 | Avståndet mellan världarna. Hon vet inte än att det också är tid. |
-| Det hon ser nära dig finns också hos henne, sämre | 4 | Slingan är en kopia av platsen där vandraren går. Bekräftas senare. |
-| Stjärnorna hon aldrig ser, och "gå ut någon natt när det är klart" | 4, 5 | Hennes namn, som aldrig sägs. En kväll längre fram när hon kanske ser en. |
-| "Den skrev upp det" | 5 | Företagets misstanke, mätaren mellan episoderna. |
-| De som viskar | 5 | Kollektivet. Episod 2. |
-| Något under surret | 5 | Det finns något annat. Ingen av dem vet vad. Kan bli väsendet, eller de som öppnade kopplingen, eller inget av dem. Bestäms inte nu. |
+| Det hon ser nära dig finns också hos henne, sämre | 3 | Slingan är en kopia av platsen där vandraren går. Bekräftas senare. |
+| Stjärnorna hon aldrig ser, och "gå ut någon natt när det är klart" | 3, 4 | Hennes namn, som aldrig sägs. En kväll längre fram när hon kanske ser en. |
+| "Den skrev upp det" | 4 | Företagets misstanke, mätaren mellan episoderna. |
+| De som viskar | 4 | Kollektivet. Episod 2. |
+| Något under surret | 4 | Det finns något annat. Ingen av dem vet vad. Kan bli väsendet, eller de som öppnade kopplingen, eller inget av dem. Bestäms inte nu. |
 
 ## Nytt som jag hittat på och som du får stryka
 

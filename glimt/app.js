@@ -11,21 +11,24 @@ import { runChapter1 } from './chapter1.js';
 import { runChapter2 } from './chapter2.js';
 import { runEpisode1 } from './episod1.js';
 import { HerSide, SilentSide } from './herside.js';
-import { runLab, labHelpers, LABS, TITLES, PROV, ratedThisRound, RESUMABLE, chosenStations, knockPattern, buzzWords, realTarget, strayJumpsNote } from './lab.js';
+import { runLab, labHelpers, LABS, TITLES, PROV, ratedThisRound, RESUMABLE, chosenStations, knockPattern, buzzWords, realTarget, strayJumpsNote, strayTurns, strayTurnsNote } from './lab.js';
 import { Synth, SilentSynth } from './synth.js';
-import { Mixer, Library } from './audio.js';
+import { Mixer, Library, readKlarhet } from './audio.js';
 import { chooseWorld, defaultWorld, fetchLandmarks, nearestByName } from './world.js';
 import { Memory, drawWorld, KEY_NAMES } from './memory.js';
 
 // The version the start screen shows, the same number as the service
 // worker's cache. Bump both together.
-const APP_VERSION = 32;
+const APP_VERSION = 33;
+
+// Seconds the credits wait for their song if it is not fetched when they are
+// due. It has had all of scene 0; a song not here by then is not coming.
+const CREDITS_WAIT = 15;
 
 const params = new URLSearchParams(location.search);
 // ?klarhet=0.5 overrides how clear the line is (0 the whole radio, 1 clean),
-// so a walk can try another level without a new build.
-const KLARHET_URL = params.has('klarhet') && Number.isFinite(parseFloat(params.get('klarhet')))
-  ? Math.min(1, Math.max(0, parseFloat(params.get('klarhet')))) : null;
+// so a walk can try another level without a new build (readKlarhet in audio.js).
+const KLARHET_URL = readKlarhet(params.get('klarhet'));
 const SIM = params.has('sim');
 // A test walk wins over everything else the link says.
 const PROV_ID = Object.hasOwn(PROV, params.get('prov') || '') ? params.get('prov') : null;
@@ -415,6 +418,19 @@ async function start() {
   });
   tickId = setInterval(tick, 250);
 
+  // A suspended audio context is asked to run again before a line or the
+  // credits. Bounded: every line queues behind this one, so a resume that
+  // never settles (a hidden page may not be allowed to start audio) would
+  // silence the rest of the walk, her sensor warning included. After two
+  // seconds the sound goes ahead; playVoice's watchdog carries it from there.
+  // True if it was suspended.
+  async function wakeAudio() {
+    if (mixer.ctx.state !== 'suspended') return false;
+    try { await Promise.race([mixer.resume(), new Promise(r => setTimeout(r, 2000))]); } catch (_) {}
+    log(`ljud: kontexten var pausad (${mixer.ctx.state})`);
+    return true;
+  }
+
   // `contact`: the line goes through the contact like a chapter's, inside
   // the lab too (Kontakten).
   // `seq`: the cut count when the line was asked for. A cut that came while
@@ -424,15 +440,7 @@ async function start() {
     const buf = await lib.buffer(id);
     if (!buf) { log(`replik saknas: ${id}`); return; }
     if (seq !== cutSeq) return;
-    if (mixer.ctx.state === 'suspended') {
-      // Bounded: every line queues behind this one, so a resume that never
-      // settles (a hidden page may not be allowed to start audio) would
-      // silence the rest of the walk, her sensor warning included. After two
-      // seconds the line goes ahead; playVoice's watchdog carries it from there.
-      try { await Promise.race([mixer.resume(), new Promise(r => setTimeout(r, 2000))]); } catch (_) {}
-      log(`ljud: kontexten var pausad (${mixer.ctx.state})`);
-      if (seq !== cutSeq) return;     // cut while it waited for the audio
-    }
+    if (await wakeAudio() && seq !== cutSeq) return;     // cut while it waited for the audio
     const at = pendingVoiceAt; pendingVoiceAt = null;
     // The lab shows the station instead, and Vega is clear there unless a
     // station asks for the contact: elsewhere it is not what is tried.
@@ -511,12 +519,20 @@ async function start() {
       // The opening credits: the whole song down the line, Vega silent. It
       // goes dull when the walker stands still, as she does, and the bed
       // steps out for it. It is not on her radio: the song sounds like the
-      // song. A song that could not be fetched is skipped.
+      // song. A song that could not be fetched is skipped, and so is one
+      // still on its way when they are due: a dead connection never settles
+      // the fetch, and scene 1 waits behind it.
       credits() {
         const turn = voiceChain.then(async () => {
           if (finished) return;
-          const buf = await creditsBuf;
+          let timer;
+          const buf = await Promise.race([creditsBuf, new Promise(r => { timer = setTimeout(() => r('late'), CREDITS_WAIT * 1000); })]);
+          clearTimeout(timer);
+          if (finished) return;
+          if (buf === 'late') { log(`förtexter: inte hämtade efter ${CREDITS_WAIT} s, hoppar över dem`); return; }
           if (!buf) { log('förtexter saknas, går vidare'); return; }
+          if (finished) return;
+          await wakeAudio();
           if (finished) return;
           $('scene').textContent = 'Förtexter';
           log(`▶ förtexter (${Math.round(buf.duration)} s)`);
@@ -1212,6 +1228,7 @@ function finish() {
       const stray = walk.knocks.history.filter(t => !windows.some(([a, b]) => t >= a && t <= b)).length;
       log(`knack: ${stray} dubbelknack utan att någon bad om det`);
       log(strayJumpsNote(walk.jumps.unasked(labMemo.jumpWindows, labMemo.jumpAsking ?? null), walk.jumps.longestFall()));
+      if (labMemo.turns) log(strayTurnsNote(strayTurns(labMemo.turns, labMemo.turnWindows, labMemo.turnAsking ?? null)));
     }
     showLabResults();
   }

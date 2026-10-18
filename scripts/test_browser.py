@@ -150,7 +150,7 @@ def serve():
 BRIDGE = {"elements": [{"type": "way", "tags": {"bridge": "yes"}, "center": {"lat": 59.38, "lon": 13.5 + 180 / (111320 * 0.5096)}}]}
 
 
-def open_page(browser, base, ua=CHROME_UA, url="?banor=vagval,kompass,vibration", init="", answer=True, shake=1.5, lag=0, ring=0, motion=True, overpass=None, rotation=True):
+def open_page(browser, base, ua=CHROME_UA, url="?banor=vagval,kompass,vibration", init="", answer=True, shake=1.5, lag=0, ring=0, motion=True, overpass=None, rotation=True, hang=()):
     ctx = browser.new_context(
         user_agent=ua,
         viewport={"width": 412, "height": 915},
@@ -160,6 +160,8 @@ def open_page(browser, base, ua=CHROME_UA, url="?banor=vagval,kompass,vibration"
         permissions=["geolocation"],
     )
     def route(r):
+        if any(h in r.request.url for h in hang):
+            return              # a dead connection: the request never settles
         if r.request.url.startswith(base):
             r.continue_()
         elif overpass is not None and "/api/interpreter" in r.request.url:
@@ -809,6 +811,27 @@ def episodstart(browser, base):
     check(any("linjens klarhet 0.2 (från länken)" in x for x in walk_log(page)), "and the log says the link set it")
     check(not errors, f"no page errors ({errors[:2]})")
     ctx.close()
+    # A decimal comma, as a Swede types it, reads the same as a point.
+    ctx, page, errors = open_page(browser, base, url="?kapitel=episod1&sim&klarhet=0,5")
+    page.click("#start-btn")
+    line = wait_log(page, "▶ s0-1", 60000)
+    page.wait_for_timeout(500)
+    check(bool(line) and page.evaluate("window.glimt.mixer.klarhet") == 0.5, f"?klarhet=0,5 reads as 0.5 ({page.evaluate('window.glimt.mixer.klarhet')})")
+    ctx.close()
+
+
+def fortexter(browser, base):
+    # The credits' song on a dead connection: the fetch never settles. The
+    # credits are skipped after their wait, and scene 1 comes.
+    walks = """(() => { const t = setInterval(() => { const el = document.getElementById('sim-speed');
+      if (el) { el.value = '1.4'; el.dispatchEvent(new Event('input')); clearInterval(t); } }, 200); })();"""
+    ctx, page, errors = open_page(browser, base, url="?kapitel=episod1&sim", hang=("fortexter.opus",), init=walks)
+    page.click("#start-btn")
+    skipped = wait_log(page, "förtexter: inte hämtade", 600000)
+    scene1 = wait_log(page, "scene 1", 120000)
+    check(bool(skipped) and bool(scene1), f"credits that never arrive are skipped and scene 1 comes ({skipped!r}, {scene1!r}; {walk_log(page)[-6:] if not scene1 else ''})")
+    check(not any("▶ förtexter" in x for x in walk_log(page)), "and no song is played")
+    ctx.close()
 
 
 def episod(browser, base):
@@ -889,6 +912,7 @@ SCENARIOS = {
     "provstart": provstart,
     "prov": prov,
     "episodstart": episodstart,
+    "fortexter": fortexter,
     "episod": episod,
 }
 

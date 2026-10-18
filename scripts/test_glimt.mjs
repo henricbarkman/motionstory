@@ -382,6 +382,26 @@ const EPISODE_WALKERS = {
     has: ['s0-yes1-a', 's4-yes'], not: ['s0-no1'],
     lamps: 0, memory: { svarade: true, misstanke: false },
   },
+  // Stops a second before her window closes, on GPS (twenty seconds after the
+  // line). The phone knows it a few seconds later, after the window: it is
+  // still her answer, for the stop began inside it.
+  closing: {
+    walk: out(), stops: { 's0-ask1': ['end', 19, 30], ...END_STOP },
+    has: ['s0-yes1-a', 's4-yes'], not: ['s0-no1'],
+    lamps: 0, memory: { svarade: true, misstanke: false },
+  },
+  // The same on the feet, whose window is ten seconds.
+  'closing-feet': {
+    walk: t => ({ ...out()(t), steps: true }), stops: { 's0-ask1': ['end', 9.25, 20], ...END_STOP },
+    has: ['s0-yes1-a', 's4-yes'], not: ['s0-no1'],
+    lamps: 0, memory: { svarade: true, misstanke: false },
+  },
+  // And a stop that begins once the window has closed is no answer.
+  'closed-feet': {
+    walk: t => ({ ...out()(t), steps: true }), stops: { 's0-ask1': ['end', 11, 20], ...END_STOP },
+    has: ['s0-no1'], not: ['s0-yes1-a'],
+    lamps: 0, memory: { svarade: false, misstanke: false },
+  },
   // A red light between scene 1 and 2: forty-two seconds still while she walks.
   light: {
     walk: out(), stops: { 's1-3': ['end', 2, 44], ...END_STOP },

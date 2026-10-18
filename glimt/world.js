@@ -41,13 +41,20 @@ const RAIN_CODES = new Set([
   51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 71, 73, 75, 77, 80, 81, 82, 85, 86, 95, 96, 99,
 ]);
 
-export async function fetchRain(lat, lon, { fetchImpl = fetch, timeout = 6000 } = {}) {
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&current=precipitation,weather_code`;
+// Rain now, and the share of the sky under cloud (0-100 %, null if the
+// answer had none). No scene reads the cloud yet: it is logged at every start
+// so walks build up a record of when the sky was clear ("Klar himmel" in
+// the catalogue).
+export async function fetchWeather(lat, lon, { fetchImpl = fetch, timeout = 6000 } = {}) {
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&current=precipitation,weather_code,cloud_cover`;
   const res = await withTimeout(fetchImpl(url), timeout);
   if (!res.ok) throw new Error(`open-meteo ${res.status}`);
   const data = await res.json();
   const cur = data.current || {};
-  return (cur.precipitation ?? 0) > 0.05 || RAIN_CODES.has(cur.weather_code);
+  return {
+    rain: (cur.precipitation ?? 0) > 0.05 || RAIN_CODES.has(cur.weather_code),
+    cloud: Number.isFinite(cur.cloud_cover) ? cur.cloud_cover : null,
+  };
 }
 
 // Landmarks OpenStreetMap maps reliably, within a few hundred metres.
@@ -143,19 +150,20 @@ export function pick(list, random = Math.random) {
 //
 // `landmark` (optional) is a saved {name, lat, lon} from an earlier chapter:
 // then the map is not asked and Vega talks about the same place as last time.
-export async function chooseWorld(world, { lat, lon, date = new Date(), log = () => {}, landmark: saved = null } = {}) {
+export async function chooseWorld(world, { lat, lon, date = new Date(), log = () => {}, landmark: saved = null, fetchImpl = fetch } = {}) {
   world.light = lightFromSun(date, lat, lon);
   // Degrees above the horizon, not a temperature: the log line was read as
   // Celsius once.
   world.sources.light = `solen ${sunAltitude(date, lat, lon).toFixed(1).replace('.', ',')}° över horisonten`;
   log(`ljus: ${world.light} (${world.sources.light})`);
 
-  const rain = fetchRain(lat, lon).then(r => {
-    world.rain = r; world.sources.rain = 'open-meteo';
-    log(`väder: ${r ? 'regn' : 'torrt'} (open-meteo)`);
+  const rain = fetchWeather(lat, lon, { fetchImpl }).then(w => {
+    world.rain = w.rain; world.sources.rain = 'open-meteo';
+    world.cloud = w.cloud;
+    log(`väder: ${w.rain ? 'regn' : 'torrt'}, molnigt ${w.cloud === null ? 'okänt' : `${Math.round(w.cloud)} %`} (open-meteo)`);
   }).catch(err => {
     world.sources.rain = `gissning (${err.message})`;
-    log(`väder: gissar torrt (${err.message})`);
+    log(`väder: gissar torrt, molnigt okänt (${err.message})`);
   });
 
   let landmark;
@@ -168,7 +176,7 @@ export async function chooseWorld(world, { lat, lon, date = new Date(), log = ()
     log(`landmärke: ${world.landmark} (${world.sources.landmark})`);
     landmark = Promise.resolve();
   } else {
-    landmark = fetchLandmarks(lat, lon).then(found => {
+    landmark = fetchLandmarks(lat, lon, { fetchImpl }).then(found => {
       const nearest = nearestByName(found, { lat, lon });
       const names = Object.keys(nearest);
       // Every kind the map found, for a station that wants a real place to
@@ -200,6 +208,7 @@ export function defaultWorld(date = new Date()) {
   return {
     light: lightFromClock(date),
     rain: false,
+    cloud: null,          // % of the sky under cloud, null until open-meteo answers
     landmark: pick(LANDMARKS),
     landmarkCoord: null,
     // How the map lookup ended: null until it has, then 'karta' (it

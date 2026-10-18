@@ -14,7 +14,22 @@ paragraphs and then the same one. Between the clicks the test changes the
 files on disk the way the portal's file panel or Demi would, and checks that
 nobody's text is lost and every other line stays byte for byte.
 
-    ~/generalassistant/.venv/bin/python scripts/test_rummet_browser.py [--skarmar DIR] [--bara telefon|bred|tva]
+    ~/generalassistant/.venv/bin/python scripts/test_rummet_browser.py [--skarmar DIR] [--bara telefon|bred|tva|ovriga|idag]
+
+Two sorts of sandbox, on purpose:
+
+- The writing scenarios (telefon, bred, tva, ovriga) run on episodes 1 and 2
+  and the catalogue as they stood at FIXTUR. They type into named lines, swap
+  two given paragraphs and count the catalogue's chips, and Henric and Liv
+  rewrite exactly those lines: on today's text the checks would be about lines
+  that are gone. The sound for them is served from the same commit, so a line
+  is never heard in a later recording than its text.
+- `idag` opens today's files (all three episodes, the world book, the
+  catalogue) in the room and checks what holds whatever the text says: every
+  paragraph the file has is on the page, none is marked unsaveable, the
+  catalogue tab lists every mechanic the file has, the mechanic lines carry
+  their verdict marks, and opening changes nothing on disk. That is what
+  catches a rewrite the room cannot read.
 
 The sound is served from this repo's audio/ instead of the public site.
 Nothing outside the temporary sandbox is written.
@@ -38,7 +53,7 @@ from playwright.sync_api import sync_playwright
 REPO = Path(__file__).resolve().parents[1]
 GA = Path("/home/henric/generalassistant")
 GLIMT = REPO / "stories" / "glimt"
-FIXTUR = "317bfad"  # the episodes the checks below were written against
+FIXTUR = "317bfad"  # the episodes the writing scenarios were written against (the docstring says why)
 failures = 0
 checks = 0
 
@@ -62,10 +77,15 @@ def load(name: str):
 
 # --- The sandbox and the server ------------------------------------------------------------
 
-def sandbox() -> tuple[Path, Path]:
+def sandbox(idag: bool = False) -> tuple[Path, Path]:
     rot = Path(tempfile.mkdtemp(prefix="rummet-browser-"))
     glimt = rot / "projects/motionstory/stories/glimt"
     glimt.mkdir(parents=True)
+    if idag:
+        # Today's files, as they are: the `idag` scenario.
+        for f in ("episod-1.md", "episod-2.md", "episod-3.md", "episod-1.json", "varld.md", "mekaniker.md"):
+            shutil.copyfile(GLIMT / f, glimt / f)
+        return finish_sandbox(rot)
     # The checks type into lines of episodes 1 and 2, count their chips and
     # count the catalogue, so those come from a fixed commit, not from the
     # manuscript as it stands:
@@ -86,6 +106,10 @@ def sandbox() -> tuple[Path, Path]:
         text, n = re.subn(rf"(^### {re.escape(namn)}\n(?:(?!### ).*\n)*?\*\*Omdöme:\*\* ).*$", rf"\g<1>{omdome}", text, count=1, flags=re.M)
         assert n == 1, namn
     kat.write_text(text, encoding="utf-8")
+    return finish_sandbox(rot)
+
+
+def finish_sandbox(rot: Path) -> tuple[Path, Path]:
     held = rot / "projects/held/universe"
     held.mkdir(parents=True)
     lore = GA / "projects/held/universe/LORE.md"
@@ -106,20 +130,33 @@ def provserver(rot: Path, ut: Path) -> tuple[subprocess.Popen, str]:
     return p, url
 
 
-def route_audio(route) -> None:
-    """The public site's recordings, from this repo, with byte ranges."""
-    url = route.request.url.split("#")[0]
-    rel = url.split("/motionstory/audio/", 1)[-1]
-    f = REPO / "audio" / rel
-    if f.is_file():
-        data = f.read_bytes()
-    else:
-        # The fixed episode 1 may name a recording a later build replaced.
-        r = subprocess.run(["git", "-C", str(REPO), "show", f"{FIXTUR}:audio/{rel}"], capture_output=True)
-        if r.returncode != 0:
-            route.fulfill(status=404, body=b"")
-            return
-        data = r.stdout
+def route_audio_from(fixtur: str | None):
+    """The public site's recordings, from this repo, with byte ranges. With
+    `fixtur`, a recording that commit had comes from that commit, so the
+    fixed text is never heard in a later recording of the same line; only
+    what it did not have comes from the working tree."""
+    def route_audio(route) -> None:
+        url = route.request.url.split("#")[0]
+        rel = url.split("/motionstory/audio/", 1)[-1]
+        data = None
+        if fixtur:
+            r = subprocess.run(["git", "-C", str(REPO), "show", f"{fixtur}:audio/{rel}"], capture_output=True)
+            if r.returncode == 0:
+                data = r.stdout
+        if data is None:
+            f = REPO / "audio" / rel
+            if not f.is_file():
+                route.fulfill(status=404, body=b"")
+                return
+            data = f.read_bytes()
+        serve_bytes(route, data)
+    return route_audio
+
+
+route_audio = route_audio_from(FIXTUR)
+
+
+def serve_bytes(route, data: bytes) -> None:
     m = re.match(r"bytes=(\d+)-(\d*)", route.request.headers.get("range", ""))
     if not m:
         route.fulfill(status=200, body=data, headers={"Content-Type": "audio/mpeg", "Accept-Ranges": "bytes"})
@@ -645,10 +682,65 @@ def ovriga(b, url: str, rot: Path, skarmar: Path | None) -> None:
     ctx.close()
 
 
+IDAG_JS = """
+import { readFileSync } from 'node:fs';
+const D = await import(process.env.DOK_JS);
+const K = await import(process.env.KAT_JS);
+const ut = {};
+for (const [nyckel, fil, slag] of JSON.parse(process.env.FILER)) {
+  const t = D.tolka(readFileSync(fil, 'utf8'), slag === 'episod' ? D.SLAG_EPISOD : D.SLAG_FRI);
+  const paras = D.justera(t.paras, null);
+  ut[nyckel] = { stycken: paras.length, mekanik: paras.filter((p) => p.typ === 'mekanik').length };
+}
+ut.katalog = K.tolkaKatalog(readFileSync(process.env.KAT, 'utf8')).mekaniker.length;
+process.stdout.write(JSON.stringify(ut));
+"""
+
+
+def idag(b, url: str, rot: Path, skarmar: Path | None) -> None:
+    """Today's manuscript and catalogue in the room, read only: whatever
+    Henric and Liv have rewritten, the room can show all of it."""
+    ctx = b.new_context(viewport={"width": 1440, "height": 1000})
+    ctx.route("**/motionstory/audio/**", route_audio_from(None))
+    page = ctx.new_page()
+    fel: list[str] = []
+    page.on("pageerror", lambda e: fel.append(str(e)))
+    G = rot / "projects/motionstory/stories/glimt"
+    docs = [("#episod-1", "episod-1.md", "episod"), ("#episod-2", "episod-2.md", "episod"), ("#episod-3", "episod-3.md", "episod"),
+            ("#varlden", "varld.md", "fri"), ("#mekaniker/text", "mekaniker.md", "fri")]
+    env = {**os.environ, "DOK_JS": (REPO / "rummet" / "dok.js").as_uri(), "KAT_JS": (REPO / "rummet" / "katalog.js").as_uri(),
+           "KAT": str(G / "mekaniker.md"), "FILER": json.dumps([[v, str(G / f), slag] for v, f, slag in docs])}
+    want = json.loads(subprocess.run(["node", "--input-type=module", "-e", IDAG_JS], capture_output=True, text=True, check=True, env=env).stdout)
+    tider = {f: (G / f).stat().st_mtime for _, f, _ in docs}
+    for vag, f, slag in docs:
+        oppna(page, f"{url}/index.html{vag}", fel)
+        page.wait_for_timeout(1200)
+        n = page.locator(".ProseMirror .st").count()
+        ok(n == want[vag]["stycken"], f"[idag] {f}: the page shows the file's {want[vag]['stycken']} paragraphs ({n})")
+        hallna = page.locator(".hallen").all_inner_texts()
+        ok(not any(t.startswith("Inte sparat") for t in hallna), f"[idag] {f}: no paragraph is marked unsaveable ({hallna[:2]})")
+        ok(formen(G / f, episod=slag == "episod")["samma"], f"[idag] {f}: the file reads back as itself")
+        if slag == "episod" and want[vag]["mekanik"]:
+            marks = page.locator(".ProseMirror .st.mekanik .bricka").count()
+            ok(marks > 0, f"[idag] {f}: its mechanic lines carry verdict marks ({marks} on {want[vag]['mekanik']} lines)")
+        if skarmar:
+            page.screenshot(path=str(skarmar / f"idag-{f.replace('.md', '')}.png"))
+    page.goto(f"{url}/index.html#mekaniker")
+    page.wait_for_selector(".mekanik-post")
+    page.wait_for_timeout(500)
+    n = page.locator(".mekanik-post").count()
+    ok(n == want["katalog"], f"[idag] the Mekaniker tab lists every mechanic in today's catalogue ({n} of {want['katalog']})")
+    page.goto(f"{url}/index.html#episod-1")
+    page.wait_for_timeout(1500)
+    ok(all((G / f).stat().st_mtime == t for f, t in tider.items()), "[idag] opening today's files and changing nothing writes nothing")
+    ok(not fel, f"[idag] no errors: {fel[:3]}")
+    ctx.close()
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--skarmar", type=Path, default=None)
-    ap.add_argument("--bara", choices=("telefon", "bred", "tva", "ovriga"))
+    ap.add_argument("--bara", choices=("telefon", "bred", "tva", "ovriga", "idag"))
     a = ap.parse_args()
     if a.skarmar:
         a.skarmar.mkdir(parents=True, exist_ok=True)
@@ -657,10 +749,11 @@ def main() -> int:
         for namn, kor in (("telefon", lambda u, r: skrivaren(b, u, r, "telefon", a.skarmar)),
                           ("bred", lambda u, r: skrivaren(b, u, r, "bred", a.skarmar)),
                           ("tva", lambda u, r: tva_fonster(b, u, r, a.skarmar)),
-                          ("ovriga", lambda u, r: ovriga(b, u, r, a.skarmar))):
+                          ("ovriga", lambda u, r: ovriga(b, u, r, a.skarmar)),
+                          ("idag", lambda u, r: idag(b, u, r, a.skarmar))):
             if a.bara and a.bara != namn:
                 continue
-            rot, ut = sandbox()
+            rot, ut = sandbox(idag=namn == "idag")
             server, url = provserver(rot, ut)
             try:
                 kor(f"{url}/uploads/glimt-rummet", rot)

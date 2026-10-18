@@ -34,7 +34,7 @@
 //
 // Every station returns { outcome: 'klarade' | 'missade' | 'hoppade', detail }.
 
-import { haversine, bearing, angleDiff, HAND_EVIDENCE, ORIENT_EVIDENCE } from './engine.js';
+import { haversine, bearing, angleDiff, cadencePace, RUN_MS, HAND_EVIDENCE, ORIENT_EVIDENCE } from './engine.js';
 
 // How long after a pattern's last buzz the motor is taken to be running
 // still. The browser asks for each buzz in turn and the motor has to stop, so
@@ -194,8 +194,10 @@ export const PROV = {
   riktning: {
     // sensor: the gyro reads the turns from version 30, so the start screen
     // checks the motion sensor too.
-    title: 'Riktning', minutes: 4, sensor: true, stations: ['vagval', 'vandom'], opts: { vagval: { fast: true } },
-    question: 'Läser telefonen en sväng åt vänster, och en vändning, inom några sekunder nu när gyrot läser dem?',
+    // strayTurns: every turn of over 50 degrees nobody asked for is counted
+    // too, the whole walk (runLab), so a straight walk read as turning shows.
+    title: 'Riktning', minutes: 4, sensor: true, stations: ['vagval', 'vandom'], opts: { vagval: { fast: true } }, strayTurns: true,
+    question: 'Läser telefonen en sväng åt vänster, och en vändning, inom några sekunder nu när gyrot läser dem, och läser den svängar du aldrig gjorde?',
     todo: 'Telefonen i fickan, skärmen olåst. Sväng vänster vid första korsningen efter att hon frågat. Vänd sedan om när hon säger vänd, två gånger.',
     asks: [{ id: 'svang', text: 'Åt vilket håll svängde du vid korsningen?', options: ['Vänster', 'Höger', 'Rakt fram'] }],
   },
@@ -216,6 +218,29 @@ export const PROV = {
     question: 'Går det att följa ett slag i lurarna när det blir fortare och lugnare?',
     todo: 'Gå i takt med slaget i lurarna, och följ med när det ändras.',
     asks: [{ id: 'folja', text: 'Gick det att följa takten?', options: ['Lätt', 'Det gick', 'Svårt'] }],
+  },
+  // Takten as episode 2 has it (Henric 2026-10-18): the song's beat, about
+  // 135, for the walker and for the slow jogger alike. From the walker's own
+  // cadence in steps of at most 7.5 % to 135, then held there. Jogging, the
+  // way is down; and a jog at 135 is under where the bands read running
+  // (RUN_CADENCE, about 144 steps a minute), so the log says what it was read as.
+  takt135: {
+    title: 'Takten mot 135', minutes: 3, sensor: true, stations: ['takten'], opts: { takten: { mot: 135 } },
+    question: 'Går det att följa slaget från din egen takt upp till 135 steg i minuten, i små steg?',
+    todo: 'Gå i din vanliga takt. Följ slaget i lurarna: det blir lite fortare i taget tills det ligger på 135, och stannar där en stund.',
+    asks: [
+      { id: 'folja', text: 'Gick det att följa takten hela vägen till 135?', options: ['Lätt', 'Det gick', 'Svårt'] },
+      { id: 'kanns', text: 'Hur kändes 135?', options: ['Rask gång', 'Nästan jogg', 'Jogg'] },
+    ],
+  },
+  takt135jogg: {
+    title: 'Takten mot 135, joggande', minutes: 3, sensor: true, stations: ['takten'], opts: { takten: { mot: 135 } },
+    question: 'Går det att jogga lugnt i takt med slaget mot 135, och läser telefonen det som löpning eller gång?',
+    todo: 'Jogga lugnt redan från start. Följ slaget i lurarna: det ändras lite i taget tills det ligger på 135, och stannar där en stund.',
+    asks: [
+      { id: 'folja', text: 'Gick det att jogga i takt med 135?', options: ['Lätt', 'Det gick', 'Svårt'] },
+      { id: 'jogg', text: 'Joggade du hela tiden?', options: ['Ja', 'Gick ibland', 'Gick mest'] },
+    ],
   },
   hitta: {
     title: 'Hitta', minutes: 4, map: true, stations: ['hitta'], opts: { hitta: { waitMap: true } },
@@ -545,8 +570,23 @@ async function knack(ctx) {
 }
 
 // Takten: a beat at the walker's own cadence, then faster, then slower.
-// In step, a chord fades in under it.
-async function takten(ctx) {
+// In step, a chord fades in under it. With `mot` (Takten mot 135) the beat
+// goes from the walker's own cadence toward that, in steps of at most
+// TAKT_STEP, and holds there: episode 2's song is about 135.
+const TAKT_STEP = 0.075;     // the largest change in one step, of the beat before
+const TAKT_FIRST = 25;       // s at the walker's own cadence
+const TAKT_EACH = 30;        // s per step on the way
+const TAKT_HOLD = 45;        // s at the target
+const TAKT_NEAR = 0.03;      // a cadence this near the target starts there
+// Where a beat goes on its way to `target`: [base, ..., target], every step
+// at most TAKT_STEP of the one before, all the same size.
+export function taktSteps(base, target, step = TAKT_STEP) {
+  if (Math.abs(base - target) / target <= TAKT_NEAR) return [target];
+  const n = Math.ceil(Math.abs(Math.log(target / base)) / Math.log(1 + step));
+  return Array.from({ length: n + 1 }, (_, i) => Math.round(base * (target / base) ** (i / n)));
+}
+
+async function takten(ctx, { mot = null } = {}) {
   if (!await sensorReady(ctx)) return deaf(ctx);
   if (!ctx.state().stepsTrusted) {
     await ctx.until(s => s.stepsTrusted, { timeout: 20 });
@@ -556,15 +596,27 @@ async function takten(ctx) {
     return { outcome: 'hoppade', detail: 'stegräkningen hittade ingen rytm, takten går inte att mäta' };
   }
   const base = Math.round(ctx.memo.baseCadence || ctx.state().cadence || DEFAULT_CADENCE);
+  // The parts: [name, bpm, seconds, her line before it].
+  const plan = mot ? taktSteps(base, mot).map((bpm, i, all) => [
+    i === 0 && all.length > 1 ? 'egen' : `${bpm}`, bpm,
+    all.length === 1 ? TAKT_HOLD : i === 0 ? TAKT_FIRST : i === all.length - 1 ? TAKT_HOLD : TAKT_EACH,
+    i === 0 ? null : bpm > all[i - 1] ? 'takten-fortare' : 'takten-saktare',
+  ]) : [
+    ['lika', base, 25, null],
+    ['fortare', Math.round(base * 1.08), 35, 'takten-fortare'],
+    ['saktare', Math.round(base * 0.93), 35, 'takten-saktare'],
+  ];
   await ctx.play('takten-intro');
   const beat = ctx.sfx.beat({ bpm: base });
   const pad = ctx.sfx.pad({ level: 0 });
-  let bpm = base, level = 0, syncRun = 0;
+  let bpm = plan[0][1], level = 0, syncRun = 0;
+  if (bpm !== base) beat.set({ bpm });
   const share = {};
-  // What the feet and the GPS did in each part, so the log says whether a
-  // part was missed by the walker or by the reading.
-  const feet = {}, gps = {};
-  let phase = 'lika';
+  // What the feet, the GPS and the bands did in each part, so the log says
+  // whether a part was missed by the walker or by the reading, and whether a
+  // jog in the part was read as running.
+  const feet = {}, gps = {}, bands = {};
+  let phase = plan[0][0];
   const stop = every(ctx, (s, dt) => {
     const ok = s.cadence > 0 && Math.abs(s.cadence - bpm) / bpm < 0.05;
     level += ((ok ? 1 : 0) - level) * Math.min(1, dt / 2);
@@ -575,6 +627,8 @@ async function takten(ctx) {
     if (ok) share[phase].in += dt;
     if (s.cadence > 0) (feet[phase] = feet[phase] || []).push(s.cadence);
     (gps[phase] = gps[phase] || []).push(s.speed);
+    const b = bands[phase] = bands[phase] || { still: 0, walk: 0, run: 0 };
+    b[s.band] += dt;
   });
 
   let praised = false;
@@ -587,31 +641,47 @@ async function takten(ctx) {
       await ctx.play('takten-i');
     }
   };
-  // The first beat is the walker's own cadence, so being in time there says
-  // nothing: it is where the ear learns the sound. Only the changes count.
-  await segment(25);
-  phase = 'fortare'; bpm = Math.round(base * 1.08); beat.set({ bpm });
-  await ctx.play('takten-fortare');
-  await segment(35);
-  phase = 'saktare'; bpm = Math.round(base * 0.93); beat.set({ bpm });
-  await ctx.play('takten-saktare');
-  await segment(35);
+  for (const [name, b, seconds, line] of plan) {
+    if (line) {
+      phase = name; bpm = b; beat.set({ bpm });
+      await ctx.play(line);
+    }
+    await segment(seconds);
+  }
   stop();
   beat.stop();
   pad.stop();
   await ctx.play('takten-slut');
+  const names = plan.map(x => x[0]);
   const part = k => share[k] && share[k].all ? pct(share[k].in / share[k].all) : '–';
+  const steps = names.map(k => feet[k] && feet[k].length ? Math.round(median(feet[k])) : '–').join('/');
+  const speeds = names.map(k => gps[k] && gps[k].length ? kmh(median(gps[k])) : '–').join(' / ');
+  const read = k => {
+    const b = bands[k];
+    const all = b ? b.still + b.walk + b.run : 0;
+    return all ? `löpning ${pct(b.run / all)}, gång ${pct(b.walk / all)}` : '–';
+  };
+  if (mot) {
+    // The beat at the target is what counts: the steps on the way are where
+    // the ear follows, and the log has each.
+    const last = names[names.length - 1];
+    const x = share[last] || { in: 0, all: 0 };
+    const held = x.all ? x.in / x.all : 0;
+    ctx.log(`takten mot ${mot}: lästes som ${names.map(k => `${k === 'egen' ? `egen ${base}` : k}: ${read(k)}`).join('; ')}`);
+    return {
+      outcome: held >= 0.4 ? 'klarade' : 'missade',
+      detail: `mot ${mot}: slag ${plan.map(x => x[1]).join('/')}, i takt ${names.map(part).join(' / ')}, ` +
+        `dina steg ${steps} per minut, gps ${speeds}; vid ${mot} ${read(last)}`,
+    };
+  }
   const changed = ['fortare', 'saktare'].reduce((a, k) => {
     const x = share[k] || { in: 0, all: 0 };
     return { in: a.in + x.in, all: a.all + x.all };
   }, { in: 0, all: 0 });
   const followed = changed.all ? changed.in / changed.all : 0;
-  const parts = ['lika', 'fortare', 'saktare'];
-  const steps = parts.map(k => feet[k] && feet[k].length ? Math.round(median(feet[k])) : '–').join('/');
-  const speeds = parts.map(k => gps[k] && gps[k].length ? kmh(median(gps[k])) : '–').join(' / ');
   return {
     outcome: followed >= 0.4 ? 'klarade' : 'missade',
-    detail: `slag ${base}/${Math.round(base * 1.08)}/${Math.round(base * 0.93)}, i takt ${part('lika')} / ${part('fortare')} / ${part('saktare')}, ` +
+    detail: `slag ${plan.map(x => x[1]).join('/')}, i takt ${part('lika')} / ${part('fortare')} / ${part('saktare')}, ` +
       `dina steg ${steps} per minut, gps ${speeds}`,
   };
 }
@@ -887,15 +957,41 @@ function gyroWords(ctx, status) {
   return `gyrot läser (${Math.round(f.rms)}°/s i gång, ${Math.round(f.vert * 100)} % runt lodlinjen, ${hand}, ${ori})`;
 }
 
+// Turns nobody asked for (the Riktning test walk, 2026-10-18). A station
+// that asks for a turn marks from when (memo.turnAsking) and, once it has its
+// answer, the window it asked in (memo.turnWindows); runLab counts every turn
+// the gyro reads outside them. A walk that goes straight and reads as turning
+// is the false alarm Vägvalet and Vänd om cannot show by themselves.
+const STRAY_TURN = 50;       // degrees, as the stations' own reading
+const TURN_APART = 5;        // s between the middles of two turns counted
+const TURN_AFTER = 3;        // s after the answer a turn still belongs to it
+function askTurn(ctx, from) {
+  ctx.memo.turnWindows = ctx.memo.turnWindows || [];
+  ctx.memo.turnAsking = from;
+  return to => { ctx.memo.turnWindows.push([from, to + TURN_AFTER]); ctx.memo.turnAsking = null; };
+}
+// The turns in `turns` ({mid, deg}) nobody asked for.
+export function strayTurns(turns, windows = [], asking = null) {
+  return (turns || []).filter(x => !windows.some(([a, b]) => x.mid >= a && x.mid <= b) && !(asking !== null && x.mid >= asking));
+}
+export function strayTurnsNote(stray) {
+  return `svängar: ${stray.length} utan att någon bad om det` +
+    (stray.length ? ` (${stray.map(x => `${x.deg > 0 ? 'höger' : 'vänster'} ${Math.round(Math.abs(x.deg))}°`).join(', ')})` : '');
+}
+
 async function turnBack(ctx, id) {
   await ctx.play(id);
   const t0 = ctx.state().t;
+  const asked = askTurn(ctx, t0 - 1);
   const line = travelBearing(ctx, t0);
   const p0 = meanPosition(ctx, t0 - 6, t0) || ctx.position();
   const gyro0 = ctx.gyroStatus(false);
   ctx.log(`vänd om: ${gyroWords(ctx, gyro0)}`);
   const hasLine = line !== null && !!p0;
-  if (!hasLine && !gyro0.ok) return { turned: false, after: null, why: 'ingen riktning att vända från', settle: async () => null, stop: () => {} };
+  if (!hasLine && !gyro0.ok) {
+    asked(t0);
+    return { turned: false, after: null, why: 'ingen riktning att vända från', settle: async () => null, stop: () => {} };
+  }
   let seen = null, inRow = 0, gps = null, gy = null, stopped = false;
   // Metres along the old line; negative is back where you came from.
   const alongOf = p => haversine(p0, p) * Math.cos(angleDiff(line, bearing(p0, p)) * Math.PI / 180);
@@ -925,6 +1021,7 @@ async function turnBack(ctx, id) {
   };
   const turned = await ctx.until(s => gyroStep(s) || gpsStep(s), { timeout: 45 });
   const at = ctx.state().t;
+  asked(at);
   // The GPS goes on, for the log, while the walker walks on.
   const confirm = gy && hasLine && !gps
     ? ctx.until(s => stopped || gpsStep(s), { timeout: VANDOM_CONFIRM }) : Promise.resolve();
@@ -1098,6 +1195,7 @@ async function vagval(ctx, { fast = false } = {}) {
   await ctx.until(s => s.moving && s.movingFor >= (dense(s.t) ? FAST.walk : 45), { timeout: 75 });
   await ctx.play('vagval-intro');
   const tq = ctx.state().t;
+  const asked = askTurn(ctx, tq);
   const gyro0 = ctx.gyroStatus(true);
   ctx.log(`vägval: ${gyroWords(ctx, gyro0)}`);
   let gy = null;
@@ -1113,6 +1211,7 @@ async function vagval(ctx, { fast = false } = {}) {
   const t0 = ctx.state().t;
   const h0 = lineOf(ctx.state());
   if (h0 === null && !gy && !gyro0.ok) {
+    asked(ctx.state().t);
     await ctx.play('vagval-rakt');
     return { outcome: 'hoppade', detail: 'ingen riktning från gps:en att utgå från' };
   }
@@ -1159,6 +1258,7 @@ async function vagval(ctx, { fast = false } = {}) {
   const sideOf = x => x > 0 ? 'hoger' : 'vanster';
   const side = !chose ? 'rakt' : gy ? sideOf(gy.deg) : sideOf(gps.sign);
   const readAt = gy ? gy.at : ctx.state().t;
+  asked(readAt);
   // With the gyro's answer given, the GPS reads on beside it, for the log.
   const confirm = gy && !gps && h0 !== null && p0
     ? ctx.until(s => gpsStep(s), { timeout: VAGVAL_CONFIRM }) : Promise.resolve();
@@ -1583,6 +1683,18 @@ async function vakten(ctx) {
 }
 
 const BAND_WORDS = { still: 'stilla', walk: 'gång', run: 'löpning' };
+// Seconds per band as shares, in the log's words: "löpning 40 %, gång 60 %".
+function bandShares(b) {
+  const all = b.still + b.walk + b.run;
+  if (!all) return '–';
+  return ['run', 'walk', 'still'].filter(k => b[k] > 0).map(k => `${BAND_WORDS[k]} ${pct(b[k] / all)}`).join(', ');
+}
+// The middle half of a part's cadences, "132-141".
+function cadenceSpread(xs) {
+  const a = [...xs].sort((p, q) => p - q);
+  const q = f => Math.round(a[Math.min(a.length - 1, Math.floor(f * a.length))]);
+  return `${q(0.25)}-${q(0.75)}`;
+}
 
 // Gå och spring: walk, run, walk, run, walk, on her word. Henric 2026-10-07:
 // Glimt should work walking, running and both in one walk, switching freely,
@@ -1597,6 +1709,14 @@ const VAXLA_SETTLE = 8;   // s after her word before a wrong band counts
 const VAXLA_HOLD = 2;     // s the band must hold to count as read
 const VAXLA_READ = 12;    // s; a switch read later than this is too slow
 const VAXLA_WRONG = 0.25; // share of a settled part the band may have wrong
+// The cadence from which the feet read running: the bands enter it a little
+// above RUN_MS (engine.js), and cadencePace turns a cadence into a pace. About
+// 144 steps a minute: a slow jog under it is read as a walk.
+export const RUN_CADENCE = (() => {
+  let c = 100;
+  while (c < 220 && cadencePace(c) <= RUN_MS + 0.15) c++;
+  return c;
+})();
 async function vaxla(ctx) {
   await ctx.play('vaxla-intro');
   await ctx.until(s => s.moving && s.movingFor >= 5, { timeout: 20 });
@@ -1604,7 +1724,8 @@ async function vaxla(ctx) {
   for (const [want, line, seconds] of VAXLA) {
     if (line) await ctx.play(line);
     const said = ctx.state().t;
-    const p = { want, line, said, read: line ? null : said, since: null, wrong: 0, all: 0, cad: [], gps: [], pace: [], steps: 0 };
+    const p = { want, line, said, read: line ? null : said, since: null, wrong: 0, all: 0, cad: [], gps: [], pace: [], steps: 0,
+      bands: { still: 0, walk: 0, run: 0 } };
     const stop = every(ctx, (s, dt) => {
       // Read when the band has held two seconds, timed from when it began:
       // a run's one tick of walk is not the walk she asked for.
@@ -1612,6 +1733,7 @@ async function vaxla(ctx) {
       if (p.read === null && p.since !== null && s.t - p.since >= VAXLA_HOLD) p.read = p.since;
       if (s.t - said < VAXLA_SETTLE) return;
       p.all += dt;
+      p.bands[s.band] += dt;
       if (s.band !== want) p.wrong += dt;
       if (s.paceSource === 'steps') p.steps += dt;
       if (s.cadence > 0) p.cad.push(s.cadence);
@@ -1624,9 +1746,9 @@ async function vaxla(ctx) {
     parts.push(p);
     const n = parts.length;
     const read = !line ? '' : p.read === null ? `${BAND_WORDS[want]} aldrig läst, ` : `${BAND_WORDS[want]} läst ${sec(p.read - said)} efter ordet, `;
-    const cad = p.cad.length ? `${Math.round(median(p.cad))} steg/min` : 'inga steg';
+    const cad = p.cad.length ? `${Math.round(median(p.cad))} steg/min (${cadenceSpread(p.cad)})` : 'inga steg';
     ctx.log(`växla ${n} (${want === 'run' ? 'spring' : 'gå'}): ${read}annat band ${p.all ? pct(p.wrong / p.all) : '–'} av tiden efter ${VAXLA_SETTLE} s; ` +
-      `${cad}, gps ${kmh(median(p.gps))}, stegen avgjorde ${p.all ? pct(p.steps / p.all) : '–'}` + (p.doubles ? `, ${p.doubles} dubbelknack` : ''));
+      `${cad}, lästes som ${bandShares(p.bands)}, gps ${kmh(median(p.gps))}, stegen avgjorde ${p.all ? pct(p.steps / p.all) : '–'}` + (p.doubles ? `, ${p.doubles} dubbelknack` : ''));
   }
   await ctx.play('vaxla-slut');
   const switches = parts.filter(p => p.line);
@@ -1638,11 +1760,18 @@ async function vaxla(ctx) {
   const chaser = base * 1.35, ghost = base * 1.1;
   ctx.log(`växla: Flykten och Spöket räknar från gångfarten ${kmh(base)}${ctx.memo.basePace ? '' : ' (schablon)'}, förföljaren ${kmh(chaser)}, Spöket ${kmh(ghost)}; ` +
     `springande gjorde du ${kmh(runPace)}` + (runPace > chaser ? `, Flykten vunnen på ${sec(30 / (runPace - chaser))} och Spöket kommer aldrig ikapp` : ''));
+  // A slow jog: its cadence against where running is read from, and what
+  // the bands made of it (Takten in episode 2 is for joggers at about 135).
+  const runBands = runs.reduce((a, p) => ({ still: a.still + p.bands.still, walk: a.walk + p.bands.walk, run: a.run + p.bands.run }), { still: 0, walk: 0, run: 0 });
+  const slow = runCad && runCad < RUN_CADENCE;
+  ctx.log(`växla: joggen ${runCad ? `${Math.round(runCad)} steg/min` : 'utan steg'}, löpning läses från ${RUN_CADENCE}; ` +
+    `springandet lästes som ${bandShares(runBands)}` + (slow ? ', en jogg under gränsen läses som gång' : ''));
   const lag = p => p.read === null ? 'aldrig' : sec(p.read - p.said);
   return {
     outcome: ok ? 'klarade' : 'missade',
     detail: `löpning läst ${runs.map(lag).join(' / ')}, gång igen ${walks.filter(p => p.line).map(lag).join(' / ')} efter ordet; ` +
-      `steg ${walkCad ? Math.round(walkCad) : '–'} gående, ${runCad ? Math.round(runCad) : '–'} springande per minut; ` +
+      `steg ${walkCad ? Math.round(walkCad) : '–'} gående, ${runCad ? Math.round(runCad) : '–'} springande per minut` +
+      `${slow ? ` (under ${RUN_CADENCE}, där löpning läses)` : ''}, springandet läst som ${bandShares(runBands)}; ` +
       `annat band ${switches.map(p => p.all ? pct(p.wrong / p.all) : '–').join(' / ')}`,
   };
 }
@@ -1857,6 +1986,20 @@ export async function runLab(ctx, no, { only = null, stations = null, opening = 
     if (test.sensor && ctx.state().sensorSeen && !ctx.state().sensorLive) await ctx.until(s => s.sensorLive, { timeout: 40 });
   }
 
+  // Every turn the gyro reads, for a test walk that counts the ones nobody
+  // asked for. Each is counted once: the next must be half done TURN_APART
+  // after it.
+  let stopTurns = () => {};
+  if (test && test.strayTurns) {
+    const turns = ctx.memo.turns = ctx.memo.turns || [];
+    let since = -Infinity;
+    stopTurns = every(ctx, () => {
+      if (!ctx.gyroStatus(false).ok) return;
+      const r = ctx.gyroTurn({ since, min: STRAY_TURN });
+      if (r) { turns.push({ mid: r.mid, deg: r.deg }); since = r.mid + TURN_APART; }
+    });
+  }
+
   const results = [];
   for (let i = 0; i < ids.length; i++) {
     const id = ids[i];
@@ -1891,6 +2034,8 @@ export async function runLab(ctx, no, { only = null, stations = null, opening = 
     }
   }
   stopWatch();
+  stopTurns();
+  if (test && test.strayTurns) ctx.log(strayTurnsNote(strayTurns(ctx.memo.turns, ctx.memo.turnWindows, ctx.memo.turnAsking ?? null)));
 
   // Double knocks outside every window where one was asked for: what the
   // detector made of plain walking.
