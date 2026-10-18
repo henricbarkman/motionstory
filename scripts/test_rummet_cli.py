@@ -167,7 +167,7 @@ def main() -> int:
     glimt = rot / "projects" / "motionstory" / "stories" / "glimt"
     glimt.mkdir(parents=True)
     (rot / "data" / "glimt-rummet").mkdir(parents=True)
-    for f in ("episod-1.md", "episod-2.md", "episod-1.json", "varld.md", "mekaniker.md"):
+    for f in ("episod-1.md", "episod-2.md", "episod-3.md", "episod-1.json", "varld.md", "mekaniker.md"):
         shutil.copyfile(GLIMT / f, glimt / f)
     M = glimt / "episod-1.md"
     manus_fore = M.read_text(encoding="utf-8")

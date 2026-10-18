@@ -28,7 +28,7 @@ export class DataFel extends Error {
   }
 }
 
-export const EPISODER = ['1', '2'];
+export const EPISODER = ['1', '2', '3'];
 // Every document the room edits as text: the episodes, the world book and
 // the mechanics catalogue. Lore pages are documents too, inside lore.json.
 export const DOKUMENT = [...EPISODER, 'varld', 'mekaniker'];

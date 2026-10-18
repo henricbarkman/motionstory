@@ -38,6 +38,7 @@ from playwright.sync_api import sync_playwright
 REPO = Path(__file__).resolve().parents[1]
 GA = Path("/home/henric/generalassistant")
 GLIMT = REPO / "stories" / "glimt"
+FIXTUR = "317bfad"  # the episodes the checks below were written against
 failures = 0
 checks = 0
 
@@ -65,7 +66,17 @@ def sandbox() -> tuple[Path, Path]:
     rot = Path(tempfile.mkdtemp(prefix="rummet-browser-"))
     glimt = rot / "projects/motionstory/stories/glimt"
     glimt.mkdir(parents=True)
-    for f in ("episod-1.md", "episod-2.md", "episod-1.json", "varld.md", "mekaniker.md"):
+    # The checks type into lines of episodes 1 and 2, count their chips and
+    # count the catalogue, so those come from a fixed commit, not from the
+    # manuscript as it stands:
+    # Henric's rewrite of episode 1 (committed in 2ded1a5) and the new episode
+    # 2 (2026-10-18) took those lines away, and Hopp and Linjens klarhet
+    # (2026-10-17) grew the catalogue, which failed this test on main.
+    for f in ("episod-1.md", "episod-2.md", "episod-1.json", "mekaniker.md"):
+        fixtur = subprocess.run(["git", "-C", str(REPO), "show", f"{FIXTUR}:stories/glimt/{f}"],
+                                capture_output=True, check=True).stdout
+        (glimt / f).write_bytes(fixtur)
+    for f in ("episod-3.md", "varld.md"):
         shutil.copyfile(GLIMT / f, glimt / f)
     # The verdicts move as the walks come in (Stanna för ja went from Osäker
     # to Håller 2026-10-08), so the copy holds the two the checks are about.
@@ -98,11 +109,17 @@ def provserver(rot: Path, ut: Path) -> tuple[subprocess.Popen, str]:
 def route_audio(route) -> None:
     """The public site's recordings, from this repo, with byte ranges."""
     url = route.request.url.split("#")[0]
-    f = REPO / "audio" / url.split("/motionstory/audio/", 1)[-1]
-    if not f.is_file():
-        route.fulfill(status=404, body=b"")
-        return
-    data = f.read_bytes()
+    rel = url.split("/motionstory/audio/", 1)[-1]
+    f = REPO / "audio" / rel
+    if f.is_file():
+        data = f.read_bytes()
+    else:
+        # The fixed episode 1 may name a recording a later build replaced.
+        r = subprocess.run(["git", "-C", str(REPO), "show", f"{FIXTUR}:audio/{rel}"], capture_output=True)
+        if r.returncode != 0:
+            route.fulfill(status=404, body=b"")
+            return
+        data = r.stdout
     m = re.match(r"bytes=(\d+)-(\d*)", route.request.headers.get("range", ""))
     if not m:
         route.fulfill(status=200, body=data, headers={"Content-Type": "audio/mpeg", "Accept-Ranges": "bytes"})
@@ -368,7 +385,7 @@ def skrivaren(b, url: str, rot: Path, storlek: str, skarmar: Path | None) -> Non
     s1 = stycke_id(page, "Så. Nu är du tydlig.")
     markor(page, s1)
     verktyg(page, "infoga")
-    ok(page.locator("#panel:not([hidden]) .mek-val").count() == 33, f"{pre} the mechanic picker lists the catalogue's 33")
+    ok(page.locator("#panel:not([hidden]) .mek-val").count() == 34, f"{pre} the mechanic picker lists the catalogue's 34")
     page.locator("#panel input[type=search]").fill("stanna")
     page.wait_for_timeout(150)
     ok(page.locator("#panel .mek-val").count() >= 1, f"{pre} searching narrows the list")
@@ -585,7 +602,7 @@ def ovriga(b, url: str, rot: Path, skarmar: Path | None) -> None:
     # The catalogue as a list.
     page.goto(f"{url}/index.html#mekaniker")
     page.wait_for_selector(".mekanik-post")
-    ok(page.locator(".mekanik-post").count() == 33, f"[övrigt] the Mekaniker tab lists 33 mechanics ({page.locator('.mekanik-post').count()})")
+    ok(page.locator(".mekanik-post").count() == 34, f"[övrigt] the Mekaniker tab lists 34 mechanics ({page.locator('.mekanik-post').count()})")
     page.locator("#inne > input[type=search]").fill("knack")
     page.wait_for_timeout(200)
     namn = page.locator(".mekanik-post .mek-namn").all_inner_texts()

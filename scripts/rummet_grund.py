@@ -39,10 +39,10 @@ REPO = Path(__file__).resolve().parents[1]
 GA = Path.home() / "generalassistant"
 UT = GA / "data" / "glimt-rummet"
 LIVE = GA / "projects" / "motionstory"
-EPISODER = ("1", "2")
+EPISODER = ("1", "2", "3")
 # The first commit where each document is Demi's own draft.
-START = {"1": "1e54ffc", "2": "1e54ffc", "varld": "f0fd543", "mekaniker": "0ca4994"}
-FIL = {"1": "episod-1.md", "2": "episod-2.md", "varld": "varld.md", "mekaniker": "mekaniker.md"}
+START = {"1": "1e54ffc", "2": "1e54ffc", "3": "1e54ffc", "varld": "f0fd543", "mekaniker": "0ca4994"}
+FIL = {"1": "episod-1.md", "2": "episod-2.md", "3": "episod-3.md", "varld": "varld.md", "mekaniker": "mekaniker.md"}
 OM = "Stycken som är Demis utkast. Skrivs av scripts/rummet_grund.py i motionstory, aldrig av rummet."
 
 READ_PARAS = """
@@ -124,7 +124,7 @@ def main() -> int:
     if args.prov:
         prov = make_sandbox()
         if args.nollstall:
-            for name in ("episod-1.json", "episod-2.json", "varld.json", "mekaniker.json", "lore.json",
+            for name in ("episod-1.json", "episod-2.json", "episod-3.json", "varld.json", "mekaniker.json", "lore.json",
                          "installningar.json", "demi-sett.json", "demi-vantande.json"):
                 (prov / name).unlink(missing_ok=True)
             shutil.rmtree(prov / "grund", ignore_errors=True)

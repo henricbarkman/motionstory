@@ -50,7 +50,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 GA = Path("/home/henric/generalassistant")
 CLI = REPO / "scripts" / "rummet_cli.mjs"
-EPISODER = ("1", "2")
+EPISODER = ("1", "2", "3")
 DOKUMENT = (*EPISODER, "varld", "mekaniker")
 NAMN = {"henric": "Henric", "liv": "Liv", "demi": "Demi"}
 GALLER = ("orden", "tempo", "paus", "ljud", "nar")
