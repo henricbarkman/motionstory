@@ -30,6 +30,12 @@ const RUNS = parseInt(process.env.RUNS || '10', 10);
 // A profile whose stations are judged by a rate walks this many times: ten
 // walks against an 85 % bar is a coin toss for a station that clears 94 %.
 const RATE_RUNS = parseInt(process.env.RATE_RUNS || '100', 10);
+// A bar on the median of how long a reading took is a claim about the
+// spread, and needs this many turns to say anything: below it only the
+// worst case is held (a run with RATE_RUNS=2 is a smoke test, not a measure).
+// With a fifth of dense-GPS turns over the bar, twenty that wrongly fail it
+// is under one in a hundred.
+const MEDIAN_MIN = 20;
 const VERBOSE = !!process.env.VERBOSE;
 
 // Seeded, so a red run means the code changed and not the dice. Unseeded,
@@ -942,14 +948,17 @@ async function provChecks(only) {
       // Dense GPS is for reading a turn sooner: the slow reading took 42 s
       // after the corner on his Chrome walk of 2026-10-06, the fast one 9,9.
       // Here, half within thirteen seconds and none later than twenty, and
-      // every turn's corner found in the track.
+      // every turn's corner found in the track. The median is judged only on
+      // MEDIAN_MIN turns or more: the lag falls on whole seconds, a fifth of
+      // turns take 13,8 s or longer, and with RATE_RUNS=2 the "median" is the
+      // slower of two walks, which both took 14,8 (2026-10-18).
       if (name === 'pass-chrome') {
         const sorted = [...lags].sort((a, b) => a - b);
         const med = sorted[Math.floor(sorted.length / 2)], worst = sorted[sorted.length - 1];
         const read = (tally.vagval || []).filter(o => o === 'klarade').length;
-        if (!lags.length || med > 13 || worst > 20) problems.push(`vagval read ${med} s after the corner (median), ${worst} s at worst`);
+        if (!lags.length || (lags.length >= MEDIAN_MIN && med > 13) || worst > 20) problems.push(`vagval read ${med} s after the corner (median), ${worst} s at worst`);
         if (lags.length < read) problems.push(`the corner was found in ${lags.length} of ${read} turns read`);
-        console.log(`  vagval on dense GPS: read ${med} s after the corner (median), ${worst} s at worst, ${lags.length} turns`);
+        console.log(`  vagval on dense GPS: read ${med} s after the corner (median), ${worst} s at worst, ${lags.length} turns${lags.length < MEDIAN_MIN ? `, too few to judge the median (${MEDIAN_MIN})` : ''}`);
       }
       if (name === 'pass-gyro') {
         // Read within a few seconds of the turn: half within four, none
@@ -957,8 +966,8 @@ async function provChecks(only) {
         for (const [id, xs] of Object.entries(gyroLags)) {
           const sorted = [...xs].sort((a, b) => a - b);
           const med = sorted[Math.floor(sorted.length / 2)], worst = sorted[sorted.length - 1];
-          if (!xs.length || med > 4 || worst > 6) problems.push(`${id} read by the gyro ${med} s after the turn (median), ${worst} s at worst`);
-          console.log(`  ${id} by the gyro: read ${med?.toFixed(1)} s after the turn was half done (median), ${worst?.toFixed(1)} s at worst, ${xs.length} turns`);
+          if (!xs.length || (xs.length >= MEDIAN_MIN && med > 4) || worst > 6) problems.push(`${id} read by the gyro ${med} s after the turn (median), ${worst} s at worst`);
+          console.log(`  ${id} by the gyro: read ${med?.toFixed(1)} s after the turn was half done (median), ${worst?.toFixed(1)} s at worst, ${xs.length} turns${xs.length < MEDIAN_MIN ? `, too few to judge the median (${MEDIAN_MIN})` : ''}`);
         }
       }
       const summary = Object.entries(tally).map(([id, outs]) => `${id} ${Object.entries(outs.reduce((a, o) => ({ ...a, [o]: (a[o] || 0) + 1 }), {})).map(([o, n]) => `${o} ${n}/${outs.length}`).join(', ')}`).join('; ');
