@@ -151,6 +151,9 @@ const PROFILES = {
   // round: no side, read before it is done it would be one (GYRO_STEADY).
   // Then turns back as asked.
   'uturn-gyro': { kind: 'pass', gps: CHROME_GPS, steps: true, gyro: 'chrome', uturn: true, provOnly: true },
+  // Does as asked, and takes one turn of its own on the way, right, between
+  // the two stations: Riktning must count it as one nobody asked for.
+  'stray-gyro': { kind: 'pass', gps: CHROME_GPS, steps: true, gyro: 'chrome', strayTurn: true, provOnly: true },
   'flipy-gyro': { kind: 'pass', gps: CHROME_GPS, steps: true, gyro: 'flipy', provOnly: true },
   'gravdown-gyro': { kind: 'pass', gps: CHROME_GPS, steps: true, gyro: 'gravdown', provOnly: true },
   'noorient-gyro': { kind: 'pass', gps: CHROME_GPS, steps: true, gyro: 'noorient', provOnly: true },
@@ -224,6 +227,7 @@ function cadenceFor(speed) {
   return c;
 }
 
+const JOG_STRIDE = 1.0;                 // m a step, a slow jog
 const TURN_RATE = 70 * Math.PI / 180;   // rad/s
 
 function makeWalker(kind, env) {
@@ -261,6 +265,13 @@ function makeWalker(kind, env) {
 
   w.onLine = (id, t) => {
     if (['vagval-intro', 'vandom-nu', 'vandom-igen'].includes(id)) (w.marks.asked[id] = w.marks.asked[id] || []).push(t);
+    // A turn nobody asked for, between the stations: up to six seconds after
+    // the line, before Vänd om's intro (about ten seconds) is over.
+    if (env.strayTurn && id === 'nasta-1') turn(t, Math.PI / 2);
+    // The slow jogger (Takten mot 135, joggande) jogs from the start, at its
+    // own 160 a minute, and keeps a jog's stride when it follows the beat
+    // down: its pace from the GPS stays a jog while its steps slow.
+    if (env.jog && id === 'prov-intro') at(t + 1, () => { w.jogCad = 160; w.speed = 160 / 60 * JOG_STRIDE; });
     if (env.quietAt === id) env.quiet = t;
     if (env.gyroFail) {
       // Deciding at the crossing, looking left and right on the spot, then
@@ -325,7 +336,7 @@ function makeWalker(kind, env) {
       case 'knack-ga': knock(t + 8, 20); knock(t + 8.3, 40); break;
       case 'knack-fraga': knock(t + 3, 40); knock(t + 3.3, 20); break;
       case 'takten-intro': w.matchBeat = true; break;
-      case 'takten-slut': w.matchBeat = false; goAt(t); break;
+      case 'takten-slut': w.matchBeat = false; w.jogCad = null; goAt(t); break;
       case 'flykten-intro': speedAt(t + 1, 2.8); break;
       case 'flykten-undan': case 'flykten-fast': goAt(t + 1); break;
       case 'frys-nu': stopAt(t + 0.8); break;
@@ -391,7 +402,9 @@ function makeWalker(kind, env) {
     // seconds later.
     if (w.matchBeat && env.bpm() && env.bpm() !== beatSeen) {
       beatSeen = env.bpm();
-      speedAt(t + 2.5, cadencePace(beatSeen));
+      const beat = beatSeen;
+      if (w.jogCad) at(t + 2.5, () => { w.jogCad = beat; w.speed = beat / 60 * JOG_STRIDE; });
+      else speedAt(t + 2.5, cadencePace(beatSeen));
     }
     if (w.steer && env.target() && pos) {
       const b = bearing(pos, env.target()) * Math.PI / 180;
@@ -399,7 +412,7 @@ function makeWalker(kind, env) {
     }
     let speed = w.speed === null ? w.base : w.speed;
     if (w.uneven && speed > 0) speed *= Math.floor(t / 5) % 2 ? 0.7 : 1.3;
-    const cadence = speed > 0.3 ? cadenceFor(speed) * w.cadenceMul : 0;
+    const cadence = speed > 0.3 ? (w.jogCad || cadenceFor(speed) * w.cadenceMul) : 0;
     return { speed, cadence, heading: w.heading, soft: !!w.soft };
   };
   return w;
@@ -452,7 +465,7 @@ function simulate(labNo, name, run, abortIn = null, { stations = null, noBuzz = 
     : profile.sensorOff && profile.sensorOff[labNo];
   const walker = makeWalker(profile.kind, {
     bpm, target: () => target, sensorOff, jolt: !!profile.jolt, briefRun: !!profile.briefRun, left: run % 2 === 0,
-    phone, gyroFail: !!profile.gyroFail, pocket: !!profile.pocket, walkPocket: !!profile.walkPocket, uturn: !!profile.uturn, quietAt: profile.quietAt || null, quiet: null,
+    jog: prov === 'takt135jogg', phone, gyroFail: !!profile.gyroFail, pocket: !!profile.pocket, walkPocket: !!profile.walkPocket, uturn: !!profile.uturn, strayTurn: !!profile.strayTurn, quietAt: profile.quietAt || null, quiet: null,
     note: msg => log.push(`${fmt(t)}  ~ ${msg}`),
   });
   let station = null, stationAt = 0, aborted = null;
@@ -743,6 +756,7 @@ const PROV_EXPECT = {
   'gravdown-gyro': () => ({ want: 'klarade', rate: 0.9 }),
   'noorient-gyro': () => ({ want: 'klarade', rate: 0.9 }),
   'lateorient-gyro': () => ({ want: 'klarade', rate: 1 }),
+  'stray-gyro': () => ({ want: 'klarade', rate: 0.9 }),
   'brief-run': id => id === 'vaxla' ? 'missade' : null,
   'screen-prov': () => null,
   abort: () => null,
@@ -762,9 +776,15 @@ const PROV_SAYS = {
   riktning: [/vägval: (tät|gles) gps \(\d+ positioner på 20 s/, /läst [\d,]+ s efter frågan, [\d,]+ s efter svängen i spåret/, /[\d,]+ s efter vändpunkten i spåret/],
   kompass: [/kompass: mot en bro \d+ m bort, framme inom 25 m \(kartan: /, /en bro \d+ m bort, framme efter/],
   takten: [/dina steg \d+\/\d+\/\d+ per minut, gps /],
+  // Toward 135 from the walker's own cadence, the log saying how each part
+  // was read (a jog at 135 is under where running is read).
+  takt135: [/mot 135: slag \d+(\/\d+)*\/135, i takt /, /takten mot 135: lästes som egen \d+: (löpning|gång) \d+ %.*; 135: /],
+  // The jogger must be read as running at its own pace, or the walk tested a walker.
+  takt135jogg: [/mot 135: slag 1[5-9]\d(\/\d+)*\/135, i takt /, /vid 135 löpning \d+ %, gång \d+ %/, /lästes som egen 1[5-9]\d: löpning [1-9]\d* %/],
   hitta: [/framme efter/],
   tassa: [/före: \d+ steg, styrka/],
-  vaxla: [/växla 2 \(spring\): löpning läst [\d,]+ s efter ordet, annat band \d+ % .*\d+ steg\/min, gps [\d,]+ km\/h, stegen avgjorde/,
+  vaxla: [/växla 2 \(spring\): löpning läst [\d,]+ s efter ordet, annat band \d+ % .*\d+ steg\/min \(\d+-\d+\), lästes som löpning \d+ %.*, gps [\d,]+ km\/h, stegen avgjorde/,
+    /växla: joggen \d+ steg\/min, löpning läses från \d+; springandet lästes som /,
     /växla 3 \(gå\): gång läst [\d,]+ s efter ordet/, /Flykten och Spöket räknar från gångfarten [\d,]+ km\/h/, /Gå och spring gicks blandat \(löpning \d+ %/],
   hopp: [/hopp 1: hört, \d+ ms i luften, landning \d+, ([\d,]+ s efter ordet|under ordet); gång, \d+ steg\/min, gick vidare/,
     /hopp joggande: hört, \d+ ms i luften/, /hopp: under joggen \([\d,]+ s\) (längsta fria fall som inte var hopp \d+ ms|inga fria fall)/,
@@ -775,7 +795,7 @@ const PROV_SAYS = {
 // Riktning with a phone that has a gyro, or on Chrome's GPS: the side read
 // must be the side turned, every time; whether the gyro may read at all is
 // the profile's; and when it reads, how long after the turn was half done.
-const GYRO_READS = { 'uturn-gyro': ['vandom'], 'pass-gyro': ['vagval', 'vandom'], 'noside-gyro': ['vandom'], 'walkpocket-gyro': ['vagval', 'vandom'], 'noorient-gyro': ['vandom'], 'lateorient-gyro': ['vagval', 'vandom'] };
+const GYRO_READS = { 'uturn-gyro': ['vandom'], 'pass-gyro': ['vagval', 'vandom'], 'stray-gyro': ['vagval', 'vandom'], 'noside-gyro': ['vandom'], 'walkpocket-gyro': ['vagval', 'vandom'], 'noorient-gyro': ['vandom'], 'lateorient-gyro': ['vagval', 'vandom'] };
 
 // Why the gyro stood aside, as the log must say it: a fault handed to the
 // GPS silently would look like a gyro that works and reads nothing.
@@ -810,6 +830,12 @@ function gyroRun(r, run, profile, where, problems, lags) {
   }
   const why = GYRO_WHY[name];
   if (why && !r.log.some(l => why.test(l))) problems.push(`${where}: the log never says why the gyro stood aside (${why})`);
+  // Turns nobody asked for: the line is always there; a walker who turns
+  // only when asked has none, and the one who turns once on the way has it.
+  const stray = r.log.map(l => /svängar: (\d+) utan att någon bad om det(.*)$/.exec(l)).find(Boolean);
+  if (!stray) problems.push(`${where}: the log never counts the turns nobody asked for`);
+  else if (name === 'pass-gyro' && stray[1] !== '0') problems.push(`${where}: ${stray[1]} turns nobody asked for, wanted 0 (${stray[0]})`);
+  else if (name === 'stray-gyro' && !(stray[1] === '1' && /höger \d+°/.test(stray[2]))) problems.push(`${where}: wanted the one turn right nobody asked for (${stray[0]})`);
   // How long after the turn was half done, from what the walker did.
   const halfDone = after => {
     const turn = r.marks.turns.find(k => k.start >= after);

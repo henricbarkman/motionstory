@@ -31,6 +31,16 @@ const RADIO_DRIVE = 3;         // waveshaper tanh(kx), k = 1 + RADIO_DRIVE at fu
 const RADIO_HISS = 0.03;       // hiss level at full radio, under her lines only
 const RADIO_HISS_HZ = 3000;    // the hiss's band
 
+// How clear the line is, as a link writes it: a number from 0 (the whole
+// radio) to 1 (clean), clamped. A decimal comma (?klarhet=0,5, as a Swede
+// types it) reads as a point; parseFloat alone read it as 0. Null when there
+// is nothing to read.
+export function readKlarhet(raw) {
+  if (raw == null) return null;
+  const k = parseFloat(String(raw).trim().replace(',', '.'));
+  return Number.isFinite(k) ? Math.min(1, Math.max(0, k)) : null;
+}
+
 export class Mixer {
   // `ctx` for an offline render of the same chain (scripts' listening tests).
   constructor(ctx = null) {

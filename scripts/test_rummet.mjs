@@ -173,14 +173,14 @@ const KAT = K.tolkaKatalog(FIL.mekaniker);
   const utan = KAT.mekaniker.filter((k) => !k.omdome).map((k) => k.namn);
   ok(!utan.length, `every mechanic in the catalogue has a verdict word (${utan.join(', ') || 'all do'})`);
   const v = K.varianter(KAT).map((x) => x.etikett).sort().join(',');
-  ok(v === ['bro', 'berg', 'gång', 'kyrkogård', 'ljust', 'löpning', 'mörkt', 'regn', 'skog', 'torrt', 'vatten'].sort().join(','), 'the variant labels come from the catalogue');
+  ok(v === ['bro', 'berg', 'gång', 'klart och mörkt', 'kyrkogård', 'ljust', 'löpning', 'mörkt', 'regn', 'skog', 'torrt', 'vatten'].sort().join(','), 'the variant labels come from the catalogue');
   // Hand count of the chips (2026-10-08): the catalogue's names in the Mekanik paragraphs.
   //   episode 1 (2026-10-17): Kontakten at lines 29, 73, 117, 170; lampan at 117, 196 = 6
-  //   episode 2 (2026-10-18): Kontakten at 33, 69; lampan, Knacket (twice) and Vägvalet at 105; Takten and takten at 192 = 8
+  //   episode 2 (2026-10-18): Kontakten at 33, 69; lampan, Knacket (twice) and Vägvalet at 105; Takten, takten and "Takten springande" at 192 = 9
   //   episode 3 (2026-10-18): Kontakten and fortare at 38; fortare (twice) at 78 = 4
   const brickor = (t) => Dk.tolka(t, 'episod').paras.filter((p) => p.typ === 'mekanik').flatMap((p) => K.hittaNamn(p.text, KAT).map((h) => `${p.rad + 1}:${h.mekanik.namn}`));
   ok(brickor(FIL[1]).join(' ') === '29:Kontakten 73:Kontakten 117:Kontakten 117:Farligt stopp (lampan) 170:Kontakten 196:Farligt stopp (lampan)', 'episode 1: the chips are exactly the hand count');
-  ok(brickor(FIL[2]).join(' ') === '33:Kontakten 69:Kontakten 105:Farligt stopp (lampan) 105:Knack 105:Vägvalet 105:Knack 192:Takten 192:Takten', 'episode 2: the chips are exactly the hand count');
+  ok(brickor(FIL[2]).join(' ') === '33:Kontakten 69:Kontakten 105:Farligt stopp (lampan) 105:Knack 105:Vägvalet 105:Knack 192:Takten 192:Takten 192:Takten', 'episode 2: the chips are exactly the hand count');
   ok(brickor(FIL[3]).join(' ') === '38:Kontakten 38:Fortare 78:Fortare 78:Fortare', 'episode 3: the chips are exactly the hand count');
   ok(!K.hittaNamn('vandraren går i sin egen takt och hittar hem', KAT).some((h) => h.mekanik.namn === 'Takten'), 'no chip for "takt" (not the name Takten)');
   ok(K.hittaNamn('Hon knackar två gånger', KAT).map((h) => h.mekanik.namn).join() === 'Hon knackar', 'the longest name wins');

@@ -63,7 +63,12 @@ const AT = {
 
 // A stop the walker means. The feet say it two seconds after the last step,
 // so one second more is enough; GPS alone needs longer to be sure.
-const stopped = s => !s.moving && s.stillFor >= (s.paceSource === 'steps' ? 1 : 3);
+const sure = s => s.paceSource === 'steps' ? 1 : 3;
+const stopped = s => !s.moving && s.stillFor >= sure(s);
+// How late the phone sees that a stop began: the feet two seconds after the
+// last step, GPS a fix or two after the speed drops. A stop that began
+// before her window closed is her answer even when it shows after it.
+const seenLate = s => s.paceSource === 'steps' ? 2.5 : 4;
 const walking = s => s.moving && s.movingFor >= 1.5;
 
 export async function runEpisode1(ctx) {
@@ -168,6 +173,8 @@ export async function runEpisode1(ctx) {
   // that long to walk again first.
   // The answer is a stop out of walking: someone waiting at a kerb who shifts
   // their weight makes the phone see a new stop, and that is not one.
+  // The window is about when the stop began, not when the phone saw it: she
+  // keeps listening `seenLate` past the close, and long enough to be sure.
   async function ask(id, word = 'stanna', patience = 0) {
     const askedAt = now() + (word ? ctx.cue(id, word) : 0);
     let walked = false;
@@ -175,8 +182,9 @@ export async function runEpisode1(ctx) {
     let closes = Infinity;
     const answer = ctx.until(s => {
       if (s.t >= askedAt - 2 && walking(s)) walked = true;
-      if (walked && stopped(s) && stopBegan(s) >= askedAt) yes = true;
-      return yes || s.t >= closes;
+      const began = stopBegan(s);
+      if (walked && stopped(s) && began >= askedAt && began < closes + seenLate(s)) yes = true;
+      return yes || s.t >= closes + seenLate(s) + sure(s);
     });
     await ctx.play(id);
     const s = ctx.state();
