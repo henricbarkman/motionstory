@@ -189,9 +189,9 @@ Utkast 3, 2026-10-18. Skrivet om ur utkast 2 ("Ute", 7/10), som var material til
 > (vandraren går, rösten tillbaka) Den hann säga det. (paus) Allt den säger är det någon som läser.
 
 ## 3. Pressarna
-*Trigger: runt minut sex, när hon kommer fram. Takten: pressarnas slag börjar i vandrarens egen takt och drar upp i steg om sju till åtta procent, ett steg i taget, med fem till tio sekunder i varje innan hon säger något om det, tills de går i The Way We Are:s tempo. Varje gång vandraren går i takt med slagen växer låten fram, först trummor och bas, sedan allt. Vega pratar ett ord per slag, och tiger medan låten har sång. Hon står still bland de andra, så ett stopp är ofarligt här: det bryter bara takten. Bara gående. Klarhet 0,45.*
+*Trigger: runt minut sex, när hon kommer fram. Takten: pressarnas slag börjar i vandrarens egen takt och går i steg om sju till åtta procent, ett steg i taget, med fem till tio sekunder i varje innan hon säger något om det, tills de går i The Way We Are:s tempo, ungefär 135 slag i minuten. Det är där rask gång och lugn jogg möts: den som går ökar, den som springer saktar in, och båda kan gå eller springa i slagen. Varje gång vandraren går i takt med slagen växer låten fram, först trummor och bas, sedan allt. Vega pratar ett ord per slag, och tiger medan låten har sång. Hon står still bland de andra, så ett stopp är ofarligt här: det bryter bara takten. Takten springande är oprövad. Klarhet 0,45.*
 
-*Låtens tempo är inte bekräftat. Demi mätte ett trettio sekunders klipp till ungefär 134 slag i minuten, alltså fortare än vanlig gång. Når vandraren inte dit stannar slagen där vandraren orkar, och låten kommer så långt den hinner. Den behöver inte spelas hel.*
+*Låtens tempo är mätt på hela mastern (18/10) till ungefär 135 slag i minuten. Når vandraren inte dit stannar slagen där vandraren orkar, och låten kommer så långt den hinner. Den behöver inte spelas hel.*
 
 > (dånet väller in, nära. Tunga slag, jämna, i din takt)
 >
