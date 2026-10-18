@@ -36,8 +36,9 @@ const RADIO_HISS_HZ = 3000;    // the hiss's band
 // types it) reads as a point; parseFloat alone read it as 0. Null when there
 // is nothing to read.
 export function readKlarhet(raw) {
-  if (raw == null) return null;
-  const k = parseFloat(String(raw).trim().replace(',', '.'));
+  const t = raw == null ? '' : String(raw).trim().replace(',', '.');
+  if (!t) return null;
+  const k = Number(t);   // the whole value or nothing: '1,2,3' is no level
   return Number.isFinite(k) ? Math.min(1, Math.max(0, k)) : null;
 }
 

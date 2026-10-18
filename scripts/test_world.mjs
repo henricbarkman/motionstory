@@ -81,7 +81,7 @@ const never = () => new Promise(() => {});
 
 // ?klarhet= reads a decimal comma as a point and clamps to 0-1.
 {
-  const cases = [['0,5', 0.5], ['0.5', 0.5], [' 0,25 ', 0.25], ['1,7', 1], ['-0,2', 0], ['x', null], [null, null], ['1', 1]];
+  const cases = [['0,5', 0.5], ['0.5', 0.5], [' 0,25 ', 0.25], ['1,7', 1], ['-0,2', 0], ['x', null], [null, null], ['1', 1], ['1,2,3', null], ['', null], ['0,5x', null]];
   for (const [raw, want] of cases) check(readKlarhet(raw) === want, `klarhet ${JSON.stringify(raw)} reads ${readKlarhet(raw)}, wanted ${want}`);
 }
 

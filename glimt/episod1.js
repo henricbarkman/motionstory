@@ -175,6 +175,9 @@ export async function runEpisode1(ctx) {
   // their weight makes the phone see a new stop, and that is not one.
   // The window is about when the stop began, not when the phone saw it: she
   // keeps listening `seenLate` past the close, and long enough to be sure.
+  // The open is not moved the same way, on purpose: a stop the phone sees
+  // after the word can have begun just before it, and a walker stopping as
+  // she starts to ask has answered. Moving it would cost the quick ones.
   async function ask(id, word = 'stanna', patience = 0) {
     const askedAt = now() + (word ? ctx.cue(id, word) : 0);
     let walked = false;

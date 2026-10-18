@@ -525,7 +525,10 @@ async function start() {
       credits() {
         const turn = voiceChain.then(async () => {
           if (finished) return;
-          const buf = await Promise.race([creditsBuf, new Promise(r => setTimeout(() => r('late'), CREDITS_WAIT * 1000))]);
+          let timer;
+          const buf = await Promise.race([creditsBuf, new Promise(r => { timer = setTimeout(() => r('late'), CREDITS_WAIT * 1000); })]);
+          clearTimeout(timer);
+          if (finished) return;
           if (buf === 'late') { log(`förtexter: inte hämtade efter ${CREDITS_WAIT} s, hoppar över dem`); return; }
           if (!buf) { log('förtexter saknas, går vidare'); return; }
           if (finished) return;
