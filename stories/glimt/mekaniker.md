@@ -106,7 +106,7 @@ Ett stopp är det tydligaste vandraren kan säga.
 **Du gör:** går i takt med ett slag i lurarna, som blir lite fortare och lite lugnare.
 **I berättelsen:** musik växer fram när du går i takt. Används bara i enstaka skarpa lägen: täckningen kräver aldrig takt.
 **Omdöme:** Håller, gående. Henric följde både fortare och lugnare (i takt 92 och 86 % av tiden) och tyckte det var lagom lätt (12/10). Första gången: "himla häftig". *Bara gående.*
-**Tänk på:** en ny takt, 7-8 % från den förra, hittas på ungefär fem sekunder. Låt henne vänta fem till tio sekunder efter ett byte innan hon säger något om den.
+**Tänk på:** en ny takt, 7-8 % från den förra, hittas på ungefär fem sekunder. Låt henne vänta fem till tio sekunder efter ett byte innan hon säger något om den. Följer takten en låt (episod 2, The Way We Are) är låtens tempo målet, och det kan ligga långt över vanlig gång: ett klipp av låten mättes till ungefär 134 slag i minuten, inte bekräftat. Börja i vandrarens egen takt, dra upp ett steg i taget, och stanna där vandraren orkar.
 
 ### Tassa
 **Du gör:** går mjukt och tyst i samma fart.
@@ -122,7 +122,7 @@ Ett stopp är det tydligaste vandraren kan säga.
 
 ### Fortare
 **Du gör:** ökar farten när hon ber om det, gående eller springande.
-**I berättelsen:** en kort rusning stör Företagets data, så hon hinner öppna en dörr. Episod 2 bygger på tre sådana.
+**I berättelsen:** en kort rusning stör Företagets data, så hon hinner öppna en dörr. Episod 3 bygger på tre sådana.
 **Omdöme:** Delvis. Telefonen läste Henrics jogg som fartökning 6/10. Ingen scen med den har gått ute.
 
 ### Flykten
