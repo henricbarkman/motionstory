@@ -1,5 +1,14 @@
 # PROGRESS — Motionstory
 
+## 2026-10-18
+- Demi (Henric via annan session): **Episod 2 skriven om, Ute delad i två.** Henric godkände förslaget ("Ja, låter bra") och lade till knack för ja/nej och The Way We Are under Takten med pressarna i låtens tempo.
+  - **Episod 2, "Bakom pressarna"** (`stories/glimt/episod-2.md`, utkast 3, ca 10 min): 0 Du kom (två öppningar, ny runda och direkt efter episod 1; en stjärnglimt bara när det är klart och mörkt), 1 Frågan (stanna för ja), 2 Verket (knack två gånger för ja, Vägvalet, lampan vid stopp), 3 Pressarna (Takten från vandrarens kadens upp mot låtens tempo i steg om 7-8 %, Vega tyst när låten har sång), 4 Kroken (ordboken, "Jag hade inget ord", nattskiftet om en kvart). Klarhet per scen, minnet från episod 1 som varianter (svarade, misstanke). Löpare går från dörren till slutet av scen 3.
+  - **Episod 3, "Budet"** (`stories/glimt/episod-3.md`): resten av Ute flyttad med minimala lagningar, inte omskriven. Gången och den andra rösten parkerade i filens slut. Öppningarna saknas.
+  - **Rummet:** episod 3 har egen flik (`EPISODER` i `rummet/data.js`, `scripts/rummet.py`, `scripts/rummet_grund.py`). Grunden byggd för 6ca9f3a; episod 1, världen och katalogen byggda om utan den, annars hade Henrics rader 17/10 märkts som mina. Webbläsartestet var rött på main (skrev i rader Henric skrivit om) och läser nu en fast fixtur (`FIXTUR = "317bfad"`). `test_rummet` 147, `test_rummet_cli` 64, webbläsartestet 147, alla gröna. Rummet deployat.
+  - **Katalogen:** Takten följer en låt i episod 2, låtens tempo är målet; Fortare bor i episod 3.
+  - **Tempot:** en 30 s förhandslyssning av TWWA mätt till ca 134 bpm med autokorrelation, inte bekräftat. Ingen musikfil i repot.
+- → Nästa: hela TWWA-filen och bekräftat tempo; Knacket gående prövas på riktigt; episod 3:s öppningar och omskrivning. Episod 2 byggs inte i appen förrän manuset sitter.
+
 ## 2026-10-17
 - Demi (jobb, Henric via annan session): **Episod 1 i ny form, version 32.** Manuset från rummet 17/10 committat orört, scen 0:s två frågor omformade till ja/nej-grenar via `rummet.py andra`, triggerraderna omskrivna till tiderna koden kör (scen 2 runt minut fem, scen 3 runt åtta, scen 4 runt nio och en halv, slutet efter elva och en halv eller ett stopp över 30 s efter elva).
   - **Flödet** (`glimt/episod1.js`): scen 0 Start (ser du mig, hör du mig, svar genom att stanna efter sista "nu", ja-tiden räknas från ordet, nej efter tio steg/20 s gps), sedan förtexterna (`ctx.credits()`, hela låten genom kontaktfiltret, bädden tyst), scen 1 Slingan när låten är slut och kontakten full (två frågor och en rad för sig själv), 2 Trädet, 3 Himlen, 4 Klockan. Golven: träd 5 min, himmel 7,5, klocka 9,5, hem 11,5 (stillastående 11). Simulerat slutar de flesta vandrare på 11,6-12,2 min.
