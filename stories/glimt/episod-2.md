@@ -15,17 +15,17 @@ Utkast 3, 2026-10-18. Skrivet om ur utkast 2 ("Ute", 7/10), som var material til
 **Logiken, utöver den i episod 1:**
 - Inne i verket får hon inte vara. Ett stopp tänder lampan där, som när hon klev av gruset i episod 1. Därför går det inte att svara genom att stanna, och ja blir två knack på fickan. Telefonen läser knacket som ett ryck, och det är så hon ser det.
 - Hennes eget knack är ett ljud från hennes sida, aldrig en vibration (Surret är osäkert).
-- Bakom pressarna går alla på stället i slagens takt. Den som går ur takt syns. Vega står still bland dem, så ett stopp är ofarligt där. Det bryter bara takten.
-- Arbetarna pratar ett ord per slag, för mitt i slaget hör de ingenting. Vega hörs inte alls så länge vandraren går.
+- Bakom pressarna går alla på stället i slagens takt, Vega också, för den som går i slagen syns inte i dånet. Den som går ur takt syns. Slagen följer inte vandraren: Företaget drar upp takten sista kvarten före skiftet. Stannar vandraren står Vega still bland dem och syns en stund. Ett kort stopp ger bara tonen och den dova rösten. Står vandraren still längre än ungefär tio sekunder tänds lampan och misstanken stiger.
+- Arbetarna pratar ett ord per slag, för mitt i slaget hör de ingenting. Det som räknar stegen hör inte Vega så länge vandraren går, men folk i rummet hör henne. Pratar hon med vandraren pratar hon rakt ut i luften.
 - Reserv i alla scener: står båda still längre än en halv minut frågar den platta rösten, som i episod 1.
 
 **Röster:** Vega. Den platta rösten. Kvinnan vid pressen (två repliker). En man (en replik).
 
-**Musik:** The Way We Are i scen 3. Den växer fram när vandraren går i takt med pressarna. Hur slagen når låtens tempo står i scenens trigger.
+**Musik:** The Way We Are i scen 3, som den är: mastern, inspelad mot klick i ungefär 135 slag i minuten. Den kommer hel när vandraren går i takt i låtens tempo, annars bara i bitar genom dånet. Hur slagen når tempot står i scenens trigger.
 
 **Med från episod 1** (telefonen minns): `[svarade]` om vandraren svarade ja i starten eller stannade på hennes begäran, annars `[svarade inte]`. `[misstanke]` om lampan tändes vid klockan, annars `[ingen misstanke]`. Saknas minnet: svarade inte, ingen misstanke.
 
-Övriga varianter: `[gång]`, `[löpning]`, `[klart och mörkt]` och `[inga stjärnor]`.
+Övriga varianter: `[gång]` och `[löpning]`.
 
 ---
 
@@ -35,9 +35,7 @@ Utkast 3, 2026-10-18. Skrivet om ur utkast 2 ("Ute", 7/10), som var material til
 > **Ny runda:**
 > (brus. Hennes röst, låg, för sig själv)
 >
-> (för sig själv) ...sju, åtta. Nej. De där är bara de vanliga.
->
-> (för sig själv) Där. Jo. Där.
+> (för sig själv) ...sju, åtta. Nej. De där är bara de vanliga. (paus) Där. Jo. Där.
 >
 > (rakt till dig) Där är du. Jag känner igen dig. Fråga inte hur, steg är som handstil.
 >
@@ -46,17 +44,14 @@ Utkast 3, 2026-10-18. Skrivet om ur utkast 2 ("Ute", 7/10), som var material til
 > [misstanke] De har frågat om kvällen vid klockan. Två gånger. Jag sa att jag hade en sten i skon, och de ville se skon. (paus) Den var tom. Det var det som var problemet.
 > [ingen misstanke] Ingen har frågat något. Jag stod som en stolpe och klappade ett träd, och ingen har frågat något.
 >
-> [klart och mörkt] Det är klart hos dig. Och mörkt. (paus) Det är något högt upp, i kanten. En prick. Den står still fast allt annat rör sig. (för sig själv) Det är säkert ett fel. (rakt till dig) Jag tittar igen sen.
-> [inga stjärnor] Jag tittade efter stjärnor hos dig. Det fanns inga nu. (torrt) Inte för att jag har väntat.
->
 > Det har hänt en sak.
 >
 > **Direkt efter episod 1:**
-> (surret. Hennes röst, nära, förvånad)
+> (surret. Under surret, en sekund, något till: ett andetag, eller en ton som inte hör till slingan. Inga ord. Sedan hennes röst, nära, förvånad)
 >
 > Du går fortfarande.
 >
-> Jag hann precis in. Jag stod innanför dörren och tänkte att nu är det slut för i kväll. (för sig själv) Och så går du bara vidare.
+> Jag hann precis in. Jag stod innanför dörren och tänkte att nu är det slut för i kväll. Och så går du bara vidare.
 >
 > (rakt till dig) Då går jag ut igen. Slingan stänger för dem som kan sova. Vi andra får gå en runda till. De tycker att det är sunt.
 >
@@ -76,10 +71,6 @@ Utkast 3, 2026-10-18. Skrivet om ur utkast 2 ("Ute", 7/10), som var material til
 >
 > (paus) Det finns inget ute här. Det finns inne, och så finns det väggen.
 >
-> Men jag har hört det förut. Någon frågar någon om den vill gå ut, och sen är de borta en kvart. De vet det varje gång. De går ändå.
->
-> Jag har alltid undrat vad det är de går ut till.
->
 > Bakom pressarna, sa hon. När klockan slår om. Det är snart.
 >
 > (för sig själv) Fyra år har jag väntat på den frågan. Och nu när den kom vågar jag inte gå ensam.
@@ -97,12 +88,12 @@ Utkast 3, 2026-10-18. Skrivet om ur utkast 2 ("Ute", 7/10), som var material til
 > (vandraren går igen, rösten tillbaka) Du sa ja. (andas ut) Okej. Då har jag ingen ursäkt kvar.
 >
 > **Nej, vandraren går vidare:**
-> Du går vidare. (paus) Det är också ett svar. (kort skratt) Fast jag hade redan bestämt mig. Jag frågade mest för att höra hur det lät.
+> Du går vidare. (paus) Ja, du går. Då följer du med ändå, vare sig du ville eller inte. (torrt) Det får jag ta på mig.
 >
 > (båda svaren går vidare hit)
 
 ## 2. Verket
-*Trigger: direkt efter scen 1, runt minut tre och en halv. Från dörren och in rör hon sig där hon inte får vara, så ett stopp tänder lampan. Knacket och Vägvalet läses bara gående, så den som springer ombeds gå. Klarhet 0,35: linjen sprakar mer här inne, av väggarna och maskinerna. Knacket får bara lätta följder: hörs inget tar hon det på ett sätt som inte straffar någon.*
+*Trigger: direkt efter scen 1, runt minut tre. Från dörren och in rör hon sig där hon inte får vara, så ett stopp tänder lampan. Lampan är oprövad och får bara lätta följder: ett kort stopp ger den dova rösten och tonen, inget mer. Först ett stopp längre än ungefär tio sekunder får misstanken att stiga. Knacket och Vägvalet läses bara gående, så den som springer ombeds gå. Klarhet 0,35: linjen sprakar mer här inne, av väggarna och maskinerna. Knacket får bara lätta följder: hörs inget tar hon det på ett sätt som inte straffar någon.*
 
 > Det finns en dörr i slingans vägg. Grå, utan handtag. Den går upp inifrån när städmaskinerna ska ut. Jag har gått förbi den tusen gånger.
 >
@@ -114,17 +105,17 @@ Utkast 3, 2026-10-18. Skrivet om ur utkast 2 ("Ute", 7/10), som var material til
 >
 > [löpning] Gå nu, om du springer. Här inne springer ingen. Jag säger till när du får springa igen.
 >
-> Nu går jag in. Fortsätt gå. Här inne får du inte stanna, för då syns jag.
+> Nu går jag in. Fortsätt gå, om du kan. Stannar du här inne syns jag en stund. (paus) Fast måste du stanna vid en gata, så stanna. Din väg går före min.
 >
 > (hennes steg, metallgolv. Ett stort, jämnt dån långt bort. Linjen sprakar)
 >
-> Det är varmt här. Det luktar olja och... nej, jag vet inte vad det luktar. Slingan luktar ingenting. Jag hade glömt att saker luktar.
+> Det är varmt här. Det luktar olja. Slingan luktar ingenting, jag hade glömt att saker luktar.
 >
 > (sprak) Du blir suddigare här inne. Det är väggarna, tror jag. Eller allt som går i dem.
 >
 > Jag kan inte fråga dig något nu. Stannar du för att svara ser de mig.
 >
-> (för sig själv) Hur gör man då. (paus) Så här.
+> Hur gör man då. (paus) Så här.
 >
 > (två knack, metall mot metall, ihåliga. Ett rör)
 >
@@ -144,38 +135,27 @@ Utkast 3, 2026-10-18. Skrivet om ur utkast 2 ("Ute", 7/10), som var material til
 >
 > (båda svaren går vidare hit)
 >
-> (för sig själv) Fråga det du undrar. Nu, när det inte går att stanna och tänka efter.
->
-> (rakt till dig) Är jag dum som gör det här? Knacka för ja.
->
-> (väntar)
->
-> **Vandraren knackar:**
-> (skrattar tyst) Tack. Det visste jag. Jag går vidare ändå.
->
-> **Inget knack:**
-> Inget knack. Då är jag inte dum. (paus) Det tar jag.
->
-> (båda svaren går vidare hit)
->
 > (dånet närmare. Hon saktar in)
 >
 > Det delar sig. Två gångar, och båda låter som pressarna. Jag har aldrig varit här.
 >
-> (paus) Välj du. Sväng åt det håll du vill, där du är, så tar jag samma. Går du rakt fram väljer jag.
+> (paus) Välj du. Sväng vid nästa korsning, åt det håll du vill, så tar jag samma. Går du rakt fram väljer jag.
 
-*Vägvalet väntar ungefär en minut. Den som inte kan svänga där den går fortsätter rakt fram, och då väljer hon.*
+*Vägvalet väntar ungefär en halv minut, så att vandraren hinner fram till en korsning. Medan hon väntar säger hon någon av raderna nedan, en i taget. Den som inte kan svänga fortsätter rakt fram, och då väljer hon.*
+
+> (medan hon väntar) Rören är varma här. Någon ska ha det varmt av allt det här. (torrt) Inte vi, uppenbarligen.
+>
+> (medan hon väntar) Det droppar någonstans. Det är det enda här inne som inte går i takt.
 
 > **Vandraren svänger vänster:**
-> Vänster. (hennes steg) Det är varmare här. Rören går i taket, de är nästan för varma att gå under.
+> Vänster. (hennes steg) Det är lågt i taket här. Jag går hukad. (torrt) Det ser säkert väldigt oskyldigt ut.
 >
 > **Vandraren svänger höger:**
 > Höger. (hennes steg) Det är trängre här, men dånet kommer närmare. Det låter som rätt håll. Vad det nu betyder här.
 >
 > **Vandraren svängde, åt något håll:**
-> (för sig själv) Jag följde någon.
 >
-> (rakt till dig) Jag har aldrig fått välja väg här inne. Nu fick jag inte det heller, det var du som valde. Men det kändes nästan likadant.
+> (lågt) Jag följde någon. Jag har aldrig fått välja väg här inne, och nu var det du som valde. Men det kändes nästan likadant.
 >
 > **Vandraren svänger inte:**
 > Rakt fram, då. (paus) Det finns inget rakt fram. Jag tar vänster. Det är också ett val, jag vet. Jag gjorde det åt oss.
@@ -186,14 +166,18 @@ Utkast 3, 2026-10-18. Skrivet om ur utkast 2 ("Ute", 7/10), som var material til
 >
 > (dovt, viskar) ...gå! Gå, snälla...
 >
-> (vandraren går, rösten tillbaka) Den hann säga det. (paus) Allt den säger är det någon som läser.
+> (vandraren går, rösten tillbaka) Den hann säga det. (paus) Någon läser allt den säger. Men ett så kort stopp kan vara vad som helst. En sten i skon.
+
+Står vandraren still längre än ungefär tio sekunder i verket stiger misstanken, och när vandraren går igen säger hon:
+
+> (lågt) Det där var för länge. Nu undrar de. (paus) Vi går vidare ändå. De får undra.
 
 ## 3. Pressarna
-*Trigger: runt minut sex, när hon kommer fram. Takten: pressarnas slag börjar i vandrarens egen takt och går i steg om sju till åtta procent, ett steg i taget, med fem till tio sekunder i varje innan hon säger något om det, tills de går i The Way We Are:s tempo, ungefär 135 slag i minuten. Det är där rask gång och lugn jogg möts: den som går ökar, den som springer saktar in, och båda kan gå eller springa i slagen. Varje gång vandraren går i takt med slagen växer låten fram, först trummor och bas, sedan allt. Vega pratar ett ord per slag, och tiger medan låten har sång. Hon står still bland de andra, så ett stopp är ofarligt här: det bryter bara takten. Takten springande är oprövad. Klarhet 0,45.*
+*Trigger: runt minut fem och en halv, när hon kommer fram. Takten: pressarnas slag börjar nära vandrarens egen takt. Sedan drar Företaget upp takten mot skiftets slut, i steg om sju till åtta procent med fem till tio sekunder i varje, tills slagen går i The Way We Are:s tempo, ungefär 135 slag i minuten. Slagen följer inte vandraren, vandraren följer slagen. Det är där rask gång och lugn jogg möts: den som går ökar, den som springer saktar in. Låten spelas som den är och sträcks aldrig. Hel kommer den bara när slagen nått dess tempo och vandraren går i takt; före det, och för den som aldrig hittar takten, hörs bara bitar av den genom dånet. Vega tiger medan låten har sång. Hon går på stället bland de andra, så ett stopp syns: kort är det ofarligt, längre än ungefär tio sekunder tänds lampan. Takten springande är oprövad. Klarhet 0,45.*
 
-*Låtens tempo är mätt på hela mastern (18/10) till ungefär 135 slag i minuten. Når vandraren inte dit stannar slagen där vandraren orkar, och låten kommer så långt den hinner. Den behöver inte spelas hel.*
+*Låten används som den är: mastern, inspelad mot klick i ungefär 135 slag i minuten (Henric tror det, inte säkert; mätt på hela mastern 18/10 till samma). Slagen går upp mot låtens tempo, låten går aldrig ner mot vandraren. Bitarna genom dånet är mastern själv, dov som genom en vägg. Stems finns. Trummor och bas först, och tystnad där sången ligger, byggs framöver, inte nu.*
 
-> (dånet väller in, nära. Tunga slag, jämna, i din takt)
+> (dånet väller in, nära. Tunga slag, jämna, nästan i din takt)
 >
 > Pressarna. Jag står bakom dem. Jag har stått framför dem varenda dag. Sten in, plattor ut. Någon någonstans behöver väldigt många plattor.
 >
@@ -209,9 +193,11 @@ Utkast 3, 2026-10-18. Skrivet om ur utkast 2 ("Ute", 7/10), som var material til
 >
 > (lågt) Där. Du hittade dem.
 >
-> (i takt växer något fram under slagen. En trumma, en bas)
+> De drar upp takten nu. Det gör de alltid sista kvarten före skiftet. (torrt) Fler plattor.
 >
-> (för sig själv) Någon nynnar. (rakt till dig) Någon har börjat nynna. Det gör de när alla går i takt.
+> (går vandraren i takt hörs något genom dånet, dovt, som genom en vägg: en bit av en sång, sedan borta igen)
+>
+> *I takt:* (lågt) Någon har börjat nynna. Det gör de när alla går i takt.
 >
 > (slagen drar upp ett steg till)
 >
@@ -221,15 +207,21 @@ Utkast 3, 2026-10-18. Skrivet om ur utkast 2 ("Ute", 7/10), som var material til
 >
 > (kvinnan, ett ord per slag) "Du. Kom."
 >
-> Så pratar de här. De hör vad man säger, men mitt i slaget hör de ingenting. (slag) Ett ord. (slag) I taget.
+> (slagen når låtens tempo)
 >
-> (torrt) Det går fortare än man tror. Folk säger mindre strunt.
->
-> (slagen når låtens tempo. Går vandraren i takt kommer låten hel, med sång, och Vega tiger. Tappar vandraren takten drar låten sig undan till slagen och kommer tillbaka när takten är tillbaka. Efter sången, eller efter ungefär en och en halv minut, tonar den ner till slagen igen)
+> **Vandraren går i takt:**
+> (låten kommer in hel, med sång, och Vega tiger. Tappar vandraren takten drar låten sig tillbaka bakom dånet och kommer fram igen när takten är tillbaka. Efter sången, eller efter ungefär en och en halv minut, tonar den ner till slagen igen)
 >
 > (lågt) De sjunger den. Utan ljud, nästan. Jag har hört bitar av den genom väggen i fyra år. Jag visste inte att den var hel.
 >
-> Mig hör de inte. Inte sen du kom. Jag står här och pratar rakt ut, och de andra tittar på mig som om jag vore sjuk.
+> **Vandraren hittar aldrig takten, eller orkar inte upp i den:**
+> (bara bitar av låten genom dånet, aldrig hel. Efter ungefär en minut går berättelsen vidare)
+>
+> (lågt) De nynnar på något. Jag får bara bitar, som genom väggen hemma. (paus) Den finns hel någonstans. En dag vill jag höra hela.
+>
+> (båda svaren går vidare hit)
+>
+> Jag pratar rakt ut i luften, och de tittar på mig som om jag vore sjuk.
 >
 > De undrar hur jag kom hit utan att det syntes. Jag sa som det var. Någon går i mitt ställe.
 >
@@ -239,28 +231,28 @@ Utkast 3, 2026-10-18. Skrivet om ur utkast 2 ("Ute", 7/10), som var material til
 >
 > Jo. Nu gör någon det.
 >
-> Han har en läsare. Han lagar dem, det är hans jobb. Han håller upp den mot mig. Jag står här, blick stilla.
+> Han har en läsare. Han lagar dem, det är hans jobb. Han håller upp den mot mig. Jag går på stället, som alla andra.
 >
-> Och på hans läsare går jag. I din takt.
+> Och på hans läsare går jag rakt fram. I din takt, fast jag står på samma fläck.
 >
 > De tittar på läsaren. De tittar på mina fötter. De tittar på läsaren igen.
 >
-> (rakt till dig, lågt) De vill veta om du är någon eller om du är ett fel. Vill du visa dem? Stanna. Två sekunder, sen går du igen.
+> (rakt till dig, lågt) De vill veta om du är någon eller om du är ett fel. Vill du visa dem? Stanna, och stå kvar tills jag säger till. Det syns när jag står still här, så det blir inte länge.
 >
 > (väntar)
 >
 > **Ja, vandraren stannar:**
-> (slagen fortsätter. Hennes röst dov) ...där. Den stannade. Han tappade nästan läsaren.
+> (slagen fortsätter. Hennes röst dov) ...där. Den stannade. Han tappade nästan läsaren. (paus) Gå nu.
 >
 > (vandraren går, rösten tillbaka, mjukt) De såg dig. Det är första gången någon annan än jag vet att du finns.
 >
 > **Nej, vandraren går vidare:**
-> Du går på. (torrt) Den har egen vilja, säger jag. Det räcker för dem. Jag står still och läsaren går, det har ingen av dem sett förut.
+> Du går på. (torrt) Den har egen vilja, säger jag. Det räcker för dem. Jag står på samma fläck och läsaren går rakt fram. Det har ingen av dem sett förut.
 >
 > (båda svaren går vidare hit)
 
 ## 4. Kroken
-*Trigger: efter scen 3, runt minut nio. Pressarna går i sin vanliga takt, utan låt, och ingen takt krävs längre. Klarhet 0,45, och 0,55 på raden "Jag hade inget ord", det klaraste hittills. Där är det relationen som gör linjen klarare, inte tekniken. Efter sista repliken: går vandraren vidare börjar episod 3 med sin öppning direkt efter. Stannar vandraren tonar rösten bort, och nästa runda börjar episod 3 med en ny runda.*
+*Trigger: efter scen 3, runt minut åtta. Pressarna går i sin vanliga takt, utan låt, och ingen takt krävs längre. Klarhet 0,45, och 0,55 på raden "Jag hade inget ord", det klaraste hittills. Där är det relationen som gör linjen klarare, inte tekniken. Efter sista repliken: går vandraren vidare börjar episod 3 med sin öppning direkt efter. Stannar vandraren tonar rösten bort, och nästa runda börjar episod 3 med en ny runda.*
 
 > [löpning] Du får springa igen, om du vill. Jag står still här. Det syns inte på mig.
 >
@@ -268,13 +260,13 @@ Utkast 3, 2026-10-18. Skrivet om ur utkast 2 ("Ute", 7/10), som var material til
 >
 > En ordbok. Gammal, den luktar källare. Någon har satt små prickar under bokstäver, här och där. Man måste veta var man ska börja.
 >
-> Den ska till nattskiftet. Den går från hand till hand, och varje hand sitter på någon som de har koll på. Det tar dem en vecka att få den genom en vägg.
+> Den ska till nattskiftet. Den går från hand till hand, och de har koll på varenda hand. Det tar en vecka att få den genom en vägg.
 >
 > (kvinnan, ett ord per slag) "Du. Går. Fritt."
 >
 > (paus) De vill att jag bär den. Den ska ligga bakom en lucka vid laddstället innan nattskiftet går på.
 >
-> Jag sa ja innan jag hann tänka. Det brukar jag inte göra. Det måste vara något med att ha sällskap.
+> Jag sa ja innan jag hann tänka. Det brukar jag inte göra. Det är väl det där med att ha sällskap.
 >
 > De frågade vad du är. Jag sa att du går.
 >
@@ -290,9 +282,9 @@ Utkast 3, 2026-10-18. Skrivet om ur utkast 2 ("Ute", 7/10), som var material til
 >
 > (en klocka, långt bort, ett slag. Linjen som förut)
 >
-> Nattskiftet går på om en kvart. Laddstället ligger på andra sidan hallen, och jag har en bok under overallen.
+> Laddstället ligger på andra sidan hallen, och jag har en bok under overallen. Den känns större än den är. (paus) Och den prasslar när jag går.
 >
-> (för sig själv) En kvart. Det är långt till laddstället.
+> (för sig själv) Prassla inte nu.
 >
 > (rakt till dig) Gå inte hem än. Om du kan.
 >
@@ -305,10 +297,10 @@ Utkast 3, 2026-10-18. Skrivet om ur utkast 2 ("Ute", 7/10), som var material til
 
 | Scen | Mekanik | Läget ute |
 |---|---|---|
-| 0 | Kontakten från lågt. Minnet från episod 1. Ljust eller mörkt, och om det är klart. | Kontakten håller. Minnet mellan episoderna är oprövat. Ljust eller mörkt håller. Om himlen är klar läser telefonen inte i dag. |
+| 0 | Kontakten från lågt. Minnet från episod 1. Ljust eller mörkt, och Klar himmel. | Kontakten håller. Minnet mellan episoderna är oprövat. Ljust eller mörkt håller. Klar himmel är oprövad: telefonen loggar molnigheten från version 33 men väljer inget efter den än. |
 | 1 | Stanna för ja. | Håller, gående. |
 | 2 | Farligt stopp (lampan). Knack, efter hennes knack som ljud. Vägvalet. | Lampan är oprövad i en riktig ficka. Knack är Delvis och ska gås om gående. Vägvalet håller i Chrome. |
-| 3 | Takten, med The Way We Are i stället för ett rent slag. Stanna för ja, utan krav. | Takten håller gående. Med en låt och ett fast måltempo är den oprövad. |
+| 3 | Takten, med The Way We Are i stället för ett rent slag, för gående och lugnt joggande. Stanna för ja, utan krav. | Takten håller gående. Med en låt och ett fast måltempo är den oprövad, och joggande mot 135 likaså. |
 | 4 | Linjens klarhet uppåt, för relationen. Slutet på vandrarens eget stopp, eller episod 3 direkt. | Klarheten är oprövad. Att gå från en episod rakt in i nästa är inte byggt. |
 
 ## När det går fel
@@ -317,22 +309,22 @@ Berättelsen fortsätter alltid, och Vega lägger aldrig skulden på vandraren. 
 
 | Scen | Vad som gick fel | Följd | Nivå |
 |---|---|---|---|
-| 2 | Vandraren stannar i verket | Lampan tänds en gång. Misstanken stiger. | 3, Företaget blir misstänksamt |
+| 2, 3 | Vandraren stannar i verket eller bakom pressarna | Kort stopp: den dova rösten och tonen, inget mer. Längre än ungefär tio sekunder: lampan, och misstanken stiger. | 2 i ljudet; 3 bara vid långt stopp |
 | 2 | Inget knack hörs | Hon tar det som att du är kvar, eller som nej. Inget annat. | ingen |
 | 2 | Vandraren svänger inte | Hon väljer själv. | ingen |
 | 3 | Vandraren tappar takten | Låten drar sig undan till slagen tills takten är tillbaka. | 2, i ljudet |
-| 3 | Når aldrig låtens tempo | Slagen stannar där vandraren orkar. Låten kommer så långt den hinner. | ingen |
-| alla | Båda står still längre än en halv minut | Den platta rösten frågar. Misstanken stiger. | 3 |
+| 3 | Hittar aldrig takten, eller orkar inte upp i den | Slagen går upp ändå, för det är Företaget som drar dem. Låten hörs bara i bitar genom dånet, och hon vill höra den hel en dag. | ingen |
+| alla | Båda står still längre än en halv minut | Den platta rösten frågar, och hon säger att hon vilar, som i episod 1. | ingen |
 
-Det tyngsta som kan hända i episoden är misstanken. Knacket bär aldrig något tyngre än en tolkning, eftersom det inte är säkert läst gående.
+Det tyngsta som kan hända i episoden är misstanken, och den kommer bara av ett långt stopp. Knacket bär aldrig något tyngre än en tolkning, eftersom det inte är säkert läst gående.
 
-**Följer med till episod 3:** misstanken, om vandraren sa ja i scen 1, om knacket hördes, vilket håll vandraren valde och om de såg vandraren i scen 3.
+**Följer med till episod 3:** misstanken, om vandraren sa ja i scen 1, om knacket hördes, vilket håll vandraren valde, om de såg vandraren i scen 3 och om låten kom hel.
 
 ## Planterat
 
 | Vad | Var | Tanke |
 |---|---|---|
-| Pricken högt upp, "säkert ett fel" | 0 | Vega, stjärnan i Lyran. Hon säger inte vad hon såg. |
+| Stjärnan hon bad om i episod 1 | inte här | Vega, stjärnan i Lyran. Väntar tills telefonen vet om himlen är klar. |
 | Sången de nynnar när alla går i takt | 3, 4 | The Way We Are som arbetarnas sång. I världsboken har revolutionen en sångbok. |
 | Ordboken med prickarna | 4 | Ur Here: koden bland bokstäverna. Episod 3. |
 | "Jag hade inget ord" | 4 | Vad vandraren är för henne. Ordet finns kanske i boken. |
@@ -344,10 +336,10 @@ Det tyngsta som kan hända i episoden är misstanken. Knacket bär aldrig något
 - Nattrundan: "Slingan stänger för dem som kan sova."
 - Att hon ser knacket som två ryck, "som när någon hickar".
 - Hennes knack på röret, som ljud.
-- Frågan "Är jag dum som gör det här?", där inget knack betyder att hon inte är det.
 - Att alla bakom pressarna går på stället i slagen, och att den som går ur takt syns.
 - The Way We Are som sången arbetarna nynnar när alla går i takt.
 - Att linjen sprakar inne i verket.
-- Pricken på himlen i öppningen. Kräver att telefonen vet om det är klart, och det gör den inte i dag.
+- Pricken på himlen i öppningen. Kräver Klar himmel, som är oprövad.
+- Att boken prasslar när hon går, i stället för en klocka som räknar ner.
 
 Kvar ur utkast 2: kvinnan som nyser två gånger, ett ord per slag, mannen som lagar läsare, och Vega som den enda som går fritt.

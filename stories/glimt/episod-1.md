@@ -30,7 +30,7 @@ Varianter i hakparentes väljs av telefonen: `[ljust]`, `[mörkt]`, `[regn]`, `[
 
 > (brus. Hennes röst, låg, för sig själv)
 >
-> (pratar för sig själv) Jag måste. Jag tror... Ok.
+> (för sig själv) Jag måste. Jag tror... Ok.
 >
 > (ropar) Hallå! Vänta! 
 >
@@ -105,7 +105,7 @@ Varianter i hakparentes väljs av telefonen: `[ljust]`, `[mörkt]`, `[regn]`, `[
 > Jag också. Fast vi är fyrtio stycken på slingan. (kort skratt) Det är inte samma sak.
 >
 > **Nej, vandraren går vidare:**
-> Då går någon bredvid dig. (tyst en stund) Det låter fint. De hör ju inte mig. Det är bara du.
+> Inte? (paus) Då har du någon mer än mig. (tyst en stund) Det låter fint.
 >
 > (båda svaren går vidare hit)
 >
@@ -127,7 +127,11 @@ Varianter i hakparentes väljs av telefonen: `[ljust]`, `[mörkt]`, `[regn]`, `[
 > (viskar) En halv minut utan steg, sen undrar de vad man håller på med. Jag räknar.
 >
 > (hon räknar under andan. Slingans surr)
->
+
+Stannar vandraren medan hon räknar säger hon det här, dovt, och räknar sedan vidare där hon var:
+
+> (dovt) ...gå. Annars räknar de mig.
+
 > ...tjugosju. Tjugoåtta. Tjugonio. Trettio. (paus) Trettioett. (paus) Trettiotvå.
 >
 > (häpen) De undrar inte. Du går, och de tror att det är jag.
@@ -150,7 +154,11 @@ Varianter i hakparentes väljs av telefonen: `[ljust]`, `[mörkt]`, `[regn]`, `[
 > (rösten sjunker undan. Slingans surr kommer fram. En mjuk ton, sedan den platta rösten, svagt: "Avvikelse. Steg utanför sträckan.")
 >
 > (dovt, viskande) ...nej. Nej, nej. Gå! Gå, snälla!
->
+
+Står vandraren kvar ungefär tio sekunder till:
+
+> (dovt, närmare) Snälla. Gå nu. Jag kan inte gå härifrån förrän du gör det.
+
 > (vandraren går, rösten tillbaka, tonen tystnar. Hon andas)
 >
 > Det var lampan. Den tändes när du stannade.
@@ -193,7 +201,7 @@ Varianter i hakparentes väljs av telefonen: `[ljust]`, `[mörkt]`, `[regn]`, `[
 > Det ser ut som där du är. Men det är inte där du är. (paus) Det får vara så ett tag till.
 
 ## 4. Klockan
-*Trigger: runt minut nio och en halv, när vandraren går. Hon sitter fortfarande under trädet och måste upp på gruset innan skiftet kommer runt kröken. Ett stopp tänder lampan tills hon är på gruset. Sedan går hon in, och resten är ofarligt. Slutet spelas på vandrarens eget stopp: när avståndet till starten är under ungefär 300 meter, efter minut elva och en halv, eller vid ett stopp längre än 30 sekunder efter minut elva. Rösten får tona bort.*
+*Trigger: runt minut nio och en halv, när vandraren går. Hon sitter fortfarande under trädet och måste upp på gruset innan skiftet kommer runt kröken. Ett stopp tänder lampan tills hon är på gruset. Sedan går hon in, och resten är ofarligt. Slutet kommer på tiden, runt minut elva, i två sorter: `[på väg tillbaka]` när avståndet till starten krymper, annars `[går vidare]`. Stannar vandraren efter sista repliken tonar rösten bort i surret. Går vandraren vidare tonar den bort ändå, och episod 2 kan börja direkt efter, med samma något under surret.*
 
 > (en klocka på hennes sida, dov) Där är klockan. Slingan stänger.
 >
@@ -204,7 +212,8 @@ Varianter i hakparentes väljs av telefonen: `[ljust]`, `[mörkt]`, `[regn]`, `[
 > (knappt hörbart) ...gå, gå...
 >
 > **Vandraren går hela vägen:**
-> (lång utandning) På gruset. En arbetare på sin runda, det är allt de ser. (torrt) Jag har stått som en stolpe, klappat ett träd och suttit på marken. Och ingen såg något.
+> [lampan tändes inte vid trädet] (lång utandning) På gruset. En arbetare på sin runda, det är allt de ser. (torrt) Jag har stått som en stolpe, klappat ett träd och suttit på marken. Och ingen såg något.
+> [lampan tändes vid trädet] (lång utandning) På gruset. En arbetare på sin runda, det är allt de ser. (torrt) Jag har stått som en stolpe, klappat ett träd och suttit på marken. Lampan såg en av de tre. Det är inte illa, för att vara första gången.
 >
 > **Vandraren stannar:**
 > (rösten sjunker undan. Tonen. Den platta rösten: "Avvikelse. Steg utanför sträckan.")
@@ -214,7 +223,8 @@ Varianter i hakparentes väljs av telefonen: `[ljust]`, `[mörkt]`, `[regn]`, `[
 > (vandraren går igen, rösten tillbaka, låg) Jag hann upp. Men den skrev upp det. En avvikelse. Det får jag höra mer om.
 >
 > **Alla:**
-> [på väg tillbaka] Du är på väg hem. Det syns, du går rakare. Man går annorlunda när man vet vart man ska.
+> [på väg tillbaka] Du är på väg hem. Det syns, du går rakare. (torrt) Själv går jag runt. Det är ungefär samma sak, säger de.
+> [går vidare] Du går bort från där du började. Rakt ut. (paus) Det kan inte jag. Men jag kan titta.
 >
 > **Vandraren har stannat på hennes begäran någon gång i kväll:**
 > Jag vet inte vad du är. Men du hör mig, och du stannade när jag bad om det. Det är mer än jag vet om de flesta här.
@@ -224,7 +234,7 @@ Varianter i hakparentes väljs av telefonen: `[ljust]`, `[mörkt]`, `[regn]`, `[
 > Jag heter Vega. Om du undrade.
 >
 > **Vandraren har aldrig stannat på begäran:**
-> Jag vet inte vad du är. Ett fel i snäckan, kanske. Eller någon som är ute och går och inte har en aning om vad den gjorde i kväll.
+> Jag vet inte vad du är. Ett fel i det de räknar med, kanske. Eller någon som är ute och går och inte har en aning om vad den gjorde i kväll.
 >
 > Jag frågar en gång till, sen ger jag mig. Om du hör mig: stanna.
 >
@@ -234,7 +244,7 @@ Varianter i hakparentes väljs av telefonen: `[ljust]`, `[mörkt]`, `[regn]`, `[
 >
 > Du går, det är det jag vet om dig. Så du får heta Vandraren. Jag heter Vega. Om du undrade.
 >
-> *Nej:* Nej. Okej. Då är du steg. Det räcker långt, det har jag sett i kväll.
+> *Nej:* Nej. Okej. Då är du steg. (paus) Jag har gömt mig i dem hela kvällen, så jag klagar inte.
 >
 > Du får heta Vandraren ändå. Jag heter Vega, om någon undrar.
 >
@@ -247,7 +257,7 @@ Varianter i hakparentes väljs av telefonen: `[ljust]`, `[mörkt]`, `[regn]`, `[
 >
 > Kom tillbaka och gå. Om du vill. Jag klarar mig annars, det har jag gjort länge. Men kom.
 >
-> (vandraren stannar. Rösten sjunker undan, surret kommer fram. Under surret, en sekund, något till: ett andetag, eller en ton som inte hör till slingan. Inga ord. Sedan bara surret.)
+> (stannar vandraren: rösten sjunker undan, surret kommer fram. Under surret, en sekund, något till: ett andetag, eller en ton som inte hör till slingan. Inga ord. Sedan bara surret. Går vandraren vidare tonar rösten bort i surret, och det där under surret kommer i stället i början av episod 2)
 
 ---
 

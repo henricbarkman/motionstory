@@ -3,7 +3,7 @@
 Överflyttat 2026-10-18 ur utkast 2 ("Ute", 7/10), inte omskrivet. Ute var material till två episoder. Första halvan är nu episod 2 (Bakom pressarna), och här ligger resten: skiftporten, budet till laddstället och vägen tillbaka till gruset. Bara de minsta rättelserna är gjorda: hon ser vandraren, hon hör inte ("det ser jag" i stället för "det hör jag"), och den andra rösten är flyttad till Parkerat. Gången med det som övar på steg är också parkerad.
 
 **Det här måste skrivas innan episoden håller ihop:**
-- Öppningen, två sorter. Direkt efter episod 2: en kvart kvar till nattskiftet, boken under overallen. Ny runda: kvarten gick, och boken har legat under madrassen ett dygn (det var förut utfallet när sista rusningen inte räckte).
+- Öppningen, två sorter. Direkt efter episod 2: boken under overallen, nattskiftet har inte gått på än, och den prasslar. Ny runda: hon tog boken med sig hem och har haft den under madrassen ett dygn. Det är inget misslyckande, bara en natt till med en bok som inte får finnas. Luckan vid laddstället väntar till nästa nattskift.
 - Portarna som räknar steg infördes i Ute:s scen 2 (Dörren), som inte finns kvar. Episod 2 har dörren men inte portarna. Portarna och att hon får hålla din fart här inne behöver en egen replik i början.
 - Skiftporten skrevs för vägen till pressarna. Nu ligger den på vägen till laddstället och behöver ett nytt skäl. `[i tid]` och `[sent]` betyder då om hon kom igenom porten, inte om hon hann till mötet.
 - Lojalisten i Budet skrevs för någon vandraren redan mött i episod 1. Lojalisten är struken ur episod 1, så det här är första mötet.
@@ -18,7 +18,7 @@
 - Inne i verket finns portar som räknar. De vet inte vem som går igenom, bara om stegen sedan förra porten räcker till sträckan. Det är vandrarens steg de räknar, så här inne kan hon aldrig komma fram före vandrarens steg: hon får hålla vandrarens fart. Ökar vandraren kan hon springa. Ökar vandraren inte blir hon sen, inte upptäckt. Det är det bundna läget, det som världsboken kallar A, och det gäller bara inne i verket.
 - Skiftporten är en egen sort. Den står bara öppen medan klockan slår.
 - Lojalisterna har en läsare på handleden som visar hur en arbetare går. Går hon lugnt förbi en av dem medan vandraren springer, ser lojalisten en arbetare som går framför sig och springer på handleden. Därför: gå lugnt.
-- Tal: de hör vad arbetarna säger, men inte Vega så länge vandraren går. När en lojalist står bredvid tiger Vega.
+- Tal: det som räknar stegen hör inte Vega så länge vandraren går, men folk runt henne hör henne. När en lojalist står bredvid tiger Vega.
 - Reserv i alla scener: stannar vandraren medan hon rör sig i verket tänds lampan. Står båda still längre än en halv minut frågar den platta rösten.
 
 **Röster:** Vega. Den platta rösten. Lojalisten.
