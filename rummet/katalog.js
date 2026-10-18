@@ -111,6 +111,11 @@ function monster(form) {
   return `(?<!${BOKSTAV})${delar}${slut}(?!${BOKSTAV})`;
 }
 
+// Names that are also an everyday word in the manuscripts, and so are the
+// mechanic only with a capital: "surret" is the hum on her side, Surret the
+// phone's buzz. The catalogue says so under Surret, for whoever writes.
+const VERSAL = new Set(['Surret']);
+
 // Where in a text the catalogue's mechanics are named: [{ fran, till, mekanik }],
 // longest names first, never overlapping.
 export function hittaNamn(text, katalog) {
@@ -118,7 +123,7 @@ export function hittaNamn(text, katalog) {
   let cache = katalog._monster;
   if (!cache) {
     cache = [];
-    for (const k of katalog.mekaniker) for (const f of k.namnformer) cache.push({ k, f, re: new RegExp(monster(f), 'giu') });
+    for (const k of katalog.mekaniker) for (const f of k.namnformer) cache.push({ k, f, re: new RegExp(monster(f), VERSAL.has(f) ? 'gu' : 'giu') });
     cache.sort((a, b) => b.f.length - a.f.length);
     Object.defineProperty(katalog, '_monster', { value: cache, enumerable: false });
   }

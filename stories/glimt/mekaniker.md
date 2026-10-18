@@ -1,6 +1,6 @@
 # Glimt: mekanikerna
 
-> Katalogen över vad vandraren kan göra och vad telefonen kan läsa. Skriven för den som skriver manus. Senast genomgången 2026-10-08. Mätningarna bakom varje omdöme står på plansidan; här står bara det en författare behöver.
+> Katalogen över vad vandraren kan göra och vad telefonen kan läsa. Skriven för den som skriver manus. Senast genomgången 2026-10-18. Mätningarna bakom varje omdöme står på plansidan; här står bara det en författare behöver.
 
 En mekanik är något vandraren gör med kroppen, som telefonen märker, och som Vega kan svara på. Vandraren säger aldrig något: inget ljud går över till henne. Allt vandraren svarar med finns i den här listan.
 
@@ -106,7 +106,7 @@ Ett stopp är det tydligaste vandraren kan säga.
 **Du gör:** går i takt med ett slag i lurarna, som blir lite fortare och lite lugnare.
 **I berättelsen:** musik växer fram när du går i takt. Används bara i enstaka skarpa lägen: täckningen kräver aldrig takt.
 **Omdöme:** Håller, gående. Henric följde både fortare och lugnare (i takt 92 och 86 % av tiden) och tyckte det var lagom lätt (12/10). Första gången: "himla häftig". *Bara gående.*
-**Tänk på:** en ny takt, 7-8 % från den förra, hittas på ungefär fem sekunder. Låt henne vänta fem till tio sekunder efter ett byte innan hon säger något om den. Följer takten en låt (episod 2, The Way We Are) är låtens tempo målet, och det kan ligga långt över vanlig gång: ett klipp av låten mättes till ungefär 134 slag i minuten, inte bekräftat. Börja i vandrarens egen takt, dra upp ett steg i taget, och stanna där vandraren orkar.
+**Tänk på:** en ny takt, 7-8 % från den förra, hittas på ungefär fem sekunder. Låt henne vänta fem till tio sekunder efter ett byte innan hon säger något om den. Följer takten en låt (episod 2, The Way We Are) är låtens tempo målet, och det kan ligga långt över vanlig gång. The Way We Are går i ungefär 135 slag i minuten, men det är inte bekräftat av Henric, och hur stadigt tempot ligger genom låten är inte mätt: hela låten mätt i ett stycke gav 134-136, mätt tjugo sekunder i taget spred det sig från 100 till 171. Börja i vandrarens egen takt, dra upp eller ner ett steg i taget, och stanna där vandraren orkar. Takten joggande är oprövad.
 
 ### Tassa
 **Du gör:** går mjukt och tyst i samma fart.
@@ -144,13 +144,13 @@ Telefonen i fickan som kanal åt båda hållen. Den enda beröringen mellan vär
 **Du gör:** känner telefonen vibrera.
 **I berättelsen:** Vega knackar på dig.
 **Omdöme:** Osäker. Tyst utan förvarning när telefonen står på ljudlöst, Stör ej eller energisparläge, och fungerar inte i Firefox.
-**Tänk på:** inget i berättelsen får hänga på att vandraren kände surret.
+**Tänk på:** inget i berättelsen får hänga på att vandraren kände surret. Skriv Surret med stor bokstav i triggern när du menar vibrationen; surret med liten bokstav, som slingans surr, är hennes sidas ljud och får ingen bricka.
 
 ### Knack
 **Du gör:** knackar två gånger på fickan.
 **I berättelsen:** ett svar när hon inte kan prata, eller ett tecken till henne.
 **Omdöme:** Delvis. Stående har fungerat. Gående hördes bara en av tre (9/10), och Henric fick knacka ganska hårt, fast alla tre syns tydligt i sensorn: gränsen var satt efter hårdare steg än hans. Från version 27 sänks gränsen när gången är mjuk, men aldrig under det som steg och en telefon som tas upp ur fickan kan ge. Då hörs åtta av hans nio gående dubbelknack i tre promenader, och inget falskt i tretton. Det mjukaste (9/10 klockan 11:25) hörs fortfarande inte. Ska gås om. *Bara gående,* aldrig under löpning.
-**Tänk på:** en stöt mot telefonen kan läsas som knack. Bara lätta följder. Ett av de två knacken ska vara tydligt hårt. Ju mjukare vandraren går, desto lättare knack räcker; den som stampar får knacka hårdare.
+**Tänk på:** en stöt mot telefonen kan läsas som knack. Bara lätta följder. Ett av de två knacken ska vara tydligt hårt. Ju mjukare vandraren går, desto lättare knack räcker; den som stampar får knacka hårdare. Testsidan säger samma sak tills Knacket gående har gåtts igen.
 
 ### Hon knackar
 **Du gör:** knackar tillbaka lika många gånger som telefonen surrade.
@@ -206,6 +206,12 @@ Det här är glimtarna: vad Vega ser av din värld utan att du gör något.
 **I berättelsen:** varianterna `[regn]` och `[torrt]`.
 **Omdöme:** Delvis. Det har aldrig regnat under en promenad.
 
+### Klar himmel
+
+**I berättelsen:** varianten `[klart och mörkt]`: en natt när hon kan se en stjärna hos dig. Klart betyder molnighet högst ungefär 25 % och solen mer än tio grader under horisonten.
+
+**Omdöme:** Oprövad. Från version 33 hämtar telefonen molnigheten med vädret och skriver den i loggen vid varje start, men ingen episod väljer något efter den än, och gränsen är inte prövad mot en riktig himmel.
+
 ### Hur länge du varit borta
 **I berättelsen:** en replik om samma dag, några dagar eller över en vecka. Aldrig skuld.
 **Omdöme:** Delvis. Över en vecka har aldrig hänt.
@@ -226,7 +232,7 @@ Det här är glimtarna: vad Vega ser av din värld utan att du gör något.
 
 **I berättelsen:** hur tydligt hennes röst kommer genom linjen, som en lätt radio: smalare band, lite mättnad och ett svagt sus som bara ligger under hennes repliker. Ett reglage, klarhet, från 0 (hela radion) till 1 (ren röst), med ett värde per episod som kan skrivas över per scen, åt båda hållen. Klarheten är både teknik och relation: linjen blir bättre med tiden, och den speglar hur nära Vega och vandraren är varandra. Den stiger när de kommer närmare och kan gå tillbaka när något går sönder mellan dem, så den behöver inte bara stiga. Kontakten ligger ovanpå: när du stannar blir hon dov precis som förut. Förtexternas låt går inte genom radion.
 
-**Omdöme:** Oprövad. Episod 1 har klarhet 0,45 (17/10). Står ?klarhet=0.6 i länken provar promenaden en annan nivå.
+**Omdöme:** Oprövad. Episod 1 har klarhet 0,45 (17/10). Står ?klarhet=0.6 eller ?klarhet=0,6 i länken provar promenaden en annan nivå; ett värde utanför 0-1 blir 0 eller 1.
 
 ---
 

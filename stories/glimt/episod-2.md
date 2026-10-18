@@ -8,9 +8,9 @@ Utkast 3, 2026-10-18. Skrivet om ur utkast 2 ("Ute", 7/10), som var material til
 
 **Stil:** som episod 1. Nära och talspråklig, en person i en dålig telefonlinje. Hon ser glimtar av din värld men hör den aldrig. Rösten blir en annan när hon pratar för sig själv. Torr humor när det är som värst.
 
-**Riktlängd:** cirka tio minuter. Ungefär fem minuters tal och en och en halv minut låt.
+**Riktlängd:** cirka elva minuter med texten som den står (räknat 18/10 på ordantalet i en promenad, i episod 1:s taltakt, och på triggertiderna): ungefär åtta och en halv minuts tal, en och en halv minut låt, och väntan på svar och takt.
 
-**Gå, spring eller båda:** öppningen, scen 1 och scen 4 går lika bra springande. Från dörren i scen 2 till slutet av scen 3 ber hon den som springer att gå, för knack och takt läses bara gående.
+**Gå, spring eller båda:** öppningen, scen 1, scen 3 och scen 4 går lika bra springande. Bara i verket, från dörren i scen 2 till slutet av scenen, ber hon den som springer att gå, för Knack och Vägvalet läses bara gående. I scen 3 möts gång och lugn jogg i Takten, kring 135 slag i minuten (Henric 18/10): den som går ökar, den som springer saktar in. Takten springande är oprövad.
 
 **Logiken, utöver den i episod 1:**
 - Inne i verket får hon inte vara. Ett stopp tänder lampan där, som när hon klev av gruset i episod 1. Därför går det inte att svara genom att stanna, och ja blir två knack på fickan. Telefonen läser knacket som ett ryck, och det är så hon ser det.
@@ -23,7 +23,7 @@ Utkast 3, 2026-10-18. Skrivet om ur utkast 2 ("Ute", 7/10), som var material til
 
 **Musik:** The Way We Are i scen 3, som den är: mastern, inspelad mot klick i ungefär 135 slag i minuten. Den kommer hel när vandraren går i takt i låtens tempo, annars bara i bitar genom dånet. Hur slagen når tempot står i scenens trigger.
 
-**Med från episod 1** (telefonen minns): `[svarade]` om vandraren svarade ja i starten eller stannade på hennes begäran, annars `[svarade inte]`. `[misstanke]` om lampan tändes vid klockan, annars `[ingen misstanke]`. Saknas minnet: svarade inte, ingen misstanke.
+**Med från episod 1** (telefonen minns): `[svarade]` om vandraren har stannat på någon fråga eller begäran i episod 1, annars `[svarade inte]`. `[misstanke]` om lampan tändes vid klockan, annars `[ingen misstanke]`. Saknas minnet: svarade inte, ingen misstanke.
 
 Övriga varianter: `[gång]` och `[löpning]`.
 
