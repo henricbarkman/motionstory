@@ -40,6 +40,8 @@ Vandraren går i sin egen värld, nu. Vega lever 20-30 år fram, i HELD:s värld
 
 Tiden: Vega säger aldrig vilket år det är, bara "hos dig".
 
+**Henric 19/10:** platsen är en bruksort, där Företaget äger allt, och där finns körer. Simon Stålenhag är bra inspiration, men det ska in mer fantasy, kanske åt Annihilation eller Hunger Games. Om de lever inuti en asteroid är osäkert ("cool idé iaf").
+
 ## Hennes värld
 
 **Beslut 7/10:** hoten där hon är:
@@ -50,7 +52,13 @@ Tiden: Vega säger aldrig vilket år det är, bara "hos dig".
 
 **Beslut 7/10:** vad väsendet är och hur det beter sig tas när berättelsen skrivs. *Ett förslag ligger parkerat:* väsendet hör det som rör sig medan Företaget ser det som står still, så att de två hoten drar åt var sitt håll. Henric sköt frågan till skrivandet.
 
+**Henric 19/10:** väsendet lutar åt något som växer i luftreningen, lite som i Annihilation. Det ska vara något tydligt annat, som ger lite fantasy-känsla.
+
 *Ur HELD:s kanon:* AI-enheter får inte kopplas ihop och lever lika utsatta som arbetarna, och i Horizons blir en AI arbetarens kamrat. Hotet är alltså Företagets maskiner. En AI kan byta sida.
+
+**Beslut 19/10:** AI-enheter får inte kopplas ihop, och deras intelligens har ett tak. Runt 2028 orsakade AI-svärmar kaos, och superintelligensen gick inte att kontrollera: den gjorde inte vad företagen ville. Företagen vill ha kontroll. Reglerna som sattes upp då är inte bara lagar, de är nästan en religion, ett paradigm. Arbetarna är lika rädda för en robotiserad AI, för den kan ta allas jobb. Därför behövs arbetare, och maskinerna får inte arbeta helt självständigt.
+
+**Beslut 19/10:** arbetarna är nätet. Maskinerna får inte kopplas ihop, så arbetarna bär data och beslut mellan dem. Det är sysslan Bud.
 
 *Förslag:* Företaget läser sina arbetare genom hur de rör sig. Dagboken säger det redan (rad 9): algoritmerna bestämmer arbetets takt och rytm. Det är därför dina steg kan dölja henne.
 
@@ -152,6 +160,8 @@ Vega skyller aldrig på vandraren. Hon blir rädd, arg på Företaget eller tyst
 
 **Beslut 14/9:** "Mindre sci-fi, mer mystik. Mer äventyr. En smula lättsammare." **Beslut 12/9:** mystik och äventyr, med lite skräck som inte får ta över. **Beslut 7/10:** väsendet finns för att det ska bli mystik och inte bara sci-fi-thriller.
 
+**Beslut 19/10:** mellan fantasy och sci-fi. Ingen riktig magi, allt kan ha en vetenskaplig förklaring. Stilen är inte helt cyberpunk.
+
 *Förslag:* Vegas humor får plats. Det torra skämtet när det är som värst är hennes, och det får komma oftare än i en ren skräckberättelse.
 
 *Förslag:* överkonsumtionen syns i platsen, det vandraren ser nu och Vega beskriver som borta. Maktkoncentrationen hörs i rösten: vem som äger luften, vem som läser hennes steg. Ingen av dem sägs rakt ut.
@@ -159,6 +169,8 @@ Vega skyller aldrig på vandraren. Hon blir rädd, arg på Företaget eller tyst
 ## Vega
 
 *Förslag 13/9, står kvar:* hennes personlighet är dagbokens "I" (`projects/held/universe/stories/here-diary.md`). Ensam så länge att en främlings steg blir en relation, försiktig av nödvändighet, läser hellre än pratar, modig en mening i taget, torr humor som skydd när det är som värst. Hon vill gå ut, och i dagboken (rad 16) är "going outside" frasen för den som tänker bortom. Det passar arbetaren på väg att bli rebell.
+
+**Henric 19/10:** om Vega är född i kopian väntar vi med att bestämma. Hon vill gå ut, men vad det betyder vet vi inte än.
 
 **Beslut 13/9:** berättarstil 2, nära och talspråklig, en person i en dålig telefonlinje. Lite magisk realism, "men sällan och absolut inte i varje beat".
 
@@ -213,6 +225,7 @@ Beröringspunkter, *förslag* och inte inskrivna i berättelsen. Henric 7/10: "s
 - En tredje sak Henric glömde 13/9.
 - Var hon är: asteroid, måne eller planet.
 - Väsendet: vad det är och hur det beter sig.
+- Vad det betyder att gå ut, och om Vega är född i kopian.
 - Vad Vega vill, i detalj. Riktningen finns sedan 7/10 (fri från Företaget, ihop med kollektivet), vägen dit gör det inte.
 - Priset: vad hon kan förlora, och vad varje steg kostar mer än det förra.
 - Kapitel 1 och 2 skrevs när variant A var kanon (kapitel 2 finns bara i A). Osäkert hur de passar efter 7/10.
