@@ -15,7 +15,7 @@ Utkast 4, 2026-10-19: regigranskningen från 18/10 inlagd, vad som ändrades st�
 **Logiken, utöver den i episod 1:**
 - Inne i verket får hon inte vara. Ett stopp tänder lampan där, som när hon klev av gruset i episod 1. Därför går det inte att svara genom att stanna, och ja blir två knack på fickan. Telefonen läser knacket som ett ryck, och det är så hon ser det.
 - Hennes eget knack är ett ljud från hennes sida, aldrig en vibration (Surret är osäkert). Bakom pressarna är det också signalen att gå igen: ett knack skär genom dånet när hennes röst är dov.
-- Bakom pressarna går alla på stället i slagens takt, Vega också, för går man i takt märks man inte i dånet. Går man ur takt märks man. Slagen följer inte vandraren: Företaget drar upp takten sista kvarten före skiftet. Stannar vandraren står Vega still bland dem och syns en stund. Ett kort stopp ger bara tonen och den dova rösten. Står vandraren still längre än ungefär tio sekunder tänds lampan och misstanken stiger.
+- Bakom pressarna går alla på stället i slagens takt, Vega också, för går man i takt märks man inte i dånet. Går man ur takt märks man. Slagen följer inte vandraren: Företaget drar upp takten sista kvarten före skiftet. Stannar vandraren står Vega still bland dem och syns en stund. Lampan, här och i verket, är tonen, den platta rösten och hennes dova röst, och i den här episoden är den bara stämning: ingen misstanke följer med till episod 3, hur länge vandraren än står. Står vandraren längre än ungefär tio sekunder hittar Vega på en ursäkt. Ett stopp hon själv ber om tänder aldrig lampan.
 - Arbetarna pratar ett ord per slag, för mitt i slaget hör de ingenting. Det som räknar stegen hör inte Vega så länge vandraren går, men folk i rummet hör henne. Pratar hon med vandraren pratar hon rakt ut i luften.
 - Reserv i alla scener: står båda still längre än en halv minut frågar den platta rösten, som i episod 1.
 
@@ -93,7 +93,7 @@ Utkast 4, 2026-10-19: regigranskningen från 18/10 inlagd, vad som ändrades st�
 > (båda svaren går vidare hit)
 
 ## 2. Verket
-*Trigger: direkt efter scen 1, runt minut tre. Från dörren och in rör hon sig där hon inte får vara, så ett stopp tänder lampan. Lampan är oprövad och får bara lätta följder: ett kort stopp ger den dova rösten och tonen, inget mer. Först ett stopp längre än ungefär tio sekunder får misstanken att stiga. Knacket och Vägvalet läses bara gående, så den som springer ombeds gå. Klarhet 0,35: linjen sprakar mer här inne, av väggarna och maskinerna. Knacket får bara lätta följder: hörs inget tar hon det på ett sätt som inte straffar någon.*
+*Trigger: direkt efter scen 1, runt minut tre. Från dörren och in rör hon sig där hon inte får vara, så ett stopp tänder lampan. Lampan är oprövad och är bara stämning här: tonen, den platta rösten och hennes dova röst, aldrig misstanke. Står vandraren längre än ungefär tio sekunder hittar hon på en ursäkt. Knacket och Vägvalet läses bara gående, så den som springer ombeds gå. Klarhet 0,35: linjen sprakar mer här inne, av väggarna och maskinerna. Knacket får bara lätta följder: hörs inget tar hon det på ett sätt som inte straffar någon.*
 
 > Det finns en dörr i slingans vägg. Grå, utan handtag. Den går upp inifrån när städmaskinerna ska ut. Jag har aldrig sett den öppen.
 >
@@ -168,12 +168,12 @@ Utkast 4, 2026-10-19: regigranskningen från 18/10 inlagd, vad som ändrades st�
 >
 > (vandraren går, rösten tillbaka) Den hann säga det. (paus) Någon läser allt den säger. Men ett så kort stopp kan vara vad som helst. En sten i skon.
 
-Står vandraren still längre än ungefär tio sekunder i verket stiger misstanken, och när vandraren går igen säger hon:
+Står vandraren still längre än ungefär tio sekunder i verket hittar hon på en ursäkt på sin sida, och när vandraren går igen säger hon:
 
-> (lågt) Det där var för länge. Nu undrar de. (torrt) Jag får skaffa en ny sten.
+> (lågt) Det där var länge. Någon tittade hitåt. (paus) Jag satte mig vid ett rör och knackade på det, som om jag lagade det. De gick vidare. (torrt) Det är det bäst lagade röret här inne nu.
 
 ## 3. Pressarna
-*Trigger: runt minut fem och en halv, när hon kommer fram. Takten: pressarnas slag börjar nära vandrarens egen takt. Sedan drar Företaget upp takten mot skiftets slut, i steg om sju till åtta procent med fem till tio sekunder i varje, tills slagen går i The Way We Are:s tempo, ungefär 135 slag i minuten. Slagen följer inte vandraren, vandraren följer slagen. Det är där rask gång och lugn jogg möts: den som går ökar, den som springer saktar in. Låten spelas som den är och sträcks aldrig. Hel kommer den bara när slagen nått dess tempo och vandraren går i takt; före det, och för den som aldrig hittar takten, hörs bara bitar av den genom dånet. Vega tiger medan låten har sång. Hon går på stället bland de andra, så ett stopp syns: kort är det ofarligt, längre än ungefär tio sekunder tänds lampan. Takten springande är oprövad. Klarhet 0,45.*
+*Trigger: runt minut fem och en halv, när hon kommer fram. Takten: pressarnas slag börjar nära vandrarens egen takt. Sedan drar Företaget upp takten mot skiftets slut, i steg om sju till åtta procent med fem till tio sekunder i varje, tills slagen går i The Way We Are:s tempo, ungefär 135 slag i minuten. Slagen följer inte vandraren, vandraren följer slagen. Det är där rask gång och lugn jogg möts: den som går ökar, den som springer saktar in. Låten spelas som den är och sträcks aldrig. Hel kommer den bara när slagen nått dess tempo och vandraren går i takt; före det, och för den som aldrig hittar takten, hörs bara bitar av den genom dånet. Vega tiger medan låten har sång. Hon går på stället bland de andra, så ett stopp syns och tänder lampan, som i verket, utom när hon själv ber vandraren stanna. Takten springande är oprövad. Klarhet 0,45.*
 
 *Låten används som den är: mastern, inspelad mot klick i ungefär 135 slag i minuten (Henric tror det, inte säkert; mätt på hela mastern 18/10 till samma). Slagen går upp mot låtens tempo, låten går aldrig ner mot vandraren. Bitarna genom dånet är mastern själv, dov som genom en vägg. Stems finns. Trummor och bas först, och tystnad där sången ligger, byggs framöver, inte nu.*
 
@@ -328,16 +328,16 @@ Berättelsen fortsätter alltid, och Vega lägger aldrig skulden på vandraren. 
 
 | Scen | Vad som gick fel | Följd | Nivå |
 |---|---|---|---|
-| 2, 3 | Vandraren stannar i verket eller bakom pressarna | Kort stopp: den dova rösten och tonen, inget mer. Längre än ungefär tio sekunder: lampan, och misstanken stiger. | 2 i ljudet; 3 bara vid långt stopp |
+| 2, 3 | Vandraren stannar i verket eller bakom pressarna, utan att hon bett om det | Lampan: tonen, den platta rösten och hennes dova röst. Längre än ungefär tio sekunder hittar hon på en ursäkt. Ingen misstanke. | 2, i ljudet |
 | 2, 4 | Inget knack hörs | Hon tar det som att du är kvar, eller som att hon redan hade bestämt sig. Inget annat. | ingen |
 | 2 | Vandraren svänger inte | Hon väljer själv. | ingen |
 | 3 | Vandraren tappar takten | Låten drar sig undan till slagen tills takten är tillbaka. | 2, i ljudet |
 | 3 | Hittar aldrig takten, eller orkar inte upp i den | Slagen går upp ändå, för det är Företaget som drar dem. Låten hörs bara i bitar genom dånet, och hon vill höra den hel en dag. | ingen |
 | alla | Båda står still längre än en halv minut | Den platta rösten frågar, och hon säger att hon vilar, som i episod 1. | ingen |
 
-Det tyngsta som kan hända i episoden är misstanken, och den kommer bara av ett långt stopp. Knacket bär aldrig något tyngre än en tolkning, eftersom det inte är säkert läst gående.
+Det tyngsta som kan hända i episoden är att kontakten skadas en stund, i ljudet. Ingen misstanke uppstår i episod 2, och ett stopp hon själv ber om tänder aldrig lampan. Knacket bär aldrig något tyngre än en tolkning, eftersom det inte är säkert läst gående.
 
-**Följer med till episod 3:** misstanken, om vandraren sa ja i scen 1, om knacket hördes i scen 2 och 4, vilket håll vandraren valde, om de såg vandraren i scen 3 och om låten kom hel.
+**Följer med till episod 3:** misstanken från episod 1 (episod 2 lägger inget till), om vandraren sa ja i scen 1, om knacket hördes i scen 2 och 4, vilket håll vandraren valde, om de såg vandraren i scen 3 och om låten kom hel.
 
 ## Planterat
 
@@ -376,4 +376,5 @@ Efter regigranskningen 18 oktober, som Henric sa ja till 19/10:
 
 - **Spelat, inte återberättat.** "Någon går i mitt ställe" säger hon till dem när det händer, och tystnaden är två slag i ljudet.
 
-- **Torrt, inte förklarat.** Det gulliga och det som sa scenens mening rakt ut är struket ("Det har du varit hela tiden", "Det är första gången någon annan än jag vet att du finns", "Det är väl det där med att ha sällskap"), liksom upprepningarna ("fyra år", "stolpe", "tusen gånger", "Din väg går före min"). Det långa stoppet i verket får "Jag får skaffa en ny sten."
+- **Torrt, inte förklarat.** Det gulliga och det som sa scenens mening rakt ut är struket ("Det har du varit hela tiden", "Det är första gången någon annan än jag vet att du finns", "Det är väl det där med att ha sällskap"), liksom upprepningarna ("fyra år", "stolpe", "tusen gånger", "Din väg går före min").
+- **Ett stopp kostar ingen misstanke** (Henric 19/10, alternativ A efter genomförbarhetsgranskningen): lampan är bara stämning i episod 2, ett långt stopp ger en ursäkt i stället (röret hon låtsas laga), och ett stopp hon själv ber om tänder aldrig lampan. Lovet att stanna vid en gata står kvar. En varning om trafiken står på startskärmen.
