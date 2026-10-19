@@ -19,6 +19,10 @@ Arbetsnamn. Narrativt fitness-system där motionsformen styr berättelse-genren.
 - **One look for all four surfaces** (app, plan, test page, room; Henric 2026-10-10: "mycket mer avskalad, minimalistisk", no HELD logo). `design/DESIGN.md` has the rules, `design/glimt.css` the tokens, the two self-hosted typefaces (Literata for her words and every title, Atkinson Hyperlegible Next for the phone's) and the shared parts, `design/referens.html` shows every part with real content. Every surface links `design/glimt.css` and adds only its layout; anything visual follows these files, do not design it anew. It replaces the room's lunar punk + HELD look of 2026-10-08.
 - Tests: `node scripts/test_rummet.mjs`, `python3 scripts/test_rummet_cli.py`, `python3 scripts/test_rummet_browser.py` (Playwright, types for real at phone size and wide, two windows). Try changes against the real portal only on the sandbox (`rummet_grund.py --prov --nollstall`, then `?rot=prov`), never on the manuscript.
 
+## Reviews
+
+Run `/glimt-granska` (a command in generalassistant; briefs and Henric's story rules in `~/generalassistant/.claude/refs/glimt-granska/`, reports in `~/generalassistant/data/glimt-granska/`) when an episode draft is revised, before its lines are rendered, and when an app version is merged, before Henric walks it.
+
 ## Links
 
 - Notion: https://www.notion.so/36fb0484bfa4817a9126e4f5784dfb7d
