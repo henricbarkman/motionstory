@@ -2,7 +2,7 @@
 
 > Uppslagsbok, inte plan. Omskriven 2026-10-07 efter Henrics beslut samma dag, kompletterad 2026-10-08 efter första promenaden av episod 1. Alla datum nedan är 2026. Henrics beslut är märkta **Beslut** med datum, Demis förslag *Förslag* och får strykas. Berättelsen skrivs när banorna är valda (beslut 25/9: mekaniken först, berättelsen anpassas efteråt).
 
-HELD:s kanon står över det här: `projects/held/universe/LORE.md` (Henrics ord) vinner, sedan `WORLDBUILDING.md`, sedan den här filen.
+HELD:s kanon står över det här: Livs låttexter och lore går först (Henric 19/10). `projects/held/universe/LORE.md` vinner, och nästan allt i den har Liv skrivit, sedan `WORLDBUILDING.md`, sedan den här filen.
 
 **Beslut 7/10:** berättelsen planeras inte för mycket, "då blir den tråkig att skriva". Slutet ska vi ha en idé om. Därför står här vad som gäller i världen, inga kapitel och inga episoder.
 
