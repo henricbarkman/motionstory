@@ -290,7 +290,8 @@ export async function runEpisode1(ctx) {
     if (why !== 'done') {
       ctx.log('scene 2: the walker stops while she counts');
       if (await line('s2-count-stop') === 'rest') continue;
-      if (await hold(walking) === 'rest') continue;
+      // A phone that never sees the walker walk again does not keep her waiting.
+      if (await hold(walking, { by: lastAt + SHORT_WAIT }) === 'rest') continue;
     }
     if (await hold(s => s.t >= lastAt) === 'rest') continue;
     ctx.log('scene 2: the last numbers');
@@ -323,7 +324,7 @@ export async function runEpisode1(ctx) {
     if (!ctx.state().moving) {
       await ctx.play('s2-lamp-plea');
       // Ten seconds more and she asks again, closer.
-      if (!await ctx.until(walking, { timeout: 10 })) await ctx.play('s2-lamp-plea2');
+      if (!await ctx.until(walking, { timeout: 10 }) && !ctx.state().moving) await ctx.play('s2-lamp-plea2');
     }
     await ctx.until(walking, { timeout: 1.5 * MIN });
     side.tone(false);
@@ -490,10 +491,10 @@ export async function runEpisode1(ctx) {
     (s.t >= AT.homeStill && s.stillFor > 30)));
   ctx.log('scene 4: the end');
   const last = ctx.state();
-  // On the way back, or away from the start. A walker who stands, or a phone
-  // without GPS, hears neither: she does not say where they go if she cannot see it.
+  // On the way back, or away from the start, each only when the distance shows it.
+  // A walker who stands, or a phone without GPS, hears neither: she does not say where they go if she cannot see it.
   if (last.approaching && last.distToStart !== null) await ctx.play('s4-back');
-  else if (last.distToStart !== null && last.moving) await ctx.play('s4-onward');
+  else if (last.distToStart !== null && last.moving && last.receding) await ctx.play('s4-onward');
 
   if (her.askedFor) {
     await ctx.play('s4-yes');
@@ -516,13 +517,19 @@ export async function runEpisode1(ctx) {
 
   // The walker's own stop ends it: her voice sinks away, her side comes
   // forward, and under the hum, for a second, something else. No words.
-  await ctx.until(s => !s.moving && s.stillFor >= 5, { timeout: 4 * MIN });
-  ctx.log('end');
+  // A walker who goes on hears her fade out instead, and the thing under the
+  // hum waits for episode 2.
+  const stoppedAtEnd = await ctx.until(s => !s.moving && s.stillFor >= 5, { timeout: 20 });
   side.walk(null);
-  side.pin(true);
-  await ctx.until(() => false, { timeout: 4 });
-  side.breath();
-  await ctx.until(() => false, { timeout: 2.5 });
+  if (stoppedAtEnd) {
+    ctx.log('end');
+    side.pin(true);
+    await ctx.until(() => false, { timeout: 4 });
+    side.breath();
+    await ctx.until(() => false, { timeout: 2.5 });
+  } else {
+    ctx.log('end: the walker goes on');
+  }
   remember(true);
   side.fade(5);
   await ctx.fadeOut(5);

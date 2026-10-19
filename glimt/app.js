@@ -19,7 +19,7 @@ import { Memory, drawWorld, KEY_NAMES } from './memory.js';
 
 // The version the start screen shows, the same number as the service
 // worker's cache. Bump both together.
-const APP_VERSION = 34;
+const APP_VERSION = 35;
 
 // Seconds the credits wait for their song if it is not fetched when they are
 // due. It has had all of scene 0; a song not here by then is not coming.
@@ -95,7 +95,7 @@ const CHAPTERS = {
     run: runEpisode1,
     // The opening credits after scene 0, a song down the line, come from
     // ljud.json like the bed: only the private copy has one.
-    subtitle: 'Episod 1. Ungefär tolv minuter, med förtexter. Gå eller spring. Hon hörs när du går.',
+    subtitle: 'Episod 1. Ungefär tolv minuter. Gå eller spring. Hon hörs när du går.',
     scenes: {
       s0: 'Start', s1: 'Slingan', s2: 'Trädet', s3: 'Himlen', s4: 'Klockan',
     },

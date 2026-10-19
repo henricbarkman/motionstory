@@ -330,6 +330,15 @@ const EPISODE_WALKERS = {
     not: ['s1-walk', 's4-back'],
     lamps: 0, memory: { svarade: false, misstanke: false },
   },
+  // Turns back at 5:30 and walks home slowly, too slowly to count as
+  // approaching. She must not say they walk away from the start.
+  'slow-home': {
+    walk: t => ({ speed: t < 5 ? 0 : t < 330 ? 1.4 : 0.7, heading: t < 330 ? 0 : Math.PI }),
+    stops: END_STOP,
+    has: ['s4-ok', 's4-never-no'],
+    not: ['s4-onward', 's4-back'],
+    lamps: 0, memory: { svarade: false, misstanke: false },
+  },
   // Walks on at every question, stops when she asks at the tree.
   late: {
     walk: out(), stops: { 's2-ask': ANSWER, ...END_STOP },
@@ -727,7 +736,9 @@ function episodeProblems(name, run) {
   // The shift's steps are taken away before the end, and the breath comes once.
   const others = sideCalls.filter(c => c.what === 'other');
   if (others.length && others[others.length - 1].args[0] !== null) problems.push('the other steps are left walking');
-  if (sideCalls.filter(c => c.what === 'breath').length !== 1) problems.push(`the breath at the end ${sideCalls.filter(c => c.what === 'breath').length} times`);
+  // The breath under the hum is for a walker who stops at the end; one who goes on hears her fade out.
+  const wantBreath = log.some(l => l.includes('end: the walker goes on')) ? 0 : 1;
+  if (sideCalls.filter(c => c.what === 'breath').length !== wantBreath) problems.push(`the breath at the end ${sideCalls.filter(c => c.what === 'breath').length} times, wanted ${wantBreath}`);
   const stoodCall = sideCalls.find(c => c.what === 'walk' && c.args[0] === null);
   if (!stoodCall) problems.push('her steps never stop');
   if (!sideCalls.some(c => c.what === 'bell')) problems.push('no bell');
