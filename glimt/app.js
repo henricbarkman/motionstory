@@ -19,7 +19,7 @@ import { Memory, drawWorld, KEY_NAMES } from './memory.js';
 
 // The version the start screen shows, the same number as the service
 // worker's cache. Bump both together.
-const APP_VERSION = 33;
+const APP_VERSION = 34;
 
 // Seconds the credits wait for their song if it is not fetched when they are
 // due. It has had all of scene 0; a song not here by then is not coming.
@@ -93,10 +93,8 @@ const CHAPTERS = {
     side: '../audio/glimt/side',
     first: 's0-1',
     run: runEpisode1,
-    // The opening credits after scene 0: a song down the line. The public
-    // build has a stand-in of the same length; the song itself is never in
-    // this repo.
-    credits: '../audio/glimt/music/fortexter.opus',
+    // The opening credits after scene 0, a song down the line, come from
+    // ljud.json like the bed: only the private copy has one.
     subtitle: 'Episod 1. Ungefär tolv minuter, med förtexter. Gå eller spring. Hon hörs när du går.',
     scenes: {
       s0: 'Start', s1: 'Slingan', s2: 'Trädet', s3: 'Himlen', s4: 'Klockan',
@@ -140,8 +138,15 @@ const CHAPTERS = {
     },
   },
 };
-const BED_URL = '../audio/glimt/bed/steep-dm.opus';
-const RISER_URL = '../audio/glimt/fx/riser-sunbeams.opus';
+// The bed, the riser and the credits' songs are licensed or unreleased, so
+// the public build has none of them. ljud.json says where they are: empty
+// here, filled in by the private copy (scripts/glimt_privat_deploy.py).
+// Paths in it are from the site's root; `credits` is per episode file id.
+let soundsFile = null;
+const extraSounds = () => soundsFile || (soundsFile = fetch('ljud.json')
+  .then(r => (r.ok ? r.json() : {}))
+  .catch(() => ({})));
+const fromRoot = path => (path ? `../${path}` : null);
 const RISER_VOICE_AT = 0.7;   // Vega enters at 70 % of the riser
 const LANDMARK_KEY = 'glimt-landmark';
 // What episode 2 will want to know about episode 1. A simulated walk keeps
@@ -264,9 +269,13 @@ async function preload() {
     lib = new Library(mixer, def.voices);
 
     const first = def.lab && !def.prov && ONLY_STATION ? 'labb-intro-en' : def.first;
+    const extra = await extraSounds();
+    if (turn !== preloadTurn) return;
+    const bedUrl = fromRoot(extra.bed), riserUrl = fromRoot(extra.riser);
+    const creditsUrl = fromRoot((extra.credits || {})[chapter.id]);
     const [bedRaw, riserRaw, firstRaw, sounds] = await Promise.all([
-      bedBuf ? null : mixer.fetchBuffer(BED_URL).catch(() => null),
-      riserBuf ? null : mixer.fetchBuffer(RISER_URL).catch(() => null),
+      bedBuf || !bedUrl ? null : mixer.fetchBuffer(bedUrl).catch(() => null),
+      riserBuf || !riserUrl ? null : mixer.fetchBuffer(riserUrl).catch(() => null),
       lib.load(first),
       def.side ? loadSide(def.side, chapter.sfx || {}) : null,
     ]);
@@ -279,11 +288,13 @@ async function preload() {
 
     // The rest streams in behind the start button.
     lib.loadAll(Object.keys(chapter.lines));
-    creditsRaw = def.credits ? mixer.fetchBuffer(def.credits).catch(() => null) : null;
+    creditsRaw = creditsUrl ? mixer.fetchBuffer(creditsUrl).catch(() => null) : null;
 
+    // Without them the public build is quiet between her lines, and says so
+    // only where the address was meant to have them.
     const notes = [];
-    if (!bedBuf) notes.push('ingen bädd');
-    if (!riserBuf) notes.push('ingen riser');
+    if (bedUrl && !bedBuf) notes.push('ingen bädd');
+    if (riserUrl && !riserBuf) notes.push('ingen riser');
     if (def.side && Object.keys(sounds).length < Object.keys(chapter.sfx || {}).length) notes.push('några av hennes steg');
     let note = notes.length
       ? `Ljudet saknar ${notes.join(' och ')} på den här adressen. Rösten fungerar ändå.`

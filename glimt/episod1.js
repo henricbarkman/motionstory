@@ -41,6 +41,7 @@ const MIN = 60;
 // decide (Henric 2026-10-08), twenty on GPS, which reads a stop late.
 const askWindow = s => s.paceSource === 'steps' ? 10 : 20;
 const HALF_MINUTE = 30;     // s without steps before the snäcka asks
+const COUNT_BREATH = 0.8;   // s between the count under her breath and its last numbers
 const RESERVE_MAX = 3;      // times it asks in one walk, then it lets her be
 const SHORT_WAIT = 2.5 * MIN; // s a scene waits for a walker who is not walking
 const LONG_WAIT = 10 * MIN;   // the same, when the feet say the walker stands
@@ -80,6 +81,7 @@ export async function runEpisode1(ctx) {
     reserves: 0,        // times the snäcka has asked if she needs help
     askedFor: false,    // the walker has stopped when she asked for it
     heardNo: false,     // the walker walked on when she asked "hör du mig?"
+    lampTree: false,    // the lamp lit among the trees
     lamp4: false,       // the lamp lit when the shift came round the bend
   };
   const remember = klar => ctx.remember({ svarade: her.askedFor, misstanke: her.lamp4, klar });
@@ -124,8 +126,9 @@ export async function runEpisode1(ctx) {
 
   // Plays a line. 'done' when it reached its end; 'lamp' or 'rest' when a
   // stop cut it short, with the share of it that was heard in `heard`.
+  // With `stop`, a state it holds for cuts the line too, as 'stop'.
   let heard = 1;
-  async function line(id, opts) {
+  async function line(id, opts, stop = null) {
     let why = null;
     const began = now();
     const playing = ctx.play(id, opts).then(() => { if (!why) why = 'done'; });
@@ -133,10 +136,11 @@ export async function runEpisode1(ctx) {
       if (why) return true;
       if (lit(s)) { why = 'lamp'; lampStop = stopBegan(s); }
       else if (resting(s)) why = 'rest';
+      else if (stop && stop(s)) why = 'stop';
       return !!why;
     });
     await Promise.race([playing, watch]);
-    if (why === 'lamp' || why === 'rest') ctx.cut();
+    if (why !== 'done') ctx.cut();
     await playing;
     heard = why === 'done' ? 1 : Math.min(1, (now() - began) / (ctx.seconds(id) || 1));
     if (why === 'rest') await reserve();
@@ -243,15 +247,6 @@ export async function runEpisode1(ctx) {
   ctx.log('scene 1');
   await ctx.play(ctx.state().band === 'run' ? 's1-run' : 's1-walk');
   await ctx.play('s1-2');
-  if (await ask('s1-q1', null, PATIENCE)) {
-    ctx.log('scene 1: yes, often');
-    her.askedFor = true;
-    await seen();
-    await ctx.play('s1-q1-yes');
-  } else {
-    ctx.log('scene 1: no, not often');
-    await ctx.play('s1-q1-no');
-  }
   await ctx.play('s1-self');
   if (await ask('s1-q2', null, PATIENCE)) {
     ctx.log('scene 1: yes, alone');
@@ -272,9 +267,11 @@ export async function runEpisode1(ctx) {
   await ctx.play('s2-1');
 
   // She stands still while the walker walks. From her last step to "trettio"
-  // is half a minute on the clock: the counting line starts so that the word
-  // falls there. If the walker stands still through it the snäcka does ask,
-  // and she starts over.
+  // is half a minute on the clock: the last counting line starts so that the
+  // word falls there, and the count under her breath ends where it begins.
+  // A walker who stops while she counts is told to walk, and she says the
+  // last numbers once they do. If the walker stands still through it the
+  // snäcka does ask, and she starts over.
   for (;;) {
     side.walk(null);
     const stoodAt = now();
@@ -282,8 +279,21 @@ export async function runEpisode1(ctx) {
     ctx.log('scene 2: she stands still');
     if (await line('s2-2') === 'rest') continue;
     side.lift(true);
-    if (await hold(s => s.t >= stoodAt + HALF_MINUTE - ctx.cue('s2-3', 'trettio')) === 'rest') continue;
-    ctx.log('scene 2: she counts');
+    const lastAt = stoodAt + HALF_MINUTE - ctx.cue('s2-3', 'trettio');
+    let why = await hold(s => stopped(s) || s.t >= lastAt - ctx.seconds('s2-count') - COUNT_BREATH);
+    if (why === 'rest') continue;
+    if (!stopped(ctx.state())) {
+      ctx.log('scene 2: she counts');
+      why = await line('s2-count', undefined, stopped);
+      if (why === 'rest') continue;
+    }
+    if (why !== 'done') {
+      ctx.log('scene 2: the walker stops while she counts');
+      if (await line('s2-count-stop') === 'rest') continue;
+      if (await hold(walking) === 'rest') continue;
+    }
+    if (await hold(s => s.t >= lastAt) === 'rest') continue;
+    ctx.log('scene 2: the last numbers');
     if (await line('s2-3') === 'rest') continue;
     break;
   }
@@ -302,6 +312,7 @@ export async function runEpisode1(ctx) {
   // stop, if she did. The stop is her answer if it began after that.
   async function lampAtTheTree(askedAt = null) {
     const asked = askedAt !== null && lampStop >= askedAt;
+    her.lampTree = true;
     ctx.log(`scene 2: lamp${asked ? ', she asked' : ''}`);
     side.pin(true);
     side.tone(true);
@@ -309,7 +320,11 @@ export async function runEpisode1(ctx) {
     await ctx.until(() => false, { timeout: 1.3 });
     await side.say('x-avvikelse', 'snacka');
     side.pin(false);
-    if (!ctx.state().moving) await ctx.play('s2-lamp-plea');
+    if (!ctx.state().moving) {
+      await ctx.play('s2-lamp-plea');
+      // Ten seconds more and she asks again, closer.
+      if (!await ctx.until(walking, { timeout: 10 })) await ctx.play('s2-lamp-plea2');
+    }
     await ctx.until(walking, { timeout: 1.5 * MIN });
     side.tone(false);
     her.exposed = false;
@@ -460,7 +475,7 @@ export async function runEpisode1(ctx) {
     ctx.log('scene 4: on the gravel');
     side.walk('grus', { rate: 104 });
     side.other('past', 8);
-    await ctx.play('s4-ok');
+    await ctx.play(her.lampTree ? 's4-ok-lamp' : 's4-ok');
   }
   side.lift(false);
   side.other(null);
@@ -475,7 +490,10 @@ export async function runEpisode1(ctx) {
     (s.t >= AT.homeStill && s.stillFor > 30)));
   ctx.log('scene 4: the end');
   const last = ctx.state();
+  // On the way back, or away from the start. A walker who stands, or a phone
+  // without GPS, hears neither: she does not say where they go if she cannot see it.
   if (last.approaching && last.distToStart !== null) await ctx.play('s4-back');
+  else if (last.distToStart !== null && last.moving) await ctx.play('s4-onward');
 
   if (her.askedFor) {
     await ctx.play('s4-yes');

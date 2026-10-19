@@ -87,7 +87,7 @@ for (const [namn, text] of Object.entries(FIL)) {
   const d = Dk.tolka(FIL[1], 'episod');
   const typer = (t) => d.paras.filter((p) => p.typ === t);
   ok(typer('scen').length === 5 && typer('mekanik').length === 5, 'episode 1: five scenes, five Mekanik paragraphs');
-  ok(typer('variant').every((p) => p.attrs.etikett) && typer('variant').length === 15, 'episode 1: fifteen variants, each with its label');
+  ok(typer('variant').every((p) => p.attrs.etikett) && typer('variant').length === 18, 'episode 1: eighteen variants, each with its label');
   const t = d.paras[0];
   ok(t.typ === 'rubrik' && t.attrs.prefix === 'Glimt, episod 1: ' && !t.text.startsWith('Glimt'), 'the title is written without its "Glimt, episod 1:" prefix, which stays');
   const ja = typer('gren').find((p) => p.raw.startsWith('> **'));
@@ -175,13 +175,13 @@ const KAT = K.tolkaKatalog(FIL.mekaniker);
   const v = K.varianter(KAT).map((x) => x.etikett).sort().join(',');
   ok(v === ['bro', 'berg', 'gång', 'klart och mörkt', 'kyrkogård', 'ljust', 'löpning', 'mörkt', 'regn', 'skog', 'torrt', 'vatten'].sort().join(','), 'the variant labels come from the catalogue');
   // Hand count of the chips (2026-10-08): the catalogue's names in the Mekanik paragraphs.
-  //   episode 1 (2026-10-18): Kontakten at lines 29, 73, 117, 178; lampan at 117, 204 = 6. The two "surret" at 204
+  //   episode 1 (2026-10-19, after the director review): Kontakten at lines 29, 73, 105, 164; lampan at 105, 190 = 6. The two "surret" at 190
   //     are her side's hum, not the mechanic Surret (the phone's buzz), and get no chip.
   //   episode 2 (2026-10-18, after the story fixes): Kontakten at 33, 64; lampan (twice), Knacket (twice) and Vägvalet at 96;
   //     "Takten:", "upp takten", "hittar takten", lampan and "Takten springande" at 176 = 12
   //   episode 3 (2026-10-18): Kontakten and fortare at 38; fortare (twice) at 78 = 4
   const brickor = (t) => Dk.tolka(t, 'episod').paras.filter((p) => p.typ === 'mekanik').flatMap((p) => K.hittaNamn(p.text, KAT).map((h) => `${p.rad + 1}:${h.mekanik.namn}`));
-  ok(brickor(FIL[1]).join(' ') === '29:Kontakten 73:Kontakten 117:Kontakten 117:Farligt stopp (lampan) 178:Kontakten 204:Farligt stopp (lampan)', 'episode 1: the chips are exactly the hand count');
+  ok(brickor(FIL[1]).join(' ') === '29:Kontakten 73:Kontakten 105:Kontakten 105:Farligt stopp (lampan) 164:Kontakten 190:Farligt stopp (lampan)', 'episode 1: the chips are exactly the hand count');
   ok(brickor(FIL[2]).join(' ') === '33:Kontakten 64:Kontakten 96:Farligt stopp (lampan) 96:Farligt stopp (lampan) 96:Knack 96:Vägvalet 96:Knack 176:Takten 176:Takten 176:Takten 176:Farligt stopp (lampan) 176:Takten', 'episode 2: the chips are exactly the hand count');
   ok(brickor(FIL[3]).join(' ') === '38:Kontakten 38:Fortare 78:Fortare 78:Fortare', 'episode 3: the chips are exactly the hand count');
   ok(!K.hittaNamn('vandraren går i sin egen takt och hittar hem', KAT).some((h) => h.mekanik.namn === 'Takten'), 'no chip for "takt" (not the name Takten)');

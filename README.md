@@ -81,7 +81,7 @@ python3 scripts/render_side.py stories/glimt/episod-1.json [--force] [--only gru
 
 Båda skriver tillbaka i json-filen (`seconds`, `cues`, `sfx.*.slices`), och testerna läser därifrån.
 
-Bädd och riser är Splice-samples som Henric har betalat för, och de är tillfälliga: berättelsen ska ha HELD:s musik som bädd (`stories/glimt/varld.md`). De ligger komprimerade (opus) i `audio/glimt/bed/` och `audio/glimt/fx/` sedan 12 september (Henrics beslut, PR #4). Råfilerna från Splice ligger inte i repot och ska inte dit. Hennes sida i episod 1 (`audio/glimt/side/`) är gjord med ElevenLabs ljudeffekter och Web Audio, inga Splice-filer. Appen fungerar utan bädd och riser, rösten spelas ändå.
+Bädd och riser är Splice-samples som Henric har betalat för, och de är tillfälliga: berättelsen ska ha HELD:s musik som bädd (`stories/glimt/varld.md`). Villkoren tillåter dem i ett verk men inte en och en i ett publikt repo, så sedan 19 oktober (version 34, Henrics beslut) finns de bara i den privata kopian bakom portalens inloggning, liksom förtexternas låt: `scripts/glimt_privat_deploy.py` hämtar dem ur en mapp utanför repot (`--ljud`) och skriver `glimt/ljud.json`, som säger appen var de ligger. Den publika `ljud.json` är tom, och appen ber då inte om dem alls: rösten spelas, utan bädd, riser och förtexter. `audio/glimt/bed/`, `fx/` och `music/` är gitignorerade, och `test_glimt.mjs` fäller om någon av dem finns i trädet. Historiken är inte omskriven: filerna finns kvar i äldre commits. Hennes sida i episod 1 (`audio/glimt/side/`) är gjord med ElevenLabs ljudeffekter och Web Audio, inga Splice-filer.
 
 ## Lokalt dev
 

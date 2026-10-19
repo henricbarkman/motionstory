@@ -26,7 +26,9 @@ import http.server
 import json
 import os
 import re
+import subprocess
 import sys
+import tempfile
 import threading
 from pathlib import Path
 
@@ -150,7 +152,26 @@ def serve():
 BRIDGE = {"elements": [{"type": "way", "tags": {"bridge": "yes"}, "center": {"lat": 59.38, "lon": 13.5 + 180 / (111320 * 0.5096)}}]}
 
 
-def open_page(browser, base, ua=CHROME_UA, url="?banor=vagval,kompass,vibration", init="", answer=True, shake=1.5, lag=0, ring=0, motion=True, overpass=None, rotation=True, hang=()):
+@functools.lru_cache(maxsize=None)
+def test_sounds():
+    """Made-up stand-ins for what only the private copy has (the bed, the
+    riser, the credits' song), as glimt/ljud.json names them there. Sine
+    tones made here, never the real files; the song as long as the credits."""
+    folder = Path(tempfile.mkdtemp(prefix="glimt-ljud-test-"))
+    seconds = json.loads((REPO / "stories/glimt/episod-1.json").read_text())["credits"]["seconds"]
+    files = {"bed": ("audio/glimt/bed/test-bed.opus", 110, 6), "riser": ("audio/glimt/fx/test-riser.opus", 440, 2),
+             "song": ("audio/glimt/music/test-song.opus", 330, seconds)}
+    body = {}
+    for kind, (path, hz, length) in files.items():
+        out = folder / Path(path).name
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", f"sine=frequency={hz}:duration={length}",
+                        "-af", "volume=0.05", "-c:a", "libopus", "-b:a", "16k", str(out)], check=True)
+        body[path] = out.read_bytes()
+    manifest = {"bed": files["bed"][0], "riser": files["riser"][0], "credits": {"glimt-e1": files["song"][0]}}
+    return json.dumps(manifest), body
+
+
+def open_page(browser, base, ua=CHROME_UA, url="?banor=vagval,kompass,vibration", init="", answer=True, shake=1.5, lag=0, ring=0, motion=True, overpass=None, rotation=True, hang=(), sounds=False):
     ctx = browser.new_context(
         user_agent=ua,
         viewport={"width": 412, "height": 915},
@@ -159,10 +180,18 @@ def open_page(browser, base, ua=CHROME_UA, url="?banor=vagval,kompass,vibration"
         geolocation={"latitude": 59.38, "longitude": 13.5},
         permissions=["geolocation"],
     )
+    manifest, files = test_sounds() if sounds else (None, {})
+
     def route(r):
         if any(h in r.request.url for h in hang):
             return              # a dead connection: the request never settles
-        if r.request.url.startswith(base):
+        # `sounds`: the address is a private copy's, with its bed, riser and song.
+        path = r.request.url[len(base):].split("?", 1)[0].lstrip("/") if r.request.url.startswith(base) else None
+        if manifest and path == "glimt/ljud.json":
+            r.fulfill(status=200, content_type="application/json", body=manifest)
+        elif path in files:
+            r.fulfill(status=200, content_type="audio/ogg", body=files[path])
+        elif r.request.url.startswith(base):
             r.continue_()
         elif overpass is not None and "/api/interpreter" in r.request.url:
             r.fulfill(status=200, content_type="application/json", body=json.dumps(overpass))
@@ -707,8 +736,8 @@ EPISODE_WALKER = """
   const on = {
     asked: {
       's0-1': walkOn,
-      's0-ask1': () => { later(12.5, stop); later(22, walkOn); },
-      's0-yes1-b': () => { later(15.5, stop); later(25, walkOn); },
+      's0-ask1': () => { later(18.3, stop); later(27.8, walkOn); },
+      's0-yes1-b': () => { later(10.4, stop); later(19.9, walkOn); },
       's1-3': () => later(10, () => $('sim-turn').click()),
       's2-ask': () => { later(9, stop); later(24, walkOn); },
       's3-1': () => { later(1, stop); later(10, () => sample('still')); later(13, walkOn); },
@@ -738,11 +767,11 @@ EPISODE_WALKER = """
 
 EPISODE_WANT = {
     "asked": {
-        "has": ["s0-1", "s0-2", "s0-ask1", "s0-yes1-a", "s0-yes1-b", "s0-yes2", "s1-walk", "s1-2", "s1-q1", "s1-q1-no",
-                "s1-self", "s1-q2", "s1-q2-no", "s1-3", "s2-1", "s2-2", "s2-3", "s2-4", "s2-5", "s2-6", "s2-ask",
+        "has": ["s0-1", "s0-2", "s0-ask1", "s0-yes1-a", "s0-yes1-b", "s0-yes2", "s1-walk", "s1-2",
+                "s1-self", "s1-q2", "s1-q2-no", "s1-3", "s2-1", "s2-2", "s2-count", "s2-3", "s2-4", "s2-5", "s2-6", "s2-ask",
                 "x-avvikelse (hennes sida)", "s2-lamp-plea", "s2-lamp-1", "s3-1", "s3-near", "s3-2", "s4-1", "s4-2", "s4-3",
-                "s4-ok", "s4-yes", "s4-all"],
-        "not": ["s0-no1", "s0-no2", "s2-no", "s2-lamp-2", "s4-lamp-1", "s4-lamp-2", "s4-never-1", "r-hjalp"],
+                "s4-ok-lamp", "s4-yes", "s4-all"],
+        "not": ["s0-no1", "s0-no2", "s2-count-stop", "s2-no", "s2-lamp-2", "s4-ok", "s4-lamp-1", "s4-lamp-2", "s4-never-1", "r-hjalp"],
         "lamps": 1, "memory": {"svarade": True, "misstanke": False, "klar": True},
     },
     "own": {
@@ -779,6 +808,10 @@ def episodstart(browser, base):
     check(s["sub"].startswith("Episod 1.") and s["doc"] == "Glimt, episod 1" and not s["variant"] and not s["vibra"],
           f"its subtitle, and neither her variants nor the vibration try-out ({s['sub']!r})")
     check("saknar" not in s["load"], f"everything it needs loaded ({s['load']!r})")
+    # The public build asks for none of what only the private copy has.
+    asked = page.evaluate("performance.getEntriesByType('resource').map(e => e.name)")
+    licensed = [u for u in asked if re.search(r"/audio/glimt/(bed|fx|music)/", u)]
+    check(not licensed, f"and it asks for no bed, riser or song ({licensed[:3]})")
     shot(page, "episod-start")
     page.click('input[name="chapter"][value="1"]')
     page.wait_for_function("document.getElementById('start-btn').textContent === 'Börja gå'", timeout=30000)
@@ -825,7 +858,7 @@ def fortexter(browser, base):
     # credits are skipped after their wait, and scene 1 comes.
     walks = """(() => { const t = setInterval(() => { const el = document.getElementById('sim-speed');
       if (el) { el.value = '1.4'; el.dispatchEvent(new Event('input')); clearInterval(t); } }, 200); })();"""
-    ctx, page, errors = open_page(browser, base, url="?kapitel=episod1&sim", hang=("fortexter.opus",), init=walks)
+    ctx, page, errors = open_page(browser, base, url="?kapitel=episod1&sim", hang=("test-song.opus",), init=walks, sounds=True)
     page.click("#start-btn")
     skipped = wait_log(page, "förtexter: inte hämtade", 600000)
     scene1 = wait_log(page, "scene 1", 120000)
@@ -838,7 +871,7 @@ def episod(browser, base):
     # The episode walked to its end in the app, twice side by side.
     pages = []
     for who in EPISODE_WANT:
-        ctx, page, errors = open_page(browser, base, url="?kapitel=episod1&sim", init=EPISODE_WALKER % json.dumps(who))
+        ctx, page, errors = open_page(browser, base, url="?kapitel=episod1&sim", init=EPISODE_WALKER % json.dumps(who), sounds=True)
         page.click("#start-btn")
         pages.append((who, ctx, page, errors))
     for who, ctx, page, errors in pages:
@@ -865,7 +898,7 @@ def episod(browser, base):
               f"episod, {who}: the scenes come in order, the credits before scene 1 ({order})")
         check(any(x.startswith("scene 3: ") for x in scenes), f"episod, {who}: scene 3 names light, weather and landmark ({[x for x in scenes if x.startswith('scene 3')]})")
         credits = [line for line in log if "▶ förtexter" in line]
-        check(len(credits) == 1 and "(68 s)" in credits[0], f"episod, {who}: the credits play once, the whole stand-in ({credits})")
+        check(len(credits) == 1 and "(68 s)" in credits[0], f"episod, {who}: the credits play once, the whole song ({credits})")
         stood = [clock(line) for line in log if "she stands still" in line]
         counted = [clock(line) for line in log if line.endswith("▶ s2-3")]
         cue = json.loads((REPO / "stories/glimt/episod-1.json").read_text())["cues"]["s2-3"]["trettio"]
