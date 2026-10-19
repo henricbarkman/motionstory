@@ -330,6 +330,15 @@ const EPISODE_WALKERS = {
     not: ['s1-walk', 's4-back'],
     lamps: 0, memory: { svarade: false, misstanke: false },
   },
+  // Turns back at 5:30 and walks home slowly, too slowly to count as
+  // approaching. She must not say they walk away from the start.
+  'slow-home': {
+    walk: t => ({ speed: t < 5 ? 0 : t < 330 ? 1.4 : 0.7, heading: t < 330 ? 0 : Math.PI }),
+    stops: END_STOP,
+    has: ['s4-ok', 's4-never-no'],
+    not: ['s4-onward', 's4-back'],
+    lamps: 0, memory: { svarade: false, misstanke: false },
+  },
   // Walks on at every question, stops when she asks at the tree.
   late: {
     walk: out(), stops: { 's2-ask': ANSWER, ...END_STOP },

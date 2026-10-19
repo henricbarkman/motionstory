@@ -146,6 +146,15 @@ export class Homing {
     for (const s of this.samples) { if (s.t <= t - 45) then = s.d; }
     return then !== null && then - now > 40;
   }
+
+  // Receding = at least 40 m farther away than 45 s ago.
+  receding(t) {
+    if (this.samples.length < 2) return false;
+    const now = this.samples[this.samples.length - 1].d;
+    let then = null;
+    for (const s of this.samples) { if (s.t <= t - 45) then = s.d; }
+    return then !== null && now - then > 40;
+  }
 }
 
 // Turns raw fixes into a smoothed speed. Uses coords.speed when the device
@@ -1569,6 +1578,7 @@ export class Walk {
       accuracy: this.gps.accuracy,
       distToStart: this.homing.distance(),
       approaching: this.homing.approaching(t),
+      receding: this.homing.receding(t),
       distToTarget: this.target ? this.target.distance() : null,
       approachingTarget: this.target ? this.target.approaching(t) : false,
       gpsSeen: this.gpsSeen,
