@@ -517,13 +517,19 @@ export async function runEpisode1(ctx) {
 
   // The walker's own stop ends it: her voice sinks away, her side comes
   // forward, and under the hum, for a second, something else. No words.
-  await ctx.until(s => !s.moving && s.stillFor >= 5, { timeout: 4 * MIN });
-  ctx.log('end');
+  // A walker who goes on hears her fade out instead, and the thing under the
+  // hum waits for episode 2.
+  const stoppedAtEnd = await ctx.until(s => !s.moving && s.stillFor >= 5, { timeout: 20 });
   side.walk(null);
-  side.pin(true);
-  await ctx.until(() => false, { timeout: 4 });
-  side.breath();
-  await ctx.until(() => false, { timeout: 2.5 });
+  if (stoppedAtEnd) {
+    ctx.log('end');
+    side.pin(true);
+    await ctx.until(() => false, { timeout: 4 });
+    side.breath();
+    await ctx.until(() => false, { timeout: 2.5 });
+  } else {
+    ctx.log('end: the walker goes on');
+  }
   remember(true);
   side.fade(5);
   await ctx.fadeOut(5);

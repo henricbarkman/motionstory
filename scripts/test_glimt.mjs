@@ -736,7 +736,9 @@ function episodeProblems(name, run) {
   // The shift's steps are taken away before the end, and the breath comes once.
   const others = sideCalls.filter(c => c.what === 'other');
   if (others.length && others[others.length - 1].args[0] !== null) problems.push('the other steps are left walking');
-  if (sideCalls.filter(c => c.what === 'breath').length !== 1) problems.push(`the breath at the end ${sideCalls.filter(c => c.what === 'breath').length} times`);
+  // The breath under the hum is for a walker who stops at the end; one who goes on hears her fade out.
+  const wantBreath = log.some(l => l.includes('end: the walker goes on')) ? 0 : 1;
+  if (sideCalls.filter(c => c.what === 'breath').length !== wantBreath) problems.push(`the breath at the end ${sideCalls.filter(c => c.what === 'breath').length} times, wanted ${wantBreath}`);
   const stoodCall = sideCalls.find(c => c.what === 'walk' && c.args[0] === null);
   if (!stoodCall) problems.push('her steps never stop');
   if (!sideCalls.some(c => c.what === 'bell')) problems.push('no bell');
