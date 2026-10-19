@@ -114,7 +114,7 @@ Varianter i hakparentes väljs av telefonen: `[ljust]`, `[mörkt]`, `[regn]`, `[
 >
 > (viskar) En halv minut utan steg, sen undrar de vad man håller på med. Jag räknar.
 >
-> (under andan, i surret, ett tal i sekunden) ...tolv. Tretton. Fjorton. Femton. Sexton. Sjutton. Arton. Nitton. Tjugo. Tjugoett. Tjugotvå. Tjugotre. Tjugofyra. Tjugofem. Tjugosex.
+> (under andan, i surret, ett tal i sekunden) ...tolv, tretton, fjorton, femton, sexton, sjutton, arton, nitton, tjugo, tjugoett, tjugotvå, tjugotre, tjugofyra, tjugofem, tjugosex.
 
 Stannar vandraren medan hon räknar säger hon det här, dovt, och när vandraren går igen räknar hon de sista talen:
 
