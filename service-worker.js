@@ -1,6 +1,6 @@
 // Bump CACHE whenever audio or app files change, otherwise an installed PWA
 // keeps serving the old files forever.
-const CACHE = 'motionstory-v33';
+const CACHE = 'motionstory-v34';
 
 // Relative to the service worker scope. Absolute paths ('/audio/...') broke on
 // GitHub Pages where the app lives under /motionstory/, so addAll failed and
@@ -38,8 +38,7 @@ const ASSETS = [
   './stories/glimt/kapitel-2.json',
   './stories/glimt/episod-1.json',
   './stories/glimt/labb.json',
-  './audio/glimt/bed/steep-dm.opus',
-  './audio/glimt/fx/riser-sunbeams.opus',
+  './glimt/ljud.json',
 ];
 const CHAPTER_FILES = ['./stories/glimt/kapitel-1.json', './stories/glimt/kapitel-2.json',
   './stories/glimt/episod-1.json', './stories/glimt/labb.json'];
@@ -51,10 +50,22 @@ async function chapterAssets(file) {
     const res = await fetch(file, { cache: 'reload' });
     const chapter = await res.json();
     return Object.keys(chapter.lines).map(id => `./audio/glimt/vega/${chapter.id}/${id}.mp3`)
-      .concat(Object.values(chapter.sfx || {}).map(sound => `./audio/glimt/side/${sound.file}`))
-      .concat(chapter.credits ? [`./audio/glimt/music/${chapter.credits.file}`] : []);
+      .concat(Object.values(chapter.sfx || {}).map(sound => `./audio/glimt/side/${sound.file}`));
   } catch (err) {
     console.warn('SW could not read chapter file:', file, err);
+    return [];
+  }
+}
+
+// The bed, the riser and the credits' songs, where this copy has them
+// (glimt/ljud.json: none in the public build, paths from the root).
+async function extraAssets() {
+  try {
+    const res = await fetch('./glimt/ljud.json', { cache: 'reload' });
+    const extra = await res.json();
+    return [extra.bed, extra.riser, ...Object.values(extra.credits || {})].filter(Boolean).map(p => `./${p}`);
+  } catch (err) {
+    console.warn('SW could not read glimt/ljud.json:', err);
     return [];
   }
 }
@@ -63,7 +74,7 @@ self.addEventListener('install', e => {
   e.waitUntil((async () => {
     const cache = await caches.open(CACHE);
     const voices = await Promise.all(CHAPTER_FILES.map(chapterAssets));
-    const urls = ASSETS.concat(...voices);
+    const urls = ASSETS.concat(...voices, await extraAssets());
     // cache: 'reload' bypasses the HTTP cache so a new worker never precaches
     // a file the browser still had from the previous build.
     await Promise.all(urls.map(u =>

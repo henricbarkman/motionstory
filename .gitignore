@@ -3,3 +3,8 @@ __pycache__/
 *.pyc
 .venv/
 .DS_Store
+# Licensed or unreleased sound (Splice, HELD demos) lives only in the private
+# copy behind the portal login (scripts/glimt_privat_deploy.py), never here.
+audio/glimt/bed/
+audio/glimt/fx/
+audio/glimt/music/

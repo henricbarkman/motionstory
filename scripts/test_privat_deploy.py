@@ -4,11 +4,12 @@ swapped in whole, and the old copy never lost when the swap fails.
 
     python3 scripts/test_privat_deploy.py
 
-Writes only under a fresh folder in /tmp, with a made-up song (a sine tone),
-never the real one.
+Writes only under a fresh folder in /tmp, with a made-up song and made-up
+licensed sounds (sine tones), never the real ones.
 """
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 import tempfile
@@ -31,10 +32,16 @@ def main() -> int:
     root = Path(tempfile.mkdtemp(prefix="glimt-privat-test-"))
     song = root / "song.wav"
     subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "sine=frequency=440:duration=3", str(song)], check=True)
+    ljud = root / "ljud"
+    ljud.mkdir()
+    for name, hz in (("bed.opus", 220), ("riser.opus", 660)):
+        subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", f"sine=frequency={hz}:duration=1",
+                        "-c:a", "libopus", str(ljud / name)], check=True)
+    (ljud / "ljud.json").write_text(json.dumps({"bed": "bed.opus", "riser": "riser.opus"}), encoding="utf-8")
     uploads = root / "uploads"
     scratch = root / "scratch"
     ut = uploads / "glimt-episod1"
-    stand_in = d.stand_in_path(1)
+    stand_in = d.song_path(1)
 
     # While it builds, the served folder holds nothing new: the song is
     # transcoded into the scratch folder.
@@ -48,13 +55,18 @@ def main() -> int:
 
     d.transcode = watching
     try:
-        cache = d.deploy(song, ut, 1, scratch)
+        cache = d.deploy(song, ut, 1, scratch, ljud)
     finally:
         d.transcode = real
     check(scratch in seen["out"].parents, f"the song is written in the scratch folder ({seen['out']})")
     check(seen["uploads"] == [], f"and nothing is in the uploads folder while it builds ({seen['uploads']})")
-    check((ut / d.MARK).is_file() and (ut / stand_in).is_file(), "the copy is in place, marked, with the song at the stand-in's path")
-    check((ut / stand_in).read_bytes() != (d.REPO / stand_in).read_bytes(), "the song is not the stand-in")
+    check((ut / d.MARK).is_file() and (ut / stand_in).is_file(), "the copy is in place, marked, with the song where the episode says")
+    extra = json.loads((ut / "glimt" / "ljud.json").read_text(encoding="utf-8"))
+    named = [extra.get("bed"), extra.get("riser"), (extra.get("credits") or {}).get("glimt-e1")]
+    check(all(n and (ut / n).is_file() for n in named), f"its ljud.json names the bed, the riser and the song, all there ({extra})")
+    check((ut / extra["bed"]).read_bytes() == (ljud / "bed.opus").read_bytes(), "the bed is the one from the --ljud folder")
+    public = json.loads((d.REPO / "glimt" / "ljud.json").read_text(encoding="utf-8"))
+    check(not any(public.get(k) for k in ("bed", "riser", "credits")), f"and the public ljud.json names none of them ({public})")
     check("-privat-" in cache, f"its cache has its own name ({cache})")
     check(list(scratch.iterdir()) == [], f"the scratch folder is cleaned up ({[p.name for p in scratch.iterdir()]})")
     check(sorted(p.name for p in uploads.iterdir()) == ["glimt-episod1"], "nothing else is left next to it")
@@ -73,7 +85,7 @@ def main() -> int:
     Path.rename = failing
     failed = False
     try:
-        d.deploy(song, ut, 1, scratch)
+        d.deploy(song, ut, 1, scratch, ljud)
     except OSError:
         failed = True
     finally:
@@ -93,9 +105,16 @@ def main() -> int:
         except SystemExit:
             check(True, f"refuses {what}")
 
-    # An episode with no file to name its stand-in says so.
+    # Without the licensed sounds there is no copy.
     try:
-        d.stand_in_path(99)
+        d.deploy(song, uploads / "glimt-utan", 1, scratch, root / "inget")
+        check(False, "a missing --ljud folder is refused")
+    except SystemExit as e:
+        check("ljud" in str(e) and not (uploads / "glimt-utan").exists(), f"a missing --ljud folder is refused ({e})")
+
+    # An episode with no file to say where its song goes says so.
+    try:
+        d.song_path(99)
         check(False, "an unknown episode is refused")
     except SystemExit as e:
         check("episod-99.json" in str(e), f"an unknown episode is refused ({e})")

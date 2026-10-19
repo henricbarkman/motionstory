@@ -4,15 +4,20 @@
     python3 scripts/glimt_privat_deploy.py <song>                  # episode 1 -> ~/generalassistant/data/uploads/glimt-episod1/
     python3 scripts/glimt_privat_deploy.py --episod 2 <song>       # episode 2 -> .../glimt-episod2/
     python3 scripts/glimt_privat_deploy.py <song> --ut /tmp/g      # somewhere else, for a test
+    python3 scripts/glimt_privat_deploy.py <song> --ljud <dir>     # the licensed sounds from elsewhere
 
-The public app (GitHub Pages) plays stand-ins for songs that are not released.
-This copies the app as it stands in this checkout to the portal's uploads
-folder (portal login only) and puts <song> in the episode's stand-in's place:
-transcoded to Ogg Opus at the stand-in's path, so nothing else in the app
-changes. Which file is the stand-in, the episode's file says
-(stories/glimt/episod-N.json): `privat.ersatter` if it has one, else its
-credits (episode 1: audio/glimt/music/fortexter.opus). Both are names under
-audio/glimt/music/.
+The public app (GitHub Pages) has no songs that are not released, and none of
+the licensed sounds (the bed and the riser, Splice samples whose terms do not
+allow them in a public repo). This copies the app as it stands in this
+checkout to the portal's uploads folder (portal login only) and adds them:
+
+- <song>, transcoded to Ogg Opus, under audio/glimt/music/ by the name the
+  episode's file gives it (stories/glimt/episod-N.json): `privat.ersatter` if
+  it has one, else `credits.file`;
+- the bed and the riser from the --ljud folder (default
+  ~/generalassistant/data/glimt-ljud, outside every repo), whose ljud.json
+  names them: {"bed": "<file>", "riser": "<file>"};
+- glimt/ljud.json, which tells the app where all of it is.
 
 <song> is an unreleased track. It is only ever read from the path given on
 the command line and written into the copy: it never comes into this repo,
@@ -26,8 +31,8 @@ the second fails the old copy goes back, so the address never ends up empty;
 the old copy is deleted only once the new one is in place.
 
 The copy's service worker gets its own cache name, 'motionstory-vNN-privat-'
-plus a hash of the song, so a phone that walked an earlier copy fetches the
-new song, and the start screen's build line says which copy it is. The
+plus a hash of the song and the licensed sounds, so a phone that walked an
+earlier copy fetches the new ones, and the start screen's build line says which copy it is. The
 folder's own index.html sends the walker straight to the episode.
 
 Address afterwards: https://demi.henricbarkman.se/uploads/glimt-episodN/glimt/index.html?kapitel=episodN
@@ -46,6 +51,8 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 UPLOADS = Path.home() / "generalassistant" / "data" / "uploads"
+# The licensed sounds, kept out of every repo (its own .gitignore says *).
+LJUD = Path.home() / "generalassistant" / "data" / "glimt-ljud"
 # Where the copy is put together before it goes live: never served.
 SCRATCH = Path.home() / ".cache" / "demi-scratch"
 # What the public site serves: the app, its look, its sounds and the chapter
@@ -72,19 +79,35 @@ def default_ut(episode: int) -> Path:
     return UPLOADS / f"glimt-episod{episode}"
 
 
-def stand_in_path(episode: int) -> Path:
-    """The file in the app the song takes the place of, relative to the repo."""
+def episode_file(episode: int) -> dict:
     f = REPO / STORIES / f"episod-{episode}.json"
     if not f.is_file():
-        sys.exit(f"no {f.relative_to(REPO)}: episode {episode} has no file to say which stand-in the song replaces")
-    chapter = json.loads(f.read_text(encoding="utf-8"))
+        sys.exit(f"no {f.relative_to(REPO)}: episode {episode} has no file to say where its song goes")
+    return json.loads(f.read_text(encoding="utf-8"))
+
+
+def song_path(episode: int) -> Path:
+    """Where the song goes in the copy, relative to its root."""
+    chapter = episode_file(episode)
     name = (chapter.get("privat") or {}).get("ersatter") or (chapter.get("credits") or {}).get("file")
-    if not name:
-        sys.exit(f"{f.relative_to(REPO)} names no stand-in (privat.ersatter or credits.file)")
-    path = Path("audio/glimt/music") / name
-    if not (REPO / path).is_file():
-        sys.exit(f"the stand-in {path} is not in the repo")
-    return path
+    if not name or Path(name).name != name:
+        sys.exit(f"stories/glimt/episod-{episode}.json names no song file (privat.ersatter or credits.file)")
+    return Path("audio/glimt/music") / name
+
+
+def licensed(ljud: Path) -> dict[str, Path]:
+    """The bed and the riser in the --ljud folder, as its ljud.json names them."""
+    manifest = ljud / "ljud.json"
+    if not manifest.is_file():
+        sys.exit(f"no {manifest}: the private copy needs the bed and the riser (--ljud)")
+    names = json.loads(manifest.read_text(encoding="utf-8"))
+    found = {}
+    for kind in ("bed", "riser"):
+        name = names.get(kind)
+        if not name or Path(name).name != name or not (ljud / name).is_file():
+            sys.exit(f"{manifest} names no {kind} file next to it")
+        found[kind] = ljud / name
+    return found
 
 
 def transcode(song: Path, out: Path) -> None:
@@ -127,10 +150,11 @@ def swap(build: Path, ut: Path, aside: Path) -> None:
         raise
 
 
-def deploy(song: Path, ut: Path, episode: int = 1, scratch: Path = SCRATCH) -> str:
+def deploy(song: Path, ut: Path, episode: int = 1, scratch: Path = SCRATCH, ljud: Path = LJUD) -> str:
     check_target(ut)
-    credits = stand_in_path(episode)
-    stand_in = (REPO / credits).read_bytes()
+    credits = song_path(episode)
+    chapter_id = episode_file(episode)["id"]
+    sounds = licensed(ljud)
     ut.parent.mkdir(parents=True, exist_ok=True)
     scratch.mkdir(parents=True, exist_ok=True)
     # Built where nothing serves it.
@@ -148,11 +172,20 @@ def deploy(song: Path, ut: Path, episode: int = 1, scratch: Path = SCRATCH) -> s
         (build / STORIES).mkdir(parents=True)
         for f in sorted((REPO / STORIES).glob("*.json")):
             shutil.copy2(f, build / STORIES / f.name)
+        (build / credits).parent.mkdir(parents=True, exist_ok=True)
         transcode(song, build / credits)
-        song_bytes = (build / credits).read_bytes()
-        if song_bytes == stand_in:
-            sys.exit("the song came out identical to the stand-in")
-        tag = hashlib.sha256(song_bytes).hexdigest()[:8]
+        where = {"bed": Path("audio/glimt/bed"), "riser": Path("audio/glimt/fx")}
+        extra = {}
+        digest = hashlib.sha256((build / credits).read_bytes())
+        for kind, src in sounds.items():
+            rel = where[kind] / src.name
+            (build / rel).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, build / rel)
+            digest.update(src.read_bytes())
+            extra[kind] = rel.as_posix()
+        extra["credits"] = {chapter_id: credits.as_posix()}
+        (build / "glimt" / "ljud.json").write_text(json.dumps(extra, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        tag = digest.hexdigest()[:8]
         sw = build / "service-worker.js"
         text = sw.read_text(encoding="utf-8")
         text, n = re.subn(r"const CACHE = '(motionstory-v\d+)';", lambda m: f"const CACHE = '{m.group(1)}-privat-{tag}';", text)
@@ -193,12 +226,13 @@ def main() -> int:
     parser.add_argument("song", type=Path, help="the song, read from here only")
     parser.add_argument("--episod", type=int, default=1, help="which episode (default 1)")
     parser.add_argument("--ut", type=Path, help="where the copy goes (default the uploads folder glimt-episodN)")
+    parser.add_argument("--ljud", type=Path, default=LJUD, help=f"the folder with the bed and the riser (default {LJUD})")
     args = parser.parse_args()
     if not args.song.is_file():
         sys.exit(f"no file {args.song}")
     ut = args.ut or default_ut(args.episod)
-    cache = deploy(args.song, ut, args.episod)
-    song = ut / stand_in_path(args.episod)
+    cache = deploy(args.song, ut, args.episod, ljud=args.ljud)
+    song = ut / song_path(args.episod)
     print(f"wrote {ut} ({cache}), song {seconds(song):.1f} s")
     return 0
 
