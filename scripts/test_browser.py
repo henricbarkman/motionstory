@@ -800,6 +800,7 @@ def episodstart(browser, base):
       variant: !document.getElementById('variant-box').hidden,
       vibra: !document.getElementById('vibra-box').hidden,
       load: document.getElementById('load-note').textContent,
+      traffic: (el => el && el.offsetParent !== null ? el.textContent : null)(document.getElementById('traffic-note')),
       doc: document.title,
     })""")
     check(s["radios"][0] == "episod1" and s["checked"] == "episod1" and s["label"].startswith("Episod 1"),
@@ -808,6 +809,7 @@ def episodstart(browser, base):
     check(s["sub"].startswith("Episod 1.") and s["doc"] == "Glimt, episod 1" and not s["variant"] and not s["vibra"],
           f"its subtitle, and neither her variants nor the vibration try-out ({s['sub']!r})")
     check("saknar" not in s["load"], f"everything it needs loaded ({s['load']!r})")
+    check(s["traffic"] and "trafiken" in s["traffic"], f"the traffic warning shows before the first tap ({s['traffic']!r})")
     # The public build asks for none of what only the private copy has.
     asked = page.evaluate("performance.getEntriesByType('resource').map(e => e.name)")
     licensed = [u for u in asked if re.search(r"/audio/glimt/(bed|fx|music)/", u)]
