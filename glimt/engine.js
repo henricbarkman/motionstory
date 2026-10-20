@@ -147,13 +147,17 @@ export class Homing {
     return then !== null && then - now > 40;
   }
 
-  // Receding = at least 40 m farther away than 45 s ago.
+  // Receding = at least 50 m farther away than 90 s ago. Over a longer span
+  // than approaching, so that a winding road counts too: walking out along
+  // streets, only half of the steps may point away from the start, and 40 m
+  // in 45 s asked for nearly all of them. The margin stays above what two
+  // GPS fixes can disagree by (code review 20/10).
   receding(t) {
     if (this.samples.length < 2) return false;
     const now = this.samples[this.samples.length - 1].d;
     let then = null;
-    for (const s of this.samples) { if (s.t <= t - 45) then = s.d; }
-    return then !== null && now - then > 40;
+    for (const s of this.samples) { if (s.t <= t - 90) then = s.d; }
+    return then !== null && now - then > 50;
   }
 }
 

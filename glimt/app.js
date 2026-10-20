@@ -19,7 +19,7 @@ import { Memory, drawWorld, KEY_NAMES } from './memory.js';
 
 // The version the start screen shows, the same number as the service
 // worker's cache. Bump both together.
-const APP_VERSION = 36;
+const APP_VERSION = 37;
 
 // Seconds the credits wait for their song if it is not fetched when they are
 // due. It has had all of scene 0; a song not here by then is not coming.
@@ -142,10 +142,17 @@ const CHAPTERS = {
 // the public build has none of them. ljud.json says where they are: empty
 // here, filled in by the private copy (scripts/glimt_privat_deploy.py).
 // Paths in it are from the site's root; `credits` is per episode file id.
+// Both builds have the file, so one that cannot be read is a failure, said
+// in the note and not kept: the next load asks again (code review 18/10).
 let soundsFile = null;
 const extraSounds = () => soundsFile || (soundsFile = fetch('ljud.json')
-  .then(r => (r.ok ? r.json() : {}))
-  .catch(() => ({})));
+  .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+  .catch(err => {
+    soundsFile = null;
+    // Not log(): before a walk that would overwrite the last walk's saved log.
+    console.warn('ljud.json could not be read', err);
+    return { unread: true };
+  }));
 const fromRoot = path => (path ? `../${path}` : null);
 const RISER_VOICE_AT = 0.7;   // Vega enters at 70 % of the riser
 const LANDMARK_KEY = 'glimt-landmark';
@@ -293,6 +300,7 @@ async function preload() {
     // Without them the public build is quiet between her lines, and says so
     // only where the address was meant to have them.
     const notes = [];
+    if (extra.unread) notes.push('bädden och förtexterna, för ljudlistan gick inte att hämta');
     if (bedUrl && !bedBuf) notes.push('ingen bädd');
     if (riserUrl && !riserBuf) notes.push('ingen riser');
     if (def.side && Object.keys(sounds).length < Object.keys(chapter.sfx || {}).length) notes.push('några av hennes steg');

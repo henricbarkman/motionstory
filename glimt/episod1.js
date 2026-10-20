@@ -47,6 +47,11 @@ const SHORT_WAIT = 2.5 * MIN; // s a scene waits for a walker who is not walking
 const LONG_WAIT = 10 * MIN;   // the same, when the feet say the walker stands
 const PATIENCE = 30;        // s a walker who stood before she asked gets to walk first
 const FULL = 0.95;          // the contact scene 1 waits for after the credits
+// s after scene 4 before the end: 15 for a walker nearly back, 25 for all the
+// others. A walk longer than the episode must not wait a minute and more in
+// the hum, after a line that sounds like an end (dramaturg 20/10).
+const END_SOON = 15;
+const END_GAP = 25;
 // Poor GPS (over 40 m) caps the contact at half (engine.js, Contact), so full
 // is measured against the cap, or scene 1 would wait out its deadline in silence.
 const full = s => s.contact >= FULL * (s.accuracy != null && s.accuracy > 40 ? 0.5 : 1);
@@ -58,8 +63,6 @@ const AT = {
   tree: 5 * MIN,          // scene 2
   sky: 7.5 * MIN,         // scene 3
   bell: 9.5 * MIN,        // scene 4
-  home: 11.5 * MIN,       // the last lines, if the walker is not nearly home
-  homeStill: 11 * MIN,    // or has stood still for half a minute after this
 };
 
 // A stop the walker means. The feet say it two seconds after the last step,
@@ -330,6 +333,8 @@ export async function runEpisode1(ctx) {
     side.tone(false);
     her.exposed = false;
     her.stillSince = now();      // she does not move from the tree again
+    // She asked for the stop and forgot that she was walking: hers, not the walker's.
+    if (asked) await say('s2-lamp-mine');
     await say('s2-lamp-1');
     if (asked) {
       // [svarade nej i starten]: she had decided the walker cannot hear her.
@@ -482,13 +487,12 @@ export async function runEpisode1(ctx) {
   side.other(null);
   remember(false);
 
-  // The end. The walker is nearly back, or the clock says so, or they have
-  // stopped for good. She is on the gravel on her way in.
+  // The end. She is on the gravel on her way in: a walker nearly back hears it
+  // a little sooner, everyone else a little later, never a minute of hum.
   const end4 = now();
-  await ctx.until(s => s.t >= end4 + 15 && (
+  await ctx.until(s => s.t >= end4 + END_SOON && (
     (s.distToStart !== null && s.approaching && s.distToStart < 300) ||
-    s.t >= Math.max(AT.home, end4 + 40) ||
-    (s.t >= AT.homeStill && s.stillFor > 30)));
+    s.t >= end4 + END_GAP));
   ctx.log('scene 4: the end');
   const last = ctx.state();
   // On the way back, or away from the start, each only when the distance shows it.

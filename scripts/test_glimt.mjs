@@ -14,7 +14,8 @@
 // lamp, which branch each walker hears, and that her half minute is a half
 // minute. Its walkers react to what she says (see EPISODE_WALKERS).
 
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { Walk, Waiter, simulatedMagnitude } from '../glimt/engine.js';
@@ -277,12 +278,21 @@ const E_CREDITS = (EPISODE.credits && EPISODE.credits.seconds) || 0;
 // `from` to `to` seconds after the line's 'start' or 'end'. A list of them
 // for more than one stop.
 const ANSWER = ['end', 2, 12];
+// s after her first plea that the hesitating walker walks again: the phone
+// sees the move before her second plea, not yet as walking. GPS takes about
+// two and a half seconds to see a walker move, so the window is narrow:
+// 7 to 7.5 s fails the episode without its check (v35), 6.5 and 8 do not.
+const HESITATES = 7.25;
+
 const END_STOP = { 's4-all': ['end', 3, Infinity] };
 const out = (speed = 1.4, turn = 330) => t => ({ speed: t < 5 ? 0 : speed, heading: t < turn ? 0 : Math.PI });
 
 // `has`: lines that must be heard. `not`: lines that must not. `twice`:
 // lines said again after an interruption. `lamps`: how many times the lamp
-// lights. `memory`: what episode 2 is told.
+// lights. `memory`: what episode 2 is told. `breath: false`: the walker goes
+// on at the end, so no breath under the hum. `walksAt`: like `stops`, but
+// `[when, after]` ends a stop that is going on, `after` seconds from the
+// line's 'start' or 'end'. `skips`: log lines this walker never reaches.
 const EPISODE_WALKERS = {
   // Never stops, not even at the end: every no-branch, and the end on the clock.
   never: {
@@ -291,12 +301,12 @@ const EPISODE_WALKERS = {
       's4-ok', 's4-back', 's4-never-1', 's4-never-no', 's4-all'],
     not: ['s0-yes1-a', 's0-yes2', 's1-q2-yes', 's2-count-stop', 's2-lamp-1', 's2-lamp-2', 's4-lamp-2', 's4-ok-lamp',
       's4-onward', 's4-yes', 's4-never-yes-1', 'r-hjalp'],
-    lamps: 0, memory: { svarade: false, misstanke: false },
+    lamps: 0, breath: false, memory: { svarade: false, misstanke: false },
   },
   // Stops every time she asks, and at the end.
   asked: {
     walk: out(), stops: { 's0-ask1': ANSWER, 's0-yes1-b': ANSWER, 's1-q2': ANSWER, 's2-ask': ANSWER, ...END_STOP },
-    has: ['s0-yes1-a', 's0-yes1-b', 's0-yes2', 's1-q2-yes', 's2-ask', 'x-avvikelse', 's2-lamp-plea', 's2-lamp-1', 's4-ok-lamp', 's4-yes'],
+    has: ['s0-yes1-a', 's0-yes1-b', 's0-yes2', 's1-q2-yes', 's2-ask', 'x-avvikelse', 's2-lamp-plea', 's2-lamp-mine', 's2-lamp-1', 's4-ok-lamp', 's4-yes'],
     not: ['s0-no1', 's0-no2', 's1-q2-no', 's2-no', 's2-lamp-plea2', 's2-lamp-2', 's4-ok', 's4-lamp-2', 's4-never-1'],
     lamps: 1, memory: { svarade: true, misstanke: false },
   },
@@ -304,7 +314,7 @@ const EPISODE_WALKERS = {
   // asks at the tree: she learns there that the walker hears her.
   deaf: {
     walk: out(), stops: { 's0-ask1': ANSWER, 's2-ask': ANSWER, ...END_STOP },
-    has: ['s0-yes1-a', 's0-yes1-b', 's0-no2', 's2-lamp-1', 's2-lamp-2', 's4-yes'],
+    has: ['s0-yes1-a', 's0-yes1-b', 's0-no2', 's2-lamp-mine', 's2-lamp-1', 's2-lamp-2', 's4-yes'],
     not: ['s0-no1', 's0-yes2', 's2-no', 's4-never-1'],
     lamps: 1, memory: { svarade: true, misstanke: false },
   },
@@ -313,7 +323,7 @@ const EPISODE_WALKERS = {
   own: {
     walk: out(), stops: { 's2-5': ['start', 1, 14], 's4-2': ['start', 2, 15], ...END_STOP },
     has: ['s0-no2', 's2-5', 's2-6', 's2-lamp-1', 's4-lamp-1', 's4-lamp-2', 's4-never-1', 's4-never-no'],
-    not: ['s2-ask', 's2-no', 's2-lamp-2', 's4-ok', 's4-3', 's4-yes'],
+    not: ['s2-ask', 's2-no', 's2-lamp-mine', 's2-lamp-2', 's4-ok', 's4-3', 's4-yes'],
     lamps: 2, memory: { svarade: false, misstanke: true },
   },
   // Stops just as she steps off the gravel: the lamp cuts her first line
@@ -342,7 +352,7 @@ const EPISODE_WALKERS = {
   // Walks on at every question, stops when she asks at the tree.
   late: {
     walk: out(), stops: { 's2-ask': ANSWER, ...END_STOP },
-    has: ['s0-no2', 's1-q2-no', 's2-lamp-1', 's2-lamp-2', 's4-ok-lamp', 's4-yes'], not: ['s2-no', 's4-ok', 's4-never-1'],
+    has: ['s0-no2', 's1-q2-no', 's2-lamp-mine', 's2-lamp-1', 's2-lamp-2', 's4-ok-lamp', 's4-yes'], not: ['s2-no', 's4-ok', 's4-never-1'],
     lamps: 1, memory: { svarade: true, misstanke: false },
   },
   // Only stops the last time she asks.
@@ -391,7 +401,7 @@ const EPISODE_WALKERS = {
   // back on the gravel in scene 4 knowing the lamp saw one of the three.
   stays: {
     walk: out(), stops: { 's2-5': ['start', 1, 40], ...END_STOP },
-    has: ['x-avvikelse', 's2-lamp-plea', 's2-lamp-plea2', 's2-lamp-1', 's4-ok-lamp'], not: ['s2-ask', 's4-ok'],
+    has: ['x-avvikelse', 's2-lamp-plea', 's2-lamp-plea2', 's2-lamp-1', 's4-ok-lamp'], not: ['s2-ask', 's2-lamp-mine', 's4-ok'],
     lamps: 1, memory: { svarade: false, misstanke: false },
   },
   // Stands at a kerb from early in her first question and forty seconds on,
@@ -457,7 +467,7 @@ const EPISODE_WALKERS = {
   // is still out there.
   after: {
     walk: out(), stops: { 's2-no': ['end', 3, 15], ...END_STOP },
-    has: ['s2-ask', 's2-no', 'x-avvikelse', 's2-lamp-1'], not: ['s2-lamp-2', 's4-yes'],
+    has: ['s2-ask', 's2-no', 'x-avvikelse', 's2-lamp-1'], not: ['s2-lamp-mine', 's2-lamp-2', 's4-yes'],
     lamps: 1, memory: { svarade: false, misstanke: false },
   },
   // Stops a moment before she would ask at the tree. The stop shows as the
@@ -515,8 +525,39 @@ const EPISODE_WALKERS = {
   // seconds, a wandering speed, and the feet deciding moving or still.
   field: {
     walk: t => ({ ...out()(t), ...FIELD_2, handling: true }), stops: { 's0-ask1': ANSWER, 's0-yes1-b': ANSWER, 's2-ask': ANSWER, ...END_STOP },
-    has: ['s0-yes1-a', 's0-yes2', 'x-avvikelse', 's2-lamp-1', 's4-yes'], not: ['s2-lamp-2', 's4-lamp-2'],
+    has: ['s0-yes1-a', 's0-yes2', 'x-avvikelse', 's2-lamp-mine', 's2-lamp-1', 's4-yes'], not: ['s2-lamp-2', 's4-lamp-2'],
     lamps: 1, memory: { svarade: true, misstanke: false },
+  },
+  // Stops among the trees, hears her plead, and walks again a moment before
+  // she would plead the second time: the phone already sees the walker move,
+  // so she does not plead again (v35).
+  hesitates: {
+    walk: out(), stops: { 's2-5': ['start', 1, Infinity], ...END_STOP }, walksAt: { 's2-lamp-plea': ['end', HESITATES] },
+    has: ['x-avvikelse', 's2-lamp-plea', 's2-lamp-1'], not: ['s2-ask', 's2-lamp-mine', 's2-lamp-plea2'],
+    lamps: 1, memory: { svarade: false, misstanke: false },
+  },
+  // Walks on after her last line and stops only later, outside the window:
+  // she fades out, with no breath under the hum.
+  'late-end': {
+    walk: out(), stops: { 's4-all': ['end', 25, Infinity] },
+    has: ['s4-all'], breath: false,
+    lamps: 0, memory: { svarade: false, misstanke: false },
+  },
+  // Walks out along winding streets and never turns: only half of each step
+  // points away from the start. She still says the walker goes away.
+  winding: {
+    walk: t => ({ speed: t < 5 ? 0 : 1.3, heading: (Math.floor(t / 20) % 2 ? 1 : -1) * Math.PI / 3 }), stops: END_STOP,
+    has: ['s4-onward'], not: ['s4-back'],
+    lamps: 0, memory: { svarade: false, misstanke: false },
+  },
+  // A phone that never reads the walker move (no speed, no steps, every fix
+  // too poor to use). What it hears is not the point: the count must not wait
+  // for steps that never come, and the episode must end.
+  // `loose`: only the order, the lines it must hear and that it ends are
+  // checked. It takes over half an hour, all of it waiting: `limit`.
+  blind: {
+    walk: t => ({ ...out()(t), accuracy: 200, doppler: false }), stops: {},
+    has: ['s2-count-stop', 's2-3', 's4-all'], skips: ['scene 2: she counts'], loose: true, limit: 60 * 60,
   },
 };
 
@@ -573,6 +614,8 @@ function simulateEpisode(name) {
     for (const [at, from, to] of !r ? [] : Array.isArray(r[0]) ? r : [r]) {
       if (at === when) stops.push({ from: t + from, to: t + to });
     }
+    const w = (profile.walksAt || {})[id];
+    if (w && w[0] === when) for (const st of stops) if (st.from <= t + w[1] && st.to > t + w[1]) st.to = t + w[1];
   };
   const sound = (id, mark) => {
     const dur = E_SECONDS[id];
@@ -620,7 +663,7 @@ function simulateEpisode(name) {
   // between ticks: the episode's helpers are several awaits deep, and her
   // half minute is checked to the tick.
   return (async () => {
-    while (!ended && t < 40 * 60) {
+    while (!ended && t < (profile.limit || 40 * 60)) {
       let { speed, heading, accuracy = 8, every = 1, doppler = true, jitter = 0, phone = null,
         steps = false, handling = false } = profile.walk(t);
       if (stops.some(st => t >= st.from && t < st.to)) speed = 0;
@@ -668,13 +711,15 @@ function episodeProblems(name, run) {
   const count = id => played.filter(x => x.id === id).length;
   const at = label => { const l = log.find(x => x.includes(label) && !x.includes('▶')); return l ? logTime(l) : null; };
 
+  const order = E_ORDER.filter(x => !(p.skips || []).includes(x));
   let pos = 0;
-  for (const line of log) if (pos < E_ORDER.length && line.includes(E_ORDER[pos]) && !line.includes('▶')) pos++;
-  if (pos !== E_ORDER.length) problems.push(`reached ${E_ORDER[pos]} (${pos}/${E_ORDER.length})`);
+  for (const line of log) if (pos < order.length && line.includes(order[pos]) && !line.includes('▶')) pos++;
+  if (pos !== order.length) problems.push(`reached ${order[pos]} (${pos}/${order.length})`);
   if (log.some(l => l.includes('ERROR'))) problems.push('the script threw');
 
   for (const id of p.has || []) if (!count(id)) problems.push(`${id} never heard`);
   for (const id of p.not || []) if (count(id)) problems.push(`${id} heard`);
+  if (p.loose) return problems;
   for (const id of p.twice || []) if (count(id) !== 2) problems.push(`${id} heard ${count(id)} times, wanted 2`);
   // Said once, unless the walker's profile says a line comes again.
   for (const id of new Set(played.map(x => x.id))) {
@@ -693,6 +738,13 @@ function episodeProblems(name, run) {
   for (const x of played.filter(x => x.id === 'x-avvikelse')) {
     const ok = (off !== null && x.t >= off && (s3 === null || x.t <= s3)) || (s4 !== null && x.t >= s4 && (s4end === null || x.t <= s4end));
     if (!ok) problems.push(`the lamp lit at ${fmt2(x.t)}, where a stop is harmless`);
+  }
+
+  // The end comes soon after she is back on the gravel, also for a walker far
+  // from the start: never a minute of hum after a line that sounds like an end.
+  const back = played.filter(x => ['s4-ok', 's4-ok-lamp', 's4-lamp-2'].includes(x.id)).pop();
+  if (back && s4end !== null && s4end - (back.t + E_SECONDS[back.id]) > 26) {
+    problems.push(`the end came ${Math.round(s4end - back.t - E_SECONDS[back.id])} s after ${back.id}, wanted at most 25`);
   }
 
   // The credits once, after scene 0's last line and before scene 1, and
@@ -728,17 +780,25 @@ function episodeProblems(name, run) {
   let tone = false;
   for (const c of sideCalls) if (c.what === 'tone') tone = !!c.args[0];
   if (tone) problems.push('the lamp tone was left on');
+  // The lamp's tone is the first one on her side; calls are read in their
+  // order, since her step off the gravel can fall in the lamp's own second.
   const lamp2 = at('scene 2: lamp');
   if (lamp2 !== null && s4 !== null) {
-    const step = sideCalls.find(c => c.what === 'walk' && c.args[0] && c.t > lamp2 && c.t < s4);
+    const tone2 = sideCalls.findIndex(c => c.what === 'tone' && c.args[0]);
+    const step = sideCalls.slice(tone2 + 1).find(c => c.what === 'walk' && c.args[0] && c.t < s4);
     if (step) problems.push(`she walks (${step.args[0]}) at ${fmt2(step.t)}, after the lamp and before scene 4`);
   }
   // The shift's steps are taken away before the end, and the breath comes once.
   const others = sideCalls.filter(c => c.what === 'other');
   if (others.length && others[others.length - 1].args[0] !== null) problems.push('the other steps are left walking');
-  // The breath under the hum is for a walker who stops at the end; one who goes on hears her fade out.
-  const wantBreath = log.some(l => l.includes('end: the walker goes on')) ? 0 : 1;
-  if (sideCalls.filter(c => c.what === 'breath').length !== wantBreath) problems.push(`the breath at the end ${sideCalls.filter(c => c.what === 'breath').length} times, wanted ${wantBreath}`);
+  // The breath under the hum is for a walker who stops at the end; one who
+  // goes on hears her fade out. The profile says which, not the log.
+  const wantBreath = p.breath === false ? 0 : 1;
+  const breaths = sideCalls.filter(c => c.what === 'breath').length;
+  if (breaths !== wantBreath) problems.push(`the breath at the end ${breaths} times, wanted ${wantBreath}`);
+  const endsStanding = log.some(l => /^\s*\d+:\d\d {2}end {2}\(/.test(l));
+  const endsGoingOn = log.some(l => l.includes('end: the walker goes on'));
+  if (wantBreath ? !endsStanding : !endsGoingOn) problems.push(`the end is logged as ${endsStanding ? 'standing' : endsGoingOn ? 'going on' : 'neither'}, wanted ${wantBreath ? 'standing' : 'going on'}`);
   const stoodCall = sideCalls.find(c => c.what === 'walk' && c.args[0] === null);
   if (!stoodCall) problems.push('her steps never stop');
   if (!sideCalls.some(c => c.what === 'bell')) problems.push('no bell');
@@ -777,7 +837,47 @@ function coverageProblems(heard) {
   for (const dir of ['bed', 'fx', 'music']) {
     if (existsSync(join(ROOT, 'audio/glimt', dir))) problems.push(`audio/glimt/${dir} is in the public tree`);
   }
+  problems.push(...soundProblems());
   return problems;
+}
+
+// Every sound file in the repo is one the repo can account for: a line some
+// story file names, a sound of her side an episode names, or one of the old
+// voice samples. Anything else (a song, a master, a mix with the bed) fails by
+// name, wherever it lies (code review 19/10, Lägre 7: the folder check only
+// knew three folders).
+const SOUND = /\.(mp3|opus|ogg|oga|wav|flac|m4a|aac|aif|aiff|webm)$/i;
+const FROZEN = new Set([
+  ...[1, 2, 3, 4].map(n => `audio/pilgrimsvagen/scene-${n}.mp3`),
+  ...['demi2', 'elin', 'elin-assured', 'karin', 'maria', 'stil-1-torr', 'stil-2-nara', 'stil-3-magisk'].map(n => `rostprov/${n}.mp3`),
+]);
+function repoFiles() {
+  try {
+    return execFileSync('git', ['-C', ROOT, 'ls-files', '-z'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).split('\0').filter(Boolean);
+  } catch {
+    // Not a checkout (an archive copy): then every file here is the repo's.
+    const out = [];
+    const walk = (rel) => {
+      for (const d of readdirSync(join(ROOT, rel), { withFileTypes: true })) {
+        if (d.name === '.git' || d.name === 'node_modules') continue;
+        const r = rel ? `${rel}/${d.name}` : d.name;
+        if (d.isDirectory()) walk(r); else out.push(r);
+      }
+    };
+    walk('');
+    return out;
+  }
+}
+function soundProblems() {
+  const known = new Set(FROZEN);
+  for (const f of readdirSync(join(ROOT, 'stories/glimt')).filter(f => f.endsWith('.json'))) {
+    const story = JSON.parse(readFileSync(join(ROOT, 'stories/glimt', f), 'utf8'));
+    for (const id of Object.keys(story.lines || {})) known.add(`audio/glimt/vega/${story.id}/${id}.mp3`);
+    for (const sfx of Object.values(story.sfx || {})) known.add(`audio/glimt/side/${sfx.file}`);
+  }
+  const files = repoFiles().filter(f => SOUND.test(f));
+  const strays = files.filter(f => !known.has(f)).map(f => `${f} is a sound no story file names`);
+  return files.length ? strays : ['found no sound files at all, so the check read nothing'];
 }
 
 async function episodeMain(onlyProfile) {

@@ -46,7 +46,7 @@ rl.on('line', (rad) => {
   const f = vantar.get(m.rpc);
   if (f) { vantar.delete(m.rpc); f(m); }
 });
-const skicka = (x) => process.stdout.write(`${JSON.stringify(x)}\n`);
+const skicka = (x, klar) => process.stdout.write(`${JSON.stringify(x)}\n`, klar);
 function rpc(fraga) {
   return new Promise((res) => {
     nasta += 1;
@@ -427,13 +427,16 @@ async function steg(u) {
   return { ...ut, lagring: lagring.allt() };
 }
 
+let svar;
 try {
   const u = await forstaRad;
-  skicka({ klart: await steg(u) });
+  svar = { klart: await steg(u) };
 } catch (e) {
   // What waits is handed back on an error too: a note that could not be
   // written is promised to be sent next time.
-  skicka({ fel: e.message || String(e), kod: e.kod || e.name || 'fel', nara: e.nara || null, lagring: lagring ? lagring.allt() : null });
+  svar = { fel: e.message || String(e), kod: e.kod || e.name || 'fel', nara: e.nara || null, lagring: lagring ? lagring.allt() : null };
 }
 rl.close();
-process.exit(0);
+// Exit once the answer is written: stdout to a pipe is asynchronous, and an
+// exit straight after the write cut `rader` off at 64 KB (review 20/10).
+skicka(svar, () => process.exit(0));
