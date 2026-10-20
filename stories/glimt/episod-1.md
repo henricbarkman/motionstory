@@ -8,7 +8,7 @@ Utkast 6, 2026-10-20, i appen som version 37: fem scener (0-4), ja och nej genom
 
 **Stil:** som kapitel 1. Nära och talspråklig, en person i en dålig telefonlinje. En regel från andra sidan i sagoton, i scen 3. Hon säger "här" och "hos dig", aldrig vilket år det är och aldrig var "här" ligger. Hon beskriver bara det hon kan se av din värld: ljuset, vädret, hur du rör dig och det kartan har nära dig. Aldrig människor, bilar eller saker.
 
-**Riktlängd:** cirka tolv minuter (simulerat 11,6-12,2 i version 32). Ungefär åtta minuters tal och en dryg minuts förtexter. Inget i episoden kräver fart, så den går lika bra att gå som att springa.
+**Riktlängd:** cirka tolv och en halv minut (simulerat 11,9-13,0 i version 37). Ungefär åtta minuters tal och en dryg minuts förtexter. Inget i episoden kräver fart, så den går lika bra att gå som att springa.
 
 **Logiken, så att scenerna håller ihop:**
 - Vega ser glimtar av vandrarens värld: rörelsen (går, springer, står), ljuset, vädret och det kartan har nära vandraren. Suddigt, i kanten, aldrig människor eller föremål. Inget ljud går över. Hon vet alltså när vandraren går och står, men hör aldrig vad vandraren säger. Vandraren svarar henne bara med att stanna.
