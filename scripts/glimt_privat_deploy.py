@@ -31,8 +31,8 @@ the second fails the old copy goes back, so the address never ends up empty;
 the old copy is deleted only once the new one is in place.
 
 The copy's service worker gets its own cache name, 'motionstory-vNN-privat-'
-plus a hash of the song and the licensed sounds, so a phone that walked an
-earlier copy fetches the new ones, and the start screen's build line says which copy it is. The
+plus a hash of every file in the copy (the service worker aside), so a phone
+that walked an earlier copy fetches whatever changed, and the start screen's build line says which copy it is. The
 folder's own index.html sends the walker straight to the episode.
 
 Address afterwards: https://demi.henricbarkman.se/uploads/glimt-episodN/glimt/index.html?kapitel=episodN
