@@ -1,6 +1,6 @@
 # Glimt, episod 1: Det är när du går
 
-Utkast 5, 2026-10-19, i appen som version 34: fem scener (0-4), ja och nej genom att stanna, och förtexterna efter scen 0. Regigranskningen från 18/10 är inlagd (vad som ändrades står sist). Utkast 3 (2026-10-08) skrevs om efter Henrics första promenad (version 25) och hans fyra intryck samma morgon.
+Utkast 6, 2026-10-20, i appen som version 37: fem scener (0-4), ja och nej genom att stanna, och förtexterna efter scen 0. Granskningarna från 18/10 och 20/10 är inlagda (vad som ändrades står sist). Utkast 3 (2026-10-08) skrevs om efter Henrics första promenad (version 25) och hans fyra intryck samma morgon.
 
 **Vad episoden ska göra:** Vega och vandraren möts. Vandraren ska förstå tre saker utan att någon förklarar dem: hon ser glimtar av din värld men hör dig aldrig, hon hörs bara när du går, och dina steg gömmer henne.
 
@@ -46,7 +46,7 @@ Varianter i hakparentes väljs av telefonen: `[ljust]`, `[mörkt]`, `[regn]`, `[
 >
 > **Ja, vandraren stannar:**
 >
-> (för sig själv) Va? Det kan inte stämma. Du kan inte se mig. Det går inte. (rakt till dig) Du vill bara svara, va? Okej. Samma sak igen. Hör du mig? (paus) Nu.
+> (för sig själv) Va? Det kan inte stämma. Du kan inte se mig. Det går inte. (rakt till dig) Du vill bara svara. Okej. Samma sak igen. Hör du mig? (paus) Nu.
 >
 > **Nej, vandraren går vidare:**
 > Nä. Jag trodde nog inte det heller. Men okej. Samma sak igen. Hör du mig? (paus) Nu.
@@ -74,14 +74,14 @@ Varianter i hakparentes väljs av telefonen: `[ljust]`, `[mörkt]`, `[regn]`, `[
 
 > Så. Nu är du tydlig.
 >
-> [gång] Du går lugnt. Som någon som får gå vart den vill.
+> [gång] Du går. Som någon som får gå vart den vill.
 > [löpning] Du springer. Det gör ingen här. Det är inte förbjudet, det är bara ingen som har något att springa till.
 >
 > Gå som du vill. Måste du stanna, så stanna. Din väg går före min.
 >
 > Jag går också. Det gör alla här, efter skiftet. Slingan runt, fyrtio minuter. Hälsofrämjande rörelse, det står på väggen. (torrt) Vi är väldigt friska.
 >
-> Jag vet ingenting om dig. Får jag fråga? Stanna för ja, som förut. Det är ingen fara nu, jag går min runda som vanligt.
+> Jag vet ingenting om dig. Stanna för ja när jag frågar. Det är ingen fara, jag går min runda som vanligt.
 >
 > (för sig själv) Fråga något riktigt. ...Okej.
 >
@@ -136,7 +136,7 @@ Stannar vandraren medan hon räknar säger hon det här, dovt, och när vandrare
 
 *Har vandraren inte stannat av sig själv sedan hon klev av gruset ber hon om det. Hon går runt trädet medan hon väntar, så stoppet tänder lampan. Hon vet inte om det.*
 
-> (hon går, långsamt, handen mot stammen) Stanna en stund, om du kan. Jag vill inte gå härifrån än.
+> (hon går, långsamt, handen mot stammen) Stanna en stund, om du kan. Stå här med mig.
 >
 > **Vandraren stannar:**
 > (rösten sjunker undan. Slingans surr kommer fram. En mjuk ton, sedan den platta rösten, svagt: "Avvikelse. Steg utanför sträckan.")
@@ -148,6 +148,8 @@ Står vandraren kvar ungefär tio sekunder till:
 > (dovt, närmare) Snälla. Gå nu. Jag kan inte gå härifrån förrän du gör det.
 
 > (vandraren går, rösten tillbaka, tonen tystnar. Hon andas)
+>
+> [hon bad om stoppet] Jag bad dig stanna, och glömde att jag själv gick.
 >
 > Det var lampan. Den tändes när du stannade. (paus) Den har jag aldrig sett tänd förut. (torrt) Den är rätt fin, faktiskt.
 >
@@ -187,7 +189,7 @@ Står vandraren kvar ungefär tio sekunder till:
 > Det ser ut som där du är. Men det är inte där du är.
 
 ## 4. Klockan
-*Trigger: runt minut nio och en halv, när vandraren går. Hon sitter fortfarande under trädet och måste upp på gruset innan skiftet kommer runt kröken. Ett stopp tänder lampan tills hon är på gruset. Sedan går hon in, och resten är ofarligt. Slutet kommer på tiden, runt minut elva, i två sorter: `[på väg tillbaka]` när avståndet till starten krymper, annars `[går vidare]`. Stannar vandraren efter sista repliken tonar rösten bort i surret. Går vandraren vidare tonar den bort ändå, och episod 2 kan börja direkt efter, med samma något under surret.*
+*Trigger: runt minut nio och en halv, när vandraren går. Hon sitter fortfarande under trädet och måste upp på gruset innan skiftet kommer runt kröken. Ett stopp tänder lampan tills hon är på gruset. Sedan går hon in, och resten är ofarligt. Slutet kommer en knapp halv minut efter att hon är på gruset (en kvarts minut för den som är nära starten på väg tillbaka), i två sorter: `[på väg tillbaka]` när avståndet till starten krymper, `[går vidare]` när det tydligt växer, annars ingen av dem. Stannar vandraren inom en kvarts minut efter sista repliken tonar rösten bort i surret. Går vandraren vidare tonar den bort ändå, och episod 2 kan börja direkt efter, med samma något under surret.*
 
 > (en klocka på hennes sida, dov) Där är klockan. Slingan stänger.
 >
@@ -209,7 +211,7 @@ Står vandraren kvar ungefär tio sekunder till:
 > (vandraren går igen, rösten tillbaka, låg) Jag hann upp. Men den skrev upp det. En avvikelse. Det får jag höra mer om.
 >
 > **Alla:**
-> [på väg tillbaka] Du är på väg hem. Det syns, du går rakare. (torrt) Själv går jag runt. Det är ungefär samma sak, enligt väggen.
+> [på väg tillbaka] Du är på väg tillbaka. Det syns, du går rakare. (torrt) Själv går jag runt. Det är ungefär samma sak, enligt väggen.
 > [går vidare] Du går bort från där du började. Rakt ut. (paus) Det kan inte jag. Men jag kan titta.
 >
 > **Vandraren har stannat på hennes begäran någon gång i kväll:**
@@ -298,3 +300,13 @@ Efter regigranskningen 18 oktober. Henric sa ja till alla fynd 19/10, även de i
 - **Färre frågor och förklaringar.** "Går du ofta så här?" är struken, så scen 1 har en fråga. Regeln vid trädet sägs två gånger i stället för tre.
 - **Räkningen hörs.** De sista talen före tjugosju viskas i surret, i stället för en halv minuts tystnad.
 - **Torrt när det är som värst, inget gulligt.** Efter lampan: "Den är rätt fin, faktiskt." Struket: "Det är snällt", "Det låter fint", "Jag blir rörd ändå" och upprepningarna ("varje kväll", "säger de", "Det får vara så ett tag till"). "Ok" är "Okej" och "Haha!" är (skrattar). Kvar med flit: "Jag klarar mig annars" i slutet, för episod 2 svarar på den.
+
+## Ändrat i utkast 6
+
+Efter granskningarna 20 oktober. Henric sa ja till lagningarna i rummet 18/10.
+
+- **Ingen fråga i instruktionen.** I scen 1 sa hon "Får jag fråga? Stanna för ja, som förut", och den som stannade där blev dov utan att stoppet räknades. Nu: "Stanna för ja när jag frågar." I starten är "Du vill bara svara, va?" utan "va", av samma skäl.
+- **Hon tar på sig stoppet vid trädet.** Bönen är "Stå här med mig", och när lampan har tänts säger hon "Jag bad dig stanna, och glömde att jag själv gick." Hon skyller aldrig på vandraren.
+- **Slutet väntar inte.** Slutet kommer en knapp halv minut efter att hon är på gruset, också för den som inte är nära starten. Förut kunde det bli en dryg minuts surr före namnet.
+- **Telefonen vet var du började, inte var du bor.** "Du är på väg hem" är "Du är på väg tillbaka". "Du går lugnt" är "Du går", för telefonen vet inte hur lugnt.
+- **`[går vidare]` hörs på slingriga vägar också.** Den kräver att avståndet till starten har vuxit 50 meter på en och en halv minut, i stället för 40 meter på 45 sekunder, som bara den som går nästan rakt ut klarade.

@@ -207,7 +207,7 @@
 >
 > Den har aldrig sagt god kväll förut.
 >
-> (lågt) Min gång har förändrats. Steg är som handstil, det sa jag själv. Den har läst din handstil på min rad.
+> (lågt) Min gång har förändrats. Steg är som handstil. Den har läst din handstil på min rad.
 >
 > I morgon är det någon som undrar vems den är.
 >
@@ -242,7 +242,7 @@ Det tunga, att boken inte kommer fram, hänger på andra och tredje benet i Bude
 
 | Vad | Var | Tanke |
 |---|---|---|
-| "Din gång har förändrats" | 3 | Täckningen lämnar spår. De har märkt att stegen inte är hennes, för steg är som handstil (episod 2). |
+| "Din gång har förändrats" | 3 | Täckningen lämnar spår. De har märkt att stegen inte är hennes, för steg är som handstil. Episod 2 lät henne känna igen vandraren på ljuset, så det är här hon förstår det. |
 | "Än så länge" | 3 | Att hon ska få välja. Episod 2 lät henne följa vandrarens val. |
 
 ## Parkerat till senare

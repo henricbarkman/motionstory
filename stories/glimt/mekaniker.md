@@ -56,7 +56,7 @@ Grunden. Nästan allt annat bygger på att telefonen vet vilket av de tre du gö
 **Du gör:** stannar när hon rör sig där hon inte får vara.
 **I berättelsen:** snäckan räknar då hennes egna steg, och lampan tänds. Samma stopp är ofarligt när hon går sin vanliga runda eller sitter still.
 **Omdöme:** Oprövad. Byggd i episod 1 och gången en gång, 8/10, men hur fort lampan tänds i en riktig ficka är inte mätt.
-**Tänk på:** säg i triggern om ett stopp är farligt eller ofarligt i scenen. Ett stopp hon själv ber om tänder aldrig lampan. I episod 2 är lampan bara stämning och ger ingen misstanke (Henric 19/10).
+**Tänk på:** säg i triggern om ett stopp är farligt eller ofarligt i scenen. Ett stopp hon ber om tänder inte lampan när hon själv står still, för två som står still syns inte. Vid trädet i episod 1 går hon runt stammen medan hon ber, och då tänds den. I episod 2 är lampan bara stämning och ger ingen misstanke (Henric 19/10).
 
 ### Snäckan frågar
 **Du gör:** står still länge medan hon också står still.
