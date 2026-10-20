@@ -150,6 +150,20 @@ def swap(build: Path, ut: Path, aside: Path) -> None:
         raise
 
 
+def tree_tag(build: Path, skip: Path) -> str:
+    """Eight hex characters that change whenever any file in the build does.
+
+    A phone keeps the service worker's cache until its name changes, so the
+    name hashes everything in the copy: the code and the voices as well as the
+    song and the licensed sounds (code review 18/10, Medel 3). `skip` is the
+    service worker itself, which gets the name written into it."""
+    digest = hashlib.sha256()
+    for f in sorted(p for p in build.rglob("*") if p.is_file() and p != skip):
+        digest.update(f.relative_to(build).as_posix().encode("utf-8") + b"\0")
+        digest.update(f.read_bytes())
+    return digest.hexdigest()[:8]
+
+
 def deploy(song: Path, ut: Path, episode: int = 1, scratch: Path = SCRATCH, ljud: Path = LJUD) -> str:
     check_target(ut)
     credits = song_path(episode)
@@ -176,25 +190,22 @@ def deploy(song: Path, ut: Path, episode: int = 1, scratch: Path = SCRATCH, ljud
         transcode(song, build / credits)
         where = {"bed": Path("audio/glimt/bed"), "riser": Path("audio/glimt/fx")}
         extra = {}
-        digest = hashlib.sha256((build / credits).read_bytes())
         for kind, src in sounds.items():
             rel = where[kind] / src.name
             (build / rel).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(src, build / rel)
-            digest.update(src.read_bytes())
             extra[kind] = rel.as_posix()
         extra["credits"] = {chapter_id: credits.as_posix()}
         (build / "glimt" / "ljud.json").write_text(json.dumps(extra, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        tag = digest.hexdigest()[:8]
-        sw = build / "service-worker.js"
-        text = sw.read_text(encoding="utf-8")
-        text, n = re.subn(r"const CACHE = '(motionstory-v\d+)';", lambda m: f"const CACHE = '{m.group(1)}-privat-{tag}';", text)
-        if n != 1:
-            sys.exit("service-worker.js has no CACHE line to rename")
-        sw.write_text(text, encoding="utf-8")
         (build / "index.html").write_text(INDEX.format(n=episode), encoding="utf-8")
         (build / MARK).write_text("Made by motionstory scripts/glimt_privat_deploy.py. Holds an unreleased song: never publish.\n",
                                   encoding="utf-8")
+        sw = build / "service-worker.js"
+        text = sw.read_text(encoding="utf-8")
+        text, n = re.subn(r"const CACHE = '(motionstory-v\d+)';", lambda m: f"const CACHE = '{m.group(1)}-privat-{tree_tag(build, sw)}';", text)
+        if n != 1:
+            sys.exit("service-worker.js has no CACHE line to rename")
+        sw.write_text(text, encoding="utf-8")
         # The old copy is set aside in the scratch folder, out of the
         # portal's reach, when that is the same disk. Elsewhere (a --ut on
         # another disk) the build and the old copy wait next to the target.

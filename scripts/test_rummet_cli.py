@@ -169,6 +169,12 @@ def main() -> int:
     (rot / "data" / "glimt-rummet").mkdir(parents=True)
     for f in ("episod-1.md", "episod-2.md", "episod-3.md", "episod-1.json", "varld.md", "mekaniker.md"):
         shutil.copyfile(GLIMT / f, glimt / f)
+    # Episode 3 grows past what a pipe takes in one write, so 'rader' has to
+    # wait for its answer to be written before it exits (review 20/10: it was
+    # cut at 64 KB). Nothing else here reads episode 3.
+    stor = "".join(f"\nStycke {i} i provet, {'ord ' * 60}slut {i}.\n" for i in range(400))
+    (glimt / "episod-3.md").write_text((glimt / "episod-3.md").read_text(encoding="utf-8") + "\n## Långt prov\n" + stor,
+                                       encoding="utf-8")
     M = glimt / "episod-1.md"
     manus_fore = M.read_text(encoding="utf-8")
     env = dict(os.environ, RUMMET_FILES_PY=os.environ.get("RUMMET_FILES_PY", ""))
@@ -180,6 +186,9 @@ def main() -> int:
         # Reading the paragraphs, to name one.
         r = kor(rot, "rader", "--dok", "1", "--scen", "2")
         rader = rader_av(rot, "--dok", "1", "--scen", "2")
+        lang = kor(rot, "rader", "--dok", "3")
+        ok(lang.returncode == 0 and "slut 399." in lang.stdout,
+           f"rader on a document over 64 KB comes back whole ({len(lang.stdout)} characters, {lang.stderr[-200:]})")
         replik = next((x for x in rader if x[1] == "replik"), None)
         mekanik = next((x for x in rader if x[1] == "mekanik"), None)
         ok(r.returncode == 0 and "## scen 2" in r.stdout and replik and mekanik, f"rader: scene 2's paragraphs with ids and kinds ({replik and replik[2][:30]})")

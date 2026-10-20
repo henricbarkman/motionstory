@@ -35,13 +35,13 @@
     "s0-2": "[shouts] Hallå! Vänta!\n\n[rushed] Eller nej, jag menar... Fortsätt, stanna inte. Du försvinner för mig när du står still. Jag försöker hänga på dig.\n\nJag vet inte vem du är. Jag vet inte om du hör det här. Jag hör ingenting från dig, inte ett ljud. Jag ser bara glimtar av dig. Och din värld.\n\nMen jag måste få veta en sak.",
     "s0-ask1": "Okej. Så här. Jag frågar, och sen säger jag nu. Är svaret ja, stannar du en liten stund. Sen går du igen, annars tappar jag dig. [pause] Ser du mig? [pause] Nu.",
     "s0-yes1-a": "[mutters to herself, quick and low] Va? Det kan inte stämma. Du kan inte se mig. Det går inte.",
-    "s0-yes1-b": "Du vill bara svara, va? Okej. Samma sak igen. Hör du mig? [short pause] Nu.",
+    "s0-yes1-b": "Du vill bara svara. Okej. Samma sak igen. Hör du mig? [short pause] Nu.",
     "s0-no1": "[resigned] Nä. Jag trodde nog inte det heller. Men okej. Samma sak igen. Hör du mig? [short pause] Nu.",
     "s0-yes2": "[excited] Ja! Ja! Du hör mig! Jag kan inte... Hur... [laughs]\n\n[softly] Jag ser dig.\n\n[quietly] Och du hör mig. Du hör mig.",
     "s0-no2": "Nej. Nej, det är klart. Du är steg, inte öron. [chuckles] Jag pratar ändå. Det har aldrig hindrat mig förut.",
-    "s1-walk": "[calmly] Så. Nu är du tydlig.\n\nDu går lugnt. Som någon som får gå vart den vill.",
+    "s1-walk": "[calmly] Så. Nu är du tydlig.\n\nDu går. Som någon som får gå vart den vill.",
     "s1-run": "[calmly] Så. Nu är du tydlig.\n\nDu springer. Det gör ingen här. Det är inte förbjudet, det är bara ingen som har något att springa till.",
-    "s1-2": "Gå som du vill. Måste du stanna, så stanna. Din väg går före min.\n\nJag går också. Det gör alla här, efter skiftet. Slingan runt, fyrtio minuter. Hälsofrämjande rörelse, det står på väggen. [deadpan] Vi är väldigt friska.\n\nJag vet ingenting om dig. Får jag fråga? Stanna för ja, som förut. Det är ingen fara nu, jag går min runda som vanligt.",
+    "s1-2": "Gå som du vill. Måste du stanna, så stanna. Din väg går före min.\n\nJag går också. Det gör alla här, efter skiftet. Slingan runt, fyrtio minuter. Hälsofrämjande rörelse, det står på väggen. [deadpan] Vi är väldigt friska.\n\nJag vet ingenting om dig. Stanna för ja när jag frågar. Det är ingen fara, jag går min runda som vanligt.",
     "s1-self": "[mutters to herself, quick and low] Fråga något riktigt. ...Okej.",
     "s1-q2": "Är du ensam? Där du går, alltså.",
     "s1-q2-yes": "Jag också. Fast vi är fyrtio stycken på slingan. [chuckles] Det är inte samma sak.",
@@ -55,9 +55,10 @@
     "s2-4": "[amazed] De undrar inte. Du går, och de tror att det är jag.\n\n[laughs] Fyra år har jag gått runt här, åt samma håll. Och nu står jag som en stolpe. Det är det bästa jag har gjort sen jag kom hit.\n\nOch nu en sak till. Fortsätt bara.",
     "s2-5": "Jag har klivit av gruset. Man går inte av gruset. Det står träd här, tre meter in. Jag har gått förbi dem tusen gånger.",
     "s2-6": "Det är plast. [short pause] Trädet är av plast. Det visste jag ju. [pause] Jag klappar det ändå.",
-    "s2-ask": "Stanna en stund, om du kan. Jag vill inte gå härifrån än.",
+    "s2-ask": "Stanna en stund, om du kan. Stå här med mig.",
     "s2-lamp-plea": "[whispers] ...nej. Nej, nej. Gå! Gå, snälla!",
     "s2-lamp-plea2": "[whispers, pleading] Snälla. Gå nu. Jag kan inte gå härifrån förrän du gör det.",
+    "s2-lamp-mine": "[quietly] Jag bad dig stanna, och glömde att jag själv gick.",
     "s2-lamp-1": "[exhales] Det var lampan. Den tändes när du stannade. [pause] Den har jag aldrig sett tänd förut. [deadpan] Den är rätt fin, faktiskt.\n\nDu går, alltså syns jag inte. ... Det låter som något man ristar i en vägg.",
     "s2-lamp-2": "Och du stannade när jag bad om det. [short pause] Du hör mig.",
     "s2-no": "Inte? [chuckles] Nej. Det var kanske klokast. Jag vet inte vad som händer om du står still medan jag är här ute. Jag tror inte att jag vill veta det i kväll.",
@@ -80,7 +81,7 @@
     "s4-ok-lamp": "[exhales] På gruset. En arbetare på sin runda, det är allt de ser. [deadpan] Jag har stått som en stolpe, klappat ett träd och suttit på marken. Lampan såg en av de tre. Det är inte illa, för att vara första gången.",
     "s4-lamp-1": "[whispers] ...nej. Inte nu.",
     "s4-lamp-2": "[quietly] Jag hann upp. Men den skrev upp det. En avvikelse. Det får jag höra mer om.",
-    "s4-back": "Du är på väg hem. Det syns, du går rakare. [deadpan] Själv går jag runt. Det är ungefär samma sak, enligt väggen.",
+    "s4-back": "Du är på väg tillbaka. Det syns, du går rakare. [deadpan] Själv går jag runt. Det är ungefär samma sak, enligt väggen.",
     "s4-onward": "Du går bort från där du började. Rakt ut. [pause] Det kan inte jag. Men jag kan titta.",
     "s4-yes": "Jag vet inte vad du är. Men du hör mig, och du stannade när jag bad om det. Det är mer än jag vet om de flesta här.\n\nJag vet en sak till om dig, och det är att du går. Så du får heta Vandraren.\n\nJag heter Vega. Om du undrade.",
     "s4-never-1": "Jag vet inte vad du är. Ett fel i det de räknar med, kanske. Eller någon som är ute och går och inte har en aning om vad den gjorde i kväll.\n\nJag frågar en gång till, sen ger jag mig. Om du hör mig: stanna.",
@@ -344,13 +345,13 @@
     "s0-2": 25.63,
     "s0-ask1": 17.32,
     "s0-yes1-a": 6.53,
-    "s0-yes1-b": 9.56,
+    "s0-yes1-b": 9.64,
     "s0-no1": 9.56,
     "s0-yes2": 11.15,
     "s0-no2": 9.4,
-    "s1-walk": 6.92,
+    "s1-walk": 7.31,
     "s1-run": 9.72,
-    "s1-2": 31.79,
+    "s1-2": 26.75,
     "s1-self": 3.79,
     "s1-q2": 2.93,
     "s1-q2-yes": 4.83,
@@ -364,9 +365,10 @@
     "s2-4": 20.27,
     "s2-5": 10.27,
     "s2-6": 9.8,
-    "s2-ask": 4.36,
+    "s2-ask": 4.28,
     "s2-lamp-plea": 4.36,
     "s2-lamp-plea2": 5.8,
+    "s2-lamp-mine": 3.97,
     "s2-lamp-1": 16.67,
     "s2-lamp-2": 4.91,
     "s2-no": 10.68,
@@ -389,7 +391,7 @@
     "s4-ok-lamp": 18.68,
     "s4-lamp-1": 1.8,
     "s4-lamp-2": 7.31,
-    "s4-back": 9.48,
+    "s4-back": 9.72,
     "s4-onward": 7.97,
     "s4-yes": 19.96,
     "s4-never-1": 17.95,
@@ -406,7 +408,7 @@
       "trettio": 6.96
     },
     "s2-ask": {
-      "stanna": 0.14
+      "stanna": 0.1
     },
     "s4-never-1": {
       "stanna": 16.52
@@ -415,7 +417,7 @@
       "last:nu": 17.02
     },
     "s0-yes1-b": {
-      "last:nu": 9.24
+      "last:nu": 8.44
     },
     "s0-no1": {
       "last:nu": 8.48
