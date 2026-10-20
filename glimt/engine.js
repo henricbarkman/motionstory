@@ -150,8 +150,10 @@ export class Homing {
   // Receding = at least 50 m farther away than 90 s ago. Over a longer span
   // than approaching, so that a winding road counts too: walking out along
   // streets, only half of the steps may point away from the start, and 40 m
-  // in 45 s asked for nearly all of them. The margin stays above what two
-  // GPS fixes can disagree by (code review 20/10).
+  // in 45 s asked for nearly all of them (code review 20/10). Two fixes near
+  // the 50 m accuracy limit can still disagree by more than that, so a walker
+  // going sideways may count as receding. One on the way back cannot: 90 s at
+  // walking pace is about 100 m closer, and the episode asks approaching first.
   receding(t) {
     if (this.samples.length < 2) return false;
     const now = this.samples[this.samples.length - 1].d;

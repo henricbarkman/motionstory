@@ -73,6 +73,28 @@ def main() -> int:
     index = (ut / "index.html").read_text(encoding="utf-8")
     check("?kapitel=episod1" in index, "its index sends the walker to episode 1")
 
+    # The cache name follows the whole copy (code review 18/10, Medel 3): a
+    # phone never keeps old code or old voices under a name it already has.
+    sw = ut / "service-worker.js"
+    check(cache.endswith("-privat-" + d.tree_tag(ut, sw)), f"the name is the hash of the copy as it is served ({cache})")
+    probe = root / "probe"
+    (probe / "glimt").mkdir(parents=True)
+    (probe / "audio").mkdir()
+    (probe / "glimt" / "app.js").write_text("a", encoding="utf-8")
+    (probe / "audio" / "s1.mp3").write_bytes(b"x")
+    probe_sw = probe / "service-worker.js"
+    probe_sw.write_text("sw", encoding="utf-8")
+    tags = [d.tree_tag(probe, probe_sw)]
+    (probe / "glimt" / "app.js").write_text("b", encoding="utf-8")
+    tags.append(d.tree_tag(probe, probe_sw))
+    (probe / "audio" / "s1.mp3").write_bytes(b"y")
+    tags.append(d.tree_tag(probe, probe_sw))
+    (probe / "audio" / "s1.mp3").rename(probe / "audio" / "s2.mp3")
+    tags.append(d.tree_tag(probe, probe_sw))
+    check(len(set(tags)) == 4, f"a change to the code, a voice or a file name changes it ({tags})")
+    probe_sw.write_text("sw with the new name", encoding="utf-8")
+    check(d.tree_tag(probe, probe_sw) == tags[-1], "the service worker itself does not, since it carries the name")
+
     # A swap whose second rename fails puts the old copy back.
     (ut / "gammal.txt").write_text("the copy before", encoding="utf-8")
     real_rename = Path.rename

@@ -280,8 +280,9 @@ const E_CREDITS = (EPISODE.credits && EPISODE.credits.seconds) || 0;
 const ANSWER = ['end', 2, 12];
 // s after her first plea that the hesitating walker walks again: the phone
 // sees the move before her second plea, not yet as walking. GPS takes about
-// two and a half seconds to see a walker move, so the window is narrow:
-// 7 to 7.5 s fails the episode without its check (v35), 6.5 and 8 do not.
+// two and a half seconds to see a walker move. Measured 20/10: the episode
+// without its check (v35) fails from 7 to 8 s and passes at 6.75 and below;
+// from 8 s the episode with the check fails too, so 7.25 sits in the middle.
 const HESITATES = 7.25;
 
 const END_STOP = { 's4-all': ['end', 3, Infinity] };
@@ -602,6 +603,7 @@ function simulateEpisode(name) {
   let memory = null;
   let cuts = 0;
   const credited = [];        // when the credits started
+  const truth = [];           // {t, d, acc}: where the walker really is, m from the start, and the fix's accuracy
   let current = null;
   let t = 0;
   let lat = 59.38, lon = 13.5;
@@ -680,6 +682,7 @@ function simulateEpisode(name) {
       if (Number.isInteger(t)) {
         lat += (speed * Math.cos(heading)) / 111320;
         lon += (speed * Math.sin(heading)) / (111320 * Math.cos(lat * Math.PI / 180));
+        truth.push({ t, acc: accuracy, d: Math.hypot((lat - 59.38) * 111320, (lon - 13.5) * 111320 * Math.cos(lat * Math.PI / 180)) });
         if (t % every === 0) {
           const v = !doppler ? null : phone ? phone(speed) : speed + (speed ? (Math.random() - 0.5) * 0.2 : 0);
           const j = () => (Math.random() - 0.5) * 2 * jitter;
@@ -696,7 +699,7 @@ function simulateEpisode(name) {
     }
     await Promise.race([done, Promise.resolve()]);
     Math.random = random;
-    return { log, ended, t, played, sideCalls, memory, cuts, credited };
+    return { log, ended, t, played, sideCalls, memory, cuts, credited, truth };
   })();
 }
 
@@ -745,6 +748,20 @@ function episodeProblems(name, run) {
   const back = played.filter(x => ['s4-ok', 's4-ok-lamp', 's4-lamp-2'].includes(x.id)).pop();
   if (back && s4end !== null && s4end - (back.t + E_SECONDS[back.id]) > 26) {
     problems.push(`the end came ${Math.round(s4end - back.t - E_SECONDS[back.id])} s after ${back.id}, wanted at most 25`);
+  }
+  // And sooner for a walker nearly back. Read from where the simulated walker
+  // really is 15 s after that line, not from what the phone made of it: under
+  // 250 m from the start and more than 60 m closer than 45 s before, on a
+  // phone whose fixes are good enough to be read at all (50 m, as Walk.fix).
+  if (back && s4end !== null) {
+    const backEnd = back.t + E_SECONDS[back.id];
+    const dist = when => { let d = null; for (const p of run.truth) { if (p.t <= when) d = p.d; } return d; };
+    const near = dist(backEnd + 15), before = dist(backEnd - 30);
+    const readable = run.truth.filter(p => p.t >= backEnd - 30 && p.t <= backEnd + 15).every(p => p.acc <= 50);
+    if (readable && near !== null && before !== null && near < 250 && before - near > 60) {
+      run.nearlyBack = true;
+      if (s4end - backEnd > 17) problems.push(`nearly back (${Math.round(near)} m) and the end came ${Math.round(s4end - backEnd)} s after ${back.id}, wanted about 15`);
+    }
   }
 
   // The credits once, after scene 0's last line and before scene 1, and
@@ -846,11 +863,15 @@ function coverageProblems(heard) {
 // voice samples. Anything else (a song, a master, a mix with the bed) fails by
 // name, wherever it lies (code review 19/10, Lägre 7: the folder check only
 // knew three folders).
-const SOUND = /\.(mp3|opus|ogg|oga|wav|flac|m4a|aac|aif|aiff|webm)$/i;
+const SOUND = /\.(mp3|opus|ogg|oga|wav|flac|m4a|m4b|mp4|aac|aif|aiff|aifc|caf|wma|mka|mkv|weba|webm|3gp|amr)$/i;
 const FROZEN = new Set([
   ...[1, 2, 3, 4].map(n => `audio/pilgrimsvagen/scene-${n}.mp3`),
   ...['demi2', 'elin', 'elin-assured', 'karin', 'maria', 'stil-1-torr', 'stil-2-nara', 'stil-3-magisk'].map(n => `rostprov/${n}.mp3`),
 ]);
+// What the repo holds, which is what reaches GitHub and Pages. Untracked files
+// are left out on purpose: a sound someone is working on in the shared tree
+// would turn the suite red for everyone until it is named or moved, and the
+// suite runs in a clean worktree before every merge anyway.
 function repoFiles() {
   try {
     return execFileSync('git', ['-C', ROOT, 'ls-files', '-z'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).split('\0').filter(Boolean);
@@ -883,6 +904,7 @@ function soundProblems() {
 async function episodeMain(onlyProfile) {
   let failures = 0;
   const heard = new Set();
+  let nearlyBack = 0;
   for (const name of Object.keys(EPISODE_WALKERS)) {
     if (onlyProfile && onlyProfile !== name) continue;
     const run = await simulateEpisode(name);
@@ -890,12 +912,14 @@ async function episodeMain(onlyProfile) {
     console.log(`\n=== episode 1 / ${name} — ${run.ended ? 'ended at ' + Math.round(run.t / 60 * 10) / 10 + ' min' : 'DID NOT END'}`);
     console.log(run.log.join('\n'));
     const problems = episodeProblems(name, run);
+    if (run.nearlyBack) nearlyBack++;
     if (!run.ended) problems.unshift('did not end');
     if (problems.length) failures++;
     console.log(problems.length ? `FAIL: ${problems.join('; ')}` : 'OK: the right branches, the lamp only where it should, half a minute');
   }
   if (!onlyProfile) {
     const problems = coverageProblems(heard);
+    if (!nearlyBack) problems.push('no walker was nearly back at the end, so the sooner end is untested');
     if (problems.length) failures++;
     console.log(`\n=== episode 1 / every line`);
     console.log(problems.length ? `FAIL: ${problems.join('; ')}` : `OK: all ${Object.keys(EPISODE.lines).length} lines heard by some walker, measured and rendered`);
