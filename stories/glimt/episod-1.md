@@ -1,6 +1,6 @@
 # Glimt, episod 1: Det är när du går
 
-Utkast 6, 2026-10-20, i appen som version 37: fem scener (0-4), ja och nej genom att stanna, och förtexterna efter scen 0. Granskningarna från 18/10 och 20/10 är inlagda (vad som ändrades står sist). Utkast 3 (2026-10-08) skrevs om efter Henrics första promenad (version 25) och hans fyra intryck samma morgon.
+Utkast 7, 2026-10-21, i appen som version 38: fem scener (0-4), ja och nej genom att stanna, och förtexterna efter scen 0. Granskningarna från 18/10, 20/10 och 21/10 är inlagda (vad som ändrades står sist). Utkast 3 (2026-10-08) skrevs om efter Henrics första promenad (version 25) och hans fyra intryck samma morgon.
 
 **Vad episoden ska göra:** Vega och vandraren möts. Vandraren ska förstå tre saker utan att någon förklarar dem: hon ser glimtar av din värld men hör dig aldrig, hon hörs bara när du går, och dina steg gömmer henne.
 
@@ -34,38 +34,52 @@ Varianter i hakparentes väljs av telefonen: `[ljust]`, `[mörkt]`, `[regn]`, `[
 >
 > (ropar) Hallå? Hallå! Vänta!
 >
-> (rakt till dig, snabbt) Nej, vänta inte! Gå, förlåt. Fortsätt gå. När du står still försvinner du för mig. Jag försöker hänga på.
+> (rakt till dig, snabbt, förfjamsad) Nej, nej, vänta inte! Förlåt. Fortsätt gå. När du står still försvinner du för mig. Jag försöker hänga på.
 >
-> (lugnare) Jag vet inte vem du är. Jag vet inte ens om du hör det här. Från dig hör jag ingenting, inte ett ljud. Jag ser bara glimtar. Av dig, och av din värld.
+> (lugnare) Jag vet inte vem du är. Jag vet inte ens om du hör det här. Jag hör ingenting från dig. Inte ett ljud. Jag ser bara glimtar. Av dig, och av din värld.
 >
 > Men en sak måste jag veta.
 >
-> Så här. Jag frågar en sak, och är svaret ja, då stannar du. (snabbt) Inte nu! När jag har frågat. Och stå kvar tills jag säger till. (paus) Ser du mig?
+> Så här. Jag frågar, och är det ja, då stannar du. (snabbt, skrattar nästan åt sig själv) Inte nu! När jag har frågat. Och sen står du kvar tills jag säger gå. Jag är lite långsam. (paus) Ser du mig?
 >
 > (väntar)
+
+Stod vandraren redan still när hon frågade, och står kvar, har vandraren inte svarat. Då säger hon det här, och när vandraren har gått en bit frågar hon igen. Samma vid alla tre frågorna:
+
+> (tydligt) Du var redan borta när jag frågade. Gå en bit, så frågar jag igen.
 >
+> Så. Ser du mig?
+
 > **Ja, vandraren stannar:**
-> (står vandraren kvar, dovt, häpen) ...Där. Okej. Gå igen.
->
+> (står vandraren kvar, tydligt) ...Där försvann du. Gå igen.
+
+Står vandraren kvar en stund efter hennes gå, säger hon det igen, efter alla tre frågorna:
+
+> (tydligt) Gå. Jag ser dig inte när du står.
+
 > (för sig själv) Va? Det kan inte stämma. Du kan inte se mig. Det går inte. (rakt till dig) Du ville bara svara något. Visst. En gång till. (paus) Hör du mig?
 >
 > **Nej, vandraren går vidare:**
-> (uppgivet) Nä. Det trodde jag inte heller. (paus) En sak till, bara. Hör du mig?
+> (torrt) Nä. Det trodde jag inte heller. (paus) Eller så hann jag inte se det. En sak till. Hör du mig?
 >
 > (båda svaren går vidare hit)
 >
 > (väntar)
->
+
+Stod vandraren redan still:
+
+> Så. Hör du mig?
+
 > **Ja, vandraren stannar:**
-> (står vandraren kvar, dovt, andlöst) ...Ja. Gå, gå.
-> (andlöst, glad) Ja! Du hör mig! Jag kan inte... hur... (skrattar)
+> (står vandraren kvar, tydligt) ...Där! Gå, gå.
+> (skrattar till, häpen) Du hör mig ju. Jag hade inte tänkt så här långt.
 >
 > (mjukt) Jag ser dig.
 >
 > (tyst) Och du hör mig.
 >
 > **Nej, vandraren går vidare:**
-> Nej. Nej, klart. Du är steg, inte öron. (kort skratt som inte håller) Jag pratar ändå. Det har aldrig stoppat mig förut.
+> Nej. Nej, det är klart. Du är steg, inte öron. (kort skratt som inte håller) Jag pratar ändå. Det har aldrig stoppat mig.
 >
 > (båda svaren går vidare hit)
 >
@@ -83,20 +97,24 @@ Varianter i hakparentes väljs av telefonen: `[ljust]`, `[mörkt]`, `[regn]`, `[
 >
 > Jag går också. Det gör alla här efter skiftet. Slingan runt, fyrtio minuter. Hälsofrämjande rörelse, står det på väggen. (torrt) Vi är väldigt friska.
 >
-> Jag vet ingenting om dig, så jag frågar. Svarar du ja, gör du som förut: stannar, och går när jag säger till. Här är det ingen fara. Jag går min runda som vanligt.
+> Jag vet ingenting om dig, så jag frågar. Som förut: är det ja, stannar du tills jag säger gå. Det är ingen fara här, jag går min runda som vanligt.
 >
 > (för sig själv) Fråga något riktigt nu. ...Okej.
 >
 > (rakt till dig) Är du ensam? Där du går, alltså.
 >
 > (väntar)
->
+
+Stod vandraren redan still:
+
+> Så. Är du ensam?
+
 > **Ja, vandraren stannar:**
-> (står vandraren kvar, dovt) Mm. Gå igen.
+> (står vandraren kvar, tydligt) Där. Gå igen.
 > Jag också. Fast vi är fyrtio stycken på slingan. (kort skratt) Det är inte samma sak.
 >
 > **Nej, vandraren går vidare:**
-> Inte? (paus) Då har du någon mer än mig. (torrt) Jag får dela, alltså.
+> Inte? (paus) Då har du någon mer än mig. (torrt) Jag får dela.
 >
 > (båda svaren går vidare hit)
 >
@@ -309,3 +327,12 @@ Efter granskningarna 20 oktober. Henric sa ja till lagningarna i rummet 18/10.
 - **Slutet väntar inte.** Slutet kommer en knapp halv minut efter att hon är på gruset, också för den som inte är nära starten. Förut kunde det bli en dryg minuts surr före namnet.
 - **Telefonen vet var du började, inte var du bor.** "Du är på väg hem" är "Du är på väg tillbaka". "Du går lugnt" är "Du går", för telefonen vet inte hur lugnt.
 - **`[går vidare]` hörs på slingriga vägar också.** Den kräver att avståndet till starten har vuxit 50 meter på en och en halv minut, i stället för 40 meter på 45 sekunder, som bara den som går nästan rakt ut klarade.
+
+## Ändrat i utkast 7
+
+Efter Henrics promenad med version 37 (21/10), där ett stopp lästes som nej, och regigranskningen samma dag:
+
+- **Stå kvar tills hon säger gå.** Den som stannade kort hann gå igen innan telefonen såg stoppet. Nu ber hon vandraren stå kvar, och säger "Gå igen" när hon har sett det. Står vandraren kvar ändå säger hon det en gång till, tydligare. Ett kort stopp mitt i gången räknas också som ja.
+- **Stod vandraren redan still när hon frågade** (vid ett rödljus, eller i väntan på hennes gå) är det inget svar. Hon säger det, och frågar igen när vandraren har gått en bit.
+- **Rytmen i starten.** Kortare meningar och ett skratt åt sig själv i instruktionen ("Jag är lite långsam"). "Gå"-replikerna hörs genom slöjan när vandraren står, så de är tydliga i stället för dova och slutar på ordet gå.
+- **Hennes egna steg är borta** och förtextlåten spelas på full volym (Henric 21/10).
