@@ -307,7 +307,8 @@ const EPISODE_WALKERS = {
   // Stops every time she asks, and at the end.
   asked: {
     walk: out(), stops: { 's0-ask1': ANSWER, 's0-yes1-b': ANSWER, 's1-q2': ANSWER, 's2-ask': ANSWER, ...END_STOP },
-    has: ['s0-yes1-a', 's0-yes1-b', 's0-yes2', 's1-q2-yes', 's2-ask', 'x-avvikelse', 's2-lamp-plea', 's2-lamp-mine', 's2-lamp-1', 's4-ok-lamp', 's4-yes'],
+    has: ['s0-yes1-a', 's0-yes1-b', 's0-yes2', 's1-q2-yes', 's2-ask', 'x-avvikelse', 's2-lamp-plea', 's2-lamp-mine', 's2-lamp-1', 's4-ok-lamp', 's4-yes',
+      's0-go1', 's0-go2', 's1-go'],
     not: ['s0-no1', 's0-no2', 's1-q2-no', 's2-no', 's2-lamp-plea2', 's2-lamp-2', 's4-ok', 's4-lamp-2', 's4-never-1'],
     lamps: 1, memory: { svarade: true, misstanke: false },
   },
@@ -425,6 +426,35 @@ const EPISODE_WALKERS = {
     has: ['s0-yes1-a', 's4-yes'], not: ['s0-no1'],
     lamps: 0, memory: { svarade: true, misstanke: false },
   },
+  // Stops for a moment and walks on, a second and a half on the feet, at each
+  // question. Henric's walk 21/10 heard a no: the band needs three seconds.
+  brief: {
+    walk: t => ({ ...out()(t), steps: true }), stops: { 's0-ask1': ['end', 0.3, 1.8], 's0-yes1-b': ['end', 0.3, 1.8], 's1-q2': ['end', 0.5, 2.0], ...END_STOP },
+    has: ['s0-yes1-a', 's0-yes2', 's1-q2-yes', 's4-yes'], not: ['s0-no1', 's0-no2', 's1-q2-no', 's0-go1', 's0-go2', 's1-go'],
+    lamps: 0, memory: { svarade: true, misstanke: false },
+  },
+  // A hesitation, not a stop: under a second standing, a gap shorter than
+  // GAP_YES. That is still a no.
+  hesitant: {
+    walk: t => ({ ...out()(t), steps: true }), stops: { 's0-ask1': ['end', 0.3, 0.9], 's0-no1': ['end', 0.3, 0.9], ...END_STOP },
+    has: ['s0-no1', 's0-no2'], not: ['s0-yes1-a', 's0-yes2', 'x-stod'],
+    lamps: 0, memory: { svarade: false, misstanke: false },
+  },
+  // The brief stop on GPS alone: without the feet there is no gap to read,
+  // and the band cannot see a stop that short.
+  'brief-gps': {
+    walk: out(), stops: { 's0-ask1': ['end', 0.3, 1.8], ...END_STOP },
+    has: ['s0-no1'], not: ['s0-yes1-a', 'x-stod'],
+    lamps: 0, memory: { svarade: false, misstanke: false },
+  },
+  // Stands at a light from before she asks until well after the window: that
+  // is no answer. She says so, asks again once the walker walks, and this
+  // time the walker stops, and stands on past her "gå" until she says it twice.
+  stood: {
+    walk: out(), stops: { 's0-ask1': ['start', 5, 80], 's0-again1': ['end', 0.3, 14], ...END_STOP },
+    has: ['x-stod', 's0-again1', 's0-go1', 'x-ga-igen', 's0-yes1-a'], not: ['s0-no1'],
+    lamps: 0, memory: { svarade: true, misstanke: false },
+  },
   // Stops a second before her window closes, on GPS (twenty seconds after the
   // line). The phone knows it a few seconds later, after the window: it is
   // still her answer, for the stop began inside it.
@@ -481,7 +511,7 @@ const EPISODE_WALKERS = {
   // A stop that shows in the moment between her line and her hand on the
   // trunk: after the lamp she still reaches out and touches it.
   pat: {
-    walk: out(), stops: { 's2-5': ['start', 4.5, 25], ...END_STOP },
+    walk: out(), stops: { 's2-5': ['start', 5.0, 25], ...END_STOP },
     has: ['s2-5', 's2-6', 'x-avvikelse', 's2-lamp-1'], not: ['s2-ask', 's2-lamp-2'],
     lamps: 1, cuts: 0, memory: { svarade: false, misstanke: false },
   },
@@ -791,20 +821,13 @@ function episodeProblems(name, run) {
     if (p.lateCount ? half < 29 : Math.abs(half - 30) > 1) problems.push(`"trettio" came ${half.toFixed(1)} s after she stopped, wanted 30`);
   }
 
-  // Her side. The tone never left on, and after the lamp at the tree she
-  // does not take another step until scene 4: that is what makes a second
-  // stop harmless there.
+  // Her side. The tone never left on, and her own steps are never heard
+  // (Henric 21/10): the shift's steps are the only steps on her side.
   let tone = false;
   for (const c of sideCalls) if (c.what === 'tone') tone = !!c.args[0];
   if (tone) problems.push('the lamp tone was left on');
-  // The lamp's tone is the first one on her side; calls are read in their
-  // order, since her step off the gravel can fall in the lamp's own second.
-  const lamp2 = at('scene 2: lamp');
-  if (lamp2 !== null && s4 !== null) {
-    const tone2 = sideCalls.findIndex(c => c.what === 'tone' && c.args[0]);
-    const step = sideCalls.slice(tone2 + 1).find(c => c.what === 'walk' && c.args[0] && c.t < s4);
-    if (step) problems.push(`she walks (${step.args[0]}) at ${fmt2(step.t)}, after the lamp and before scene 4`);
-  }
+  const step = sideCalls.find(c => c.what === 'walk' && c.args[0]);
+  if (step) problems.push(`her steps (${step.args[0]}) at ${fmt2(step.t)}`);
   // The shift's steps are taken away before the end, and the breath comes once.
   const others = sideCalls.filter(c => c.what === 'other');
   if (others.length && others[others.length - 1].args[0] !== null) problems.push('the other steps are left walking');
@@ -816,8 +839,6 @@ function episodeProblems(name, run) {
   const endsStanding = log.some(l => /^\s*\d+:\d\d {2}end {2}\(/.test(l));
   const endsGoingOn = log.some(l => l.includes('end: the walker goes on'));
   if (wantBreath ? !endsStanding : !endsGoingOn) problems.push(`the end is logged as ${endsStanding ? 'standing' : endsGoingOn ? 'going on' : 'neither'}, wanted ${wantBreath ? 'standing' : 'going on'}`);
-  const stoodCall = sideCalls.find(c => c.what === 'walk' && c.args[0] === null);
-  if (!stoodCall) problems.push('her steps never stop');
   if (!sideCalls.some(c => c.what === 'bell')) problems.push('no bell');
   if (sideCalls.filter(c => c.what === 'hand').length !== 1) problems.push(`her hand on the tree ${sideCalls.filter(c => c.what === 'hand').length} times`);
 
@@ -844,8 +865,9 @@ function coverageProblems(heard) {
     if (sfx.steps && !(sfx.slices && sfx.slices.length >= 4)) problems.push(`her side: ${name} is not cut into steps`);
   }
   if (!(E_CUE > 0)) problems.push('no measured cue for "trettio" in s2-3');
-  for (const id of ['s0-ask1', 's0-yes1-b', 's0-no1']) {
-    if (!(((EPISODE.cues || {})[id] || {})['last:nu'] > 0)) problems.push(`no measured cue for the last "nu" in ${id}`);
+  // The windows open at the question's first word.
+  for (const [id, word] of [['s0-ask1', 'ser'], ['s0-yes1-b', 'hör'], ['s0-no1', 'hör']]) {
+    if (!(((EPISODE.cues || {})[id] || {})[word] > 0)) problems.push(`no measured cue for "${word}" in ${id}`);
   }
   if (!(E_CREDITS > 60)) problems.push('the credits have no length');
   // The song itself is only in the private copy, which puts it under this name.

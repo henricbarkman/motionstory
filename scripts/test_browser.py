@@ -731,13 +731,14 @@ EPISODE_WALKER = """
     const g = window.glimt;
     if (!g || !g.side) return;
     window.__mix.push({ label, voiceHz: g.mixer.voiceFilter.frequency.value, voice: g.mixer.voiceGain.gain.value,
-      side: g.side.out.gain.value, bed: g.mixer.bedGain.gain.value, moving: g.walk.state().moving });
+      side: g.side.out.gain.value, bed: g.mixer.bedGain.gain.value, song: g.mixer.songGain.gain.value, route: g.mixer.route, moving: g.walk.state().moving });
   });
   const on = {
     asked: {
       's0-1': walkOn,
-      's0-ask1': () => { later(18.3, stop); later(27.8, walkOn); },
-      's0-yes1-b': () => { later(10.4, stop); later(19.9, walkOn); },
+      // She asks them to stand until she says gå, and they do.
+      's0-ask1': () => later(15.2, stop), 's0-go1': () => later(1, walkOn),
+      's0-yes1-b': () => later(7.4, stop), 's0-go2': () => later(1, walkOn),
       's1-3': () => later(10, () => $('sim-turn').click()),
       's2-ask': () => { later(9, stop); later(24, walkOn); },
       's3-1': () => { later(1, stop); later(10, () => sample('still')); later(13, walkOn); },
@@ -759,6 +760,7 @@ EPISODE_WALKER = """
       seen.add(li);
       const m = /▶ (\\S+)$/.exec(li.textContent);
       if (m && on[m[1]]) on[m[1]]();
+      if (who === 'asked' && li.textContent.includes('▶ förtexter')) later(5, () => sample('credits'));
     }
   }).observe(document.documentElement, { childList: true, subtree: true });
   if (document.documentElement) watch(); else document.addEventListener('DOMContentLoaded', watch);
@@ -767,11 +769,11 @@ EPISODE_WALKER = """
 
 EPISODE_WANT = {
     "asked": {
-        "has": ["s0-1", "s0-2", "s0-ask1", "s0-yes1-a", "s0-yes1-b", "s0-yes2", "s1-walk", "s1-2",
+        "has": ["s0-1", "s0-2", "s0-ask1", "s0-go1", "s0-yes1-a", "s0-yes1-b", "s0-go2", "s0-yes2", "s1-walk", "s1-2",
                 "s1-self", "s1-q2", "s1-q2-no", "s1-3", "s2-1", "s2-2", "s2-count", "s2-3", "s2-4", "s2-5", "s2-6", "s2-ask",
                 "x-avvikelse (hennes sida)", "s2-lamp-plea", "s2-lamp-1", "s3-1", "s3-near", "s3-2", "s4-1", "s4-2", "s4-3",
                 "s4-ok-lamp", "s4-yes", "s4-all"],
-        "not": ["s0-no1", "s0-no2", "s2-count-stop", "s2-no", "s2-lamp-2", "s4-ok", "s4-lamp-1", "s4-lamp-2", "s4-never-1", "r-hjalp"],
+        "not": ["s0-no1", "s0-no2", "x-stod", "x-ga-igen", "s2-count-stop", "s2-no", "s2-lamp-2", "s4-ok", "s4-lamp-1", "s4-lamp-2", "s4-never-1", "r-hjalp"],
         "lamps": 1, "memory": {"svarade": True, "misstanke": False, "klar": True},
     },
     "own": {
@@ -925,9 +927,13 @@ def episod(browser, base):
                       f"episod, {who}: her voice is dull while the walker stands and clear when they walk ({still['voiceHz']:.0f} Hz, then {walking['voiceHz']:.0f} Hz)")
                 check(still["side"] > 0.8 and walking["side"] < 0.5 and still["bed"] < walking["bed"],
                       f"episod, {who}: her side comes forward and the bed steps back, then the other way ({still['side']:.2f}/{still['bed']:.2f}, then {walking['side']:.2f}/{walking['bed']:.2f})")
+            credits = mix.get("credits")
+            check(bool(credits) and credits["route"] == "song" and walking and walking["route"] == "radio"
+                  and credits["song"] > 1 and credits["side"] < 0.05 and credits["bed"] < 0.05,
+                  f"episod, {who}: the song plays at full level, with her side and the bed silent ({credits})")
         sounds = page.evaluate("Object.keys(window.glimt.side.sounds).sort()")
-        check(sounds == ["grus", "hand", "harda", "mjukt"] and page.evaluate("window.glimt.side.closed"),
-              f"episod, {who}: her side had its four sounds, and is closed at the end ({sounds})")
+        check(sounds == ["hand", "harda"] and page.evaluate("window.glimt.side.closed"),
+              f"episod, {who}: her side had its two sounds (no steps of hers), and is closed at the end ({sounds})")
         shot(page, f"episod-{who}-done")
         check(not errors, f"episod, {who}: no page errors ({errors[:3]})")
         ctx.close()
