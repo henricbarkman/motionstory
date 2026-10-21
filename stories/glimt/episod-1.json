@@ -32,23 +32,28 @@
   "klarhet": 0.45,
   "lines": {
     "s0-1": "[mutters to herself, quick and low] Nu. Gör det nu. ...Okej.",
-    "s0-2": "[calling out, unsure] Hallå? [louder] Hallå! Vänta!\n\n[quickly, flustered] Nej, vänta inte! Gå, förlåt. Fortsätt gå. När du står still försvinner du för mig. Jag försöker hänga på.\n\n[calmer] Jag vet inte vem du är. Jag vet inte ens om du hör det här. Från dig hör jag ingenting, inte ett ljud. Jag ser bara glimtar. Av dig, och av din värld.\n\nMen en sak måste jag veta.",
-    "s0-ask1": "Så här. Jag frågar en sak, och är svaret ja, då stannar du. [quickly] Inte nu! När jag har frågat. Och stå kvar tills jag säger till. [pause] Ser du mig?",
-    "s0-go1": "[stunned, quietly] ...Där. Okej. Gå igen.",
+    "s0-2": "[calling out, unsure] Hallå? [louder] Hallå! [urgent] Vänta!\n\n[flustered, quick] Nej, nej, vänta inte! Förlåt. Fortsätt gå. När du står still försvinner du för mig. Jag försöker hänga på.\n\n[calmer] Jag vet inte vem du är. Jag vet inte ens om du hör det här. Jag hör ingenting från dig. Inte ett ljud. Jag ser bara glimtar. Av dig, och av din värld.\n\nMen en sak måste jag veta.",
+    "s0-ask1": "Så här. Jag frågar, och är det ja, då stannar du. [quick, half a laugh at herself] Inte nu! När jag har frågat. Och sen står du kvar tills jag säger gå. Jag är lite långsam. [pause] Ser du mig?",
+    "x-stod": "[steady, clear] Du var redan borta när jag frågade. Gå en bit, så frågar jag igen.",
+    "s0-again1": "Så. Ser du mig?",
+    "s0-go1": "[steady, clear] ...Där försvann du. Gå igen.",
+    "x-ga-igen": "[steady, clear] Gå. Jag ser dig inte när du står.",
     "s0-yes1-a": "[mutters to herself, quick and low] Va? Det kan inte stämma. Du kan inte se mig. Det går inte.",
     "s0-yes1-b": "Du ville bara svara något. Visst. En gång till. [pause] Hör du mig?",
-    "s0-no1": "[resigned] Nä. Det trodde jag inte heller. [pause] En sak till, bara. Hör du mig?",
-    "s0-go2": "[breathless, quietly] ...Ja. Gå, gå.",
-    "s0-yes2": "[breathless, happy] Ja! Du hör mig! Jag kan inte... hur... [laughs]\n\n[softly] Jag ser dig.\n\n[quietly] Och du hör mig.",
-    "s0-no2": "Nej. Nej, klart. Du är steg, inte öron. [chuckles] Jag pratar ändå. Det har aldrig stoppat mig förut.",
+    "s0-no1": "[dry] Nä. Det trodde jag inte heller. [pause] Eller så hann jag inte se det. En sak till. Hör du mig?",
+    "s0-again2": "Så. Hör du mig?",
+    "s0-go2": "[steady, clear] ...Där! Ja. Gå nu, gå.",
+    "s0-yes2": "[a stunned little laugh] Du hör mig ju. Jag hade inte tänkt så här långt.\n\n[softly] Jag ser dig.\n\n[quietly] Och du hör mig.",
+    "s0-no2": "Nej. Nej, det är klart. Du är steg, inte öron. [a short laugh that dies] Jag pratar ändå. Det har aldrig stoppat mig.",
     "s1-walk": "[calmly] Så där. Nu är du tydlig.\n\nDu går. Som någon som får gå vart den vill.",
     "s1-run": "[calmly] Så där. Nu är du tydlig.\n\nDu springer. Det gör ingen här. Det är inte förbjudet, det är bara ingen som har något att springa till.",
-    "s1-2": "Gå som du vill. Måste du stanna, så stanna. Din väg går före min.\n\nJag går också. Det gör alla här efter skiftet. Slingan runt, fyrtio minuter. Hälsofrämjande rörelse, står det på väggen. [deadpan] Vi är väldigt friska.\n\nJag vet ingenting om dig, så jag frågar. Svarar du ja, gör du som förut: stannar, och går när jag säger till. Här är det ingen fara. Jag går min runda som vanligt.",
+    "s1-2": "Gå som du vill. Måste du stanna, så stanna. Din väg går före min.\n\nJag går också. Det gör alla här efter skiftet. Slingan runt, fyrtio minuter. Hälsofrämjande rörelse, står det på väggen. [deadpan] Vi är väldigt friska.\n\nJag vet ingenting om dig, så jag frågar. Som förut: är det ja, stannar du tills jag säger gå. Det är ingen fara här, jag går min runda som vanligt.",
     "s1-self": "[mutters to herself, quick and low] Fråga något riktigt nu. ...Okej.",
     "s1-q2": "Är du ensam? Där du går, alltså.",
-    "s1-go": "[quietly] Mm. Gå igen.",
+    "s1-again": "Så. Är du ensam?",
+    "s1-go": "[steady, clear] Där. Okej. Gå igen.",
     "s1-q2-yes": "Jag också. Fast vi är fyrtio stycken på slingan. [chuckles] Det är inte samma sak.",
-    "s1-q2-no": "Inte? [pause] Då har du någon mer än mig. [deadpan] Jag får dela, alltså.",
+    "s1-q2-no": "Inte? [pause] Då har du någon mer än mig. [dry] Jag får dela.",
     "s1-3": "De vet hur vi går. Varje steg. Går man för sakta vet de det. Går man fel vet de det. [pause] Du står inte med någonstans.\n\nMen du går här ändå. [pause] Och nu har jag en idé. En dum idé.",
     "s2-1": "Jag har tänkt på en sak. Jag går här och pratar rakt ut med någon som inte finns, och ingen har sagt något. Inte ett ord sen du kom.\n\nSå nu provar jag något dumt. Litet, men dumt. Fortsätt gå, om du kan.",
     "s2-2": "Jag står still.\n\n[whispers] En halv minut utan steg, sen undrar de vad man håller på med. Jag räknar.",
@@ -211,24 +216,41 @@
     ],
     "s4-never-1": [
       "stanna"
+    ],
+    "s0-again1": [
+      "ser"
+    ],
+    "s0-again2": [
+      "hör"
+    ],
+    "s1-again": [
+      "är"
     ]
   },
   "seconds": {
-    "s0-1": 4.05,
-    "s0-2": 25.63,
-    "s0-ask1": 17.32,
+    "s0-1": 5.07,
+    "s0-2": 33.57,
+    "s0-ask1": 14.84,
+    "x-stod": 4.91,
+    "s0-again1": 1.96,
+    "s0-go1": 2.59,
+    "x-ga-igen": 2.93,
     "s0-yes1-a": 6.53,
-    "s0-yes1-b": 9.64,
-    "s0-no1": 9.56,
-    "s0-yes2": 11.15,
-    "s0-no2": 9.4,
-    "s1-walk": 7.31,
-    "s1-run": 9.72,
-    "s1-2": 26.75,
-    "s1-self": 3.79,
+    "s0-yes1-b": 7.08,
+    "s0-no1": 9.87,
+    "s0-again2": 3.0,
+    "s0-go2": 3.55,
+    "s0-yes2": 7.97,
+    "s0-no2": 9.09,
+    "s1-walk": 7.0,
+    "s1-run": 9.95,
+    "s1-2": 32.29,
+    "s1-self": 3.4,
     "s1-q2": 2.93,
+    "s1-again": 1.96,
+    "s1-go": 2.43,
     "s1-q2-yes": 4.83,
-    "s1-q2-no": 6.03,
+    "s1-q2-no": 5.25,
     "s1-3": 18.29,
     "s2-1": 16.12,
     "s2-2": 8.36,
@@ -274,10 +296,7 @@
     "s4-all": 35.71,
     "r-hjalp": 3.4,
     "r-vilar": 1.65,
-    "x-avvikelse": 3.08,
-    "s0-go1": 2.0,
-    "s0-go2": 2.0,
-    "s1-go": 2.0
+    "x-avvikelse": 3.08
   },
   "cues": {
     "s2-3": {
@@ -288,6 +307,24 @@
     },
     "s4-never-1": {
       "stanna": 16.52
+    },
+    "s0-ask1": {
+      "ser": 14.28
+    },
+    "s0-again1": {
+      "ser": 1.34
+    },
+    "s0-yes1-b": {
+      "hör": 6.52
+    },
+    "s0-no1": {
+      "hör": 9.28
+    },
+    "s0-again2": {
+      "hör": 0.86
+    },
+    "s1-again": {
+      "är": 1.24
     }
   }
 }
