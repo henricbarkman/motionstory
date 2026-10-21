@@ -425,6 +425,13 @@ const EPISODE_WALKERS = {
     has: ['s0-yes1-a', 's4-yes'], not: ['s0-no1'],
     lamps: 0, memory: { svarade: true, misstanke: false },
   },
+  // Stops for a moment, as people do when told to: two seconds just after
+  // the word, on the feet, and walks on. Henric's walk 21/10 heard a no.
+  brief: {
+    walk: t => ({ ...out()(t), steps: true }), stops: { 's0-ask1': ['end', 0.3, 1.8], 's0-yes1-b': ['end', 0.3, 1.8], 's1-q2': ['end', 0.5, 2.0], ...END_STOP },
+    has: ['s0-yes1-a', 's0-yes2', 's1-q2-yes', 's4-yes'], not: ['s0-no1', 's0-no2', 's1-q2-no'],
+    lamps: 0, memory: { svarade: true, misstanke: false },
+  },
   // Stops a second before her window closes, on GPS (twenty seconds after the
   // line). The phone knows it a few seconds later, after the window: it is
   // still her answer, for the stop began inside it.
@@ -791,20 +798,13 @@ function episodeProblems(name, run) {
     if (p.lateCount ? half < 29 : Math.abs(half - 30) > 1) problems.push(`"trettio" came ${half.toFixed(1)} s after she stopped, wanted 30`);
   }
 
-  // Her side. The tone never left on, and after the lamp at the tree she
-  // does not take another step until scene 4: that is what makes a second
-  // stop harmless there.
+  // Her side. The tone never left on, and her own steps are never heard
+  // (Henric 21/10): the shift's steps are the only steps on her side.
   let tone = false;
   for (const c of sideCalls) if (c.what === 'tone') tone = !!c.args[0];
   if (tone) problems.push('the lamp tone was left on');
-  // The lamp's tone is the first one on her side; calls are read in their
-  // order, since her step off the gravel can fall in the lamp's own second.
-  const lamp2 = at('scene 2: lamp');
-  if (lamp2 !== null && s4 !== null) {
-    const tone2 = sideCalls.findIndex(c => c.what === 'tone' && c.args[0]);
-    const step = sideCalls.slice(tone2 + 1).find(c => c.what === 'walk' && c.args[0] && c.t < s4);
-    if (step) problems.push(`she walks (${step.args[0]}) at ${fmt2(step.t)}, after the lamp and before scene 4`);
-  }
+  const step = sideCalls.find(c => c.what === 'walk' && c.args[0]);
+  if (step) problems.push(`her steps (${step.args[0]}) at ${fmt2(step.t)}`);
   // The shift's steps are taken away before the end, and the breath comes once.
   const others = sideCalls.filter(c => c.what === 'other');
   if (others.length && others[others.length - 1].args[0] !== null) problems.push('the other steps are left walking');
@@ -816,8 +816,6 @@ function episodeProblems(name, run) {
   const endsStanding = log.some(l => /^\s*\d+:\d\d {2}end {2}\(/.test(l));
   const endsGoingOn = log.some(l => l.includes('end: the walker goes on'));
   if (wantBreath ? !endsStanding : !endsGoingOn) problems.push(`the end is logged as ${endsStanding ? 'standing' : endsGoingOn ? 'going on' : 'neither'}, wanted ${wantBreath ? 'standing' : 'going on'}`);
-  const stoodCall = sideCalls.find(c => c.what === 'walk' && c.args[0] === null);
-  if (!stoodCall) problems.push('her steps never stop');
   if (!sideCalls.some(c => c.what === 'bell')) problems.push('no bell');
   if (sideCalls.filter(c => c.what === 'hand').length !== 1) problems.push(`her hand on the tree ${sideCalls.filter(c => c.what === 'hand').length} times`);
 
