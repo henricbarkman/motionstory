@@ -52,6 +52,7 @@ export class HerSide {
 
     this.presence = 0;
     this.lifted = false;
+    this.hushed = false;
     this.pinned = false;
     this.closed = false;
     this.fading = false;
@@ -100,11 +101,14 @@ export class HerSide {
   // story and she says little.
   lift(on) { this.lifted = !!on; this._level(); }
 
+  // Silent while the credits' song plays: the song is heard alone.
+  hush(on) { this.hushed = !!on; this._level(); }
+
   _level() {
     if (this.closed || this.fading) return;
     const base = this.lifted ? LIFTED : UNDER;
     const p = this.pinned ? 1 : this.presence;
-    const level = base + (FORWARD - base) * p;
+    const level = this.hushed ? 0 : base + (FORWARD - base) * p;
     this.out.gain.setTargetAtTime(level, this.ctx.currentTime, 0.3);
   }
 
@@ -499,6 +503,7 @@ export class SilentSide {
   setPresence() {}
   pin(on) { this.pinned = !!on; }
   lift() {}
+  hush() {}
   walk() {}
   hand() {}
   other() {}

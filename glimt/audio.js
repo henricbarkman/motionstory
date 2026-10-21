@@ -2,10 +2,10 @@
 //   bed   : the atmosphere loop, always under, seamless via AudioBufferSource loop
 //   fx    : the riser before the first line
 //   voice : Vega, through the line (the radio stage, below) and then a
-//           lowpass filter and a gain that follow contact. Episode 1's opening
-//           credits come down the contact path but not the radio: the song is
-//           heard through the line and goes dull with her voice, and still
-//           sounds like the song.
+//           lowpass filter and a gain that follow contact.
+//   song  : episode 1's opening credits. Straight to the master at full
+//           level, past the line and the contact: the song is the song, not
+//           music under a scene (Henric 21/10).
 //
 // The radio stage is the line itself (Henric 2026-10-17: a light radio on her
 // voice all the time, clearer further on in the story). One knob, klarhet,
@@ -18,6 +18,10 @@
 // the same recording heard through a wall.
 
 const VOICE_FLOOR_HZ = 300;
+// The credits' song. The Code's credits cut measures -16.9 LUFS with its true
+// peak at -3.5 dBFS, her lines -15 to -16: +2.5 dB puts the song at a
+// released track's level and keeps its peak a dB under full scale.
+const SONG_GAIN = 1.33;
 const VOICE_CEIL_HZ = 18000;
 // A line she says to herself (Henric 2026-10-16: lower, turned away from the
 // line): never clearer than this contact, and at this share of the level.
@@ -66,6 +70,10 @@ export class Mixer {
     this.voiceGain = c.createGain();
     this.voiceFilter.connect(this.voiceGain);
     this.voiceGain.connect(this.master);
+
+    this.songGain = c.createGain();
+    this.songGain.gain.value = SONG_GAIN;
+    this.songGain.connect(this.master);
 
     // The radio stage, in front of the contact filter.
     this.radioIn = c.createGain();
@@ -215,18 +223,19 @@ export class Mixer {
 
   // Plays a voice line. Resolves when it ends. `clear` overrides contact for
   // the duration; `aside` holds it lower and duller, a line she says to
-  // herself; `at` schedules the start (AudioContext time); `radio` false
-  // keeps it off the line (the credits' song).
+  // herself; `at` schedules the start (AudioContext time); `song` plays it
+  // as the credits' song, off the line and the contact.
   //
   // A wall-clock watchdog resolves the promise even if the AudioContext is
   // suspended (screen off without a wake lock) and onended never fires, so
   // the chapter cannot stall on one line. It resolves 'timeout' in that case
   // so the log shows what happened.
-  playVoice(buffer, { clear = false, aside = false, at = null, radio = true } = {}) {
+  playVoice(buffer, { clear = false, aside = false, at = null, song = false } = {}) {
+    const radio = !song;
     return new Promise(resolve => {
       const src = this.ctx.createBufferSource();
       src.buffer = buffer;
-      src.connect(radio ? this.radioIn : this.voiceFilter);
+      src.connect(song ? this.songGain : this.radioIn);
       if (clear) { this.clear = true; this.applyContact(); }
       if (aside) { this.aside = true; this.applyContact(); }
       const startAt = at === null ? this.ctx.currentTime : at;
@@ -276,7 +285,7 @@ export class Mixer {
   fadeOut(seconds = 4) {
     this.fading = true;
     const now = this.ctx.currentTime;
-    for (const g of [this.bedGain.gain, this.voiceGain.gain, this.hissGain.gain]) {
+    for (const g of [this.bedGain.gain, this.voiceGain.gain, this.hissGain.gain, this.songGain.gain]) {
       g.cancelScheduledValues(now);
       g.setValueAtTime(g.value, now);
       g.linearRampToValueAtTime(0, now + seconds);

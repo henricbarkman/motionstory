@@ -307,7 +307,8 @@ const EPISODE_WALKERS = {
   // Stops every time she asks, and at the end.
   asked: {
     walk: out(), stops: { 's0-ask1': ANSWER, 's0-yes1-b': ANSWER, 's1-q2': ANSWER, 's2-ask': ANSWER, ...END_STOP },
-    has: ['s0-yes1-a', 's0-yes1-b', 's0-yes2', 's1-q2-yes', 's2-ask', 'x-avvikelse', 's2-lamp-plea', 's2-lamp-mine', 's2-lamp-1', 's4-ok-lamp', 's4-yes'],
+    has: ['s0-yes1-a', 's0-yes1-b', 's0-yes2', 's1-q2-yes', 's2-ask', 'x-avvikelse', 's2-lamp-plea', 's2-lamp-mine', 's2-lamp-1', 's4-ok-lamp', 's4-yes',
+      's0-go1', 's0-go2', 's1-go'],
     not: ['s0-no1', 's0-no2', 's1-q2-no', 's2-no', 's2-lamp-plea2', 's2-lamp-2', 's4-ok', 's4-lamp-2', 's4-never-1'],
     lamps: 1, memory: { svarade: true, misstanke: false },
   },
@@ -425,11 +426,11 @@ const EPISODE_WALKERS = {
     has: ['s0-yes1-a', 's4-yes'], not: ['s0-no1'],
     lamps: 0, memory: { svarade: true, misstanke: false },
   },
-  // Stops for a moment, as people do when told to: two seconds just after
-  // the word, on the feet, and walks on. Henric's walk 21/10 heard a no.
+  // Stops for a moment and walks on, a second and a half on the feet, at each
+  // question. Henric's walk 21/10 heard a no: the band needs three seconds.
   brief: {
     walk: t => ({ ...out()(t), steps: true }), stops: { 's0-ask1': ['end', 0.3, 1.8], 's0-yes1-b': ['end', 0.3, 1.8], 's1-q2': ['end', 0.5, 2.0], ...END_STOP },
-    has: ['s0-yes1-a', 's0-yes2', 's1-q2-yes', 's4-yes'], not: ['s0-no1', 's0-no2', 's1-q2-no'],
+    has: ['s0-yes1-a', 's0-yes2', 's1-q2-yes', 's4-yes'], not: ['s0-no1', 's0-no2', 's1-q2-no', 's0-go1', 's0-go2', 's1-go'],
     lamps: 0, memory: { svarade: true, misstanke: false },
   },
   // Stops a second before her window closes, on GPS (twenty seconds after the
@@ -842,8 +843,9 @@ function coverageProblems(heard) {
     if (sfx.steps && !(sfx.slices && sfx.slices.length >= 4)) problems.push(`her side: ${name} is not cut into steps`);
   }
   if (!(E_CUE > 0)) problems.push('no measured cue for "trettio" in s2-3');
-  for (const id of ['s0-ask1', 's0-yes1-b', 's0-no1']) {
-    if (!(((EPISODE.cues || {})[id] || {})['last:nu'] > 0)) problems.push(`no measured cue for the last "nu" in ${id}`);
+  // The windows open at the question's first word.
+  for (const [id, word] of [['s0-ask1', 'ser'], ['s0-yes1-b', 'hör'], ['s0-no1', 'hör']]) {
+    if (!(((EPISODE.cues || {})[id] || {})[word] > 0)) problems.push(`no measured cue for "${word}" in ${id}`);
   }
   if (!(E_CREDITS > 60)) problems.push('the credits have no length');
   // The song itself is only in the private copy, which puts it under this name.

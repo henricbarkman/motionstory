@@ -78,9 +78,10 @@ const walking = s => s.moving && s.movingFor >= 1.5;
 // after the last step and sure() wants one more, so a walker who stopped for
 // two seconds when she asked, and walked on, was a no (Henric's walk 21/10).
 // A gap this long between a walk's last step and the next is a stop all the
-// same. Outside a real stop the gaps in the recorded pockets (28/9 to 12/10)
-// reached 2.2 s at most.
-const GAP_YES = 2.3;
+// same: about a second and a half standing. In the recorded pockets (28/9 to
+// 12/10, some 45 minutes of walking) two gaps outside a known stop reached it,
+// 2.0 and 2.2 s, both where the walker may well have hesitated.
+const GAP_YES = 2.0;
 
 export async function runEpisode1(ctx) {
   const side = ctx.side;
@@ -200,11 +201,15 @@ export async function runEpisode1(ctx) {
     let walked = false;
     let yes = false;
     let closes = Infinity;
-    let walkStep = null;        // the newest step of a walk, from when she asks
+    let step = null;            // the newest step, and whether it came in a walk
+    let inWalk = false;
     const answer = ctx.until(s => {
-      if (s.t >= askedAt - 2 && walking(s)) { walked = true; walkStep = s.lastStepAt; }
-      else if (walkStep !== null && s.paceSource === 'steps' && s.lastStepAt - walkStep >= GAP_YES &&
-        walkStep >= askedAt && walkStep < closes) yes = true;
+      if (s.t >= askedAt - 2 && walking(s)) walked = true;
+      if (s.lastStepAt !== step) {
+        if (inWalk && s.paceSource === 'steps' && s.lastStepAt - step >= GAP_YES && step >= askedAt && step < closes) yes = true;
+        step = s.lastStepAt;
+        inWalk = walking(s);
+      }
       const began = stopBegan(s);
       if (walked && stopped(s) && began >= askedAt && began < closes + seenLate(s)) yes = true;
       return yes || s.t >= closes + seenLate(s) + sure(s);
@@ -237,15 +242,15 @@ export async function runEpisode1(ctx) {
   await ctx.play('s0-2');
   ctx.log('scene 0: does the walker see her');
   let hears;
-  if (await ask('s0-ask1', 'last:nu', PATIENCE)) {
+  if (await ask('s0-ask1', 'ser', PATIENCE)) {
     ctx.log('scene 0: yes, sees her');
     her.askedFor = true;
     await goOn('s0-go1');
     await ctx.play('s0-yes1-a');
-    hears = await ask('s0-yes1-b', 'last:nu', PATIENCE);
+    hears = await ask('s0-yes1-b', 'hör', PATIENCE);
   } else {
     ctx.log('scene 0: no');
-    hears = await ask('s0-no1', 'last:nu', PATIENCE);
+    hears = await ask('s0-no1', 'hör', PATIENCE);
   }
   if (hears) {
     ctx.log('scene 0: yes, hears her');

@@ -56,6 +56,14 @@ function rig() {
   side.pin(false);
   check(under > 0 && under < lifted && lifted < forward, `under ${under} < lifted ${lifted} < forward ${forward}`);
   check(pinned === forward && side.out.gain.value === under, 'a pin holds it forward, and lets go');
+  // The credits' song is heard alone: hushed, her side is silent whatever
+  // the walker does, and comes back where it was.
+  side.hush(true);
+  side.setPresence(1);
+  const hushed = side.out.gain.value;
+  side.setPresence(0);
+  side.hush(false);
+  check(hushed === 0 && side.out.gain.value === under, `hushed for the song it is silent (${hushed}), and comes back under the voice`);
 }
 
 // Her steps come at the pace asked for and stop when she does.

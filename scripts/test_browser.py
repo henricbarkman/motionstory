@@ -926,8 +926,8 @@ def episod(browser, base):
                 check(still["side"] > 0.8 and walking["side"] < 0.5 and still["bed"] < walking["bed"],
                       f"episod, {who}: her side comes forward and the bed steps back, then the other way ({still['side']:.2f}/{still['bed']:.2f}, then {walking['side']:.2f}/{walking['bed']:.2f})")
         sounds = page.evaluate("Object.keys(window.glimt.side.sounds).sort()")
-        check(sounds == ["grus", "hand", "harda", "mjukt"] and page.evaluate("window.glimt.side.closed"),
-              f"episod, {who}: her side had its four sounds, and is closed at the end ({sounds})")
+        check(sounds == ["hand", "harda"] and page.evaluate("window.glimt.side.closed"),
+              f"episod, {who}: her side had its two sounds (no steps of hers), and is closed at the end ({sounds})")
         shot(page, f"episod-{who}-done")
         check(not errors, f"episod, {who}: no page errors ({errors[:3]})")
         ctx.close()

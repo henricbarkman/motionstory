@@ -31,19 +31,22 @@
   },
   "klarhet": 0.45,
   "lines": {
-    "s0-1": "[mutters to herself, quick and low] Jag måste. Jag tror... Okej.",
-    "s0-2": "[shouts] Hallå! Vänta!\n\n[rushed] Eller nej, jag menar... Fortsätt, stanna inte. Du försvinner för mig när du står still. Jag försöker hänga på dig.\n\nJag vet inte vem du är. Jag vet inte om du hör det här. Jag hör ingenting från dig, inte ett ljud. Jag ser bara glimtar av dig. Och din värld.\n\nMen jag måste få veta en sak.",
-    "s0-ask1": "Okej. Så här. Jag frågar, och sen säger jag nu. Är svaret ja, stannar du en liten stund. Sen går du igen, annars tappar jag dig. [pause] Ser du mig? [pause] Nu.",
+    "s0-1": "[mutters to herself, quick and low] Nu. Gör det nu. ...Okej.",
+    "s0-2": "[calling out, unsure] Hallå? [louder] Hallå! Vänta!\n\n[quickly, flustered] Nej, vänta inte! Gå, förlåt. Fortsätt gå. När du står still försvinner du för mig. Jag försöker hänga på.\n\n[calmer] Jag vet inte vem du är. Jag vet inte ens om du hör det här. Från dig hör jag ingenting, inte ett ljud. Jag ser bara glimtar. Av dig, och av din värld.\n\nMen en sak måste jag veta.",
+    "s0-ask1": "Så här. Jag frågar en sak, och är svaret ja, då stannar du. [quickly] Inte nu! När jag har frågat. Och stå kvar tills jag säger till. [pause] Ser du mig?",
+    "s0-go1": "[stunned, quietly] ...Där. Okej. Gå igen.",
     "s0-yes1-a": "[mutters to herself, quick and low] Va? Det kan inte stämma. Du kan inte se mig. Det går inte.",
-    "s0-yes1-b": "Du vill bara svara. Okej. Samma sak igen. Hör du mig? [short pause] Nu.",
-    "s0-no1": "[resigned] Nä. Jag trodde nog inte det heller. Men okej. Samma sak igen. Hör du mig? [short pause] Nu.",
-    "s0-yes2": "[excited] Ja! Ja! Du hör mig! Jag kan inte... Hur... [laughs]\n\n[softly] Jag ser dig.\n\n[quietly] Och du hör mig. Du hör mig.",
-    "s0-no2": "Nej. Nej, det är klart. Du är steg, inte öron. [chuckles] Jag pratar ändå. Det har aldrig hindrat mig förut.",
-    "s1-walk": "[calmly] Så. Nu är du tydlig.\n\nDu går. Som någon som får gå vart den vill.",
-    "s1-run": "[calmly] Så. Nu är du tydlig.\n\nDu springer. Det gör ingen här. Det är inte förbjudet, det är bara ingen som har något att springa till.",
-    "s1-2": "Gå som du vill. Måste du stanna, så stanna. Din väg går före min.\n\nJag går också. Det gör alla här, efter skiftet. Slingan runt, fyrtio minuter. Hälsofrämjande rörelse, det står på väggen. [deadpan] Vi är väldigt friska.\n\nJag vet ingenting om dig. Stanna för ja när jag frågar. Det är ingen fara, jag går min runda som vanligt.",
-    "s1-self": "[mutters to herself, quick and low] Fråga något riktigt. ...Okej.",
+    "s0-yes1-b": "Du ville bara svara något. Visst. En gång till. [pause] Hör du mig?",
+    "s0-no1": "[resigned] Nä. Det trodde jag inte heller. [pause] En sak till, bara. Hör du mig?",
+    "s0-go2": "[breathless, quietly] ...Ja. Gå, gå.",
+    "s0-yes2": "[breathless, happy] Ja! Du hör mig! Jag kan inte... hur... [laughs]\n\n[softly] Jag ser dig.\n\n[quietly] Och du hör mig.",
+    "s0-no2": "Nej. Nej, klart. Du är steg, inte öron. [chuckles] Jag pratar ändå. Det har aldrig stoppat mig förut.",
+    "s1-walk": "[calmly] Så där. Nu är du tydlig.\n\nDu går. Som någon som får gå vart den vill.",
+    "s1-run": "[calmly] Så där. Nu är du tydlig.\n\nDu springer. Det gör ingen här. Det är inte förbjudet, det är bara ingen som har något att springa till.",
+    "s1-2": "Gå som du vill. Måste du stanna, så stanna. Din väg går före min.\n\nJag går också. Det gör alla här efter skiftet. Slingan runt, fyrtio minuter. Hälsofrämjande rörelse, står det på väggen. [deadpan] Vi är väldigt friska.\n\nJag vet ingenting om dig, så jag frågar. Svarar du ja, gör du som förut: stannar, och går när jag säger till. Här är det ingen fara. Jag går min runda som vanligt.",
+    "s1-self": "[mutters to herself, quick and low] Fråga något riktigt nu. ...Okej.",
     "s1-q2": "Är du ensam? Där du går, alltså.",
+    "s1-go": "[quietly] Mm. Gå igen.",
     "s1-q2-yes": "Jag också. Fast vi är fyrtio stycken på slingan. [chuckles] Det är inte samma sak.",
     "s1-q2-no": "Inte? [pause] Då har du någon mer än mig. [deadpan] Jag får dela, alltså.",
     "s1-3": "De vet hur vi går. Varje steg. Går man för sakta vet de det. Går man fel vet de det. [pause] Du står inte med någonstans.\n\nMen du går här ändå. [pause] Och nu har jag en idé. En dum idé.",
@@ -94,136 +97,6 @@
     "x-avvikelse": "Avvikelse. Steg utanför sträckan."
   },
   "sfx": {
-    "grus": {
-      "file": "grus.mp3",
-      "seconds": 10,
-      "prompt": "One person walking slowly on a gravel path, steady unhurried footsteps, crunching gravel, close-up recording, dry, no background noise, no voices, no music",
-      "steps": true,
-      "measured": {
-        "seconds": 10.0,
-        "peak": 0.771,
-        "rms": 0.0135
-      },
-      "slices": [
-        [
-          0.49,
-          0.7
-        ],
-        [
-          1.82,
-          0.64
-        ],
-        [
-          2.47,
-          0.59
-        ],
-        [
-          3.07,
-          0.6
-        ],
-        [
-          3.68,
-          0.59
-        ],
-        [
-          4.28,
-          0.59
-        ],
-        [
-          4.88,
-          0.57
-        ],
-        [
-          5.46,
-          0.63
-        ],
-        [
-          6.1,
-          0.67
-        ],
-        [
-          6.78,
-          0.58
-        ],
-        [
-          7.37,
-          0.63
-        ],
-        [
-          8.01,
-          0.6
-        ],
-        [
-          8.62,
-          0.6
-        ],
-        [
-          9.23,
-          0.7
-        ]
-      ]
-    },
-    "mjukt": {
-      "file": "mjukt.mp3",
-      "seconds": 10,
-      "prompt": "One person walking slowly on soft artificial turf, muffled soft footsteps, close-up recording, dry, no background noise, no voices, no music",
-      "steps": true,
-      "measured": {
-        "seconds": 10.0,
-        "peak": 0.502,
-        "rms": 0.0468
-      },
-      "slices": [
-        [
-          0.61,
-          0.7
-        ],
-        [
-          1.37,
-          0.7
-        ],
-        [
-          2.19,
-          0.7
-        ],
-        [
-          2.96,
-          0.7
-        ],
-        [
-          3.82,
-          0.69
-        ],
-        [
-          4.52,
-          0.7
-        ],
-        [
-          5.25,
-          0.62
-        ],
-        [
-          5.88,
-          0.7
-        ],
-        [
-          6.78,
-          0.7
-        ],
-        [
-          7.6,
-          0.7
-        ],
-        [
-          8.44,
-          0.7
-        ],
-        [
-          9.34,
-          0.66
-        ]
-      ]
-    },
     "harda": {
       "file": "harda.mp3",
       "seconds": 10,
@@ -322,13 +195,13 @@
   },
   "cueWords": {
     "s0-ask1": [
-      "last:nu"
+      "ser"
     ],
     "s0-yes1-b": [
-      "last:nu"
+      "hör"
     ],
     "s0-no1": [
-      "last:nu"
+      "hör"
     ],
     "s2-3": [
       "trettio"
@@ -401,7 +274,10 @@
     "s4-all": 35.71,
     "r-hjalp": 3.4,
     "r-vilar": 1.65,
-    "x-avvikelse": 3.08
+    "x-avvikelse": 3.08,
+    "s0-go1": 2.0,
+    "s0-go2": 2.0,
+    "s1-go": 2.0
   },
   "cues": {
     "s2-3": {
@@ -412,15 +288,6 @@
     },
     "s4-never-1": {
       "stanna": 16.52
-    },
-    "s0-ask1": {
-      "last:nu": 17.02
-    },
-    "s0-yes1-b": {
-      "last:nu": 8.44
-    },
-    "s0-no1": {
-      "last:nu": 8.48
     }
   }
 }

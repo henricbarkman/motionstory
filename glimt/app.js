@@ -19,7 +19,7 @@ import { Memory, drawWorld, KEY_NAMES } from './memory.js';
 
 // The version the start screen shows, the same number as the service
 // worker's cache. Bump both together.
-const APP_VERSION = 37;
+const APP_VERSION = 38;
 
 // Seconds the credits wait for their song if it is not fetched when they are
 // due. It has had all of scene 0; a song not here by then is not coming.
@@ -535,10 +535,10 @@ async function start() {
         },
       },
       cut() { cutSeq++; mixer.stopVoice(); },
-      // The opening credits: the whole song down the line, Vega silent. It
-      // goes dull when the walker stands still, as she does, and the bed
-      // steps out for it. It is not on her radio: the song sounds like the
-      // song. A song that could not be fetched is skipped, and so is one
+      // The opening credits: the whole song, Vega silent. Full level, past
+      // the line and the contact, whatever the walker does, and nothing else
+      // under it: the bed and her side step out (Henric 21/10: "full volym,
+      // inte bara som bakgrundsmusik"). A song that could not be fetched is skipped, and so is one
       // still on its way when they are due: a dead connection never settles
       // the fetch, and scene 1 waits behind it.
       credits() {
@@ -556,11 +556,13 @@ async function start() {
           $('scene').textContent = 'Förtexter';
           log(`▶ förtexter (${Math.round(buf.duration)} s)`);
           mixer.muteBed(true);
+          if (side) side.hush(true);
           try {
-            const why = await mixer.playVoice(buf, { radio: false });
+            const why = await mixer.playVoice(buf, { song: true });
             if (why === 'timeout') log('ljud: förtexterna nådde aldrig slutet, går vidare');
           } finally {
             mixer.muteBed(false);
+            if (side) side.hush(false);
           }
         });
         voiceChain = turn.catch(() => {});
