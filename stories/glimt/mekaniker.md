@@ -73,10 +73,10 @@ Grunden. Nästan allt annat bygger på att telefonen vet vilket av de tre du gö
 Ett stopp är det tydligaste vandraren kan säga.
 
 ### Stanna för ja
-**Du gör:** stannar kort för ja, går vidare för nej.
+**Du gör:** stannar för ja och står kvar tills hon säger gå, går vidare för nej.
 **I berättelsen:** ett samtal utan ord från dig. Frågorna kan gå från praktiska till personliga.
-**Omdöme:** Håller, gående. På stegen blev ja, ja, nej rätt alla tre och kändes i tid (8/10).
-**Tänk på:** ett ja hörs ungefär tre sekunder efter att vandraren stannat (två för att märka stoppet, en att stå), så räkna med fem till sju sekunder från frågan. Ett nej hörs när vandraren gått vidare i tio sekunder efter frågan (version 26, Henrics val 8/10; på gps tjugo). Ge henne något att säga medan hon väntar. Ett nej är också ett svar som ska ha en gren.
+**Omdöme:** Delvis, gående. På stegen blev ja, ja, nej rätt alla tre och kändes i tid (8/10), med "stå kvar tills jag säger gå". I episod 1 (version 37, 21/10) stannade Henric kort och hörde ett nej. Version 38 ber om att stå kvar och läser ett kort stopp på stegen också; inte gången än.
+**Tänk på:** ett ja hörs ungefär tre sekunder efter att vandraren stannat (två för att märka stoppet, en att stå), så be vandraren stå kvar tills hon säger gå, och låt henne säga det. Ett nej hörs när vandraren gått vidare i tio sekunder efter frågan (version 26, Henrics val 8/10; på gps tjugo). Står vandraren redan still när hon frågar, vid ett rödljus till exempel, är det inget svar: hon säger det och frågar igen när vandraren går. Ge henne något att säga medan hon väntar. Ett nej är också ett svar som ska ha en gren.
 
 ### Hopp
 **Du gör:** hoppar ett litet skutt när hon ber om det, mitt i gången, och går vidare.
