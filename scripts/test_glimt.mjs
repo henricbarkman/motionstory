@@ -433,6 +433,20 @@ const EPISODE_WALKERS = {
     has: ['s0-yes1-a', 's0-yes2', 's1-q2-yes', 's4-yes'], not: ['s0-no1', 's0-no2', 's1-q2-no', 's0-go1', 's0-go2', 's1-go'],
     lamps: 0, memory: { svarade: true, misstanke: false },
   },
+  // A hesitation, not a stop: under a second standing, a gap shorter than
+  // GAP_YES. That is still a no.
+  hesitant: {
+    walk: t => ({ ...out()(t), steps: true }), stops: { 's0-ask1': ['end', 0.3, 0.9], 's0-no1': ['end', 0.3, 0.9], ...END_STOP },
+    has: ['s0-no1', 's0-no2'], not: ['s0-yes1-a', 's0-yes2', 'x-stod'],
+    lamps: 0, memory: { svarade: false, misstanke: false },
+  },
+  // The brief stop on GPS alone: without the feet there is no gap to read,
+  // and the band cannot see a stop that short.
+  'brief-gps': {
+    walk: out(), stops: { 's0-ask1': ['end', 0.3, 1.8], ...END_STOP },
+    has: ['s0-no1'], not: ['s0-yes1-a', 'x-stod'],
+    lamps: 0, memory: { svarade: false, misstanke: false },
+  },
   // Stands at a light from before she asks until well after the window: that
   // is no answer. She says so, asks again once the walker walks, and this
   // time the walker stops, and stands on past her "gå" until she says it twice.

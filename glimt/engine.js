@@ -276,6 +276,8 @@ export class Steps {
     this.armed = false;
     this.times = [];             // step times, last ten seconds
     this.lastStepAt = -Infinity;
+    this.prevStepAt = -Infinity;  // the step before it: the true gap, however seldom it is read
+    this.resetAt = -Infinity;     // when the sensor last came back after a silence
     this.lastT = null;
     this.samples = 0;
     this.trusted = false;        // on a steady rhythm, off when GPS overrules
@@ -295,6 +297,7 @@ export class Steps {
     // gap (the phone settling in the pocket) was written into that step's
     // impact, and one inflated step can turn Tassa's verdict (2026-09-25).
     if (this.fast === null || dt > 1) {
+      this.resetAt = t;
       this.fast = this.slow = mag;
       this.armed = false;
       this.peak = null;
@@ -321,6 +324,7 @@ export class Steps {
 
   _step(t) {
     this.times.push(t);
+    this.prevStepAt = this.lastStepAt;
     this.lastStepAt = t;
     while (this.times.length && this.times[0] < t - 10) this.times.shift();
     // Trust the feet once they have shown a rhythm: six steps at a gait's
@@ -1591,6 +1595,8 @@ export class Walk {
       odo: this.odo,
       heading: headingOf(this.track, t),
       lastStepAt: this.steps.lastStepAt,
+      prevStepAt: this.steps.prevStepAt,
+      sensorResetAt: this.steps.resetAt,
       stepsTrusted: this.steps.trusted,
       // The sensor has answered at some point this walk, and is answering
       // now. The phone stops it when the screen goes dark.

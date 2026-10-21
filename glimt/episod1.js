@@ -206,7 +206,13 @@ export async function runEpisode1(ctx) {
     const answer = ctx.until(s => {
       if (s.t >= askedAt - 2 && walking(s)) walked = true;
       if (s.lastStepAt !== step) {
-        if (inWalk && s.paceSource === 'steps' && s.lastStepAt - step >= GAP_YES && step >= askedAt && step < closes) yes = true;
+        // The gap between two steps the feet took one after the other, read
+        // from the engine, not between the two this check happened to see: a
+        // throttled page can skip steps. A gap the sensor was silent through
+        // is no stop.
+        const gapFrom = s.prevStepAt;
+        if (inWalk && s.paceSource === 'steps' && s.lastStepAt - gapFrom >= GAP_YES && gapFrom >= askedAt && gapFrom < closes
+          && !(s.sensorResetAt > gapFrom)) yes = true;
         step = s.lastStepAt;
         inWalk = walking(s);
       }
