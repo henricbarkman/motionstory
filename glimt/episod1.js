@@ -219,16 +219,35 @@ export async function runEpisode1(ctx) {
     if (!yes && patience && !s.moving && stopBegan(s) < askedAt) await ctx.until(s => yes || walking(s), { timeout: patience });
     closes = now() + askWindow(ctx.state());
     await answer;
+    const end = ctx.state();
+    stoodThrough = !yes && !end.moving && stopBegan(end) < askedAt;
     return yes;
+  }
+  let stoodThrough = false;   // the last ask closed on a walker who stood since before it
+
+  // A question with its second chance. A walker who stood still since before
+  // she asked, at a red light or waiting for her "gå", has not answered: she
+  // says so, waits for them to walk, and asks once more with `again`.
+  async function question(id, word, again, againWord) {
+    if (await ask(id, word, PATIENCE)) return true;
+    if (!stoodThrough) return false;
+    ctx.log(`${id}: the walker stood through it, she asks again`);
+    await ctx.play('x-stod');
+    await ctx.until(walking, { timeout: MIN });
+    return ask(again, againWord);
   }
   // She has seen the stop. A walker who walks on at once hears her answer
   // clear. One who stands, as scene 0 asks ("stå kvar tills jag säger till"),
   // hears her say so with `go`, and her answer once they walk. The lab's
   // Stanna för ja did the same and was walked right (8/10): standing until
   // she said "Gå igen" gave the phone the seconds it needs to see a stop.
+  // Through the veil the word is all that carries, so each go line ends on
+  // "gå", and a walker still standing four seconds on hears it once more.
   async function goOn(go) {
     if (await ctx.until(walking, { timeout: 1.5 })) return;
     if (go) await ctx.play(go);
+    if (await ctx.until(walking, { timeout: 4 })) return;
+    await ctx.play('x-ga-igen');
     await ctx.until(walking, { timeout: 10 });
   }
 
@@ -242,15 +261,15 @@ export async function runEpisode1(ctx) {
   await ctx.play('s0-2');
   ctx.log('scene 0: does the walker see her');
   let hears;
-  if (await ask('s0-ask1', 'ser', PATIENCE)) {
+  if (await question('s0-ask1', 'ser', 's0-again1', 'ser')) {
     ctx.log('scene 0: yes, sees her');
     her.askedFor = true;
     await goOn('s0-go1');
     await ctx.play('s0-yes1-a');
-    hears = await ask('s0-yes1-b', 'hör', PATIENCE);
+    hears = await question('s0-yes1-b', 'hör', 's0-again2', 'hör');
   } else {
     ctx.log('scene 0: no');
-    hears = await ask('s0-no1', 'hör', PATIENCE);
+    hears = await question('s0-no1', 'hör', 's0-again2', 'hör');
   }
   if (hears) {
     ctx.log('scene 0: yes, hears her');
@@ -274,7 +293,7 @@ export async function runEpisode1(ctx) {
   await ctx.play(ctx.state().band === 'run' ? 's1-run' : 's1-walk');
   await ctx.play('s1-2');
   await ctx.play('s1-self');
-  if (await ask('s1-q2', null, PATIENCE)) {
+  if (await question('s1-q2', null, 's1-again', 'är')) {
     ctx.log('scene 1: yes, alone');
     her.askedFor = true;
     await goOn('s1-go');
