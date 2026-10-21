@@ -236,6 +236,7 @@ export class Mixer {
       const src = this.ctx.createBufferSource();
       src.buffer = buffer;
       src.connect(song ? this.songGain : this.radioIn);
+      this.route = song ? 'song' : 'radio';   // what the last sound was sent through, for the tests
       if (clear) { this.clear = true; this.applyContact(); }
       if (aside) { this.aside = true; this.applyContact(); }
       const startAt = at === null ? this.ctx.currentTime : at;

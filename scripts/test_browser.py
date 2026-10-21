@@ -731,7 +731,7 @@ EPISODE_WALKER = """
     const g = window.glimt;
     if (!g || !g.side) return;
     window.__mix.push({ label, voiceHz: g.mixer.voiceFilter.frequency.value, voice: g.mixer.voiceGain.gain.value,
-      side: g.side.out.gain.value, bed: g.mixer.bedGain.gain.value, song: g.mixer.songGain.gain.value, moving: g.walk.state().moving });
+      side: g.side.out.gain.value, bed: g.mixer.bedGain.gain.value, song: g.mixer.songGain.gain.value, route: g.mixer.route, moving: g.walk.state().moving });
   });
   const on = {
     asked: {
@@ -928,7 +928,8 @@ def episod(browser, base):
                 check(still["side"] > 0.8 and walking["side"] < 0.5 and still["bed"] < walking["bed"],
                       f"episod, {who}: her side comes forward and the bed steps back, then the other way ({still['side']:.2f}/{still['bed']:.2f}, then {walking['side']:.2f}/{walking['bed']:.2f})")
             credits = mix.get("credits")
-            check(bool(credits) and credits["song"] > 1 and credits["side"] < 0.05 and credits["bed"] < 0.05,
+            check(bool(credits) and credits["route"] == "song" and walking and walking["route"] == "radio"
+                  and credits["song"] > 1 and credits["side"] < 0.05 and credits["bed"] < 0.05,
                   f"episod, {who}: the song plays at full level, with her side and the bed silent ({credits})")
         sounds = page.evaluate("Object.keys(window.glimt.side.sounds).sort()")
         check(sounds == ["hand", "harda"] and page.evaluate("window.glimt.side.closed"),
