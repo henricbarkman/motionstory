@@ -71,7 +71,7 @@ Stod vandraren redan still:
 > Så. Hör du mig?
 
 > **Ja, vandraren stannar:**
-> (står vandraren kvar, tydligt) ...Där! Gå, gå.
+> (står vandraren kvar, tydligt) ...Där! Ja. Gå nu, gå.
 > (skrattar till, häpen) Du hör mig ju. Jag hade inte tänkt så här långt.
 >
 > (mjukt) Jag ser dig.
@@ -110,7 +110,7 @@ Stod vandraren redan still:
 > Så. Är du ensam?
 
 > **Ja, vandraren stannar:**
-> (står vandraren kvar, tydligt) Där. Gå igen.
+> (står vandraren kvar, tydligt) Där. Okej. Gå igen.
 > Jag också. Fast vi är fyrtio stycken på slingan. (kort skratt) Det är inte samma sak.
 >
 > **Nej, vandraren går vidare:**
