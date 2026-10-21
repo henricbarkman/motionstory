@@ -433,6 +433,14 @@ const EPISODE_WALKERS = {
     has: ['s0-yes1-a', 's0-yes2', 's1-q2-yes', 's4-yes'], not: ['s0-no1', 's0-no2', 's1-q2-no', 's0-go1', 's0-go2', 's1-go'],
     lamps: 0, memory: { svarade: true, misstanke: false },
   },
+  // Stands at a light from before she asks until well after the window: that
+  // is no answer. She says so, asks again once the walker walks, and this
+  // time the walker stops, and stands on past her "gå" until she says it twice.
+  stood: {
+    walk: out(), stops: { 's0-ask1': ['start', 5, 80], 's0-again1': ['end', 0.3, 14], ...END_STOP },
+    has: ['x-stod', 's0-again1', 's0-go1', 'x-ga-igen', 's0-yes1-a'], not: ['s0-no1'],
+    lamps: 0, memory: { svarade: true, misstanke: false },
+  },
   // Stops a second before her window closes, on GPS (twenty seconds after the
   // line). The phone knows it a few seconds later, after the window: it is
   // still her answer, for the stop began inside it.
@@ -489,7 +497,7 @@ const EPISODE_WALKERS = {
   // A stop that shows in the moment between her line and her hand on the
   // trunk: after the lamp she still reaches out and touches it.
   pat: {
-    walk: out(), stops: { 's2-5': ['start', 4.5, 25], ...END_STOP },
+    walk: out(), stops: { 's2-5': ['start', 5.0, 25], ...END_STOP },
     has: ['s2-5', 's2-6', 'x-avvikelse', 's2-lamp-1'], not: ['s2-ask', 's2-lamp-2'],
     lamps: 1, cuts: 0, memory: { svarade: false, misstanke: false },
   },

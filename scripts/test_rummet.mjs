@@ -40,8 +40,11 @@ const ok = (cond, what) => {
 const throwsKod = (fn, kod) => { try { fn(); return false; } catch (e) { return e.kod === kod; } };
 
 const las = (f) => readFileSync(join(REPO, f), 'utf8');
+// The editor tests below work on a frozen copy of episode 1 (draft 6, as it
+// stood 2026-10-20), so a change in the room never breaks them. What must
+// hold for the manuscript as it is (the recordings, the chips) reads LEVANDE1.
 const FIL = {
-  1: las('stories/glimt/episod-1.md'),
+  1: las('scripts/fixtures/episod-1-v37.md'),
   2: las('stories/glimt/episod-2.md'),
   3: las('stories/glimt/episod-3.md'),
   varld: las('stories/glimt/varld.md'),
@@ -50,7 +53,8 @@ const FIL = {
 const SLAG = { 1: 'episod', 2: 'episod', 3: 'episod', varld: 'fri', mekaniker: 'fri' };
 // Episode 1 as it was recorded (the text episod-1.json was made from): since
 // the new form of 2026-10-17 that is the file as it stands.
-const INSPELAD = FIL[1];
+const LEVANDE1 = las('stories/glimt/episod-1.md');
+const INSPELAD = LEVANDE1;
 const JSON1 = las('stories/glimt/episod-1.json');
 const TIDER = JSON.parse(las('rummet/ljudtider.json'));
 
@@ -175,14 +179,14 @@ const KAT = K.tolkaKatalog(FIL.mekaniker);
   const v = K.varianter(KAT).map((x) => x.etikett).sort().join(',');
   ok(v === ['bro', 'berg', 'gång', 'klart och mörkt', 'kyrkogård', 'ljust', 'löpning', 'mörkt', 'regn', 'skog', 'torrt', 'vatten'].sort().join(','), 'the variant labels come from the catalogue');
   // Hand count of the chips (2026-10-08): the catalogue's names in the Mekanik paragraphs.
-  //   episode 1 (2026-10-20, after the reviews): Kontakten at lines 29, 73, 105, 166; lampan at 105, 192 = 6. The two "surret" at 192
+  //   episode 1 (2026-10-21, draft 7): Kontakten at lines 29, 89, 126, 183; lampan at 126, 209 = 6. The two "surret" at 209
   //     are her side's hum, not the mechanic Surret (the phone's buzz), and get no chip.
   //   episode 2 (2026-10-20, after the reviews): Kontakten at 33, 66; lampan (twice), Knacket (twice) and Vägvalet at 98;
   //     "Takten:", "upp takten", "hittar takten", lampan and "Takten springande" at 182 = 12. Scene 4 at 269 has "takt" and
   //     "stopp" but no name, so no chip.
   //   episode 3 (2026-10-18): Kontakten and fortare at 38; fortare (twice) at 78 = 4
   const brickor = (t) => Dk.tolka(t, 'episod').paras.filter((p) => p.typ === 'mekanik').flatMap((p) => K.hittaNamn(p.text, KAT).map((h) => `${p.rad + 1}:${h.mekanik.namn}`));
-  ok(brickor(FIL[1]).join(' ') === '29:Kontakten 73:Kontakten 105:Kontakten 105:Farligt stopp (lampan) 166:Kontakten 192:Farligt stopp (lampan)', 'episode 1: the chips are exactly the hand count');
+  ok(brickor(LEVANDE1).join(' ') === '29:Kontakten 89:Kontakten 126:Kontakten 126:Farligt stopp (lampan) 183:Kontakten 209:Farligt stopp (lampan)', 'episode 1: the chips are exactly the hand count');
   ok(brickor(FIL[2]).join(' ') === '33:Kontakten 66:Kontakten 98:Farligt stopp (lampan) 98:Farligt stopp (lampan) 98:Knack 98:Vägvalet 98:Knack 182:Takten 182:Takten 182:Takten 182:Farligt stopp (lampan) 182:Takten', 'episode 2: the chips are exactly the hand count');
   ok(brickor(FIL[3]).join(' ') === '38:Kontakten 38:Fortare 78:Fortare 78:Fortare', 'episode 3: the chips are exactly the hand count');
   ok(!K.hittaNamn('vandraren går i sin egen takt och hittar hem', KAT).some((h) => h.mekanik.namn === 'Takten'), 'no chip for "takt" (not the name Takten)');
@@ -207,7 +211,7 @@ const KAT = K.tolkaKatalog(FIL.mekaniker);
   const lagen = { tyst: 0, inspelad: 0, ej: 0 };
   for (const p of talade) lagen[L.ljudFor(kropp(p), ljud).lage]++;
   ok(lagen.ej === 0 && lagen.inspelad >= 50, `episode 1 as recorded: every spoken paragraph has its recording (${lagen.inspelad} recorded, ${lagen.tyst} silent)`);
-  const p = talade.find((x) => x.text.startsWith('Jag vet inte vem du är.'));
+  const p = talade.find((x) => x.text.includes('Jag vet inte vem du är.'));
   ok(L.ljudFor(kropp({ ...p, text: p.text.replace('vem du är', 'vad du är') }), ljud).lage === 'ej', 'change one word and it is not recorded any more');
 }
 
@@ -773,7 +777,8 @@ async function provserver(rot) {
   const glimt = join(rot, 'projects/motionstory/stories/glimt');
   mkdirSync(glimt, { recursive: true });
   mkdirSync(join(rot, 'data/glimt-rummet'), { recursive: true });
-  for (const f of ['episod-1.json', 'varld.md', 'mekaniker.md', 'episod-1.md', 'episod-2.md', 'episod-3.md']) copyFileSync(join(REPO, 'stories/glimt', f), join(glimt, f));
+  for (const f of ['episod-1.json', 'varld.md', 'mekaniker.md', 'episod-2.md', 'episod-3.md']) copyFileSync(join(REPO, 'stories/glimt', f), join(glimt, f));
+  copyFileSync(join(REPO, 'scripts/fixtures/episod-1-v37.md'), join(glimt, 'episod-1.md'));
   const { p, url } = await provserver(rot);
   try {
     const fetch2 = (u, o = {}) => fetch(new URL(u, url), { ...o, headers: { ...(o.headers || {}), Origin: url.replace(/\/$/, '') } });
