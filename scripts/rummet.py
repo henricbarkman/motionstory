@@ -22,7 +22,8 @@ stryk) only when Henric or Liv asked for it.
     python3 scripts/rummet.py stryk --dok 1 --stycke <id>                                   # only when asked
     python3 scripts/rummet.py lore --titel "Slingan" --text -                               # a new lore page, text from stdin
 
---dok is 1, 2, varld, mekaniker or lore:<id> (--episod N still works). A
+--dok is 1, 2, 3, 1en (episode 1 in English), varld, mekaniker or lore:<id>
+(--episod N still works). A
 paragraph is named by --stycke (its id, from 'rader'), or by --rad (its words,
 or the whole line as it stands in the file) with --scen to narrow it and --n
 when it stands more than once; --scen alone is the scene's heading. --text is
@@ -50,8 +51,12 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 GA = Path("/home/henric/generalassistant")
 CLI = REPO / "scripts" / "rummet_cli.mjs"
-EPISODER = ("1", "2", "3")
+# The same documents as rummet/data.js: 1en is episode 1 in English, a
+# document of its own whose text is episode-1.md (its notes: episod-1en.json).
+EPISODER = ("1", "2", "3", "1en")
+EPISODFIL = {"1": "episod-1", "2": "episod-2", "3": "episod-3", "1en": "episode-1"}
 DOKUMENT = (*EPISODER, "varld", "mekaniker")
+DOK_HJALP = "1, 2, 3, 1en (episode 1 in English), varld, mekaniker or lore:<id>"
 NAMN = {"henric": "Henric", "liv": "Liv", "demi": "Demi"}
 GALLER = ("orden", "tempo", "paus", "ljud", "nar")
 TYPER = ("scen", "mekanik", "replik", "regi", "variant", "gren", "anteckning", "stycke", "rubrik", "punkt")
@@ -87,7 +92,7 @@ def vagar(rot: Path, prov: bool):
     def sti(plats: str) -> Path:
         slag, _, n = plats.partition(":")
         if slag in ("manus", "ljud") and n in EPISODER:
-            return manus / f"episod-{n}.{'md' if slag == 'manus' else 'json'}"
+            return manus / f"{EPISODFIL[n]}.{'md' if slag == 'manus' else 'json'}"
         if slag in ("varld", "mekaniker") and not n:
             return manus / f"{slag}.md"
         if slag == "held" and not n:
@@ -286,6 +291,8 @@ def kort(s: str | None, n: int = 90) -> str:
 
 
 def doknamn(d: str) -> str:
+    if d == "1en":
+        return "episode 1 (engelska)"
     if d in EPISODER:
         return f"episod {d}"
     return {"varld": "världsboken", "mekaniker": "katalogen"}.get(d, f"loresidan {d[5:]}" if d.startswith("lore:") else d)
@@ -342,7 +349,7 @@ def skriv_nytt(ut: dict, sedan: str) -> None:
 
 
 def lagg_valj(c: argparse.ArgumentParser, *, krav: bool = True) -> None:
-    c.add_argument("--dok", help="1, 2, varld, mekaniker or lore:<id>")
+    c.add_argument("--dok", help=DOK_HJALP)
     c.add_argument("--episod", choices=EPISODER, help=argparse.SUPPRESS)
     c.add_argument("--stycke", help="the paragraph's id (see 'rader')")
     c.add_argument("--rad", help="the paragraph's words, or the whole line as it stands in the file")
@@ -361,7 +368,7 @@ def lagg_text(c: argparse.ArgumentParser) -> None:
 def dok_av(a: argparse.Namespace) -> str:
     d = a.dok or a.episod
     if not d:
-        raise Fel("Säg vilket dokument: --dok 1, 2, varld, mekaniker eller lore:<id>.")
+        raise Fel("Säg vilket dokument: --dok 1, 2, 3, 1en (episod 1 på engelska), varld, mekaniker eller lore:<id>.")
     return d
 
 
@@ -377,7 +384,7 @@ def main() -> int:
     n.add_argument("--json", action="store_true")
 
     r = sub.add_parser("rader", help="a document's paragraphs with their ids")
-    r.add_argument("--dok")
+    r.add_argument("--dok", help=DOK_HJALP)
     r.add_argument("--episod", choices=EPISODER, help=argparse.SUPPRESS)
     r.add_argument("--scen")
 

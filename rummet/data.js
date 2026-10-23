@@ -28,10 +28,24 @@ export class DataFel extends Error {
   }
 }
 
-export const EPISODER = ['1', '2', '3'];
+// The episodes, by document id. 1en is the English version of episode 1
+// (Henric 2026-10-23: Glimt goes out in English), a document of its own next
+// to the Swedish one, with its own file.
+export const EPISODER = ['1', '2', '3', '1en'];
 // Every document the room edits as text: the episodes, the world book and
 // the mechanics catalogue. Lore pages are documents too, inside lore.json.
 export const DOKUMENT = [...EPISODER, 'varld', 'mekaniker'];
+
+// Each episode's file in stories/glimt/, without .md (the text) or .json (the
+// recordings). The room's notes keep the id: episod-1en.json, see filnamn.
+const EPISODFIL = { 1: 'episod-1', 2: 'episod-2', 3: 'episod-3', '1en': 'episode-1' };
+export const episodFil = (n) => {
+  if (!EPISODER.includes(n) || !EPISODFIL[n]) throw new DataFel('plats', `Okänt dokument: ${n}`);
+  return EPISODFIL[n];
+};
+
+// What the room calls an episode, in a tab, a title or a list.
+export const episodNamn = (n) => (n === '1en' ? 'Episode 1 (engelska)' : `Episod ${n}`);
 
 // The people in the room. Demi is an AI (ai: true), marked as one everywhere.
 // Everyone can change everything; Demi's own rule (in the README, not in the
@@ -53,8 +67,8 @@ function sokvagar(rot) {
   if (rot === 'prov') {
     const p = `${GA}/data/glimt-rummet/prov`;
     return {
-      manus: (n) => `${p}/manus/episod-${n}.md`,
-      ljud: (n) => `${p}/manus/episod-${n}.json`,
+      manus: (n) => `${p}/manus/${episodFil(n)}.md`,
+      ljud: (n) => `${p}/manus/${episodFil(n)}.json`,
       varld: () => `${p}/manus/varld.md`,
       mekaniker: () => `${p}/manus/mekaniker.md`,
       held: () => `${p}/manus/held-lore.md`,
@@ -67,8 +81,8 @@ function sokvagar(rot) {
   const glimt = `${GA}/projects/motionstory/stories/glimt`;
   const rum = `${GA}/data/glimt-rummet`;
   return {
-    manus: (n) => `${glimt}/episod-${n}.md`,
-    ljud: (n) => `${glimt}/episod-${n}.json`,
+    manus: (n) => `${glimt}/${episodFil(n)}.md`,
+    ljud: (n) => `${glimt}/${episodFil(n)}.json`,
     varld: () => `${glimt}/varld.md`,
     mekaniker: () => `${glimt}/mekaniker.md`,
     held: () => `${GA}/projects/held/universe/LORE.md`,
@@ -79,8 +93,9 @@ function sokvagar(rot) {
   };
 }
 
-// An episode's notes are episod-N.json (as in the first version); the world
-// book's and the catalogue's are varld.json and mekaniker.json.
+// An episode's notes are episod-<id>.json (as in the first version; the
+// English episode 1's are episod-1en.json, whatever its text file is called);
+// the world book's and the catalogue's are varld.json and mekaniker.json.
 const filnamn = (n) => (EPISODER.includes(n) ? `episod-${n}` : n);
 
 // Where a document's text is.
@@ -161,8 +176,8 @@ export function portalAdapter({ rot = 'skarp', fetch = globalThis.fetch.bind(glo
 // rummet/index.html; the manuscript lies beside it in the same repo.
 export function lasAdapter({ fetch = globalThis.fetch.bind(globalThis), sida }) {
   const url = {
-    manus: (n) => new URL(`../stories/glimt/episod-${n}.md`, sida),
-    ljud: (n) => new URL(`../stories/glimt/episod-${n}.json`, sida),
+    manus: (n) => new URL(`../stories/glimt/${episodFil(n)}.md`, sida),
+    ljud: (n) => new URL(`../stories/glimt/${episodFil(n)}.json`, sida),
     varld: () => new URL('../stories/glimt/varld.md', sida),
     mekaniker: () => new URL('../stories/glimt/mekaniker.md', sida),
   };
