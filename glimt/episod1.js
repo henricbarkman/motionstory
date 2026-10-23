@@ -73,7 +73,27 @@ const stopped = s => !s.moving && s.stillFor >= sure(s);
 // last step, GPS a fix or two after the speed drops. A stop that began
 // before her window closed is her answer even when it shows after it.
 const seenLate = s => s.paceSource === 'steps' ? 2.5 : 4;
-const walking = s => s.moving && s.movingFor >= 1.5;
+export const walking = s => s.moving && s.movingFor >= 1.5;
+// Going again, by the feet: the band says moving, and the last three steps
+// came at a gait's pace, just now. The band wants a second and a half of
+// moving before it calls it walking, and a walker who stood two and a half
+// seconds for a yes is often off again by the time she has seen it (Henric's
+// walk 23/10: "Gå igen" to someone already going). Two steps are not enough:
+// a phone handled by someone standing bumps about once a second, and two
+// bumps read as steps. Nor are three without the band: standing in Labb 2
+// (1/10, 5:20) his phone's bumps came 0.70 and 0.30 s apart, while the band
+// rightly said still. On the walk of 23/10, in four restarts after a stop,
+// his first steps came 0.42-0.77 s apart (a small sample, and 0.77 is close
+// to the line), and the band said moving on the same tick as the steps did.
+// A slower walker falls back on `walking`, as before.
+const STRIDE = 0.8;
+export const quickSteps = s => s.paceSource === 'steps' && s.t - s.lastStepAt < STRIDE
+  && s.lastStepAt - s.prevStepAt < STRIDE && s.prevStepAt - s.prev2StepAt < STRIDE;
+export const going = s => walking(s) || (s.moving && quickSteps(s));
+// s after the yes she listens for the walker going on before she says gå: the
+// yes on the feet comes with the first step after the stop, and two more at
+// up to STRIDE apart then take a second and a half and the tick it shows on.
+const GO_ON = 2;
 // A stop too short for the band. The feet call a walker still two seconds
 // after the last step and sure() wants one more, so a walker who stopped for
 // two seconds when she asked, and walked on, was a no (Henric's walk 21/10).
@@ -250,9 +270,9 @@ export async function runEpisode1(ctx) {
   // Through the veil the word is all that carries, so each go line ends on
   // "gå", and a walker still standing four seconds on hears it once more.
   async function goOn(go) {
-    if (await ctx.until(walking, { timeout: 1.5 })) return;
+    if (await ctx.until(going, { timeout: GO_ON })) return;
     if (go) await ctx.play(go);
-    if (await ctx.until(walking, { timeout: 4 })) return;
+    if (await ctx.until(going, { timeout: 4 })) return;
     await ctx.play('x-ga-igen');
     await ctx.until(walking, { timeout: 10 });
   }

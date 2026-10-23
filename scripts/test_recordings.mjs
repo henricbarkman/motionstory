@@ -12,6 +12,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { Walk, buzzReading, savedSensor, savedOrient } from '../glimt/engine.js';
 import { labHelpers } from '../glimt/lab.js';
+import { going, walking, quickSteps } from '../glimt/episod1.js';
 import { makePocketPhone, hopAt } from './sim_pocket.mjs';
 
 // Her knocks as these walks were buzzed (v18-v19): 180 ms on, 320 off. The
@@ -48,7 +49,7 @@ function replay(file, { buzzes = [], pattern = knockPattern, splice = null } = {
       while (got.length < overs.length && buzzes[got.length].counted <= next) {
         got.push(walk.knocks.countBetween(overs[got.length], next));
       }
-      bands.push({ t: next, band: s.band });
+      bands.push({ t: next, band: s.band, moving: s.moving, walking: walking(s), going: going(s), quick: quickSteps(s) });
       if (s.paceSource === 'steps' && s.band === 'walk') cadences.push(s.cadence);
       if (s.lastDoubleKnockAt > last) { last = s.lastDoubleKnockAt; doubles.push(last); }
       next = Math.round((next + 0.25) * 1000) / 1000;
@@ -340,6 +341,52 @@ function replay(file, { buzzes = [], pattern = knockPattern, splice = null } = {
   }
 }
 
+// Going again, on states built by hand: where the line between three quick
+// steps and three slow ones is drawn. The recordings below never come near
+// it, so this is what holds it. 0.77 s is the slowest gap in his four real
+// restarts on 23/10 and must count; 0.85 is past the line. The line itself
+// (0.8) is a choice: standing on 23/10, two gaps in a row never came under
+// 0.9 either, so the walk did not tell 0.8 from 0.9.
+{
+  const s = (gaps, extra = {}) => {
+    const lastStepAt = 10;
+    const prevStepAt = lastStepAt - gaps[0];
+    const prev2StepAt = prevStepAt - gaps[1];
+    return { t: 10.2, moving: true, movingFor: 0.25, paceSource: 'steps', lastStepAt, prevStepAt, prev2StepAt, ...extra };
+  };
+  check(going(s([0.77, 0.77])), 'three steps 0.77 s apart, the band moving: going');
+  check(!going(s([0.77, 0.85])), 'one gap of 0.85 s among them: not yet going');
+  check(!going(s([0.6, 5])), 'two quick steps after a long pause are not enough');
+  check(!going(s([0.6, 0.6], { t: 10.9 })), 'three quick steps, but the last 0.9 s ago: not going');
+  check(!going(s([0.6, 0.6], { moving: false, movingFor: 0 })), 'three quick steps while the band says still: not going');
+  check(!going(s([0.6, 0.6], { paceSource: 'gps' })), 'pace from GPS, not the feet: not going on the steps');
+  check(going(s([1.2, 1.2], { movingFor: 1.5 })), 'slow steps, but the band has said moving for 1.5 s: going, as walking');
+}
+
+// Going again (episode 1, version 39): after a yes she says gå only to a
+// walker who has not set off. Three quick steps tell her sooner than the
+// band, but never against it: standing in Labb 2 on 1/10 (from about 5:00),
+// his phone's bumps came 0.70 and 0.30 s apart at 5:20, and the band said
+// still. On a real start, Knacket gående 9/10 at about 0:28, she knows it
+// before the band calls it walking. The first check only guards the gate:
+// going reads the band itself, so it fails only if the gate is taken away,
+// and 5:20 is where that would show.
+{
+  const files = readdirSync(new URL('./recordings/', import.meta.url)).filter(f => f.endsWith('.json')).sort();
+  for (const file of files) {
+    const { bands } = replay(file);
+    const wrong = bands.filter(b => b.going && !b.moving);
+    check(wrong.length === 0, `${file}: never going while the band says still (${wrong.map(b => b.t).join(', ') || 'none'})`);
+  }
+  const { bands } = replay('labb2-2026-10-01.json');
+  const at520 = bands.filter(b => b.t >= 319 && b.t <= 321.5);
+  check(at520.some(b => b.quick && !b.moving), 'standing at 5:20 in Labb 2, three bumps come as quick as steps, so the next check measures something');
+  check(!at520.some(b => b.going), 'and she does not take it for going');
+  const { bands: start } = replay('knackgang-2026-10-09.json');
+  const first = key => (start.find(b => b.t >= 25 && b[key]) || {}).t;
+  check(first('walking') - first('going') >= 1, `setting off in Knacket gående, going comes before walking (${first('going')} s, ${first('walking')} s)`);
+}
+
 // Two hops put into his real walking pocket (Knacket gående 9/10, walking
 // from 0:30 to 0:56): read, and their landings no double knock.
 {
@@ -351,6 +398,21 @@ function replay(file, { buzzes = [], pattern = knockPattern, splice = null } = {
   check(walk.jumps.history.length === 2 && walk.jumps.history.every((j, i) => Math.abs(j.t - hops[i].t - hops[i].air) < 0.1),
     `both hops in his walk are read as they land (${walk.jumps.history.map(j => `${j.t.toFixed(2)}, ${Math.round(j.air * 1000)} ms`).join(' / ')})`);
   check(!doubles.some(d => d > 36 && d < 52), `and no landing is a double knock (${fmt(doubles.filter(d => d > 36 && d < 52))})`);
+}
+
+// The repo is public, so a walk goes in here only with its positions zeroed:
+// north and east 0 in every fix, and nothing anywhere named like a
+// coordinate. A walk added as a test case without it fails here, not on Pages.
+{
+  const coordKey = /^(lat|lon|lng|latitude|longitude|coords?|position)$/i;
+  const keysIn = x => x && typeof x === 'object'
+    ? Object.entries(x).flatMap(([k, v]) => [...(Array.isArray(x) ? [] : [k]), ...keysIn(v)]) : [];
+  for (const file of readdirSync(new URL('./recordings/', import.meta.url)).filter(f => f.endsWith('.json')).sort()) {
+    const rec = JSON.parse(readFileSync(new URL(`./recordings/${file}`, import.meta.url), 'utf8'));
+    const placed = (rec.fixes || []).filter(([, north, east]) => north !== 0 || east !== 0);
+    const named = [...new Set(keysIn(rec).filter(k => coordKey.test(k)))];
+    check(!placed.length && !named.length, `${file}: no positions (${placed.length} fixes placed, keys ${named.join(', ') || 'none'})`);
+  }
 }
 
 if (failures) { console.log(`\n${failures} failed`); process.exit(1); }

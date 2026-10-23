@@ -200,14 +200,15 @@ function simulate(chapterNo, name, variant) {
         steps = false, handling = false, quietAfter = null } = p;
       if (forcedStop && t >= forcedStop.from && t < forcedStop.to) speed = 0;
       // The accelerometer at 50 Hz over the quarter second up to this tick.
-      // `handling`: while standing, the phone is bumped every 0.8-1.6 s.
+      // `handling`: while standing, the phone is bumped every 0.95-1.75 s, or,
+      // given a list of gaps, at those gaps in turn.
       // `quietAfter`: from then on the steps barely reach the sensor.
       if (steps && !NO_STEPS) {
         for (let u = t - 0.24; u <= t + 1e-9; u += 0.02) {
           let m = simulatedMagnitude(u, speed);
           if (quietAfter !== null && u >= quietAfter) m = 9.81 + (m - 9.81) * 0.2;
           if (handling && speed === 0) {
-            if (u >= nextBump + 0.15) nextBump = u + 0.8 + Math.random() * 0.8;
+            if (u >= nextBump + 0.15) nextBump = nextHandlingBump(handling, u);
             if (u >= nextBump) m += 1.6;
           }
           walk.motion(u, m);
@@ -278,6 +279,20 @@ const E_CREDITS = (EPISODE.credits && EPISODE.credits.seconds) || 0;
 // `from` to `to` seconds after the line's 'start' or 'end'. A list of them
 // for more than one stop.
 const ANSWER = ['end', 2, 12];
+// Handling the phone while standing, measured: the step detector's steps
+// during the credits of Henric's walk 23/10 (version 38), 2:27.7-2:32.5, the
+// phone turned over in his hand with the walker standing (gps 0.2-0.6 km/h).
+// Faster and more uneven than the random bumps. No two gaps in a row under
+// 0.9 s, where his first steps after standing came 0.42-0.77 s apart. (The
+// steps just before, 0.82-0.93 s apart, came while he still walked slowly
+// with the phone in his hand, gps 3.3-3.9 km/h: not handling.)
+const HANDLED_2310 = [0.68, 0.93, 0.58, 1.32, 0.38, 0.92];
+let bumpIndex = 0;
+function nextHandlingBump(handling, u) {
+  if (!Array.isArray(handling)) return u + 0.8 + Math.random() * 0.8;
+  const gap = handling[bumpIndex++ % handling.length];
+  return u - 0.15 + gap;
+}
 // s after her first plea that the hesitating walker walks again: the phone
 // sees the move before her second plea, not yet as walking. GPS takes about
 // two and a half seconds to see a walker move. Measured 20/10: the episode
@@ -294,6 +309,10 @@ const out = (speed = 1.4, turn = 330) => t => ({ speed: t < 5 ? 0 : speed, headi
 // on at the end, so no breath under the hum. `walksAt`: like `stops`, but
 // `[when, after]` ends a stop that is going on, `after` seconds from the
 // line's 'start' or 'end'. `skips`: log lines this walker never reaches.
+// `known`: a failure found and not yet fixed, said every run. It fails the
+// suite once the walker passes, so the mark comes off with the fix, and
+// always when the episode throws, hangs or skips a scene. `knownProblems`:
+// its problems word for word; any other change to them fails too.
 const EPISODE_WALKERS = {
   // Never stops, not even at the end: every no-branch, and the end on the clock.
   never: {
@@ -426,6 +445,15 @@ const EPISODE_WALKERS = {
     has: ['s0-yes1-a', 's4-yes'], not: ['s0-no1'],
     lamps: 0, memory: { svarade: true, misstanke: false },
   },
+  // Henric's walk 23/10 (version 38): stops about a second after the question
+  // for two and a half seconds, long enough for the feet to call it still,
+  // and walks on before the band is sure. The step gap is the yes, and he is
+  // walking when she hears it: no "gå" for someone already going.
+  'walks-on': {
+    walk: t => ({ ...out()(t), steps: true }), stops: { 's0-ask1': ['end', 1.0, 3.5], 's0-yes1-b': ['end', 1.0, 3.5], 's1-q2': ['end', 1.0, 3.5], ...END_STOP },
+    has: ['s0-yes1-a', 's0-yes2', 's1-q2-yes'], not: ['s0-no1', 's0-go1', 's0-go2', 's1-go', 'x-ga-igen'],
+    lamps: 0, memory: { svarade: true, misstanke: false },
+  },
   // Stops for a moment and walks on, a second and a half on the feet, at each
   // question. Henric's walk 21/10 heard a no: the band needs three seconds.
   brief: {
@@ -556,8 +584,31 @@ const EPISODE_WALKERS = {
   // seconds, a wandering speed, and the feet deciding moving or still.
   field: {
     walk: t => ({ ...out()(t), ...FIELD_2, handling: true }), stops: { 's0-ask1': ANSWER, 's0-yes1-b': ANSWER, 's2-ask': ANSWER, ...END_STOP },
-    has: ['s0-yes1-a', 's0-yes2', 'x-avvikelse', 's2-lamp-mine', 's2-lamp-1', 's4-yes'], not: ['s2-lamp-2', 's4-lamp-2'],
+    // Standing for ten seconds with the phone handled, so she says gå: the
+    // bumps are no steps to her.
+    has: ['s0-yes1-a', 's0-yes2', 'x-avvikelse', 's2-lamp-mine', 's2-lamp-1', 's4-yes', 's0-go1', 's0-go2'], not: ['s2-lamp-2', 's4-lamp-2'],
     lamps: 1, memory: { svarade: true, misstanke: false },
+  },
+  // The same walker, handling the phone as Henric did during the credits on
+  // 23/10: the bumps come at the measured gaps, faster and more uneven than
+  // the random ones. Standing ten seconds, so she still says gå.
+  // `known`: it fails, in version 38 as in 39, and not on "going". The band
+  // counts any three steps at 70 a minute or more as walking, and these
+  // bumps come at 75: a stop with the phone in hand is never seen, so every
+  // question is a no and the lamp never lights. That is the simulation's
+  // finding, not the field's: the gaps repeat evenly here, so the band never
+  // settles. In the real credits it went back and forth, still 2:23-2:29.5
+  // and 2:36.5-2:39.5, moving in between, so a stop there would likely have
+  // been seen. On the walk he did not handle the phone at the questions.
+  // Left standing until the band can tell bumps from a gait.
+  handled: {
+    walk: t => ({ ...out()(t), ...FIELD_2, handling: HANDLED_2310 }), stops: { 's0-ask1': ANSWER, 's0-yes1-b': ANSWER, 's2-ask': ANSWER, ...END_STOP },
+    has: ['s0-yes1-a', 's0-yes2', 'x-avvikelse', 's2-lamp-mine', 's2-lamp-1', 's4-yes', 's0-go1', 's0-go2'], not: ['s2-lamp-2', 's4-lamp-2'],
+    lamps: 1, memory: { svarade: true, misstanke: false },
+    known: 'the band reads the measured handling as a gait, so the stop is never seen',
+    knownProblems: ['s0-yes1-a never heard', 's0-yes2 never heard', 'x-avvikelse never heard', 's2-lamp-mine never heard',
+      's2-lamp-1 never heard', 's4-yes never heard', 's0-go1 never heard', 's0-go2 never heard', 'the lamp lit 0 times, wanted 1',
+      'the breath at the end 0 times, wanted 1', 'the end is logged as going on, wanted standing', 'memory svarade is false, wanted true'],
   },
   // Stops among the trees, hears her plead, and walks again a moment before
   // she would plead the second time: the phone already sees the walker move,
@@ -639,6 +690,7 @@ function simulateEpisode(name) {
   let lat = 59.38, lon = 13.5;
   let ended = false;
   let nextBump = 0;
+  bumpIndex = 0;
 
   const fmt = s => `${String(Math.floor(s / 60)).padStart(2)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
   const react = (id, when) => {
@@ -703,7 +755,7 @@ function simulateEpisode(name) {
         for (let u = t - 0.24; u <= t + 1e-9; u += 0.02) {
           let m = simulatedMagnitude(u, speed);
           if (handling && speed === 0) {
-            if (u >= nextBump + 0.15) nextBump = u + 0.8 + Math.random() * 0.8;
+            if (u >= nextBump + 0.15) nextBump = nextHandlingBump(handling, u);
             if (u >= nextBump) m += 1.6;
           }
           walk.motion(u, m);
@@ -936,6 +988,25 @@ async function episodeMain(onlyProfile) {
     const problems = episodeProblems(name, run);
     if (run.nearlyBack) nearlyBack++;
     if (!run.ended) problems.unshift('did not end');
+    // A known walker still has to run the episode to its end: a crash or a
+    // hang is never the known finding.
+    const known = EPISODE_WALKERS[name].known;
+    const broken = problems.filter(x => x === 'did not end' || x === 'the script threw' || x.startsWith('reached '));
+    if (known && !broken.length) {
+      if (!problems.length) { failures++; console.log(`FAIL: passes now, take away its known (${known})`); continue; }
+      // The known failure is locked to its problems, so a new one beside it
+      // still fails the suite instead of hiding in the KNOWN line.
+      const expected = EPISODE_WALKERS[name].knownProblems || [];
+      const added = problems.filter(x => !expected.includes(x));
+      const gone = expected.filter(x => !problems.includes(x));
+      if (added.length || gone.length) {
+        failures++;
+        console.log(`FAIL: the known failure changed (${known})${added.length ? `; new: ${added.join('; ')}` : ''}${gone.length ? `; no longer: ${gone.join('; ')}` : ''}`);
+        continue;
+      }
+      console.log(`KNOWN: ${known} (${problems.join('; ')})`);
+      continue;
+    }
     if (problems.length) failures++;
     console.log(problems.length ? `FAIL: ${problems.join('; ')}` : 'OK: the right branches, the lamp only where it should, half a minute');
   }
