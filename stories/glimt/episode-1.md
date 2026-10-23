@@ -10,7 +10,7 @@ English version 1, 2026-10-23, translated from the Swedish draft 7 (`episod-1.md
 
 **The English:** spoken English of a young working woman. Not literary, not sitcom. Short lines that sound right read aloud. Contractions where people use them. No slang that pins her to one country, so the accent is the voice's choice.
 
-**Target length:** about ten and a half minutes once the scenes follow each other instead of waiting for the clock (see Pauses at the end). About eight and a half minutes of talk and a good minute of credits. Nothing in the episode needs speed, so it works as well running as walking.
+**Target length:** about ten and a half minutes once the scenes follow each other instead of waiting for the clock (see Pauses at the end). About seven minutes of her voice, a minute and a half of counting, waiting and her side, and a good minute of credits. Counted on Henric's way on 23/10: about 10:50 at the Swedish voice's pace in version 38, about 9:45 at 150 words a minute; 9:40 to 11:30 across the answers, more for a walker who meets red lights. Nothing in the episode needs speed, so it works as well running as walking.
 
 **The logic, so the scenes hold together:**
 - Vega sees glimpses of the walker's world: the movement (walking, running, standing), the light, the weather and what the map has near the walker. Blurred, at the edge, never people or objects. The walker herself is a shape at the edge of Vega's world, never a face. No sound crosses over. So she knows when the walker moves and stands, but never hears what the walker says. The walker answers her only by stopping.
@@ -38,36 +38,36 @@ Pauses are marked where Henric's walk on 23/10 had them too long or too short, a
 >
 > (to herself) It's the lights. It's always the lights. ...It's not the lights.
 >
-> (to herself) It's closer tonight. Okay. Now. Do it now. ...Okay.
+> (to herself) It's closer tonight. Now. Do it now. ...Okay.
 >
-> (pause about 2 s; was 9 s on 23/10, when her first line was shorter than the build)
+> (pause about 2 s; was about 1 s on 23/10)
 >
 > (calling out) Hello? Hello! Wait!
 >
 > (straight to you, fast, flustered) No, no, don't wait! Sorry. Keep going. When you stand still, you disappear on me. I'm trying to keep up.
 >
-> (calmer) I don't know who you are. I don't even know if you can hear this. I can't hear anything from you. Not a sound. I just get glimpses. Of you, and your world.
+> (calmer) I don't know who you are. I don't even know if you can hear this. I can't hear anything from you. Not a sound. I just get glimpses. A shape at the edge. And bits of your world.
 >
 > But there's one thing I have to know.
 >
 > (pause about 1.5 s; was 0 s on 23/10)
 >
-> Okay, here's how. I ask, and if it's yes, you stop. (quick, half laughing at herself) Not now! Once I've asked. And then stay put till I say go. I'm a bit slow. (pause) Can you see me?
+> So here's how. I ask, and if it's yes, you stop. (quick, half laughing at herself) Not now! Once I've asked. And then stay put till I say go. I'm a bit slow. (pause) Can you see me?
 >
 > (waits)
 
 If the walker was already standing when she asked, and stays standing, the walker hasn't answered. Then she says this, and asks again once the walker has gone a little way. The same at all three questions:
 
-> (clearly) You'd already gone when I asked. Keep going a bit, then I'll ask again.
+> (clearly) You'd already disappeared when I asked. Keep going a bit, then I'll ask again.
 >
 > Right. Can you see me?
 
 > **Yes, the walker stops:**
-> (the walker stays standing, clearly) ...There. You're gone. Now go.
+> (the walker stays standing, clearly) ...There, I've lost you. Now go.
 
 If the walker is still standing a while after her go, she says it again, after all three questions:
 
-> (clearly) Go. I can't see you when you stop.
+> (clearly) I can't see you when you stand still. Go.
 
 > (to herself) What? That can't be right. You can't see me. You can't.
 >
@@ -123,7 +123,7 @@ If the walker was already standing:
 >
 > (pause about 1.5 s; was 0 s on 23/10)
 >
-> (to herself) Ask something real this time. ...Okay.
+> (to herself) Ask something real this time. ...Come on.
 >
 > (pause about 1 s; was 0 s on 23/10)
 >
@@ -136,7 +136,7 @@ If the walker was already standing:
 > Right. Are you alone?
 
 > **Yes, the walker stops:**
-> (the walker stays standing, clearly) There. Okay. Now go.
+> (the walker stays standing, clearly) There. Got it. Now go.
 > Me too. Even with forty of us on the loop. (short laugh) It's not the same.
 >
 > **No, the walker keeps going:**
@@ -146,14 +146,14 @@ If the walker was already standing:
 >
 > They know how we walk. Every step. Too slow, they know. Wrong way, they know. (pause) You're not on any of their lists.
 >
-> But you're walking here anyway. (pause) And now I've got an idea. A stupid one.
+> But here you are anyway. (pause) And now I've got an idea. A stupid one.
 
 ## 2. The Tree
 *Trigger: about two seconds after scene 1 ends (on 23/10 it waited for minute five, 47 s of silence after "A stupid one", the longest gap in the walk). First she stands still while the walker moves. From when she stops to when she says thirty, half a minute really passes. Then she steps off the gravel, and from then on a stop turns the lamp on.*
 
 > Here's the thing. I'm walking along talking out loud to someone who isn't there, and nobody's said a word. Not one, since you came.
 >
-> So I'm going to try something. Small, but stupid. Keep going, if you can.
+> So I'm going to try something. Something small. Keep going, if you can.
 >
 > (she stops. Pause about 2 s; was 0 s on 23/10)
 >
@@ -171,7 +171,7 @@ If the walker stops while she counts, she says this, muffled, and when the walke
 >
 > (amazed) They're not asking. You're moving, and they think it's me.
 >
-> (laughs) Four years I've walked round here, same direction. And now I'm standing here like a post. Best thing I've done since I got here.
+> (laughs) Four years I've walked this loop, same direction. And now I'm standing here like a post. Best thing I've done since I got here.
 >
 > Now one more thing. Just keep going.
 >
@@ -190,24 +190,24 @@ If the walker stops while she counts, she says this, muffled, and when the walke
 > **The walker stops:**
 > (her voice sinks away. The hum of the loop comes forward. A soft tone, then the flat voice, faint: "Deviation. Steps off route.")
 >
-> (muffled, whispering) ...no. No, no. Go! Go, please!
+> (muffled, whispering) ...no. No, no. Please, go! Go!
 
 If the walker stays standing about ten seconds more:
 
-> (muffled, closer) Please. Go now. I can't move from here till you do.
+> (muffled, closer) Please. I can't move from here till you do. Go.
 
 > (the walker moves, her voice comes back, the tone stops. She breathes)
 >
 > [she asked for the stop] I asked you to stop, and forgot I was still walking.
 >
-> That was the lamp. It came on when you stopped. (pause) I've never seen it lit before. (deadpan) It's quite pretty, actually.
+> That was the lamp. It came on when you stopped. (pause) I've never seen it lit before. (deadpan) It's pretty, actually.
 >
 > You move, I'm hidden. ... Sounds like something you'd scratch into a wall.
 >
 > [answered no at the start] And you stopped when I asked. (pause) You hear me.
 >
 > **The walker keeps going:**
-> No? (small laugh) No. Probably smartest. I don't know what happens if you stand still while I'm out here. I don't think I want to find out tonight.
+> No? (small laugh) No. Probably for the best. I don't know what happens if you stand still while I'm out here. I don't think I want to find out tonight.
 
 *If the walker stops of their own accord while she walks between the trees, the same branch plays, from the tone on.*
 
@@ -216,10 +216,10 @@ If the walker stays standing about ten seconds more:
 
 > (she sits down: a breath out)
 >
-> I'm sitting down now. Under the plastic tree. And when I sit still, I see more of you. Not you. What's around you.
+> I'm sitting down now. Under the plastic tree. And when I sit still, I see more of you. Not you, you're still just a shape. What's around you.
 >
 > [dark] It's dark where you are. Here it's always evening, but never dark. They say it's calming.
-> [light] It's light where you are. It glares at the edges. Here it's always evening. They say it's calming.
+> [light] It's light where you are. It's so bright at the edges. Here it's always evening. They say it's calming.
 >
 > [dark] There must be stars where you are. I haven't seen a single one since I came.
 > [light] You've got a real sun. The kind that burns. We've got a lamp called Daylight. It does its best.
@@ -229,7 +229,7 @@ If the walker stays standing about ten seconds more:
 >
 > And there's something near you.
 >
-> [bridge] A bridge. I see it blurry, like a pencil line. (pause) We've got a bridge here too. It goes over nothing. Someone copied the bridge and forgot the river.
+> [bridge] A bridge. It's blurry, like a pencil line. (pause) We've got a bridge here too. It goes over nothing. Someone copied the bridge and forgot the river.
 > [water] Water. It's glinting. (pause) We've got water here too. Sounds like water, anyway. I've found the speaker.
 > [woods] Woods. Thick ones. (pause) We've got woods here too, right at the back. Flat as a painting, but they rustle. They got that bit right.
 > [hill] A hill. (pause) We've got a hill here too. You're not allowed up it. I don't think it'd hold.
@@ -240,13 +240,13 @@ If the walker stays standing about ten seconds more:
 > It looks like where you are. But it isn't where you are.
 
 ## 4. The Bell
-*Trigger: about ten seconds after scene 3 ends, when the walker is moving (on 23/10 it waited for minute nine and a half, 53 s of silence, long enough to think the episode had ended). She is still sitting under the tree and has to get up onto the gravel before the shift comes round the bend. A stop turns the lamp on until she is on the gravel. Then she goes in, and the rest is harmless. The end comes about ten seconds after she is on the gravel (was 25 s on 23/10; keep it a little shorter for a walker nearly back at the start), in two kinds: `[on the way back]` when the distance to the start shrinks, `[heading away]` when it clearly grows, otherwise neither. If the walker stops within a quarter of a minute of the last line, her voice fades into the hum. If the walker keeps going, it fades anyway, and episode 2 can start right after, with the same something under the hum.*
+*Trigger: about ten seconds after scene 3 ends, when the walker is moving (on 23/10 it waited for minute nine and a half, 53 s of silence, long enough to think the episode had ended). She is still sitting under the tree and has to get up onto the gravel before the shift comes around the corner. A stop turns the lamp on until she is on the gravel. Then she goes in, and the rest is harmless. The end comes about ten seconds after she is on the gravel (was 25 s on 23/10; keep it a little shorter for a walker nearly back at the start), in two kinds: `[on the way back]` when the distance to the start shrinks, `[heading away]` when it clearly grows, otherwise neither. If the walker stops within a quarter of a minute of the last line, her voice fades into the hum. If the walker keeps going, it fades anyway, and episode 2 can start right after, with the same something under the hum.*
 
 > (a bell on her side, muffled) That's the bell. The loop's closing.
 >
 > (to herself, getting up fast) Up. Up, up.
 >
-> (hurried, to you) In a minute the whole shift comes round the bend, and I'm sitting under a tree. Go now, if you can. Don't stop. Not now.
+> (hurried, to you) In a minute the whole shift comes around the corner, and I'm sitting under a tree. Go now, if you can. Don't stop. Not now.
 >
 > (far away, many steps: the shift)
 >
@@ -264,7 +264,7 @@ If the walker stays standing about ten seconds more:
 > (the walker moves again, her voice back, low) I made it. But it's been logged. A deviation. I'll be hearing about that.
 >
 > **Everyone:**
-> [on the way back] You're on your way back. I can tell, you've straightened out. (deadpan) I just go round. Same thing, according to the wall.
+> [on the way back] You're on your way back. I can tell, you're going straight now. (deadpan) I just go round. Same thing, according to the wall.
 > [heading away] You're heading away from where you started. Straight out. (pause) I can't do that. But I can watch.
 >
 > (pause about 1.5 s; was 0 s on 23/10)
@@ -272,9 +272,9 @@ If the walker stays standing about ten seconds more:
 > **The walker has stopped when she asked, some time tonight:**
 > I don't know what you are. But you hear me, and you stopped when I asked. That's more than I know about most people here.
 >
-> I've seen you before, you know. Out at the edge. Loads of times. Just a shape, never anything more. (pause) Tonight's the first time you've... answered.
+> I've seen you before, you know. Out at the edge. Lots of times. Just a shape, never anything more. (pause) Tonight's the first time you've... answered.
 >
-> So that's you. Shape. It's what I've been calling you in my head, anyway.
+> So you're Shape. That's what I've been calling you in my head. (pause) It'll do.
 >
 > I'm Vega. In case you were wondering.
 >
@@ -285,9 +285,9 @@ If the walker stays standing about ten seconds more:
 >
 > (waits)
 >
-> *Yes:* (muffled) ...there. (back, laughing) All night! You've heard me all night. And there's me going on about plastic trees.
+> *Yes:* (muffled) ...there. (back, laughing) All night! You've heard me all night. And I've been going on about plastic trees.
 >
-> I've seen you before, you know. Out at the edge, loads of times. Just a shape. So that's you. Shape. I'm Vega. In case you were wondering.
+> I've seen you before, you know. Out at the edge, lots of times. Just a shape. So you're Shape. It'll do. I'm Vega. In case you were wondering.
 >
 > *No:* No. Okay. Then you're steps. (pause) I've been hiding in them all night, so I'm not complaining.
 >
@@ -335,8 +335,8 @@ If the walker stays standing about ten seconds more:
 
 Henric's five changes:
 
-1. **Shape, not the Walker.** The name comes from what she sees, not from the walking, so it fits a runner as well as a walker. She has seen the shape at the edge of her world many times; tonight is the first time it answers. Planted in the new opening ("There it is again. Right at the edge.") and paid off in the name scene in scene 4, in all three branches. Altair is not mentioned.
-2. **More of her talking to herself.** A new opening of three short lines to herself before she calls out: she sees the shape again, talks herself out of it, and does it anyway. They fill the time the contact takes to build, which was nine silent seconds on 23/10. Two more short ones: "Three metres. It's only three metres." before she steps off the gravel, and "Up. Up, up." when the bell rings. All five are marked (to herself).
+1. **Shape, not the Walker.** The name comes from what she sees, not from the walking, so it fits a runner as well as a walker. She has seen the shape at the edge of her world many times; tonight is the first time it answers. Planted three times before it becomes a name: in the new opening ("There it is again. Right at the edge.", quiet under the riser), in her first words to you ("A shape at the edge"), and in scene 3 ("you're still just a shape"). Paid off in the name scene in scene 4, in all three branches. Altair is not mentioned.
+2. **More of her talking to herself.** A new opening of three short lines to herself before she calls out: she sees the shape again, talks herself out of it, and does it anyway. Her voice enters at 70 % of the riser, so the three lines make the start longer: "Hello?" comes about 23 s in instead of 14. Worth it for the eavesdropping; if it is too long, cut the middle line ("It's the lights...") and "Hello?" comes about 18 s in. Two more short ones: "Three metres. It's only three metres." before she steps off the gravel, and "Up. Up, up." when the bell rings. All five are marked (to herself).
 3. **"You hear me" once more.** After "I see you. / And you hear me." she says it again, almost to herself, as the song begins. This is the end of the opening, before the credits: the only place "I see you, and you hear me" stands.
 4. **The pauses.** Marked in the text where they should be shorter or longer, measured in the walk on 23/10 (table below).
 5. **The Code under her last words.** The song starts faint under her last line before the credits and grows to full volume when she has finished, in both branches.
@@ -348,7 +348,18 @@ Translation choices:
 - **The earpiece is never named** in her lines; she says "they", "they know", "it's been logged". In the stage directions it is the earpiece.
 - **"Du är steg, inte öron"** stays as "You're steps, not ears": odd in English, but it is her and it comes back in "Then you're steps" in scene 4.
 - **Scene 2 starts with the idea itself.** "Jag har tänkt på en sak" came right after "en dum idé" and said the same thing twice once the pause is short, so the English goes straight to "Here's the thing."
-- Small lines rewritten for English rhythm, same meaning: "You heard me. I didn't think I'd get this far." "The lamp caught one out of three." "You move, I'm hidden." "I can tell, you've straightened out" (was "you walk straighter", which a runner doesn't).
+- Small lines rewritten for English rhythm, same meaning: "You heard me. I didn't think I'd get this far." "The lamp caught one out of three." "You move, I'm hidden." "I can tell, you're going straight now" (was "you walk straighter", which a runner doesn't).
+
+After the director's and the dramaturg's reviews (23/10, reports in Demi's `data/glimt-granska/2026-10-23-*.md`):
+
+- Every go line ends on "go": "I can't see you when you stand still. Go." (was "...when you stop", the wrong order last), and both pleas at the tree.
+- "You'd already disappeared when I asked" (was "gone", which reads as "walked off"), and "There, I've lost you. Now go." (was "You're gone", too close to "go").
+- "comes around the corner" (was "round the bend", British for going mad).
+- "Okay" kept once in the opening and once in scene 4; the other four replaced.
+- Words that tied her to Britain before the voice is chosen: "this loop", "pretty", "lots of times", "I've been going on about".
+- The name: "So you're Shape. That's what I've been calling you in my head. (pause) It'll do."
+- "But here you are anyway" (was "walking here", which leaves out a runner).
+- The shape is planted where it is heard (see change 1), and "stupid" no longer comes twice across the short join into scene 2.
 
 ## Pauses, measured 23/10
 
@@ -356,8 +367,8 @@ Henric's walk with version 38 on 23/10 (light, dry, a bridge; yes, yes, no; the 
 
 | Where | Silence 23/10 | Should be | Why it was so |
 |---|---|---|---|
-| Her first words to herself → "Hello?" | 9 s | about 2 s | Her line (5 s) was shorter than the contact's build. The new self-talk fills it. |
-| "...one thing I have to know." → "Okay, here's how." | 0 s | about 1.5 s | Two clips back to back. |
+| Her first words → her second | about 1 s | about 2 s | The log stamps the first line when it is queued, but the voice starts at 70 % of the riser (about 7.9 s in), so the 9 s looked like silence and were the riser. |
+| "...one thing I have to know." → "So here's how." | 0 s | about 1.5 s | Two clips back to back. |
 | "...You can't." (to herself) → "You just wanted to answer." | 0 s | about 1 s | She turns from herself to you with no breath. |
 | "And you hear me." → the song | 0.3 s, then full volume | the song under her last words, growing | Henric 23/10. |
 | "Your road comes before mine..." → (to herself) → the question | 0 s, 0 s | about 1.5 s, about 1 s | The aside ran into the question. |
@@ -377,8 +388,8 @@ The long gaps all come from one thing: scenes 2, 3 and 4 open at fixed minutes (
 
 Not built now. The app, the Swedish manuscript and the tests stay as they are until the English version is built.
 
-- **The scenes follow each other.** Scene 2 opens about 2 s after scene 1 ends, scene 3 about 6 s after scene 2, scene 4 about 10 s after scene 3, instead of at minutes 5, 7.5 and 9.5. The end comes about 10 s after the gravel (a little less for a walker nearly back) instead of 25. A short breath (about 1-1.5 s) between clips where the table says so, 2 s where she stops or a name lands.
-- **The Code:** starts faint under her last line before the credits (both branches) and fades up to full volume as she finishes. Version 38 starts it 0.3 s after her last word at full volume.
+- **The scenes follow each other.** Scene 2 opens about 2 s after scene 1 ends, scene 3 about 6 s after scene 2, scene 4 about 10 s after scene 3, instead of at minutes 5, 7.5 and 9.5. The end comes about 10 s after the gravel (a little less for a walker nearly back) instead of 25. Removing `AT` is not enough: `opens(Math.max(AT.x, now() + 20))` (and `+ 25` for the bell) have their own floors, which would give 20, 20 and 25 s and about 11:20. Change the floors, `END_SOON`/`END_GAP` (15 and 25), `targetMinutes: 12` and the subtitle "Ungefär tolv minuter" too. A short breath (about 1-1.5 s) between clips where the table says so, 2 s where she stops or a name lands.
+- **The Code:** starts faint under her last line before the credits (both branches) and fades up to full volume as she finishes. Version 38 starts it 0.3 s after her last word at full volume. "You hear me." is an aside (played at 0.7) and comes as the song enters, so keep the song faint until after the whisper and let it grow then, or the line Henric asked for drowns.
 - **Answer words** (`cueWords`, the word in a line from which a stop counts as the answer). Swedish → English: `ser` → `see` (s0-ask1, s0-again1), `hör` → `hear` (s0-yes1-b, s0-no1, s0-again2), `är` → `are` (s1-again: "Right. Are you alone?"), `trettio` → `thirty` (s2-3), `stanna` → `stop` (s2-ask) and `last:stop` (s4-never-1: the stop at the end of the line). The Swedish words open each question; in English "see" and "hear" come two syllables after "Can you", close enough. Check that the speech-to-text writes "thirty", not "30".
 - **Language codes:** `render_glimt.py` and `check_glimt_audio.py` send `language_code: "sv"`; English needs `"en"`, and the word pattern in `check_glimt_audio.py` (`[0-9a-zåäöé]+`) splits "twenty-seven" into two words, which is fine for "thirty".
 - **Asides** (spoken lower, faster, turned away): the three opening lines, "What? That can't be right...", "Ask something real this time", "Three metres...", "Up. Up, up.", and "You hear me." at the end of the opening.
