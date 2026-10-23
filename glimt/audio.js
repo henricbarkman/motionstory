@@ -34,6 +34,21 @@ const RADIO_HIGH_HZ = 2800;    // lowpass at full radio (20 kHz when clean)
 const RADIO_DRIVE = 3;         // waveshaper tanh(kx), k = 1 + RADIO_DRIVE at full radio
 const RADIO_HISS = 0.03;       // hiss level at full radio, under her lines only
 const RADIO_HISS_HZ = 3000;    // the hiss's band
+// A line ended early, at a pause between two of her sentences (episode 1: a
+// walker who goes while she asks them to). The fade is short and lies wholly
+// in the silence, which check_glimt_audio.py measured with a margin either
+// side; LEAD is what the audio thread is given to act on it in time.
+export const BREAK_FADE = 0.03;   // s
+export const BREAK_LEAD = 0.05;   // s
+
+// Where a line `into` seconds in ends early: the first of `breaks` ([{from,
+// to}], seconds into the line where it is silent) it can still reach with
+// the fade inside it, at its start or at once if the line is in it already.
+// Null when none is left ahead. The tests' episode uses it too.
+export function breakAt(breaks, into) {
+  const b = (breaks || []).find(x => x.to - BREAK_FADE >= Math.max(x.from, into));
+  return b ? { ...b, at: Math.max(b.from, into) } : null;
+}
 
 // How clear the line is, as a link writes it: a number from 0 (the whole
 // radio) to 1 (clean), clamped. A decimal comma (?klarhet=0,5, as a Swede
@@ -235,7 +250,10 @@ export class Mixer {
     return new Promise(resolve => {
       const src = this.ctx.createBufferSource();
       src.buffer = buffer;
-      src.connect(song ? this.songGain : this.radioIn);
+      // Its own gain, so a line ended at a pause fades without touching the next.
+      const level = this.ctx.createGain();
+      src.connect(level);
+      level.connect(song ? this.songGain : this.radioIn);
       this.route = song ? 'song' : 'radio';   // what the last sound was sent through, for the tests
       if (clear) { this.clear = true; this.applyContact(); }
       if (aside) { this.aside = true; this.applyContact(); }
@@ -254,8 +272,10 @@ export class Mixer {
         resolve(why);
       };
       const watchdog = setTimeout(() => finish('timeout'), (lead + buffer.duration + 10) * 1000);
-      src.onended = () => finish('ended');
+      src.onended = () => finish(src.endsAtBreak ? 'break' : 'ended');
       src.start(startAt);
+      src.level = level;
+      src.startedAt = startAt;
       this.currentVoice = src;
     });
   }
@@ -266,6 +286,25 @@ export class Mixer {
       try { this.currentVoice.stop(); } catch (_) {}
       this.currentVoice = null;
     }
+  }
+
+  // Ends the line playing at a pause between two of her sentences (breakAt),
+  // fading inside it, so the word before is whole and nothing clicks.
+  // Returns the break, or null when none is left ahead and the line plays to
+  // its end. playVoice then resolves 'break'.
+  endVoiceAtBreak(breaks) {
+    const src = this.currentVoice;
+    if (!src) return null;
+    if (src.endsAtBreak) return src.endsAtBreak;
+    const b = breakAt(breaks, this.ctx.currentTime + BREAK_LEAD - src.startedAt);
+    if (!b) return null;
+    const endAt = src.startedAt + b.at;
+    const g = src.level.gain;
+    g.setValueAtTime(1, endAt);
+    g.linearRampToValueAtTime(0, endAt + BREAK_FADE);
+    try { src.stop(endAt + BREAK_FADE); } catch (_) { return null; }
+    src.endsAtBreak = b;
+    return b;
   }
 
   setContact(value) {

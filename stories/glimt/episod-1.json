@@ -227,6 +227,17 @@
       "är"
     ]
   },
+  "breakFrom": {
+    "x-stod": "gå",
+    "s0-go1": "gå",
+    "x-ga-igen": "gå",
+    "s0-go2": "gå",
+    "s1-go": "gå",
+    "s2-count-stop": "gå",
+    "s2-lamp-plea": "gå",
+    "s2-lamp-plea2": "gå",
+    "s4-lamp-1": "inte"
+  },
   "seconds": {
     "s0-1": 5.07,
     "s0-2": 33.57,
@@ -326,5 +337,80 @@
     "s1-again": {
       "är": 1.24
     }
+  },
+  "breaks": {
+    "x-stod": [
+      {
+        "from": 1.81,
+        "to": 3.09,
+        "said": "Du var redan borta när jag frågade."
+      }
+    ],
+    "s0-go1": [
+      {
+        "from": 1.01,
+        "to": 1.74,
+        "said": "Där försvann du."
+      }
+    ],
+    "x-ga-igen": [
+      {
+        "from": 0.48,
+        "to": 1.43,
+        "said": "Gå."
+      }
+    ],
+    "s0-go2": [
+      {
+        "from": 1.72,
+        "to": 2.56,
+        "said": "Där! Ja."
+      }
+    ],
+    "s1-go": [
+      {
+        "from": 1.5,
+        "to": 1.76,
+        "said": "Där. Okej."
+      }
+    ],
+    "s2-count-stop": [
+      {
+        "from": 0.7,
+        "to": 1.53,
+        "said": "gå."
+      }
+    ],
+    "s2-lamp-plea": [
+      {
+        "from": 2.22,
+        "to": 2.44,
+        "said": "nej. Nej, nej."
+      },
+      {
+        "from": 2.92,
+        "to": 3.46,
+        "said": "nej. Nej, nej. Gå!"
+      }
+    ],
+    "s2-lamp-plea2": [
+      {
+        "from": 0.74,
+        "to": 1.59,
+        "said": "Snälla."
+      },
+      {
+        "from": 2.29,
+        "to": 3.25,
+        "said": "Snälla. Gå nu."
+      }
+    ],
+    "s4-lamp-1": [
+      {
+        "from": 0.6,
+        "to": 1.05,
+        "said": "nej."
+      }
+    ]
   }
 }

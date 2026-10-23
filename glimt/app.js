@@ -454,12 +454,18 @@ async function start() {
   // the lab too (Kontakten).
   // `seq`: the cut count when the line was asked for. A cut that came while
   // the line was still being decoded drops it, as it would have stopped it.
-  async function speak(id, { clear = false, contact = false } = {}, seq = cutSeq) {
+  // `unless`: a test of the walk, made as the line's turn comes. When it
+  // holds the line is not said at all ('skipped'): episode 1 asks a walker to
+  // go only while they stand.
+  // Resolves how the line went: 'ended', 'break' (ctx.breakOff ended it at a
+  // pause), 'skipped' or 'timeout'; undefined when it was dropped or missing.
+  async function speak(id, { clear = false, contact = false, unless = null } = {}, seq = cutSeq) {
     if (finished) return;
     const buf = await lib.buffer(id);
     if (!buf) { log(`replik saknas: ${id}`); return; }
     if (seq !== cutSeq) return;
     if (await wakeAudio() && seq !== cutSeq) return;     // cut while it waited for the audio
+    if (unless && unless(walk.state())) { log(`– ${id}: vandraren går redan, sägs inte`); return 'skipped'; }
     const at = pendingVoiceAt; pendingVoiceAt = null;
     // The lab shows the station instead, and Vega is clear there unless a
     // station asks for the contact: elsewhere it is not what is tried.
@@ -472,9 +478,13 @@ async function start() {
     // else clean. The lab is always clean.
     mixer.setKlarhet(def.lab ? 1
       : KLARHET_URL ?? (chapter.klarhetPerScen || {})[id.slice(0, 2)] ?? chapter.klarhet ?? 1);
+    speaking = id;
     const why = await mixer.playVoice(buf, { clear: contact ? false : clear || !!def.lab, aside, at });
+    if (speaking === id) speaking = null;
     if (why === 'timeout') log(`ljud: ${id} nådde aldrig slutet, går vidare`);
+    return why;
   }
+  let speaking = null;          // the line playing now, for breakOff
 
   const ctx = {
     variant,
@@ -535,6 +545,16 @@ async function start() {
         },
       },
       cut() { cutSeq++; mixer.stopVoice(); },
+      // Ends line `id` at its next pause (the chapter's "breaks", measured by
+      // check_glimt_audio.py), never mid-word; with no pause left it is said
+      // to its end. False while `id` is not the line playing, true once done.
+      breakOff(id) {
+        if (speaking !== id) return false;
+        const b = mixer.endVoiceAtBreak((chapter.breaks || {})[id]);
+        if (b) log(`‖ ${id}: slutar efter "${b.said}" (${b.at.toFixed(2)} s in)`);
+        else log(`${id}: ingen paus kvar, sägs till slut`);
+        return true;
+      },
       // The opening credits: the whole song, Vega silent. Full level, past
       // the line and the contact, whatever the walker does, and nothing else
       // under it: the bed and her side step out (Henric 21/10: "full volym,

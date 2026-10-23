@@ -22,6 +22,7 @@ import { Walk, Waiter, simulatedMagnitude } from '../glimt/engine.js';
 import { runChapter1 } from '../glimt/chapter1.js';
 import { runChapter2 } from '../glimt/chapter2.js';
 import { runEpisode1 } from '../glimt/episod1.js';
+import { breakAt, BREAK_LEAD, BREAK_FADE } from '../glimt/audio.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -274,6 +275,7 @@ const EPISODE = JSON.parse(readFileSync(join(ROOT, 'stories/glimt/episod-1.json'
 const E_SECONDS = EPISODE.seconds || {};
 const E_CUE = (EPISODE.cues && EPISODE.cues['s2-3'] && EPISODE.cues['s2-3'].trettio) || 0;
 const E_CREDITS = (EPISODE.credits && EPISODE.credits.seconds) || 0;
+const E_BREAKS = EPISODE.breaks || {};
 
 // What a walker does when a line is heard: `[when, from, to]`, a stop from
 // `from` to `to` seconds after the line's 'start' or 'end'. A list of them
@@ -309,6 +311,11 @@ const out = (speed = 1.4, turn = 330) => t => ({ speed: t < 5 ? 0 : speed, headi
 // on at the end, so no breath under the hum. `walksAt`: like `stops`, but
 // `[when, after]` ends a stop that is going on, `after` seconds from the
 // line's 'start' or 'end'. `skips`: log lines this walker never reaches.
+// `broke`: lines that end early, at the pause after the words given, for the
+// walker went (v40). `whole`: lines said to their end. `skipped`: lines not
+// said at all, the walker going already. `voiceAfterStop`: at most this long
+// from the stop to the go line that answers it. `noAfterLine`: at most this
+// long from the end of a question to her no.
 // `known`: a failure found and not yet fixed, said every run. It fails the
 // suite once the walker passes, so the mark comes off with the fix, and
 // always when the episode throws, hangs or skips a scene. `knownProblems`:
@@ -316,7 +323,7 @@ const out = (speed = 1.4, turn = 330) => t => ({ speed: t < 5 ? 0 : speed, headi
 const EPISODE_WALKERS = {
   // Never stops, not even at the end: every no-branch, and the end on the clock.
   never: {
-    walk: out(), stops: {},
+    walk: out(), stops: {}, noAfterLine: 25,
     has: ['s0-no1', 's0-no2', 's1-walk', 's1-q2-no', 's2-count', 's2-ask', 's2-no', 's3-dark', 's3-dry', 's3-near', 's3-skog',
       's4-ok', 's4-back', 's4-never-1', 's4-never-no', 's4-all'],
     not: ['s0-yes1-a', 's0-yes2', 's1-q2-yes', 's2-count-stop', 's2-lamp-1', 's2-lamp-2', 's4-lamp-2', 's4-ok-lamp',
@@ -329,6 +336,10 @@ const EPISODE_WALKERS = {
     has: ['s0-yes1-a', 's0-yes1-b', 's0-yes2', 's1-q2-yes', 's2-ask', 'x-avvikelse', 's2-lamp-plea', 's2-lamp-mine', 's2-lamp-1', 's4-ok-lamp', 's4-yes',
       's0-go1', 's0-go2', 's1-go'],
     not: ['s0-no1', 's0-no2', 's1-q2-no', 's2-no', 's2-lamp-plea2', 's2-lamp-2', 's4-ok', 's4-lamp-2', 's4-never-1'],
+    // Ten seconds standing: each go line to its end, and her "Gå." once more
+    // four seconds on, ended there as the walker goes (no wait before the go
+    // line since v40, so it comes while the walker still stands).
+    whole: ['s0-go1', 's0-go2', 's1-go'], broke: { 'x-ga-igen': 'Gå.' },
     lamps: 1, memory: { svarade: true, misstanke: false },
   },
   // Sees her but walks on when she asks "hör du mig?", then stops when she
@@ -447,11 +458,23 @@ const EPISODE_WALKERS = {
   },
   // Henric's walk 23/10 (version 38): stops about a second after the question
   // for two and a half seconds, long enough for the feet to call it still,
-  // and walks on before the band is sure. The step gap is the yes, and he is
-  // walking when she hears it: no "gå" for someone already going.
+  // and walks on before the band is sure. Until v40 the step gap was the yes,
+  // heard as he walked on, and no "gå" for someone already going. Since v40
+  // the feet call it two seconds after his last step, while he stands: she
+  // says she saw him, and as he walks on she stops at the pause before "gå".
   'walks-on': {
     walk: t => ({ ...out()(t), steps: true }), stops: { 's0-ask1': ['end', 1.0, 3.5], 's0-yes1-b': ['end', 1.0, 3.5], 's1-q2': ['end', 1.0, 3.5], ...END_STOP },
-    has: ['s0-yes1-a', 's0-yes2', 's1-q2-yes'], not: ['s0-no1', 's0-go1', 's0-go2', 's1-go', 'x-ga-igen'],
+    has: ['s0-yes1-a', 's0-yes2', 's1-q2-yes', 's0-go1', 's0-go2', 's1-go'], not: ['s0-no1', 'x-ga-igen'],
+    broke: { 's0-go1': 'Där försvann du.', 's0-go2': 'Där! Ja.', 's1-go': 'Där. Okej.' }, voiceAfterStop: 2.5,
+    lamps: 0, memory: { svarade: true, misstanke: false },
+  },
+  // Stops for the yes and stands, then goes half a second into her second go
+  // line: the first is said to its end, the second ends after "Där! Ja.".
+  'goes-mid': {
+    walk: t => ({ ...out()(t), steps: true }), stops: { 's0-ask1': ['end', 1.0, 7], 's0-yes1-b': ['end', 1.0, 60], ...END_STOP },
+    walksAt: { 's0-go2': ['start', 0.5] },
+    has: ['s0-yes1-a', 's0-yes2', 's0-go1', 's0-go2'], not: ['s0-no1', 'x-ga-igen'],
+    whole: ['s0-go1'], broke: { 's0-go2': 'Där! Ja.' }, voiceAfterStop: 2.5,
     lamps: 0, memory: { svarade: true, misstanke: false },
   },
   // Stops for a moment and walks on, a second and a half on the feet, at each
@@ -459,13 +482,16 @@ const EPISODE_WALKERS = {
   brief: {
     walk: t => ({ ...out()(t), steps: true }), stops: { 's0-ask1': ['end', 0.3, 1.8], 's0-yes1-b': ['end', 0.3, 1.8], 's1-q2': ['end', 0.5, 2.0], ...END_STOP },
     has: ['s0-yes1-a', 's0-yes2', 's1-q2-yes', 's4-yes'], not: ['s0-no1', 's0-no2', 's1-q2-no', 's0-go1', 's0-go2', 's1-go'],
+    // The yes comes with the step that ends the gap: going again, so her go
+    // line is not said at all.
+    skipped: ['s0-go1', 's0-go2', 's1-go'],
     lamps: 0, memory: { svarade: true, misstanke: false },
   },
   // A hesitation, not a stop: under a second standing, a gap shorter than
-  // GAP_YES. That is still a no.
+  // FEET_STOP. That is still a no, five seconds and a step after the line.
   hesitant: {
     walk: t => ({ ...out()(t), steps: true }), stops: { 's0-ask1': ['end', 0.3, 0.9], 's0-no1': ['end', 0.3, 0.9], ...END_STOP },
-    has: ['s0-no1', 's0-no2'], not: ['s0-yes1-a', 's0-yes2', 'x-stod'],
+    has: ['s0-no1', 's0-no2'], not: ['s0-yes1-a', 's0-yes2', 'x-stod'], noAfterLine: 6,
     lamps: 0, memory: { svarade: false, misstanke: false },
   },
   // The brief stop on GPS alone: without the feet there is no gap to read,
@@ -491,15 +517,15 @@ const EPISODE_WALKERS = {
     has: ['s0-yes1-a', 's4-yes'], not: ['s0-no1'],
     lamps: 0, memory: { svarade: true, misstanke: false },
   },
-  // The same on the feet, whose window is ten seconds.
+  // The same on the feet, whose window is five seconds (ten until v40).
   'closing-feet': {
-    walk: t => ({ ...out()(t), steps: true }), stops: { 's0-ask1': ['end', 9.25, 20], ...END_STOP },
+    walk: t => ({ ...out()(t), steps: true }), stops: { 's0-ask1': ['end', 4.25, 20], ...END_STOP },
     has: ['s0-yes1-a', 's4-yes'], not: ['s0-no1'],
     lamps: 0, memory: { svarade: true, misstanke: false },
   },
   // And a stop that begins once the window has closed is no answer.
   'closed-feet': {
-    walk: t => ({ ...out()(t), steps: true }), stops: { 's0-ask1': ['end', 11, 20], ...END_STOP },
+    walk: t => ({ ...out()(t), steps: true }), stops: { 's0-ask1': ['end', 6, 20], ...END_STOP },
     has: ['s0-no1'], not: ['s0-yes1-a'],
     lamps: 0, memory: { svarade: false, misstanke: false },
   },
@@ -585,7 +611,9 @@ const EPISODE_WALKERS = {
   field: {
     walk: t => ({ ...out()(t), ...FIELD_2, handling: true }), stops: { 's0-ask1': ANSWER, 's0-yes1-b': ANSWER, 's2-ask': ANSWER, ...END_STOP },
     // Standing for ten seconds with the phone handled, so she says gå: the
-    // bumps are no steps to her.
+    // bumps are no walk to her. One is a step, though, and since v40 a step
+    // ends a go line at its next pause, so what is said of them depends on
+    // where the bumps fall (checked: never inside a word).
     has: ['s0-yes1-a', 's0-yes2', 'x-avvikelse', 's2-lamp-mine', 's2-lamp-1', 's4-yes', 's0-go1', 's0-go2'], not: ['s2-lamp-2', 's4-lamp-2'],
     lamps: 1, memory: { svarade: true, misstanke: false },
   },
@@ -683,6 +711,7 @@ function simulateEpisode(name) {
   const stops = [];           // {from, to}
   let memory = null;
   let cuts = 0;
+  const skipped = [];         // {id, t}: lines not said, the walker already going
   const credited = [];        // when the credits started
   const truth = [];           // {t, d, acc}: where the walker really is, m from the start, and the fix's accuracy
   let current = null;
@@ -705,10 +734,12 @@ function simulateEpisode(name) {
     const dur = E_SECONDS[id];
     if (dur === undefined) throw new Error(`unknown line ${id}`);
     log.push(`${fmt(t)}  ▶ ${id}${mark}`);
-    played.push({ id, t, side: !!mark });
+    const entry = { id, t, side: !!mark };
+    played.push(entry);
     react(id, 'start');
-    const me = { cut: false };
-    return { me, done: waiter.until(() => me.cut, { timeout: dur }).then(() => { react(id, 'end'); }) };
+    // `endAt`: breakOff ended it at a pause, so it is over then, not at its end.
+    const me = { id, cut: false, t0: t, endAt: null, entry };
+    return { me, done: waiter.until(s => me.cut || (me.endAt !== null && s.t >= me.endAt), { timeout: dur }).then(() => { react(id, 'end'); }) };
   };
   const call = what => (...args) => { sideCalls.push({ t, what, args }); };
 
@@ -718,12 +749,32 @@ function simulateEpisode(name) {
     state: () => walk.state(),
     log: msg => log.push(`${fmt(t)}  ${msg}  (contact ${walk.contact.value.toFixed(2)}, ${walk.tempo.band})`),
     hold: on => { walk.contact.hold = on; },
-    play(id) {
+    play(id, opts = {}) {
+      if (opts.unless && opts.unless(walk.state())) {
+        log.push(`${fmt(t)}  – ${id}: the walker is going, not said`);
+        skipped.push({ id, t });
+        return Promise.resolve('skipped');
+      }
       const { me, done } = sound(id, '');
       current = me;
-      return done.then(() => { if (current === me) current = null; });
+      return done.then(() => { if (current === me) current = null; return me.endAt !== null ? 'break' : 'ended'; });
     },
     cut() { if (current) { current.cut = true; cuts++; log.push(`${fmt(t)}  cut`); } },
+    // As app.js and audio.js: the first pause it can still reach, or none.
+    breakOff(id) {
+      if (!current || current.id !== id) return false;
+      const b = breakAt(E_BREAKS[id], t + BREAK_LEAD - current.t0);
+      if (b) {
+        current.endAt = current.t0 + b.at + BREAK_FADE;
+        current.entry.broke = b.said;
+        current.entry.brokeAt = b.at;
+        log.push(`${fmt(t)}  ‖ ${id}: ends after "${b.said}" (${b.at.toFixed(2)} s in)`);
+      } else {
+        current.entry.late = into;
+        log.push(`${fmt(t)}  ${id}: no pause left, said to its end`);
+      }
+      return true;
+    },
     until: (pred, opts) => waiter.until(pred, opts),
     fadeOut: s => waiter.until(() => false, { timeout: s }).then(() => {}),
     seconds: id => E_SECONDS[id] || 0,
@@ -781,7 +832,7 @@ function simulateEpisode(name) {
     }
     await Promise.race([done, Promise.resolve()]);
     Math.random = random;
-    return { log, ended, t, played, sideCalls, memory, cuts, credited, truth };
+    return { log, ended, t, played, sideCalls, memory, cuts, credited, truth, skipped, stops };
   })();
 }
 
@@ -806,12 +857,46 @@ function episodeProblems(name, run) {
   for (const id of p.not || []) if (count(id)) problems.push(`${id} heard`);
   if (p.loose) return problems;
   for (const id of p.twice || []) if (count(id) !== 2) problems.push(`${id} heard ${count(id)} times, wanted 2`);
-  // Said once, unless the walker's profile says a line comes again.
+  // Said once, unless the walker's profile says a line comes again. Her
+  // "Gå." once more comes at most once for each yes (three in the episode).
   for (const id of new Set(played.map(x => x.id))) {
-    const allowed = (p.twice || []).includes(id) ? 2 : id === 'x-avvikelse' ? p.lamps : id === 'r-hjalp' || id === 'r-vilar' ? 3 : 1;
+    const allowed = (p.twice || []).includes(id) ? 2 : id === 'x-avvikelse' ? p.lamps
+      : id === 'r-hjalp' || id === 'r-vilar' || id === 'x-ga-igen' ? 3 : 1;
     if (count(id) > allowed) problems.push(`${id} heard ${count(id)} times`);
   }
   if (count('x-avvikelse') !== p.lamps) problems.push(`the lamp lit ${count('x-avvikelse')} times, wanted ${p.lamps}`);
+
+  // The go lines (v40): ended at a pause, said whole, or not said at all.
+  const lastOf = id => played.filter(x => x.id === id).pop();
+  for (const [id, want] of Object.entries(p.broke || {})) {
+    const x = lastOf(id);
+    if (x && x.broke !== want) problems.push(x.broke ? `${id} ended after "${x.broke}", wanted after "${want}"` : `${id} said to its end, wanted it to end after "${want}"`);
+  }
+  for (const id of p.whole || []) { const x = lastOf(id); if (x && x.broke) problems.push(`${id} ended after "${x.broke}", wanted it whole`); }
+  for (const id of p.skipped || []) if (!run.skipped.some(x => x.id === id)) problems.push(`${id} was not skipped`);
+  // A line that ends early ends in silence, after a whole sentence.
+  for (const x of played.filter(x => x.broke)) {
+    if (!(E_BREAKS[x.id] || []).some(b => b.said === x.broke && x.brokeAt >= b.from && x.brokeAt + BREAK_FADE <= b.to)) {
+      problems.push(`${x.id} ended at ${x.brokeAt.toFixed(2)} s, outside its pauses`);
+    }
+  }
+  // How soon she answers (Henric 23/10: five seconds from his stop to her
+  // voice, and 13.6 from the question to her no).
+  if (p.voiceAfterStop !== undefined) {
+    for (const x of played.filter(x => ['s0-go1', 's0-go2', 's1-go'].includes(x.id))) {
+      const st = run.stops.filter(st => st.from <= x.t).pop();
+      if (!st) problems.push(`${x.id} with no stop before it`);
+      else if (x.t - st.from > p.voiceAfterStop) problems.push(`${x.id} came ${(x.t - st.from).toFixed(2)} s after the stop, wanted at most ${p.voiceAfterStop}`);
+    }
+  }
+  if (p.noAfterLine !== undefined) {
+    const questions = ['s0-ask1', 's0-again1', 's0-yes1-b', 's0-no1', 's0-again2', 's1-q2', 's1-again'];
+    for (const x of played.filter(x => ['s0-no1', 's0-no2', 's1-q2-no'].includes(x.id))) {
+      const q = played.filter(y => questions.includes(y.id) && y.t < x.t).pop();
+      const after = q ? x.t - q.t - E_SECONDS[q.id] : null;
+      if (after === null || after > p.noAfterLine) problems.push(`${x.id} came ${after === null ? '?' : after.toFixed(2)} s after the question, wanted at most ${p.noAfterLine}`);
+    }
+  }
   if (p.reserves !== undefined && count('r-hjalp') !== p.reserves) problems.push(`the snäcka asked ${count('r-hjalp')} times, wanted ${p.reserves}`);
   for (const want of p.logs || []) if (!log.some(l => l.includes(want))) problems.push(`the log never says "${want}"`);
   if (p.cuts !== undefined && run.cuts !== p.cuts) problems.push(`${run.cuts} lines cut short, wanted ${p.cuts}`);

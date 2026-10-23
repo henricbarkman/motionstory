@@ -1600,6 +1600,9 @@ export class Walk {
       prevStepAt: this.steps.prevStepAt,
       prev2StepAt: this.steps.prev2StepAt,
       sensorResetAt: this.steps.resetAt,
+      // The newest sample from the motion sensor: a quiet stretch on the feet
+      // is only a stop while samples keep coming through it.
+      sensorAt: this.steps.lastT,
       stepsTrusted: this.steps.trusted,
       // The sensor has answered at some point this walk, and is answering
       // now. The phone stops it when the screen goes dark.
