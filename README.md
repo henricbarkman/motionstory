@@ -77,6 +77,7 @@ Episod 1 har fyra röster (`voices` i json-filen, `lineVoices` säger vem som ha
 ```bash
 python3 scripts/check_glimt_audio.py stories/glimt/episod-1.json --listen   # längder, ord, och var "trettio" och "stanna" faller
 python3 scripts/check_glimt_audio.py stories/glimt/episod-1.json --listen --cached   # samma, ur sparade transkript (kostar inget)
+python3 scripts/check_glimt_breaks.py stories/glimt/episod-1.json   # gå-replikerna avbrutna i varje paus: tyst under toningen, hela ord (Scribe)
 python3 scripts/render_side.py stories/glimt/episod-1.json [--force] [--only grus]
 ```
 

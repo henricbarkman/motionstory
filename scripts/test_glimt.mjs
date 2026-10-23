@@ -799,7 +799,8 @@ function simulateEpisode(name) {
     // As app.js and audio.js: the first pause it can still reach, or none.
     breakOff(id) {
       if (!current || current.id !== id) return false;
-      const b = breakAt(E_BREAKS[id], t + BREAK_LEAD - current.t0);
+      const into = t + BREAK_LEAD - current.t0;
+      const b = breakAt(E_BREAKS[id], into);
       if (b) {
         current.endAt = current.t0 + b.at + BREAK_FADE;
         current.entry.broke = b.said;
