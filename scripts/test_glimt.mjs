@@ -311,7 +311,8 @@ const out = (speed = 1.4, turn = 330) => t => ({ speed: t < 5 ? 0 : speed, headi
 // line's 'start' or 'end'. `skips`: log lines this walker never reaches.
 // `known`: a failure found and not yet fixed, said every run. It fails the
 // suite once the walker passes, so the mark comes off with the fix, and
-// always when the episode throws, hangs or skips a scene.
+// always when the episode throws, hangs or skips a scene. `knownProblems`:
+// its problems word for word; any other change to them fails too.
 const EPISODE_WALKERS = {
   // Never stops, not even at the end: every no-branch, and the end on the clock.
   never: {
@@ -603,6 +604,9 @@ const EPISODE_WALKERS = {
     has: ['s0-yes1-a', 's0-yes2', 'x-avvikelse', 's2-lamp-mine', 's2-lamp-1', 's4-yes', 's0-go1', 's0-go2'], not: ['s2-lamp-2', 's4-lamp-2'],
     lamps: 1, memory: { svarade: true, misstanke: false },
     known: 'the band reads the measured handling as a gait, so the stop is never seen',
+    knownProblems: ['s0-yes1-a never heard', 's0-yes2 never heard', 'x-avvikelse never heard', 's2-lamp-mine never heard',
+      's2-lamp-1 never heard', 's4-yes never heard', 's0-go1 never heard', 's0-go2 never heard', 'the lamp lit 0 times, wanted 1',
+      'the breath at the end 0 times, wanted 1', 'the end is logged as going on, wanted standing', 'memory svarade is false, wanted true'],
   },
   // Stops among the trees, hears her plead, and walks again a moment before
   // she would plead the second time: the phone already sees the walker move,
@@ -987,8 +991,18 @@ async function episodeMain(onlyProfile) {
     const known = EPISODE_WALKERS[name].known;
     const broken = problems.filter(x => x === 'did not end' || x === 'the script threw' || x.startsWith('reached '));
     if (known && !broken.length) {
-      if (!problems.length) failures++;
-      console.log(problems.length ? `KNOWN: ${known} (${problems.join('; ')})` : `FAIL: passes now, take away its known (${known})`);
+      if (!problems.length) { failures++; console.log(`FAIL: passes now, take away its known (${known})`); continue; }
+      // The known failure is locked to its problems, so a new one beside it
+      // still fails the suite instead of hiding in the KNOWN line.
+      const expected = EPISODE_WALKERS[name].knownProblems || [];
+      const added = problems.filter(x => !expected.includes(x));
+      const gone = expected.filter(x => !problems.includes(x));
+      if (added.length || gone.length) {
+        failures++;
+        console.log(`FAIL: the known failure changed (${known})${added.length ? `; new: ${added.join('; ')}` : ''}${gone.length ? `; no longer: ${gone.join('; ')}` : ''}`);
+        continue;
+      }
+      console.log(`KNOWN: ${known} (${problems.join('; ')})`);
       continue;
     }
     if (problems.length) failures++;

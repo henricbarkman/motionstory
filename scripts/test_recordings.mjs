@@ -341,6 +341,28 @@ function replay(file, { buzzes = [], pattern = knockPattern, splice = null } = {
   }
 }
 
+// Going again, on states built by hand: where the line between three quick
+// steps and three slow ones is drawn. The recordings below never come near
+// it, so this is what holds it. 0.77 s is the slowest gap in his four real
+// restarts on 23/10 and must count; 0.85 is past the line. The line itself
+// (0.8) is a choice: standing on 23/10, two gaps in a row never came under
+// 0.9 either, so the walk did not tell 0.8 from 0.9.
+{
+  const s = (gaps, extra = {}) => {
+    const lastStepAt = 10;
+    const prevStepAt = lastStepAt - gaps[0];
+    const prev2StepAt = prevStepAt - gaps[1];
+    return { t: 10.2, moving: true, movingFor: 0.25, paceSource: 'steps', lastStepAt, prevStepAt, prev2StepAt, ...extra };
+  };
+  check(going(s([0.77, 0.77])), 'three steps 0.77 s apart, the band moving: going');
+  check(!going(s([0.77, 0.85])), 'one gap of 0.85 s among them: not yet going');
+  check(!going(s([0.6, 5])), 'two quick steps after a long pause are not enough');
+  check(!going(s([0.6, 0.6], { t: 10.9 })), 'three quick steps, but the last 0.9 s ago: not going');
+  check(!going(s([0.6, 0.6], { moving: false, movingFor: 0 })), 'three quick steps while the band says still: not going');
+  check(!going(s([0.6, 0.6], { paceSource: 'gps' })), 'pace from GPS, not the feet: not going on the steps');
+  check(going(s([1.2, 1.2], { movingFor: 1.5 })), 'slow steps, but the band has said moving for 1.5 s: going, as walking');
+}
+
 // Going again (episode 1, version 39): after a yes she says gå only to a
 // walker who has not set off. Three quick steps tell her sooner than the
 // band, but never against it: standing in Labb 2 on 1/10 (from about 5:00),
