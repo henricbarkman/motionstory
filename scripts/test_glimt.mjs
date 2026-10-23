@@ -470,12 +470,29 @@ const EPISODE_WALKERS = {
   },
   // Stops for the yes and stands, then goes half a second into her second go
   // line: the first is said to its end, the second ends after "Där! Ja.".
+  // At the tree too, on the feet: the lamp is the answer there, read by the
+  // band, so that window keeps its ten seconds.
   'goes-mid': {
-    walk: t => ({ ...out()(t), steps: true }), stops: { 's0-ask1': ['end', 1.0, 7], 's0-yes1-b': ['end', 1.0, 60], ...END_STOP },
+    walk: t => ({ ...out()(t), steps: true }),
+    stops: { 's0-ask1': ['end', 1.0, 7], 's0-yes1-b': ['end', 1.0, 60], 's2-ask': ANSWER, ...END_STOP },
     walksAt: { 's0-go2': ['start', 0.5] },
-    has: ['s0-yes1-a', 's0-yes2', 's0-go1', 's0-go2'], not: ['s0-no1', 'x-ga-igen'],
+    has: ['s0-yes1-a', 's0-yes2', 's0-go1', 's0-go2', 's2-lamp-mine'], not: ['s0-no1', 'x-ga-igen', 's2-no'],
     whole: ['s0-go1'], broke: { 's0-go2': 'Där! Ja.' }, voiceAfterStop: 2.5,
-    lamps: 0, memory: { svarade: true, misstanke: false },
+    lamps: 1, memory: { svarade: true, misstanke: false },
+  },
+  // Stands a little over a second at each question: the step gap is shorter
+  // than FEET_STOP, so it is no answer.
+  pause: {
+    walk: t => ({ ...out()(t), steps: true }), stops: { 's0-ask1': ['end', 0.3, 1.4], 's0-no1': ['end', 0.3, 1.4], ...END_STOP },
+    has: ['s0-no1', 's0-no2'], not: ['s0-yes1-a', 's0-yes2', 'x-stod'],
+    lamps: 0, memory: { svarade: false, misstanke: false },
+  },
+  // Walks on through her first question while the page gets no motion for
+  // five seconds (the screen off a moment): a quiet sensor is no stop.
+  hidden: {
+    walk: t => ({ ...out()(t), steps: !(t >= 54.5 && t < 59.5) }), stops: END_STOP,
+    has: ['s0-no1', 's0-no2'], not: ['s0-yes1-a', 's0-yes2', 'x-stod'],
+    lamps: 0, memory: { svarade: false, misstanke: false },
   },
   // Stops for a moment and walks on, a second and a half on the feet, at each
   // question. Henric's walk 21/10 heard a no: the band needs three seconds.
@@ -614,6 +631,16 @@ const EPISODE_WALKERS = {
     // bumps are no walk to her. One is a step, though, and since v40 a step
     // ends a go line at its next pause, so what is said of them depends on
     // where the bumps fall (checked: never inside a word).
+    has: ['s0-yes1-a', 's0-yes2', 'x-avvikelse', 's2-lamp-mine', 's2-lamp-1', 's4-yes', 's0-go1', 's0-go2'], not: ['s2-lamp-2', 's4-lamp-2'],
+    lamps: 1, memory: { svarade: true, misstanke: false },
+  },
+  // The field walker with the bumps fixed (seed 4): while it stands for her,
+  // three bumps make the band say walk just after her window closes. That is
+  // no walk, so no quick no: three steps at a gait's pace are wanted too
+  // (v40; without them 8 of 25 seeds heard a no here).
+  'field-held': {
+    seed: 4,
+    walk: t => ({ ...out()(t), ...FIELD_2, handling: true }), stops: { 's0-ask1': ANSWER, 's0-yes1-b': ANSWER, 's2-ask': ANSWER, ...END_STOP },
     has: ['s0-yes1-a', 's0-yes2', 'x-avvikelse', 's2-lamp-mine', 's2-lamp-1', 's4-yes', 's0-go1', 's0-go2'], not: ['s2-lamp-2', 's4-lamp-2'],
     lamps: 1, memory: { svarade: true, misstanke: false },
   },

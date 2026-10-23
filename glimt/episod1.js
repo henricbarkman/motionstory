@@ -98,6 +98,7 @@ export const walking = s => s.moving && s.movingFor >= 1.5;
 // The lamp keeps the band: a stop there is costly to see that is not one.
 const FEET_STOP = 2.0;
 const SENSOR_FRESH = 0.5;   // s: the newest motion sample, at most this old
+const SENSOR_SETTLE = 1;    // s after the sensor is back before the band's still is a stop
 const feetStill = s => s.paceSource === 'steps' && s.t - s.lastStepAt >= FEET_STOP
   && s.t - s.sensorAt < SENSOR_FRESH && !(s.sensorResetAt > s.lastStepAt);
 // Going again, by the feet: the band says moving, and the last three steps
@@ -267,8 +268,12 @@ export async function runEpisode1(ctx) {
         inWalk = walking(s);
       }
       if (inWalk && feetStill(s) && s.lastStepAt >= askedAt && s.lastStepAt < closes) yes = true;
+      // Nor, on the feet, is a stillness the band reports as the sensor comes
+      // back: after a page hidden a moment it starts over and calls the
+      // walker still until three steps have come (v39 heard a yes).
       const began = stopBegan(s);
-      if (walked && stopped(s) && began >= askedAt && began < closes + seenLate(s)) yes = true;
+      if (walked && stopped(s) && began >= askedAt && began < closes + seenLate(s)
+        && !(s.paceSource === 'steps' && began - s.sensorResetAt < SENSOR_SETTLE)) yes = true;
       const walksOn = walking(s) && (s.paceSource === 'steps' ? s.lastStepAt >= closes && quickSteps(s) : s.t >= closes + seenLate(s));
       return yes || (s.t >= closes && walksOn) || s.t >= closes + seenLate(s) + sure(s);
     });
