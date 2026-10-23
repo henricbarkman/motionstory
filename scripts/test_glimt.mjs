@@ -465,7 +465,7 @@ const EPISODE_WALKERS = {
   'walks-on': {
     walk: t => ({ ...out()(t), steps: true }), stops: { 's0-ask1': ['end', 1.0, 3.5], 's0-yes1-b': ['end', 1.0, 3.5], 's1-q2': ['end', 1.0, 3.5], ...END_STOP },
     has: ['s0-yes1-a', 's0-yes2', 's1-q2-yes', 's0-go1', 's0-go2', 's1-go'], not: ['s0-no1', 'x-ga-igen'],
-    broke: { 's0-go1': 'Där försvann du.', 's0-go2': 'Där! Ja.', 's1-go': 'Där. Okej.' }, voiceAfterStop: 2.5,
+    broke: { 's0-go1': 'Där försvann du.', 's0-go2': 'Där! Ja.', 's1-go': 'Där. Okej.' }, voiceAfterStop: 2.0,
     lamps: 0, memory: { svarade: true, misstanke: false },
   },
   // Stops for the yes and stands, then goes half a second into her second go
@@ -477,7 +477,7 @@ const EPISODE_WALKERS = {
     stops: { 's0-ask1': ['end', 1.0, 7], 's0-yes1-b': ['end', 1.0, 60], 's2-ask': ANSWER, ...END_STOP },
     walksAt: { 's0-go2': ['start', 0.5] },
     has: ['s0-yes1-a', 's0-yes2', 's0-go1', 's0-go2', 's2-lamp-mine'], not: ['s0-no1', 'x-ga-igen', 's2-no'],
-    whole: ['s0-go1'], broke: { 's0-go2': 'Där! Ja.' }, voiceAfterStop: 2.5,
+    whole: ['s0-go1'], broke: { 's0-go2': 'Där! Ja.' }, voiceAfterStop: 2.0,
     lamps: 1, memory: { svarade: true, misstanke: false },
   },
   // Stands a little over a second at each question: the step gap is shorter
@@ -543,6 +543,15 @@ const EPISODE_WALKERS = {
   // And a stop that begins once the window has closed is no answer.
   'closed-feet': {
     walk: t => ({ ...out()(t), steps: true }), stops: { 's0-ask1': ['end', 6, 20], ...END_STOP },
+    has: ['s0-no1'], not: ['s0-yes1-a'],
+    lamps: 0, memory: { svarade: false, misstanke: false },
+  },
+  // The same late stop by a slow walker, 72 steps a minute: steps further
+  // apart than STRIDE, so no quick no when the window closes, and her no
+  // waits for the band. The feet see the stop two seconds after the last
+  // step, before she has said no, and it is still no answer.
+  'closed-slow': {
+    walk: t => ({ ...out(0.6)(t), steps: true }), stops: { 's0-ask1': ['end', 6, 20], ...END_STOP },
     has: ['s0-no1'], not: ['s0-yes1-a'],
     lamps: 0, memory: { svarade: false, misstanke: false },
   },
@@ -908,7 +917,8 @@ function episodeProblems(name, run) {
     }
   }
   // How soon she answers (Henric 23/10: five seconds from his stop to her
-  // voice, and 13.6 from the question to her no).
+  // voice, and 13.6 from the question to her no). Since v40 the go line
+  // comes 1.5-1.75 s after the stop, so 2 s here: FEET_STOP 2.6 fails it.
   if (p.voiceAfterStop !== undefined) {
     for (const x of played.filter(x => ['s0-go1', 's0-go2', 's1-go'].includes(x.id))) {
       const st = run.stops.filter(st => st.from <= x.t).pop();
