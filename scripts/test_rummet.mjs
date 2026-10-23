@@ -14,7 +14,7 @@
 // Never writes to stories/: every write goes to memory or to a temp folder.
 
 import { execFileSync, spawn } from 'node:child_process';
-import { readFileSync, mkdtempSync, mkdirSync, copyFileSync, writeFileSync, rmSync, statSync, utimesSync } from 'node:fs';
+import { readFileSync, mkdtempSync, mkdirSync, copyFileSync, writeFileSync, rmSync, statSync, utimesSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -812,6 +812,116 @@ async function provserver(rot) {
     ok(readFileSync(join(glimt, 'mekaniker.md'), 'utf8') === FIL.mekaniker, 'portal: the catalogue opened and saved without a change is the same file');
     const fel = await fetch2(`/api/files/read?path=${encodeURIComponent('/etc/passwd')}`);
     ok(fel.status === 403, 'portal: a path outside the sandbox is refused');
+  } finally {
+    p.kill();
+    rmSync(rot, { recursive: true, force: true });
+  }
+}
+
+// --- 11. Episode 1 in English: its own document, its own file -------------------------------------
+// The document id is 1en, the text is stories/glimt/episode-1.md (not
+// episod-1en.md), the recordings would be episode-1.json, and the room's
+// notes are episod-1en.json like any episode's.
+
+const ENGELSKA = las('stories/glimt/episode-1.md');
+const GA = '/home/henric/generalassistant';
+const GL = `${GA}/projects/motionstory/stories/glimt`;
+const PROV = `${GA}/data/glimt-rummet/prov`;
+{
+  ok(D.EPISODER.includes('1en') && D.DOKUMENT.includes('1en') && D.EPISODER[0] === '1', 'en: 1en is an episode and a document, and episode 1 is still the first');
+  ok(S.slagFor('1en') === Dk.SLAG_EPISOD && D.textPlats('1en') === 'manus:1en', 'en: 1en is read as an episode (scenes, triggers, branches, variants)');
+  ok(D.EPISODER.every((n) => { try { return !!D.episodFil(n); } catch { return false; } }), 'every episode has a file');
+  ok(D.episodNamn('1en') !== D.episodNamn('1') && D.episodNamn('1') === 'Episod 1', 'en: the room names the two apart, and episode 1 as before');
+
+  // Where each place is, on the real room and in the sandbox.
+  const lasta = async (rot, platser) => {
+    const sett = [];
+    const f = async (u) => {
+      sett.push(new URL(u, 'http://x').searchParams.get('path'));
+      return { status: 404, ok: false, json: async () => ({ error: 'not found' }) };
+    };
+    const a = D.portalAdapter({ rot, fetch: f });
+    for (const p of platser) ok(await a.las(p) === null, `en: ${rot} ${p} that is missing reads as missing`);
+    return sett;
+  };
+  const platser = ['manus:1en', 'ljud:1en', 'rum:1en', 'grund:1en', 'manus:1', 'ljud:1', 'rum:1', 'grund:1', 'manus:2'];
+  const skarp = await lasta('skarp', platser);
+  ok(JSON.stringify(skarp) === JSON.stringify([
+    `${GL}/episode-1.md`, `${GL}/episode-1.json`, `${GA}/data/glimt-rummet/episod-1en.json`, `${GA}/data/glimt-rummet/grund/episod-1en.json`,
+    `${GL}/episod-1.md`, `${GL}/episod-1.json`, `${GA}/data/glimt-rummet/episod-1.json`, `${GA}/data/glimt-rummet/grund/episod-1.json`, `${GL}/episod-2.md`,
+  ]), `en: 1en is episode-1.md and episode-1.json, its notes episod-1en.json; the Swedish episodes as before: ${skarp.join(' ')}`);
+  const prov = await lasta('prov', platser);
+  ok(JSON.stringify(prov) === JSON.stringify([
+    `${PROV}/manus/episode-1.md`, `${PROV}/manus/episode-1.json`, `${PROV}/episod-1en.json`, `${PROV}/grund/episod-1en.json`,
+    `${PROV}/manus/episod-1.md`, `${PROV}/manus/episod-1.json`, `${PROV}/episod-1.json`, `${PROV}/grund/episod-1.json`, `${PROV}/manus/episod-2.md`,
+  ]), `en: the same in the sandbox: ${prov.join(' ')}`);
+  const sida = 'https://henricbarkman.github.io/motionstory/rummet/index.html';
+  const publik = [];
+  const la = D.lasAdapter({ sida, fetch: async (u) => { publik.push(String(u)); return { status: 404 }; } });
+  await la.las('manus:1en');
+  await la.las('ljud:1en');
+  await la.las('manus:1');
+  ok(JSON.stringify(publik) === JSON.stringify(['episode-1.md', 'episode-1.json', 'episod-1.md'].map((f) => `https://henricbarkman.github.io/motionstory/stories/glimt/${f}`)),
+    `en: the read-only page finds the English text beside the Swedish: ${publik.join(' ')}`);
+  let fel = null;
+  try { await D.portalAdapter({ fetch: async () => ({}) }).las('manus:1sv'); } catch (e) { fel = e; }
+  ok(fel instanceof D.DataFel && fel.kod === 'plats', 'an episode the room does not have is refused, not guessed at');
+
+  // A write never lands in a new file named after the id.
+  const skrivna = [];
+  const fw = async (u, o) => { skrivna.push(JSON.parse(o.body).path); return { status: 200, ok: true, json: async () => ({ mtime: 1 }) }; };
+  for (const rot of ['skarp', 'prov']) {
+    await D.portalAdapter({ rot, fetch: fw }).skriv('manus:1en', 'x', null);
+    await D.portalAdapter({ rot, fetch: fw }).skriv('rum:1en', '{}', null);
+  }
+  ok(JSON.stringify(skrivna) === JSON.stringify([`${GL}/episode-1.md`, `${GA}/data/glimt-rummet/episod-1en.json`, `${PROV}/manus/episode-1.md`, `${PROV}/episod-1en.json`])
+    && !skrivna.some((p) => p.endsWith('episod-1en.md')), `en: a write to 1en goes to episode-1.md, never to a new episod-1en.md: ${skrivna.join(' ')}`);
+
+  // The title and the file as the room reads it.
+  const m = M.tolka(ENGELSKA);
+  ok(m.episod === '1' && m.titel === 'Keep Going', `en: the title "# Glimt, episode 1: ..." is read (${m.episod}, ${m.titel})`);
+  const sv = M.tolka(LEVANDE1);
+  ok(sv.episod === '1' && sv.titel && !sv.titel.startsWith('Glimt'), 'the Swedish title "# Glimt, episod 1: ..." is read as before');
+  ok(M.tolka('# Glimt, episoder 1: x').episod === null, 'and nothing but episod or episode is a title');
+  const d = Dk.tolka(ENGELSKA, 'episod');
+  const typer = (t) => d.paras.filter((p) => p.typ === t);
+  ok(d.paras[0].typ === 'rubrik' && d.paras[0].attrs.prefix === 'Glimt, episode 1: ' && d.paras[0].text === 'Keep Going', 'en: the title is written without its "Glimt, episode 1:" prefix, which stays');
+  ok(Dk.skriv(d) === ENGELSKA && d.paras.every((p) => Dk.skrivRad(p) === p.raw), 'en: the English file reads back as itself, byte for byte');
+  ok(typer('scen').length > 0 && typer('mekanik').length > 0 && typer('replik').length > 0 && typer('variant').every((p) => p.attrs.etikett),
+    `en: scenes, triggers, lines and labelled variants (${typer('scen').length} scenes, ${typer('mekanik').length} triggers, ${typer('variant').length} variants)`);
+  const omr = Dk.scenomrade(d.paras.map((p) => p.typ), 'episod');
+  ok(d.paras.every((p, k) => Dk.fel(p, omr[k]) === null) && Dk.lasesSom(ENGELSKA, d.paras, 'episod'), 'en: every paragraph as it stands can be saved');
+}
+
+{
+  // Through the portal's own file code: writing in 1en changes episode-1.md
+  // and nothing else, on the real room's paths and in the sandbox's.
+  const rot = mkdtempSync(join(tmpdir(), 'rummet-en-'));
+  const glimt = join(rot, 'projects/motionstory/stories/glimt');
+  const provManus = join(rot, 'data/glimt-rummet/prov/manus');
+  mkdirSync(glimt, { recursive: true });
+  mkdirSync(provManus, { recursive: true });
+  for (const dir of [glimt, provManus]) {
+    copyFileSync(join(REPO, 'stories/glimt/episode-1.md'), join(dir, 'episode-1.md'));
+    copyFileSync(join(REPO, 'stories/glimt/episod-1.md'), join(dir, 'episod-1.md'));
+  }
+  const { p, url } = await provserver(rot);
+  try {
+    const fetch2 = (u, o = {}) => fetch(new URL(u, url), { ...o, headers: { ...(o.headers || {}), Origin: url.replace(/\/$/, '') } });
+    for (const [namn, manus, rum] of [['skarp', glimt, join(rot, 'data/glimt-rummet')], ['prov', provManus, join(rot, 'data/glimt-rummet/prov')]]) {
+      const adapter = D.portalAdapter({ rot: namn, fetch: fetch2 });
+      const h = await oppna(adapter, '1en');
+      const q = h.ed.hitta((x) => x.typ === 'replik');
+      h.ed.skriv(q.id, 'Written in the room.');
+      await h.d.spara();
+      const disk = readFileSync(join(manus, 'episode-1.md'), 'utf8');
+      ok(disk.includes('> Written in the room.') && diffRader(ENGELSKA, disk).length === 1, `en ${namn}: the line is in episode-1.md, and nothing else in it changed`);
+      ok(!existsSync(join(manus, 'episod-1en.md')) && readFileSync(join(manus, 'episod-1.md'), 'utf8') === LEVANDE1, `en ${namn}: no episod-1en.md was made, and the Swedish episode 1 is untouched`);
+      const not = JSON.parse(readFileSync(join(rum, 'episod-1en.json'), 'utf8'));
+      ok(not.dok === '1en' && not.historik[q.id].at(-1).text === 'Written in the room.' && !existsSync(join(rum, 'episod-1.json')),
+        `en ${namn}: the notes are episod-1en.json, and the Swedish episode's notes are not touched`);
+      ok(await h.l.ljud('1en') === null, `en ${namn}: no recording yet is no sound, not an error`);
+    }
   } finally {
     p.kill();
     rmSync(rot, { recursive: true, force: true });

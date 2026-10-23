@@ -14,7 +14,7 @@ paragraphs and then the same one. Between the clicks the test changes the
 files on disk the way the portal's file panel or Demi would, and checks that
 nobody's text is lost and every other line stays byte for byte.
 
-    ~/generalassistant/.venv/bin/python scripts/test_rummet_browser.py [--skarmar DIR] [--bara telefon|bred|tva|ovriga|idag]
+    ~/generalassistant/.venv/bin/python scripts/test_rummet_browser.py [--skarmar DIR] [--bara telefon|bred|tva|ovriga|idag|engelska]
 
 Two sorts of sandbox, on purpose:
 
@@ -24,12 +24,15 @@ Two sorts of sandbox, on purpose:
   rewrite exactly those lines: on today's text the checks would be about lines
   that are gone. The sound for them is served from the same commit, so a line
   is never heard in a later recording than its text.
-- `idag` opens today's files (all three episodes, the world book, the
-  catalogue) in the room and checks what holds whatever the text says: every
-  paragraph the file has is on the page, none is marked unsaveable, the
-  catalogue tab lists every mechanic the file has, the mechanic lines carry
-  their verdict marks, and opening changes nothing on disk. That is what
-  catches a rewrite the room cannot read.
+- `idag` opens today's files (all three episodes, episode 1 in English, the
+  world book, the catalogue) in the room and checks what holds whatever the
+  text says: every paragraph the file has is on the page, none is marked
+  unsaveable, the catalogue tab lists every mechanic the file has, the
+  mechanic lines carry their verdict marks, and opening changes nothing on
+  disk. That is what catches a rewrite the room cannot read.
+- `engelska`, on the same files: the tab Episode 1 EN opens #episod-1en, and
+  a line typed there lands in episode-1.md with its history in
+  episod-1en.json, at phone size in the sandbox (?rot=prov) and wide.
 
 The sound is served from this repo's audio/ instead of the public site.
 Nothing outside the temporary sandbox is written.
@@ -82,8 +85,8 @@ def sandbox(idag: bool = False) -> tuple[Path, Path]:
     glimt = rot / "projects/motionstory/stories/glimt"
     glimt.mkdir(parents=True)
     if idag:
-        # Today's files, as they are: the `idag` scenario.
-        for f in ("episod-1.md", "episod-2.md", "episod-3.md", "episod-1.json", "varld.md", "mekaniker.md"):
+        # Today's files, as they are: the `idag` and `engelska` scenarios.
+        for f in ("episod-1.md", "episod-2.md", "episod-3.md", "episod-1.json", "episode-1.md", "varld.md", "mekaniker.md"):
             shutil.copyfile(GLIMT / f, glimt / f)
         return finish_sandbox(rot)
     # The checks type into lines of episodes 1 and 2, count their chips and
@@ -475,6 +478,12 @@ def skrivaren(b, url: str, rot: Path, storlek: str, skarmar: Path | None) -> Non
     page.locator("#panel button[type=submit]").click()
     ok(vanta_fil(page, N, lambda t: "Kortare, kanske?" in t), f"{pre} the comment is written to the notes")
     kort = page.locator(f'.st[data-id="{p1}"] .kom .kort', has_text="Kortare, kanske?")
+    # The file can be written a moment before the page draws the card (this
+    # failed now and then on a busy machine, 2026-10-23).
+    try:
+        kort.first.wait_for(timeout=5000)
+    except Exception:
+        pass
     ok(kort.count() == 1, f"{pre} the comment shows at its paragraph")
     if not mobil:
         box_t = page.locator(f'.st[data-id="{p1}"] .text').bounding_box()
@@ -687,12 +696,16 @@ import { readFileSync } from 'node:fs';
 const D = await import(process.env.DOK_JS);
 const K = await import(process.env.KAT_JS);
 const ut = {};
+const kat = K.tolkaKatalog(readFileSync(process.env.KAT, 'utf8'));
 for (const [nyckel, fil, slag] of JSON.parse(process.env.FILER)) {
   const t = D.tolka(readFileSync(fil, 'utf8'), slag === 'episod' ? D.SLAG_EPISOD : D.SLAG_FRI);
   const paras = D.justera(t.paras, null);
-  ut[nyckel] = { stycken: paras.length, mekanik: paras.filter((p) => p.typ === 'mekanik').length };
+  const mek = paras.filter((p) => p.typ === 'mekanik');
+  // namnger: Mekanik lines that name a mechanic from the catalogue (the
+  // catalogue is Swedish, so the English episode's triggers name none yet).
+  ut[nyckel] = { stycken: paras.length, mekanik: mek.length, namnger: mek.filter((p) => K.hittaNamn(p.text, kat).length).length };
 }
-ut.katalog = K.tolkaKatalog(readFileSync(process.env.KAT, 'utf8')).mekaniker.length;
+ut.katalog = kat.mekaniker.length;
 process.stdout.write(JSON.stringify(ut));
 """
 
@@ -707,7 +720,7 @@ def idag(b, url: str, rot: Path, skarmar: Path | None) -> None:
     page.on("pageerror", lambda e: fel.append(str(e)))
     G = rot / "projects/motionstory/stories/glimt"
     docs = [("#episod-1", "episod-1.md", "episod"), ("#episod-2", "episod-2.md", "episod"), ("#episod-3", "episod-3.md", "episod"),
-            ("#varlden", "varld.md", "fri"), ("#mekaniker/text", "mekaniker.md", "fri")]
+            ("#episod-1en", "episode-1.md", "episod"), ("#varlden", "varld.md", "fri"), ("#mekaniker/text", "mekaniker.md", "fri")]
     env = {**os.environ, "DOK_JS": (REPO / "rummet" / "dok.js").as_uri(), "KAT_JS": (REPO / "rummet" / "katalog.js").as_uri(),
            "KAT": str(G / "mekaniker.md"), "FILER": json.dumps([[v, str(G / f), slag] for v, f, slag in docs])}
     want = json.loads(subprocess.run(["node", "--input-type=module", "-e", IDAG_JS], capture_output=True, text=True, check=True, env=env).stdout)
@@ -720,9 +733,11 @@ def idag(b, url: str, rot: Path, skarmar: Path | None) -> None:
         hallna = page.locator(".hallen").all_inner_texts()
         ok(not any(t.startswith("Inte sparat") for t in hallna), f"[idag] {f}: no paragraph is marked unsaveable ({hallna[:2]})")
         ok(formen(G / f, episod=slag == "episod")["samma"], f"[idag] {f}: the file reads back as itself")
-        if slag == "episod" and want[vag]["mekanik"]:
+        # The Swedish episodes' triggers name the catalogue's mechanics; the
+        # English one's need only carry marks once they do.
+        if slag == "episod" and want[vag]["namnger" if vag == "#episod-1en" else "mekanik"]:
             marks = page.locator(".ProseMirror .st.mekanik .bricka").count()
-            ok(marks > 0, f"[idag] {f}: its mechanic lines carry verdict marks ({marks} on {want[vag]['mekanik']} lines)")
+            ok(marks > 0, f"[idag] {f}: its mechanic lines carry verdict marks ({marks} on {want[vag]['mekanik']} lines, {want[vag]['namnger']} naming one)")
         if skarmar:
             page.screenshot(path=str(skarmar / f"idag-{f.replace('.md', '')}.png"))
     page.goto(f"{url}/index.html#mekaniker")
@@ -737,10 +752,83 @@ def idag(b, url: str, rot: Path, skarmar: Path | None) -> None:
     ctx.close()
 
 
+def engelska(b, url: str, rot: Path, skarmar: Path | None) -> None:
+    """Episode 1 in English (#episod-1en): its own tab, read and written in
+    episode-1.md with its notes in episod-1en.json, the Swedish episode 1 left
+    alone. At phone size in the sandbox (?rot=prov), wide in the room."""
+    G = rot / "projects/motionstory/stories/glimt"
+    P = rot / "data/glimt-rummet/prov"
+    (P / "manus").mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(G / "episode-1.md", P / "manus" / "episode-1.md")
+    shutil.copyfile(G / "episod-1.md", P / "manus" / "episod-1.md")
+    for storlek, fraga, manus, rum in (("telefon", "?rot=prov", P / "manus", P), ("bred", "", G, rot / "data/glimt-rummet")):
+        mobil = storlek == "telefon"
+        bredd = 390 if mobil else 1440
+        ctx = b.new_context(viewport={"width": bredd, "height": 844 if mobil else 1000},
+                            is_mobile=mobil, has_touch=mobil, device_scale_factor=2 if mobil else 1)
+        ctx.route("**/motionstory/audio/**", route_audio_from(None))
+        page = ctx.new_page()
+        fel: list[str] = []
+        page.on("pageerror", lambda e: fel.append(str(e)))
+        E, SV = manus / "episode-1.md", manus / "episod-1.md"
+        fore, sv = E.read_text(encoding="utf-8"), SV.read_bytes()
+        oppna(page, f"{url}/index.html{fraga}#episod-1", fel)
+        flik = page.locator('.flikar a[data-flik="episod-1en"]')
+        ruta = flik.bounding_box()
+        ok(flik.is_visible() and flik.inner_text().split() == ["Episode", "1", "EN"] and ruta and 0 <= ruta["x"] and ruta["x"] + ruta["width"] <= bredd,
+           f"[engelska] {storlek}: the tab Episode 1 EN is on screen beside Episod 1 ({flik.inner_text()!r}, {ruta})")
+        # On a phone the tab bar was already wider than the screen and scrolls
+        # sideways; the last tab must still be reachable.
+        sist = page.locator('.flikar a[data-flik="mekaniker"]')
+        sist.scroll_into_view_if_needed()
+        ruta = sist.bounding_box()
+        ok(ruta and 0 <= ruta["x"] and ruta["x"] + ruta["width"] <= bredd, f"[engelska] {storlek}: the last tab, Mekaniker, can still be reached ({ruta})")
+        flik.scroll_into_view_if_needed()
+        flik.click()
+        try:
+            page.wait_for_function("() => (document.querySelector('.huvud .under') || {}).textContent === 'Episode 1 (engelska), version 1'", timeout=15000)
+            under = True
+        except Exception:
+            under = False
+        ok(page.evaluate("() => location.hash") == "#episod-1en" and under,
+           f"[engelska] {storlek}: the tab opens #episod-1en, the English episode ({page.locator('.huvud .under').first.text_content()!r})")
+        if not under:
+            ctx.close()
+            continue
+        ok(flik.get_attribute("aria-current") == "page" and page.locator('.flikar a[data-flik="episod-1"]').get_attribute("aria-current") is None,
+           f"[engelska] {storlek}: the English tab is the current one, Episod 1 is not")
+        titel = page.locator(".ProseMirror .st .text").first.text_content()
+        ok(titel == "Keep Going", f"[engelska] {storlek}: the title is Keep Going, under it Episode 1 (engelska), version 1 ({titel!r})")
+        hallna = page.locator(".hallen").all_inner_texts()
+        ok(not any(t.startswith("Inte sparat") for t in hallna), f"[engelska] {storlek}: no paragraph is marked unsaveable ({hallna[:2]})")
+        if skarmar:
+            page.screenshot(path=str(skarmar / f"engelska-{storlek}.png"))
+        # Write in it, as Henric or Liv would.
+        sid, gammal = page.evaluate("""() => { const s = document.querySelector('.ProseMirror .st.replik');
+          return [s.dataset.id, s.querySelector('.text').textContent]; }""")
+        markor(page, sid)
+        page.keyboard.type(f" Typed on the {storlek}.")
+        ny = f"{gammal} Typed on the {storlek}."
+        ok(vanta_sparat(page) and vanta_fil(page, E, lambda t: f"> {ny}" in t), f"[engelska] {storlek}: what is typed is saved into episode-1.md")
+        ut, inn = [r for r in innehall(fore) if r not in innehall(E.read_text(encoding="utf-8"))], [r for r in innehall(E.read_text(encoding="utf-8")) if r not in innehall(fore)]
+        ok(ut == [f"> {gammal}"] and inn == [f"> {ny}"], f"[engelska] {storlek}: exactly that line changed in the file ({ut}, {inn})")
+        ok(not (manus / "episod-1en.md").exists() and SV.read_bytes() == sv and not (rum / "episod-1.json").exists(),
+           f"[engelska] {storlek}: no episod-1en.md was made, the Swedish episode 1 and its notes are untouched")
+        n = notes(rum / "episod-1en.json")
+        ok(n.get("dok") == "1en" and any(h and h[-1].get("text") == ny and h[-1].get("vem") == "henric" for h in n.get("historik", {}).values()),
+           f"[engelska] {storlek}: the history is in episod-1en.json, as Henric's ({list(n)[:4]})")
+        page.reload()
+        page.wait_for_selector(".ProseMirror .st", timeout=15000)
+        page.wait_for_timeout(800)
+        ok(stycke_id(page, ny) is not None, f"[engelska] {storlek}: after a reload the line reads back from the file")
+        ok(not fel, f"[engelska] {storlek}: no errors: {fel[:3]}")
+        ctx.close()
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--skarmar", type=Path, default=None)
-    ap.add_argument("--bara", choices=("telefon", "bred", "tva", "ovriga", "idag"))
+    ap.add_argument("--bara", choices=("telefon", "bred", "tva", "ovriga", "idag", "engelska"))
     a = ap.parse_args()
     if a.skarmar:
         a.skarmar.mkdir(parents=True, exist_ok=True)
@@ -750,10 +838,11 @@ def main() -> int:
                           ("bred", lambda u, r: skrivaren(b, u, r, "bred", a.skarmar)),
                           ("tva", lambda u, r: tva_fonster(b, u, r, a.skarmar)),
                           ("ovriga", lambda u, r: ovriga(b, u, r, a.skarmar)),
-                          ("idag", lambda u, r: idag(b, u, r, a.skarmar))):
+                          ("idag", lambda u, r: idag(b, u, r, a.skarmar)),
+                          ("engelska", lambda u, r: engelska(b, u, r, a.skarmar))):
             if a.bara and a.bara != namn:
                 continue
-            rot, ut = sandbox(idag=namn == "idag")
+            rot, ut = sandbox(idag=namn in ("idag", "engelska"))
             server, url = provserver(rot, ut)
             try:
                 kor(f"{url}/uploads/glimt-rummet", rot)
