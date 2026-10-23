@@ -437,6 +437,54 @@ def main() -> int:
         ok(r.returncode == 2 and "togs inte bort" in r.stderr and f"> {z[2]} (ändrad just nu)" in M.read_text(encoding="utf-8"),
            f"stryk of a paragraph someone just changed: it stands, and the command says so: {r.returncode} {r.stderr[:300]}")
 
+        # Episode 1 in English: --dok 1en is a document of its own. Its text is
+        # episode-1.md (never a new episod-1en.md), its notes episod-1en.json,
+        # in the room and in the sandbox (--prov) alike.
+        engelska = (GLIMT / "episode-1.md").read_text(encoding="utf-8")
+        titel = engelska.split("\n", 1)[0].removeprefix("# Glimt, episode 1: ")
+        sv_fore = M.read_text(encoding="utf-8")
+        pmanus = rot / "data" / "glimt-rummet" / "prov" / "manus"
+        pmanus.mkdir(parents=True, exist_ok=True)
+        for mapp in (glimt, pmanus):
+            (mapp / "episode-1.md").write_text(engelska, encoding="utf-8")
+        for flagga, mapp, anteckn in (([], glimt, rot / "data" / "glimt-rummet"), (["--prov"], pmanus, rot / "data" / "glimt-rummet" / "prov")):
+            vad = "prov" if flagga else "skarp"
+            E = mapp / "episode-1.md"
+            N = anteckn / "episod-1en.json"
+            r = kor(rot, *flagga, "rader", "--dok", "1en")
+            alla = [ln.split(None, 2) for ln in r.stdout.splitlines() if ln.startswith("  ") and len(ln.split(None, 2)) == 3]
+            ok(r.returncode == 0 and alla and alla[0][1] == "rubrik" and alla[0][2] == titel,
+               f"en {vad}: rader --dok 1en lists the English episode, its title first: {r.stderr[:200]} {alla[:1]}")
+            r = kor(rot, *flagga, "rader", "--dok", "1en", "--scen", "1")
+            en = [ln.split(None, 2) for ln in r.stdout.splitlines() if ln.startswith("  ") and len(ln.split(None, 2)) == 3]
+            enr = next((x for x in en if x[1] == "replik"), None)
+            ok(r.returncode == 0 and "## scen 1" in r.stdout and en[0][1] == "scen" and enr and f"> {enr[2]}" in engelska,
+               f"en {vad}: rader --dok 1en --scen 1 gives the scene's paragraphs from episode-1.md: {r.stderr[:200]} {en[:2]}")
+            ok(E.read_text(encoding="utf-8") == engelska and not N.exists(), f"en {vad}: reading writes nothing")
+            if not enr:
+                continue
+            r = kor(rot, *flagga, "kommentera", "--dok", "1en", "--stycke", enr[0], "--text", "Shorter pause here?")
+            k = (json.loads(N.read_text(encoding="utf-8"))["kommentarer"] if N.exists() else [{}])[-1]
+            ok(r.returncode == 0 and k.get("skrev") == "demi" and k.get("stycke") == enr[0] and k.get("galde") == enr[2],
+               f"en {vad}: a comment on 1en goes into episod-1en.json, as Demi's: {r.stderr[:200]} {k}")
+            r = kor(rot, *flagga, "andra", "--dok", "1en", "--stycke", enr[0], "--text", f"{enr[2]} (Demi)")
+            t = E.read_text(encoding="utf-8")
+            ut, inn = skillnad(engelska, t)
+            ok(r.returncode == 0 and ut == [f"> {enr[2]}"] and inn == [f"> {enr[2]} (Demi)"],
+               f"en {vad}: andra --dok 1en changes that one line in episode-1.md: {r.stderr[:200]} {ut} {inn}")
+            ok(not (mapp / "episod-1en.md").exists() and not (mapp / "episod-1en.json").exists(), f"en {vad}: no episod-1en.md or recordings file was made")
+            h = (json.loads(N.read_text(encoding="utf-8"))["historik"].get(enr[0]) or [{}])[-1]
+            ok(h.get("text") == f"{enr[2]} (Demi)" and h.get("vem") == "demi", f"en {vad}: the history in episod-1en.json has it, as Demi's: {h}")
+        ok(M.read_text(encoding="utf-8") == sv_fore, "en: the Swedish episode 1 is untouched by all of it")
+        for skarp, bas in ((False, rot / "data" / "glimt-rummet"), (True, rot / "data" / "glimt-rummet" / "prov")):
+            sti, _ = R.vagar(rot, skarp)
+            mapp = bas / "manus" if skarp else glimt
+            ok([sti(p) for p in ("manus:1en", "ljud:1en", "rum:1en", "grund:1en", "manus:1", "ljud:1")]
+               == [mapp / "episode-1.md", mapp / "episode-1.json", bas / "episod-1en.json", bas / "grund" / "episod-1en.json", mapp / "episod-1.md", mapp / "episod-1.json"],
+               f"en: rummet.py names the same places as rummet/data.js ({'prov' if skarp else 'skarp'})")
+        r = kor(rot, "rader", "--dok", "1sv")
+        ok(r.returncode == 2 and "Okänt dokument" in r.stderr and "1en" in r.stderr, f"an unknown document is refused, and the answer names 1en: {r.stderr[:200]}")
+
         # The file still reads back as itself.
         js = "import { readFileSync } from 'node:fs'; const D = await import(process.argv[1]); const t = readFileSync(process.argv[2], 'utf8'); const x = D.tolka(t, D.SLAG_EPISOD); process.stdout.write(String(D.skriv({ paras: D.justera(x.paras, null), slut: x.slut }) === t));"
         r = subprocess.run(["node", "--input-type=module", "-e", js, (REPO / "rummet" / "dok.js").as_uri(), str(M)], capture_output=True, text=True, check=False)

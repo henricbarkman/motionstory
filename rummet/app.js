@@ -3,7 +3,7 @@
 // writes with the version it read. Everything the page draws is built from
 // elements and text nodes, so a person's words never pass through innerHTML.
 
-import { portalAdapter, valjAdapter, EPISODER, PERSONER } from './data.js';
+import { portalAdapter, valjAdapter, EPISODER, PERSONER, episodNamn } from './data.js';
 import { skapaLager, slagFor } from './lager.js';
 import * as D from './dok.js';
 import * as A from './anteckn.js';
@@ -329,8 +329,9 @@ document.addEventListener('mousedown', (e) => {
 });
 
 // --- Routing ---------------------------------------------------------------------------------
-// #episod-1 · #episod-2 · #varlden · #varlden/held · #varlden/sidor ·
-// #varlden/sida/<id> · #mekaniker · #mekaniker/<mekanik> · #mekaniker/text
+// #episod-1 · #episod-2 · #episod-1en (episode 1 in English) · #varlden ·
+// #varlden/held · #varlden/sidor · #varlden/sida/<id> · #mekaniker ·
+// #mekaniker/<mekanik> · #mekaniker/text
 // A document's address can end in /s/<paragraph id> to open at it.
 
 function lasRutt() {
@@ -343,7 +344,7 @@ function lasRutt() {
   let stycke = null;
   const s = /^(.*)\/s\/([A-Za-z0-9_-]+)$/.exec(hash);
   if (s) { hash = s[1]; stycke = s[2]; }
-  let m = /^episod-(\d+)$/.exec(hash);
+  let m = /^episod-(\d+(?:en)?)$/.exec(hash);
   if (m && EPISODER.includes(m[1])) return { vy: 'dok', dok: m[1], flik: `episod-${m[1]}`, stycke };
   if (hash === 'varlden') return { vy: 'dok', dok: 'varld', flik: 'varlden', under: 'varld', stycke };
   if (hash === 'varlden/held') return { vy: 'held', flik: 'varlden', under: 'held' };
@@ -466,7 +467,7 @@ async function visaDokument(r) {
     slag: V.slag,
     kanSkriva: kanSkriva(),
     katalog: S.katalog,
-    etikett: arEpisod ? `Episod ${r.dok}` : r.dok === 'varld' ? 'Världsboken' : r.dok === 'mekaniker' ? 'Mekanikkatalogen' : 'Loresidan',
+    etikett: arEpisod ? episodNamn(r.dok) : r.dok === 'varld' ? 'Världsboken' : r.dok === 'mekaniker' ? 'Mekanikkatalogen' : 'Loresidan',
     nyttId: D.nyttId,
     // The waiting copy in the browser is written at most every quarter
     // second while someone types; on leaving it is written at once.
@@ -592,8 +593,9 @@ function ritaStycke(V, vy, p, info) {
     let under = '';
     if (V.arEpisod) {
       const andra = red.stycken()[1];
-      const m = andra && /^Utkast (\d+)/i.exec(andra.text);
-      under = `Episod ${V.dok}${m ? `, utkast ${m[1]}` : ''}`;
+      // "Utkast 7, ..." in Swedish, "English version 1, ..." in English.
+      const m = andra && /^(?:Utkast|English version) (\d+)/i.exec(andra.text);
+      under = `${episodNamn(V.dok)}${m ? `, ${/^Utkast/i.test(andra.text) ? 'utkast' : 'version'} ${m[1]}` : ''}`;
     } else if (V.dok === 'varld') under = 'Världsboken';
     else if (V.dok === 'mekaniker') under = 'Mekanikerna';
     vy.extra.replaceChildren(under);
@@ -1274,7 +1276,7 @@ function anvandsI(V, k) {
   }
   const lista = V.anvands.get(k.id) || [];
   plats.append(h('h3', null, 'Används i'),
-    lista.length ? h('ul', null, lista.map((x) => h('li', null, h('a', { href: `#episod-${x.nr}/s/${x.stycke}` }, `Episod ${x.nr}, scen ${x.titel}`))))
+    lista.length ? h('ul', null, lista.map((x) => h('li', null, h('a', { href: `#episod-${x.nr}/s/${x.stycke}` }, `${episodNamn(x.nr)}, scen ${x.titel}`))))
       : h('p', { class: 'dov' }, 'Ingen scen nämner den än.'));
   return plats;
 }

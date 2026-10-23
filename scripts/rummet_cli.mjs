@@ -16,7 +16,7 @@
 // asked; that is a rule for Demi, not a lock in the code.
 
 import { createInterface } from 'node:readline';
-import { Krock, EPISODER, DOKUMENT } from '../rummet/data.js';
+import { Krock, EPISODER, DOKUMENT, episodNamn } from '../rummet/data.js';
 import { skapaLager, slagFor } from '../rummet/lager.js';
 import * as D from '../rummet/dok.js';
 import * as A from '../rummet/anteckn.js';
@@ -119,10 +119,10 @@ function utanSida(paras) {
 function dokFor(namn) {
   const d = String(namn || '');
   if (DOKUMENT.includes(d) || /^lore:[A-Za-z0-9_-]+$/.test(d)) return d;
-  throw new CliFel('dok', `Okänt dokument: ${namn}. Använd 1, 2, varld, mekaniker eller lore:<id>.`);
+  throw new CliFel('dok', `Okänt dokument: ${namn}. Använd 1, 2, 3, 1en (episod 1 på engelska), varld, mekaniker eller lore:<id>.`);
 }
 
-const DOKNAMN = (d) => (EPISODER.includes(d) ? `episod ${d}` : d === 'varld' ? 'världsboken' : d === 'mekaniker' ? 'mekanikkatalogen' : `loresidan ${d.slice(5)}`);
+const DOKNAMN = (d) => (EPISODER.includes(d) ? episodNamn(d).toLowerCase() : d === 'varld' ? 'världsboken' : d === 'mekaniker' ? 'mekanikkatalogen' : `loresidan ${d.slice(5)}`);
 
 // Where each paragraph stands: in a scene or not, and which.
 function lage(paras, slag) {

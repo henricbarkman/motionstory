@@ -39,10 +39,12 @@ REPO = Path(__file__).resolve().parents[1]
 GA = Path.home() / "generalassistant"
 UT = GA / "data" / "glimt-rummet"
 LIVE = GA / "projects" / "motionstory"
-EPISODER = ("1", "2", "3")
+# 1en is episode 1 in English: its text is episode-1.md, its notes and
+# baseline episod-1en.json (the same documents as rummet/data.js).
+EPISODER = ("1", "2", "3", "1en")
 # The first commit where each document is Demi's own draft.
-START = {"1": "1e54ffc", "2": "1e54ffc", "3": "1e54ffc", "varld": "f0fd543", "mekaniker": "0ca4994"}
-FIL = {"1": "episod-1.md", "2": "episod-2.md", "3": "episod-3.md", "varld": "varld.md", "mekaniker": "mekaniker.md"}
+START = {"1": "1e54ffc", "2": "1e54ffc", "3": "1e54ffc", "1en": "2129737", "varld": "f0fd543", "mekaniker": "0ca4994"}
+FIL = {"1": "episod-1.md", "2": "episod-2.md", "3": "episod-3.md", "1en": "episode-1.md", "varld": "varld.md", "mekaniker": "mekaniker.md"}
 OM = "Stycken som är Demis utkast. Skrivs av scripts/rummet_grund.py i motionstory, aldrig av rummet."
 
 READ_PARAS = """
@@ -104,9 +106,11 @@ def make_sandbox() -> Path:
     (prov / ".gitignore").write_text("# The room's test sandbox: copies, never committed.\n*\n", encoding="utf-8")
     glimt = LIVE / "stories" / "glimt"
     for ep in EPISODER:
-        shutil.copyfile(glimt / f"episod-{ep}.md", prov / "manus" / f"episod-{ep}.md")
-        if (glimt / f"episod-{ep}.json").exists():
-            shutil.copyfile(glimt / f"episod-{ep}.json", prov / "manus" / f"episod-{ep}.json")
+        md = FIL[ep]
+        ljud = md.removesuffix(".md") + ".json"
+        shutil.copyfile(glimt / md, prov / "manus" / md)
+        if (glimt / ljud).exists():
+            shutil.copyfile(glimt / ljud, prov / "manus" / ljud)
     for f in ("varld.md", "mekaniker.md"):
         shutil.copyfile(glimt / f, prov / "manus" / f)
     held = GA / "projects" / "held" / "universe" / "LORE.md"
@@ -124,7 +128,7 @@ def main() -> int:
     if args.prov:
         prov = make_sandbox()
         if args.nollstall:
-            for name in ("episod-1.json", "episod-2.json", "episod-3.json", "varld.json", "mekaniker.json", "lore.json",
+            for name in (*(f"{namn(dok)}.json" for dok in FIL), "lore.json",
                          "installningar.json", "demi-sett.json", "demi-vantande.json"):
                 (prov / name).unlink(missing_ok=True)
             shutil.rmtree(prov / "grund", ignore_errors=True)

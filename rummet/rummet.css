@@ -50,6 +50,8 @@ button:disabled { cursor: default; }
 }
 .flikar a:hover { color: var(--text); }
 .flikar a[aria-current] { color: var(--text); background: var(--skymning); }
+/* the language of a document in another one than the room's: Episode 1 EN */
+.flikar .sprak { font-size: var(--s-1); color: var(--svag); }
 .lage { margin-left: auto; display: flex; align-items: center; gap: 1rem; font-size: var(--s-1); color: var(--svag); white-space: nowrap; }
 .lage-text.fel { color: var(--varm); }
 .lage-text.fel button { text-decoration: underline 1px; text-underline-offset: 0.2em; }

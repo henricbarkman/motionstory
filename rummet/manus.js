@@ -4,7 +4,7 @@
 // every line the room did not change comes back byte for byte.
 //
 // The format, as scripts/manus_sida.py reads it:
-//   # Glimt, episod N: Titel
+//   # Glimt, episod N: Titel     (in English: # Glimt, episode N: Title)
 //   notes ... --- ... scenes ... --- ... appendix
 //   ## N. Titel               a scene
 //   *Trigger: ...*            when the scene opens (mechanics, read-only here)
@@ -25,7 +25,7 @@ export class ManusFel extends Error {
   }
 }
 
-const RE_TITEL = /^# Glimt, episod (\d+): (.+)$/;
+const RE_TITEL = /^# Glimt, episode? (\d+): (.+)$/;
 const RE_SCEN = /^## (\d+)\. (.+)$/;
 const RE_ETIKETT = /^\*([^*]+:)\* (.*)$/;
 const RE_VARIANT = /^\[([^\]]+)\] (.*)$/;

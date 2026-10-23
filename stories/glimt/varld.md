@@ -127,6 +127,14 @@ Inte med: att du styr en robot i hennes värld, och att tiden bara går när du 
 
 *Förslag:* appen är själv spårningen. Företaget följer arbetarna på hur de rör sig, appen följer vandraren på samma sätt, och just den spårningen är det som döljer henne. Medskyldig och befriande i samma steg, aldrig utsagt. (LORE: vi är alla "complicit".)
 
+### Namnen
+
+**Beslut 23/10:** Vega kallar vandraren Shape, inte Vandraren. Namnet ska passa den som går lika väl som den som springer, och det är hennes eget ord för det hon ser. Hon har sett skepnaden i kanten av sin värld många gånger förut, men det här är första gången den tar kontakt. Gäller från den engelska versionen; den svenska behåller Vandraren tills manuset är översatt.
+
+*Förslag 23/10:* Altair. I den kinesiska och japanska sagan är Vega en vävarflicka, skild från sin älskade, stjärnan Altair, av Vintergatan. De ser varandra men når inte fram, utom en natt om året då skator bygger en bro åt dem. Namnen kommer från arabiskan: Vega av 'örnen som landar', Altair 'örnen som flyger', den ena stilla, den andra i rörelse. Shape nu, och något som ekar Altair senare: kanske rebellernas namn på vandraren, för de har parat ihop vandraren med Vega, och det vet Vega inte än. Vandraren kan höra dem använda namnet innan hon vet om det (du hör hennes värld, hon hör aldrig din). Aldrig utsagt: Altair står mitt emot Vega på himlen för den som letar.
+
+*Förslag 23/10:* vävaren. Vega väver ihop ett uppror ('väva ränker' är att smida planer). Vävare protesterade när deras arbete togs över av maskiner, och målet är solidaritet mellan arbetarna och AI. Kopplingar som håller: Jacquardvävstolen styrdes av hålkort, som Babbage lånade till sin räknemaskin, och Ada Lovelace skrev 1843 att maskinen 'väver algebraiska mönster precis som Jacquardvävstolen väver blommor och blad'. Programmering föddes ur vävning, och låten heter The Code. Ludditerna, textilarbetare, slog sönder maskiner men protesterade mot hur ägarna använde dem för att pressa lönerna, inte mot tekniken. Sidenvävarna i Lyon gjorde uppror 1831 och 1834, i staden där jacquardvävstolarna stod. Tanken: vävaren och AI:n har samma släktträd, samma hålkort, och båda ägs av någon annan. Då kan solidariteten upptäckas i stället för förklaras.
+
 ## Slutet och vägen dit
 
 **Beslut 7/10:** arbetarna bryter sig fria på något sätt. Vandraren kan till sist prata direkt med Vega, i mikrofonen. Kopplingen växer stegvis, från svag och enkel till avancerad, allteftersom hon tar sig in i systemen. Mellan start och slut ryms många episoder.

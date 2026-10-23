@@ -811,7 +811,7 @@ export function skapaLager(adapter0, {
     return p.id;
   }
 
-  // An open document. dok: '1', '2', 'varld', 'mekaniker' or 'lore:<id>'.
+  // An open document. dok: '1', '2', '1en', 'varld', 'mekaniker' or 'lore:<id>'.
   async function dokument(dok, { ritad } = {}) {
     const p = adapter.kanSkriva ? await vem() : null;
     const kalla = dok.startsWith('lore:') ? loreKalla(adapter, dok.slice(5)) : filKalla(adapter, dok);
