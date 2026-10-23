@@ -395,4 +395,5 @@ Not built now. The app, the Swedish manuscript and the tests stay as they are un
 - **Asides** (spoken lower, faster, turned away): the three opening lines, "What? That can't be right...", "Ask something real this time", "Three metres...", "Up. Up, up.", and "You hear me." at the end of the opening.
 - **Variant names** in this manuscript are English (`[light]`, `[walking]`, `[bridge]`...); the app's keys are Swedish (`[ljust]`, `[gång]`, `[bro]`...). Map or rename in the rebuild.
 - **The voices:** chosen by Henric from the samples (23/10). Vega's Swedish voice is one of the candidates, beside British and American ones. The earpiece is a soft, steady man's voice in English (Karin stays in Swedish), rendered at stability 1.0 without tags as today, and the samples let Henric hear it with and without the earpiece filter in `glimt/herside.js`.
+- **The pause markers** ("(pause about 2 s; was ...)") are directions for the build, not text: they never go to the voice when the lines are rendered.
 - **Lines outside this manuscript** need English too: the sensor guard ("Wait. I can't feel your steps any more."), the start screen and the app's other text.
