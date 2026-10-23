@@ -12,6 +12,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { Walk, buzzReading, savedSensor, savedOrient } from '../glimt/engine.js';
 import { labHelpers } from '../glimt/lab.js';
+import { going } from '../glimt/episod1.js';
 import { makePocketPhone, hopAt } from './sim_pocket.mjs';
 
 // Her knocks as these walks were buzzed (v18-v19): 180 ms on, 320 off. The
@@ -48,7 +49,8 @@ function replay(file, { buzzes = [], pattern = knockPattern, splice = null } = {
       while (got.length < overs.length && buzzes[got.length].counted <= next) {
         got.push(walk.knocks.countBetween(overs[got.length], next));
       }
-      bands.push({ t: next, band: s.band });
+      bands.push({ t: next, band: s.band, moving: s.moving, walking: s.moving && s.movingFor >= 1.5, going: going(s),
+        quick: s.paceSource === 'steps' && s.t - s.lastStepAt < 0.8 && s.lastStepAt - s.prevStepAt < 0.8 && s.prevStepAt - s.prev2StepAt < 0.8 });
       if (s.paceSource === 'steps' && s.band === 'walk') cadences.push(s.cadence);
       if (s.lastDoubleKnockAt > last) { last = s.lastDoubleKnockAt; doubles.push(last); }
       next = Math.round((next + 0.25) * 1000) / 1000;
@@ -338,6 +340,28 @@ function replay(file, { buzzes = [], pattern = knockPattern, splice = null } = {
     const top = walk.jumps.falls.reduce((a, f) => Math.max(a, f.air), 0);
     check(walk.jumps.count === 0, `${file}: no jump (longest fall ${Math.round(top * 1000)} ms)`);
   }
+}
+
+// Going again (episode 1, version 39): after a yes she says gå only to a
+// walker who has not set off. Three quick steps tell her sooner than the
+// band, but never against it: standing in Labb 2 on 1/10 (from about 5:00),
+// his phone's bumps came 0.70 and 0.30 s apart at 5:20, and the band said
+// still. On a real start, Knacket gående 9/10 at about 0:28, she knows it
+// before the band calls it walking.
+{
+  const files = readdirSync(new URL('./recordings/', import.meta.url)).filter(f => f.endsWith('.json')).sort();
+  for (const file of files) {
+    const { bands } = replay(file);
+    const wrong = bands.filter(b => b.going && !b.moving);
+    check(wrong.length === 0, `${file}: never going while the band says still (${wrong.map(b => b.t).join(', ') || 'none'})`);
+  }
+  const { bands } = replay('labb2-2026-10-01.json');
+  const at520 = bands.filter(b => b.t >= 319 && b.t <= 321.5);
+  check(at520.some(b => b.quick && !b.moving), 'standing at 5:20 in Labb 2, three bumps come as quick as steps, so the next check measures something');
+  check(!at520.some(b => b.going), 'and she does not take it for going');
+  const { bands: start } = replay('knackgang-2026-10-09.json');
+  const first = key => (start.find(b => b.t >= 25 && b[key]) || {}).t;
+  check(first('walking') - first('going') >= 1, `setting off in Knacket gående, going comes before walking (${first('going')} s, ${first('walking')} s)`);
 }
 
 // Two hops put into his real walking pocket (Knacket gående 9/10, walking

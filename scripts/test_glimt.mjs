@@ -310,7 +310,8 @@ const out = (speed = 1.4, turn = 330) => t => ({ speed: t < 5 ? 0 : speed, headi
 // `[when, after]` ends a stop that is going on, `after` seconds from the
 // line's 'start' or 'end'. `skips`: log lines this walker never reaches.
 // `known`: a failure found and not yet fixed, said every run. It fails the
-// suite once the walker passes, so the mark comes off with the fix.
+// suite once the walker passes, so the mark comes off with the fix, and
+// always when the episode throws, hangs or skips a scene.
 const EPISODE_WALKERS = {
   // Never stops, not even at the end: every no-branch, and the end on the clock.
   never: {
@@ -981,8 +982,11 @@ async function episodeMain(onlyProfile) {
     const problems = episodeProblems(name, run);
     if (run.nearlyBack) nearlyBack++;
     if (!run.ended) problems.unshift('did not end');
+    // A known walker still has to run the episode to its end: a crash or a
+    // hang is never the known finding.
     const known = EPISODE_WALKERS[name].known;
-    if (known) {
+    const broken = problems.filter(x => x === 'did not end' || x === 'the script threw' || x.startsWith('reached '));
+    if (known && !broken.length) {
       if (!problems.length) failures++;
       console.log(problems.length ? `KNOWN: ${known} (${problems.join('; ')})` : `FAIL: passes now, take away its known (${known})`);
       continue;
