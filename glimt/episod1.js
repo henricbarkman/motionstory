@@ -74,6 +74,18 @@ const stopped = s => !s.moving && s.stillFor >= sure(s);
 // before her window closed is her answer even when it shows after it.
 const seenLate = s => s.paceSource === 'steps' ? 2.5 : 4;
 const walking = s => s.moving && s.movingFor >= 1.5;
+// Going again, by the feet: three steps in a row at a gait's pace, just now.
+// The band takes a couple of seconds to call it walking, and a walker who
+// stood two and a half seconds for a yes is often off again by the time she
+// has seen it (Henric's walk 23/10: "Gå igen" to someone already going). Two
+// steps are not enough: a phone handled by someone standing bumps about
+// once a second, and two bumps read as steps. On that walk his first steps
+// after standing came 0.42-0.77 s apart, and the phone turned over in his
+// hand during the credits 0.82-0.93 s: hence 0.8. A slower walker falls back
+// on `walking`, as before.
+const STRIDE = 0.8;
+const going = s => walking(s) || (s.paceSource === 'steps' && s.t - s.lastStepAt < STRIDE
+  && s.lastStepAt - s.prevStepAt < STRIDE && s.prevStepAt - s.prev2StepAt < STRIDE);
 // A stop too short for the band. The feet call a walker still two seconds
 // after the last step and sure() wants one more, so a walker who stopped for
 // two seconds when she asked, and walked on, was a no (Henric's walk 21/10).
@@ -250,9 +262,9 @@ export async function runEpisode1(ctx) {
   // Through the veil the word is all that carries, so each go line ends on
   // "gå", and a walker still standing four seconds on hears it once more.
   async function goOn(go) {
-    if (await ctx.until(walking, { timeout: 1.5 })) return;
+    if (await ctx.until(going, { timeout: 1.5 })) return;
     if (go) await ctx.play(go);
-    if (await ctx.until(walking, { timeout: 4 })) return;
+    if (await ctx.until(going, { timeout: 4 })) return;
     await ctx.play('x-ga-igen');
     await ctx.until(walking, { timeout: 10 });
   }

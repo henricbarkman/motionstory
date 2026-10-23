@@ -200,14 +200,15 @@ function simulate(chapterNo, name, variant) {
         steps = false, handling = false, quietAfter = null } = p;
       if (forcedStop && t >= forcedStop.from && t < forcedStop.to) speed = 0;
       // The accelerometer at 50 Hz over the quarter second up to this tick.
-      // `handling`: while standing, the phone is bumped every 0.8-1.6 s.
+      // `handling`: while standing, the phone is bumped every 0.95-1.75 s, or,
+      // given a list of gaps, at those gaps in turn.
       // `quietAfter`: from then on the steps barely reach the sensor.
       if (steps && !NO_STEPS) {
         for (let u = t - 0.24; u <= t + 1e-9; u += 0.02) {
           let m = simulatedMagnitude(u, speed);
           if (quietAfter !== null && u >= quietAfter) m = 9.81 + (m - 9.81) * 0.2;
           if (handling && speed === 0) {
-            if (u >= nextBump + 0.15) nextBump = u + 0.8 + Math.random() * 0.8;
+            if (u >= nextBump + 0.15) nextBump = nextHandlingBump(handling, u);
             if (u >= nextBump) m += 1.6;
           }
           walk.motion(u, m);
@@ -278,6 +279,18 @@ const E_CREDITS = (EPISODE.credits && EPISODE.credits.seconds) || 0;
 // `from` to `to` seconds after the line's 'start' or 'end'. A list of them
 // for more than one stop.
 const ANSWER = ['end', 2, 12];
+// Handling the phone while standing, measured: the step detector's steps
+// during the credits of Henric's walk 23/10 (version 38), phone turned over
+// and back with the walker standing (gps 0.3 km/h). Faster and more uneven
+// than the random bumps, and the reason "going" asks for three steps under
+// 0.8 s: his real first steps after standing came 0.42-0.77 s apart.
+const HANDLED_2310 = [0.93, 0.57, 0.88, 0.50, 0.82, 0.62, 0.68, 0.93, 0.58, 1.32, 0.38, 0.92];
+let bumpIndex = 0;
+function nextHandlingBump(handling, u) {
+  if (!Array.isArray(handling)) return u + 0.8 + Math.random() * 0.8;
+  const gap = handling[bumpIndex++ % handling.length];
+  return u - 0.15 + gap;
+}
 // s after her first plea that the hesitating walker walks again: the phone
 // sees the move before her second plea, not yet as walking. GPS takes about
 // two and a half seconds to see a walker move. Measured 20/10: the episode
@@ -426,6 +439,15 @@ const EPISODE_WALKERS = {
     has: ['s0-yes1-a', 's4-yes'], not: ['s0-no1'],
     lamps: 0, memory: { svarade: true, misstanke: false },
   },
+  // Henric's walk 23/10 (version 38): stops about a second after the question
+  // for two and a half seconds, long enough for the feet to call it still,
+  // and walks on before the band is sure. The step gap is the yes, and he is
+  // walking when she hears it: no "gå" for someone already going.
+  'walks-on': {
+    walk: t => ({ ...out()(t), steps: true }), stops: { 's0-ask1': ['end', 1.0, 3.5], 's0-yes1-b': ['end', 1.0, 3.5], 's1-q2': ['end', 1.0, 3.5], ...END_STOP },
+    has: ['s0-yes1-a', 's0-yes2', 's1-q2-yes'], not: ['s0-no1', 's0-go1', 's0-go2', 's1-go', 'x-ga-igen'],
+    lamps: 0, memory: { svarade: true, misstanke: false },
+  },
   // Stops for a moment and walks on, a second and a half on the feet, at each
   // question. Henric's walk 21/10 heard a no: the band needs three seconds.
   brief: {
@@ -556,7 +578,9 @@ const EPISODE_WALKERS = {
   // seconds, a wandering speed, and the feet deciding moving or still.
   field: {
     walk: t => ({ ...out()(t), ...FIELD_2, handling: true }), stops: { 's0-ask1': ANSWER, 's0-yes1-b': ANSWER, 's2-ask': ANSWER, ...END_STOP },
-    has: ['s0-yes1-a', 's0-yes2', 'x-avvikelse', 's2-lamp-mine', 's2-lamp-1', 's4-yes'], not: ['s2-lamp-2', 's4-lamp-2'],
+    // Standing for ten seconds with the phone handled, so she says gå: the
+    // bumps are no steps to her.
+    has: ['s0-yes1-a', 's0-yes2', 'x-avvikelse', 's2-lamp-mine', 's2-lamp-1', 's4-yes', 's0-go1', 's0-go2'], not: ['s2-lamp-2', 's4-lamp-2'],
     lamps: 1, memory: { svarade: true, misstanke: false },
   },
   // Stops among the trees, hears her plead, and walks again a moment before
@@ -703,7 +727,7 @@ function simulateEpisode(name) {
         for (let u = t - 0.24; u <= t + 1e-9; u += 0.02) {
           let m = simulatedMagnitude(u, speed);
           if (handling && speed === 0) {
-            if (u >= nextBump + 0.15) nextBump = u + 0.8 + Math.random() * 0.8;
+            if (u >= nextBump + 0.15) nextBump = nextHandlingBump(handling, u);
             if (u >= nextBump) m += 1.6;
           }
           walk.motion(u, m);

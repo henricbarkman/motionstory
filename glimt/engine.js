@@ -277,6 +277,7 @@ export class Steps {
     this.times = [];             // step times, last ten seconds
     this.lastStepAt = -Infinity;
     this.prevStepAt = -Infinity;  // the step before it: the true gap, however seldom it is read
+    this.prev2StepAt = -Infinity; // and the one before that: three in a row is a gait, two can be a bump
     this.resetAt = -Infinity;     // when the sensor last came back after a silence
     this.lastT = null;
     this.samples = 0;
@@ -324,6 +325,7 @@ export class Steps {
 
   _step(t) {
     this.times.push(t);
+    this.prev2StepAt = this.prevStepAt;
     this.prevStepAt = this.lastStepAt;
     this.lastStepAt = t;
     while (this.times.length && this.times[0] < t - 10) this.times.shift();
@@ -1596,6 +1598,7 @@ export class Walk {
       heading: headingOf(this.track, t),
       lastStepAt: this.steps.lastStepAt,
       prevStepAt: this.steps.prevStepAt,
+      prev2StepAt: this.steps.prev2StepAt,
       sensorResetAt: this.steps.resetAt,
       stepsTrusted: this.steps.trusted,
       // The sensor has answered at some point this walk, and is answering
