@@ -39,7 +39,7 @@ Grunden. Nästan allt annat bygger på att telefonen vet vilket av de tre du gö
 **Du gör:** vad du vill.
 **I berättelsen:** det Vega ser av dig. Varianterna `[gång]` och `[löpning]` väljer replik efter det.
 **Omdöme:** Håller. Löpning räknas från lugn joggfart.
-**Tänk på:** att stå och skruva på sig, eller ta upp telefonen, kan läsas som en sekunds löpning. Bygg inget på en enda sekund.
+**Tänk på:** att stå och skruva på sig, eller ta upp telefonen, kan läsas som en sekunds löpning, och telefonen i handen som gång i några sekunder i taget (förtexterna 23/10). Bygg inget på en enda sekund.
 
 ### Kontakten
 **Du gör:** går, så hörs hon klart. Står du still blir rösten dov och avlägsen direkt, och klar igen så fort du går.
@@ -75,7 +75,7 @@ Ett stopp är det tydligaste vandraren kan säga.
 ### Stanna för ja
 **Du gör:** stannar för ja och står kvar tills hon säger gå, går vidare för nej.
 **I berättelsen:** ett samtal utan ord från dig. Frågorna kan gå från praktiska till personliga.
-**Omdöme:** Delvis, gående. På stegen blev ja, ja, nej rätt alla tre och kändes i tid (8/10), med "stå kvar tills jag säger gå". I episod 1 (version 37, 21/10) stannade Henric kort och hörde ett nej. Version 38 ber om att stå kvar och läser ett kort stopp på stegen också; inte gången än.
+**Omdöme:** Delvis, gående. På stegen blev ja, ja, nej rätt alla tre och kändes i tid (8/10), med "stå kvar tills jag säger gå". I episod 1 (version 37, 21/10) stannade Henric kort och hörde ett nej. I version 38 (23/10) lästes båda ja i starten rätt, det ena som ett kort stopp på stegen, men hon sa gå till honom när han redan gick igen. Version 39 säger gå bara till den som står kvar; inte gången än.
 **Tänk på:** ett ja hörs ungefär tre sekunder efter att vandraren stannat (två för att märka stoppet, en att stå), så be vandraren stå kvar tills hon säger gå, och låt henne säga det. Ett nej hörs när vandraren gått vidare i tio sekunder efter frågan (version 26, Henrics val 8/10; på gps tjugo). Står vandraren redan still när hon frågar, vid ett rödljus till exempel, är det inget svar: hon säger det och frågar igen när vandraren går. Ge henne något att säga medan hon väntar. Ett nej är också ett svar som ska ha en gren.
 
 ### Hopp
