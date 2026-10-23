@@ -400,5 +400,20 @@ function replay(file, { buzzes = [], pattern = knockPattern, splice = null } = {
   check(!doubles.some(d => d > 36 && d < 52), `and no landing is a double knock (${fmt(doubles.filter(d => d > 36 && d < 52))})`);
 }
 
+// The repo is public, so a walk goes in here only with its positions zeroed:
+// north and east 0 in every fix, and nothing anywhere named like a
+// coordinate. A walk added as a test case without it fails here, not on Pages.
+{
+  const coordKey = /^(lat|lon|lng|latitude|longitude|coords?|position)$/i;
+  const keysIn = x => x && typeof x === 'object'
+    ? Object.entries(x).flatMap(([k, v]) => [...(Array.isArray(x) ? [] : [k]), ...keysIn(v)]) : [];
+  for (const file of readdirSync(new URL('./recordings/', import.meta.url)).filter(f => f.endsWith('.json')).sort()) {
+    const rec = JSON.parse(readFileSync(new URL(`./recordings/${file}`, import.meta.url), 'utf8'));
+    const placed = (rec.fixes || []).filter(([, north, east]) => north !== 0 || east !== 0);
+    const named = [...new Set(keysIn(rec).filter(k => coordKey.test(k)))];
+    check(!placed.length && !named.length, `${file}: no positions (${placed.length} fixes placed, keys ${named.join(', ') || 'none'})`);
+  }
+}
+
 if (failures) { console.log(`\n${failures} failed`); process.exit(1); }
 console.log('\nall recordings ok');

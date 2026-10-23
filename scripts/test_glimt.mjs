@@ -595,10 +595,12 @@ const EPISODE_WALKERS = {
   // `known`: it fails, in version 38 as in 39, and not on "going". The band
   // counts any three steps at 70 a minute or more as walking, and these
   // bumps come at 75: a stop with the phone in hand is never seen, so every
-  // question is a no and the lamp never lights. On the walk itself he did
-  // not handle the phone at the questions, only in the credits, where the
-  // band called him walking for a moment (2:31). Left standing until the
-  // band can tell bumps from a gait.
+  // question is a no and the lamp never lights. That is the simulation's
+  // finding, not the field's: the gaps repeat evenly here, so the band never
+  // settles. In the real credits it went back and forth, still 2:23-2:29.5
+  // and 2:36.5-2:39.5, moving in between, so a stop there would likely have
+  // been seen. On the walk he did not handle the phone at the questions.
+  // Left standing until the band can tell bumps from a gait.
   handled: {
     walk: t => ({ ...out()(t), ...FIELD_2, handling: HANDLED_2310 }), stops: { 's0-ask1': ANSWER, 's0-yes1-b': ANSWER, 's2-ask': ANSWER, ...END_STOP },
     has: ['s0-yes1-a', 's0-yes2', 'x-avvikelse', 's2-lamp-mine', 's2-lamp-1', 's4-yes', 's0-go1', 's0-go2'], not: ['s2-lamp-2', 's4-lamp-2'],
