@@ -73,7 +73,7 @@ const stopped = s => !s.moving && s.stillFor >= sure(s);
 // last step, GPS a fix or two after the speed drops. A stop that began
 // before her window closed is her answer even when it shows after it.
 const seenLate = s => s.paceSource === 'steps' ? 2.5 : 4;
-const walking = s => s.moving && s.movingFor >= 1.5;
+export const walking = s => s.moving && s.movingFor >= 1.5;
 // Going again, by the feet: the band says moving, and the last three steps
 // came at a gait's pace, just now. The band wants a second and a half of
 // moving before it calls it walking, and a walker who stood two and a half
@@ -87,8 +87,9 @@ const walking = s => s.moving && s.movingFor >= 1.5;
 // to the line), and the band said moving on the same tick as the steps did.
 // A slower walker falls back on `walking`, as before.
 const STRIDE = 0.8;
-export const going = s => walking(s) || (s.moving && s.paceSource === 'steps' && s.t - s.lastStepAt < STRIDE
-  && s.lastStepAt - s.prevStepAt < STRIDE && s.prevStepAt - s.prev2StepAt < STRIDE);
+export const quickSteps = s => s.paceSource === 'steps' && s.t - s.lastStepAt < STRIDE
+  && s.lastStepAt - s.prevStepAt < STRIDE && s.prevStepAt - s.prev2StepAt < STRIDE;
+export const going = s => walking(s) || (s.moving && quickSteps(s));
 // s after the yes she listens for the walker going on before she says gå: the
 // yes on the feet comes with the first step after the stop, and two more at
 // up to STRIDE apart then take a second and a half and the tick it shows on.

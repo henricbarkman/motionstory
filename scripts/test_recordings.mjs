@@ -12,7 +12,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { Walk, buzzReading, savedSensor, savedOrient } from '../glimt/engine.js';
 import { labHelpers } from '../glimt/lab.js';
-import { going } from '../glimt/episod1.js';
+import { going, walking, quickSteps } from '../glimt/episod1.js';
 import { makePocketPhone, hopAt } from './sim_pocket.mjs';
 
 // Her knocks as these walks were buzzed (v18-v19): 180 ms on, 320 off. The
@@ -49,8 +49,7 @@ function replay(file, { buzzes = [], pattern = knockPattern, splice = null } = {
       while (got.length < overs.length && buzzes[got.length].counted <= next) {
         got.push(walk.knocks.countBetween(overs[got.length], next));
       }
-      bands.push({ t: next, band: s.band, moving: s.moving, walking: s.moving && s.movingFor >= 1.5, going: going(s),
-        quick: s.paceSource === 'steps' && s.t - s.lastStepAt < 0.8 && s.lastStepAt - s.prevStepAt < 0.8 && s.prevStepAt - s.prev2StepAt < 0.8 });
+      bands.push({ t: next, band: s.band, moving: s.moving, walking: walking(s), going: going(s), quick: quickSteps(s) });
       if (s.paceSource === 'steps' && s.band === 'walk') cadences.push(s.cadence);
       if (s.lastDoubleKnockAt > last) { last = s.lastDoubleKnockAt; doubles.push(last); }
       next = Math.round((next + 0.25) * 1000) / 1000;
@@ -347,7 +346,9 @@ function replay(file, { buzzes = [], pattern = knockPattern, splice = null } = {
 // band, but never against it: standing in Labb 2 on 1/10 (from about 5:00),
 // his phone's bumps came 0.70 and 0.30 s apart at 5:20, and the band said
 // still. On a real start, Knacket gående 9/10 at about 0:28, she knows it
-// before the band calls it walking.
+// before the band calls it walking. The first check only guards the gate:
+// going reads the band itself, so it fails only if the gate is taken away,
+// and 5:20 is where that would show.
 {
   const files = readdirSync(new URL('./recordings/', import.meta.url)).filter(f => f.endsWith('.json')).sort();
   for (const file of files) {
