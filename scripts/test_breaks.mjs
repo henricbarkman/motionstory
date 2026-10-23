@@ -116,6 +116,9 @@ for (const id of goLines) {
   const len = (EPISODE.seconds || {})[id];
   const bad = bs.filter((b, i) => !(b.to - b.from >= BREAK_MIN && b.from > 0 && b.to < len && b.said && (i === 0 || b.from >= bs[i - 1].to)));
   check(bs.length > 0 && !bad.length, `${id}: ${bs.length} pause(s), each ${BREAK_MIN} s or wider, in order, inside its ${len} s`);
+  // A line rendered again has its pauses elsewhere: they must be from this take.
+  const on = (EPISODE.breaksMeasuredOn || {})[id];
+  check(on === len, `${id}: its pauses measured on this take (${on} s, the file ${len} s)`);
 }
 const strays = Object.keys(EPISODE.breaks || {}).filter(id => !goLines.includes(id));
 check(!strays.length, `pauses only on go lines${strays.length ? ` (also ${strays.join(', ')})` : ''}`);

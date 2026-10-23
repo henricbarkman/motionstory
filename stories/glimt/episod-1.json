@@ -412,5 +412,16 @@
         "said": "nej."
       }
     ]
+  },
+  "breaksMeasuredOn": {
+    "x-stod": 4.91,
+    "s0-go1": 2.59,
+    "x-ga-igen": 2.93,
+    "s0-go2": 3.55,
+    "s1-go": 2.43,
+    "s2-count-stop": 2.69,
+    "s2-lamp-plea": 4.36,
+    "s2-lamp-plea2": 5.8,
+    "s4-lamp-1": 1.8
   }
 }

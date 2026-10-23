@@ -19,6 +19,9 @@ in the script (. ! ? …) where the file is silent, the Scribe words on both
 sides of it, and a margin kept clear of the sound at each edge. Episode 1 ends
 a line that asks the walker to go at the next of them once the walker goes.
 A sentence end after the named word with no silence measured is reported.
+Each line's pauses are stamped with the length of the take they were measured
+on ("breaksMeasuredOn"): a line rendered again and measured without --listen
+is reported, for its pauses are where the old take had them.
 
 Usage:
     python3 scripts/check_glimt_audio.py stories/glimt/episod-1.json [--listen [--cached]] [--only s3-3[,s3-4]]
@@ -173,6 +176,7 @@ def main() -> int:
 
     cues = dict(chapter.get("cues", {}))
     found_breaks = dict(chapter.get("breaks", {}))
+    measured_on = dict(chapter.get("breaksMeasuredOn", {}))
     if args.listen:
         from dotenv import load_dotenv
 
@@ -218,6 +222,7 @@ def main() -> int:
             if from_word:
                 found, trouble = breaks(chapter["lines"][line_id], result, silences(audio_dir / f"{line_id}.mp3"), from_word)
                 found_breaks[line_id] = found
+                measured_on[line_id] = lengths[line_id]
                 problems += [f"{line_id}: {t}" for t in trouble]
                 for b in found:
                     print(f"     {'':16} break {b['from']:.2f}-{b['to']:.2f} s after {b['said']!r}")
@@ -228,11 +233,17 @@ def main() -> int:
             if line_id in lengths:
                 print(f"     {line_id:16} {lengths[line_id]:6.2f}s")
 
+    for line_id in found_breaks:
+        if line_id in lengths and measured_on.get(line_id) != lengths[line_id]:
+            problems.append(f"{line_id}: its pauses were measured on a take of {measured_on.get(line_id)} s, "
+                            f"the file is {lengths[line_id]} s: measure them again with --listen")
+
     chapter["seconds"] = {i: lengths[i] for i in chapter["lines"] if i in lengths}
     if cues:
         chapter["cues"] = cues
     if found_breaks:
         chapter["breaks"] = {i: found_breaks[i] for i in chapter["lines"] if i in found_breaks}
+        chapter["breaksMeasuredOn"] = {i: measured_on[i] for i in chapter["breaks"] if i in measured_on}
     args.chapter.write_text(json.dumps(chapter, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     total = sum(chapter["seconds"].values())

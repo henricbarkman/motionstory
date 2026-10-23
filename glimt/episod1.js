@@ -117,10 +117,16 @@ const STRIDE = 0.8;
 export const quickSteps = s => s.paceSource === 'steps' && s.t - s.lastStepAt < STRIDE
   && s.lastStepAt - s.prevStepAt < STRIDE && s.prevStepAt - s.prev2StepAt < STRIDE;
 export const going = s => walking(s) || (s.moving && quickSteps(s));
-// Still standing, as a line that asks the walker to go needs: on the feet, no
-// step since `since`; off them, not going. One step is enough to stop asking:
-// "Där! Ja." is said, "Gå nu, gå." only to someone who still stands (v40).
-const standing = (s, since) => s.paceSource === 'steps' ? !(s.lastStepAt > since) : !going(s);
+// Still standing, as a line that asks the walker to go needs: on the feet, not
+// two steps since `since` at a gait's pace; off them, not going. Two steps
+// are enough to stop asking: "Där! Ja." is said, "Gå nu, gå." only to someone
+// who still stands (v40). One was too few: a phone handled while the walker
+// stands bumps about once a second, and every bump ended her go line, so the
+// walker waiting for "gå" never heard it. Two at under STRIDE cost one step
+// more and pass the random bumps; the measured handling of 23/10 has single
+// gaps that short (0.38-0.68 s), never two in a row, which `going` needs.
+const standing = (s, since) => s.paceSource === 'steps'
+  ? !(s.prevStepAt > since && s.lastStepAt - s.prevStepAt < STRIDE) : !going(s);
 
 export async function runEpisode1(ctx) {
   const side = ctx.side;
@@ -310,7 +316,7 @@ export async function runEpisode1(ctx) {
     let over = false;
     let asked = false;
     const said = ctx.play(id, { unless: going });
-    said.then(() => { over = true; });
+    said.then(() => { over = true; }, () => { over = true; });
     ctx.until(s => {
       if (!over && !asked && !standing(s, since)) asked = ctx.breakOff(id);
       return over || asked;

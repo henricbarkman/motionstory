@@ -549,7 +549,8 @@ async function start() {
       // check_glimt_audio.py), never mid-word; with no pause left it is said
       // to its end. False while `id` is not the line playing, true once done.
       breakOff(id) {
-        if (speaking !== id) return false;
+        // Cut already (stopVoice): nothing left to end, and no pause to name.
+        if (speaking !== id || !mixer.currentVoice) return false;
         const b = mixer.endVoiceAtBreak((chapter.breaks || {})[id]);
         if (b) log(`‖ ${id}: slutar efter "${b.said}" (${b.at.toFixed(2)} s in)`);
         else log(`${id}: ingen paus kvar, sägs till slut`);

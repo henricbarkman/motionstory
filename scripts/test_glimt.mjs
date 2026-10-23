@@ -310,7 +310,9 @@ const out = (speed = 1.4, turn = 330) => t => ({ speed: t < 5 ? 0 : speed, headi
 // lights. `memory`: what episode 2 is told. `breath: false`: the walker goes
 // on at the end, so no breath under the hum. `walksAt`: like `stops`, but
 // `[when, after]` ends a stop that is going on, `after` seconds from the
-// line's 'start' or 'end'. `skips`: log lines this walker never reaches.
+// line's 'start' or 'end'. `bumps`: like `walksAt`, one bump of the phone
+// `after` seconds from the line's 'start' or 'end', as a handled phone gives
+// (v40). `skips`: log lines this walker never reaches.
 // `broke`: lines that end early, at the pause after the words given, for the
 // walker went (v40). `whole`: lines said to their end. `skipped`: lines not
 // said at all, the walker going already. `voiceAfterStop`: at most this long
@@ -480,6 +482,18 @@ const EPISODE_WALKERS = {
     whole: ['s0-go1'], broke: { 's0-go2': 'Där! Ja.' }, voiceAfterStop: 2.0,
     lamps: 1, memory: { svarade: true, misstanke: false },
   },
+  // Stands for her second "gå" and shifts the phone once, 0.8 s into it, then
+  // walks half a second after it: one bump is no walk, so the line is said
+  // to its end. (Until the review of v40 one step ended it, and a walker
+  // handling the phone never heard "Gå nu, gå.")
+  bumped: {
+    walk: t => ({ ...out()(t), steps: true }),
+    stops: { 's0-ask1': ['end', 1.0, 7], 's0-yes1-b': ['end', 1.0, 60], ...END_STOP },
+    walksAt: { 's0-go2': ['end', 0.5] }, bumps: { 's0-go2': ['start', 0.8] },
+    has: ['s0-yes1-a', 's0-yes2', 's0-go1', 's0-go2'], not: ['s0-no1', 'x-ga-igen'],
+    whole: ['s0-go1', 's0-go2'],
+    lamps: 0, memory: { svarade: true, misstanke: false },
+  },
   // Stands a little over a second at each question: the step gap is shorter
   // than FEET_STOP, so it is no answer.
   pause: {
@@ -637,10 +651,11 @@ const EPISODE_WALKERS = {
   field: {
     walk: t => ({ ...out()(t), ...FIELD_2, handling: true }), stops: { 's0-ask1': ANSWER, 's0-yes1-b': ANSWER, 's2-ask': ANSWER, ...END_STOP },
     // Standing for ten seconds with the phone handled, so she says gå: the
-    // bumps are no walk to her. One is a step, though, and since v40 a step
-    // ends a go line at its next pause, so what is said of them depends on
-    // where the bumps fall (checked: never inside a word).
+    // bumps are no walk to her. Since v40 two steps at a gait's pace end a go
+    // line at its next pause, and the bumps never come that close: each go
+    // line is said whole.
     has: ['s0-yes1-a', 's0-yes2', 'x-avvikelse', 's2-lamp-mine', 's2-lamp-1', 's4-yes', 's0-go1', 's0-go2'], not: ['s2-lamp-2', 's4-lamp-2'],
+    whole: ['s0-go1', 's0-go2'],
     lamps: 1, memory: { svarade: true, misstanke: false },
   },
   // The field walker with the bumps fixed (seed 4): while it stands for her,
@@ -756,6 +771,7 @@ function simulateEpisode(name) {
   let ended = false;
   let nextBump = 0;
   bumpIndex = 0;
+  const bumpAt = [];          // single bumps (`bumps`), when they come
 
   const fmt = s => `${String(Math.floor(s / 60)).padStart(2)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
   const react = (id, when) => {
@@ -765,6 +781,8 @@ function simulateEpisode(name) {
     }
     const w = (profile.walksAt || {})[id];
     if (w && w[0] === when) for (const st of stops) if (st.from <= t + w[1] && st.to > t + w[1]) st.to = t + w[1];
+    const bp = (profile.bumps || {})[id];
+    if (bp && bp[0] === when) bumpAt.push(t + bp[1]);
   };
   const sound = (id, mark) => {
     const dur = E_SECONDS[id];
@@ -846,6 +864,7 @@ function simulateEpisode(name) {
             if (u >= nextBump + 0.15) nextBump = nextHandlingBump(handling, u);
             if (u >= nextBump) m += 1.6;
           }
+          if (bumpAt.some(b => u >= b && u < b + 0.15)) m += 1.6;
           walk.motion(u, m);
         }
       }
