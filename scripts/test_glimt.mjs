@@ -280,11 +280,13 @@ const E_CREDITS = (EPISODE.credits && EPISODE.credits.seconds) || 0;
 // for more than one stop.
 const ANSWER = ['end', 2, 12];
 // Handling the phone while standing, measured: the step detector's steps
-// during the credits of Henric's walk 23/10 (version 38), phone turned over
-// and back with the walker standing (gps 0.3 km/h). Faster and more uneven
-// than the random bumps, and the reason "going" asks for three steps under
-// 0.8 s: his real first steps after standing came 0.42-0.77 s apart.
-const HANDLED_2310 = [0.93, 0.57, 0.88, 0.50, 0.82, 0.62, 0.68, 0.93, 0.58, 1.32, 0.38, 0.92];
+// during the credits of Henric's walk 23/10 (version 38), 2:27.7-2:32.5, the
+// phone turned over in his hand with the walker standing (gps 0.2-0.6 km/h).
+// Faster and more uneven than the random bumps. No two gaps in a row under
+// 0.9 s, where his first steps after standing came 0.42-0.77 s apart. (The
+// steps just before, 0.82-0.93 s apart, came while he still walked slowly
+// with the phone in his hand, gps 3.3-3.9 km/h: not handling.)
+const HANDLED_2310 = [0.68, 0.93, 0.58, 1.32, 0.38, 0.92];
 let bumpIndex = 0;
 function nextHandlingBump(handling, u) {
   if (!Array.isArray(handling)) return u + 0.8 + Math.random() * 0.8;
@@ -307,6 +309,8 @@ const out = (speed = 1.4, turn = 330) => t => ({ speed: t < 5 ? 0 : speed, headi
 // on at the end, so no breath under the hum. `walksAt`: like `stops`, but
 // `[when, after]` ends a stop that is going on, `after` seconds from the
 // line's 'start' or 'end'. `skips`: log lines this walker never reaches.
+// `known`: a failure found and not yet fixed, said every run. It fails the
+// suite once the walker passes, so the mark comes off with the fix.
 const EPISODE_WALKERS = {
   // Never stops, not even at the end: every no-branch, and the end on the clock.
   never: {
@@ -583,6 +587,22 @@ const EPISODE_WALKERS = {
     has: ['s0-yes1-a', 's0-yes2', 'x-avvikelse', 's2-lamp-mine', 's2-lamp-1', 's4-yes', 's0-go1', 's0-go2'], not: ['s2-lamp-2', 's4-lamp-2'],
     lamps: 1, memory: { svarade: true, misstanke: false },
   },
+  // The same walker, handling the phone as Henric did during the credits on
+  // 23/10: the bumps come at the measured gaps, faster and more uneven than
+  // the random ones. Standing ten seconds, so she still says gå.
+  // `known`: it fails, in version 38 as in 39, and not on "going". The band
+  // counts any three steps at 70 a minute or more as walking, and these
+  // bumps come at 75: a stop with the phone in hand is never seen, so every
+  // question is a no and the lamp never lights. On the walk itself he did
+  // not handle the phone at the questions, only in the credits, where the
+  // band called him walking for a moment (2:31). Left standing until the
+  // band can tell bumps from a gait.
+  handled: {
+    walk: t => ({ ...out()(t), ...FIELD_2, handling: HANDLED_2310 }), stops: { 's0-ask1': ANSWER, 's0-yes1-b': ANSWER, 's2-ask': ANSWER, ...END_STOP },
+    has: ['s0-yes1-a', 's0-yes2', 'x-avvikelse', 's2-lamp-mine', 's2-lamp-1', 's4-yes', 's0-go1', 's0-go2'], not: ['s2-lamp-2', 's4-lamp-2'],
+    lamps: 1, memory: { svarade: true, misstanke: false },
+    known: 'the band reads the measured handling as a gait, so the stop is never seen',
+  },
   // Stops among the trees, hears her plead, and walks again a moment before
   // she would plead the second time: the phone already sees the walker move,
   // so she does not plead again (v35).
@@ -663,6 +683,7 @@ function simulateEpisode(name) {
   let lat = 59.38, lon = 13.5;
   let ended = false;
   let nextBump = 0;
+  bumpIndex = 0;
 
   const fmt = s => `${String(Math.floor(s / 60)).padStart(2)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
   const react = (id, when) => {
@@ -960,6 +981,12 @@ async function episodeMain(onlyProfile) {
     const problems = episodeProblems(name, run);
     if (run.nearlyBack) nearlyBack++;
     if (!run.ended) problems.unshift('did not end');
+    const known = EPISODE_WALKERS[name].known;
+    if (known) {
+      if (!problems.length) failures++;
+      console.log(problems.length ? `KNOWN: ${known} (${problems.join('; ')})` : `FAIL: passes now, take away its known (${known})`);
+      continue;
+    }
     if (problems.length) failures++;
     console.log(problems.length ? `FAIL: ${problems.join('; ')}` : 'OK: the right branches, the lamp only where it should, half a minute');
   }

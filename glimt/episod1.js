@@ -80,9 +80,10 @@ const walking = s => s.moving && s.movingFor >= 1.5;
 // has seen it (Henric's walk 23/10: "Gå igen" to someone already going). Two
 // steps are not enough: a phone handled by someone standing bumps about
 // once a second, and two bumps read as steps. On that walk his first steps
-// after standing came 0.42-0.77 s apart, and the phone turned over in his
-// hand during the credits 0.82-0.93 s: hence 0.8. A slower walker falls back
-// on `walking`, as before.
+// after standing came 0.42-0.77 s apart; standing in the credits with the
+// phone turning in his hand, never two gaps in a row under 0.9 s. 0.8 takes
+// every one of those first steps and leaves a margin to the handling. A
+// slower walker falls back on `walking`, as before.
 const STRIDE = 0.8;
 const going = s => walking(s) || (s.paceSource === 'steps' && s.t - s.lastStepAt < STRIDE
   && s.lastStepAt - s.prevStepAt < STRIDE && s.prevStepAt - s.prev2StepAt < STRIDE);
