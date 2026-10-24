@@ -45,7 +45,7 @@ Motorn (`glimt/`):
 
 **Kontakt** är den enda mätaren. Rörelse höjer den, stillhet sänker den (om inte en hållscen pågår), dålig GPS-noggrannhet tar den ner till hälften. Den hörs: vid full kontakt är rösten ren och nära, vid noll är den en dov, avlägsen mumling. Samma inspelning, olika filter.
 
-Simulerad genomkörning av båda kapitlen, fyra vandrarprofiler var, och av episod 1 med fyrtioåtta vandrare som svarar på det hon säger (stannar aldrig, stannar på begäran, stannar självmant, springer, står still genom hennes räkning, står redan vid en trottoarkant när hon frågar, sätter sig i tolv minuter och så vidare). För episoden kollas vilka grenar som hörs, att lampan bara tänds där den ska, och att det går en halv minut från hennes sista steg till "trettio". En vandrare med `seed` får samma skakningar och samma gps varje gång:
+Simulerad genomkörning av båda kapitlen, fyra vandrarprofiler var, och av episod 1 med femtiosju vandrare som svarar på det hon säger (stannar aldrig, stannar på begäran, stannar självmant, springer, står still genom hennes räkning, står redan vid en trottoarkant när hon frågar, sätter sig i tolv minuter och så vidare). För episoden kollas vilka grenar som hörs, att lampan bara tänds där den ska, och att det går en halv minut från hennes sista steg till "trettio". En vandrare med `seed` får samma skakningar och samma gps varje gång:
 
 ```bash
 node scripts/test_glimt.mjs            # allt
