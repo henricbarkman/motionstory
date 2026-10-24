@@ -101,6 +101,14 @@ const SENSOR_FRESH = 0.5;   // s: the newest motion sample, at most this old
 const SENSOR_SETTLE = 1;    // s after the sensor is back before the band's still is a stop
 const feetStill = s => s.paceSource === 'steps' && s.t - s.lastStepAt >= FEET_STOP
   && s.t - s.sensorAt < SENSOR_FRESH && !(s.sensorResetAt > s.lastStepAt);
+// A stop the band reports, and not the band starting over: after a page
+// hidden a moment the sensor comes back, the band begins again and calls the
+// walker still until three steps have come. On the feet a stillness that
+// began within SENSOR_SETTLE of that is no stop. v39 heard a yes from it in
+// ask(), and the lamp lit for a walker who never stopped (in 11 of 12 short
+// gaps in her exposed stretches; the feasibility review of v40, 24/10).
+const heldStop = s => stopped(s)
+  && !(s.paceSource === 'steps' && s.t - s.stillFor - s.sensorResetAt < SENSOR_SETTLE);
 // Going again, by the feet: the band says moving, and the last three steps
 // came at a gait's pace, just now. The band wants a second and a half of
 // moving before it calls it walking, and a walker who stood two and a half
@@ -118,13 +126,18 @@ export const quickSteps = s => s.paceSource === 'steps' && s.t - s.lastStepAt < 
   && s.lastStepAt - s.prevStepAt < STRIDE && s.prevStepAt - s.prev2StepAt < STRIDE;
 export const going = s => walking(s) || (s.moving && quickSteps(s));
 // Still standing, as a line that asks the walker to go needs: on the feet, not
-// two steps since `since` at a gait's pace; off them, not going. Two steps
+// two steps since `since` under STRIDE apart; off them, not going. Two steps
 // are enough to stop asking: "Där! Ja." is said, "Gå nu, gå." only to someone
 // who still stands (v40). One was too few: a phone handled while the walker
 // stands bumps about once a second, and every bump ended her go line, so the
-// walker waiting for "gå" never heard it. Two at under STRIDE cost one step
-// more and pass the random bumps; the measured handling of 23/10 has single
-// gaps that short (0.38-0.68 s), never two in a row, which `going` needs.
+// walker waiting for "gå" never heard it. Two cost one step more and pass a
+// single bump and the random ones. They do not pass handling as measured on
+// 23/10 (single gaps of 0.38-0.68 s): a walker turning the phone over while
+// she says gå hears the line end at its pause, and "Gå." again four seconds
+// on (walker `handled-go`). Three steps would pass it, but they come about a
+// second after the first, and the pauses in "Där försvann du." and "Där.
+// Okej." are gone by then (walker `walks-on`). He did not handle the phone at
+// her questions on 23/10; walking off mid-line is the case Henric heard.
 const standing = (s, since) => s.paceSource === 'steps'
   ? !(s.prevStepAt > since && s.lastStepAt - s.prevStepAt < STRIDE) : !going(s);
 
@@ -143,7 +156,7 @@ export async function runEpisode1(ctx) {
   const remember = klar => ctx.remember({ svarade: her.askedFor, misstanke: her.lamp4, klar });
 
   // The gate. A stop lights the lamp only while she is exposed.
-  const lit = s => her.exposed && stopped(s);
+  const lit = s => her.exposed && heldStop(s);
   // Both still for half a minute: the snäcka has had nothing to read. She is
   // never exposed and still at once: `stillSince` is null whenever she walks.
   const resting = s => her.stillSince !== null && her.reserves < RESERVE_MAX &&
@@ -229,8 +242,9 @@ export async function runEpisode1(ctx) {
   // She asks for a stop with line `id`, where she is not exposed. The window
   // opens at `word` in the line (the line's start without one), not at its
   // end: a walker who stops on the word and walks again before she has
-  // finished has answered. It closes ten seconds after the line (twenty on
-  // GPS). With `patience`, a walker who stood there before she asked gets
+  // finished has answered. It closes five seconds after the line on the feet
+  // (askWindow: ten until v40, Henric 8/10; then 23/10, it took too long), and
+  // twenty on GPS. With `patience`, a walker who stood there before she asked gets
   // that long to walk again first.
   // The answer is a stop out of walking: someone waiting at a kerb who shifts
   // their weight makes the phone see a new stop, and that is not one.
@@ -274,12 +288,9 @@ export async function runEpisode1(ctx) {
         inWalk = walking(s);
       }
       if (inWalk && feetStill(s) && s.lastStepAt >= askedAt && s.lastStepAt < closes) yes = true;
-      // Nor, on the feet, is a stillness the band reports as the sensor comes
-      // back: after a page hidden a moment it starts over and calls the
-      // walker still until three steps have come (v39 heard a yes).
+      // Nor is the band starting over as the sensor comes back (heldStop).
       const began = stopBegan(s);
-      if (walked && stopped(s) && began >= askedAt && began < closes + seenLate(s)
-        && !(s.paceSource === 'steps' && began - s.sensorResetAt < SENSOR_SETTLE)) yes = true;
+      if (walked && heldStop(s) && began >= askedAt && began < closes + seenLate(s)) yes = true;
       const walksOn = walking(s) && (s.paceSource === 'steps' ? s.lastStepAt >= closes && quickSteps(s) : s.t >= closes + seenLate(s));
       return yes || (s.t >= closes && walksOn) || s.t >= closes + seenLate(s) + sure(s);
     });
@@ -307,7 +318,7 @@ export async function runEpisode1(ctx) {
   }
   // A line that asks the walker to go (the nine under "breakFrom" in
   // episod-1.json). It is not said to a walker already going, and once the
-  // walker takes a step it ends at its next pause: after the sentence she is
+  // walker takes two steps it ends at its next pause: after the sentence she is
   // in, never inside a word (Henric 23/10: "Att stanna upp om hon märker att
   // jag börjar gå är naturligt, men om ett ord blir avhugget ... så kommer det
   // inte att låta naturligt"). Past its last pause it is said to its end.
@@ -324,9 +335,10 @@ export async function runEpisode1(ctx) {
     return said;
   }
 
-  // She has seen the stop and says so at once with `go`: "Där! Ja." always,
-  // the go itself only to a walker who still stands (goLine). A walker going
-  // on by the time it is due hears her answer clear instead. Through the veil
+  // She has seen the stop and says so at once with `go`, and the go itself
+  // only to a walker who still stands (goLine): "Där! Ja." and then silence
+  // for one who walks off mid-line, nothing for one already going, who hears
+  // her answer clear instead. Through the veil
   // the word is all that carries, so each go line ends on "gå", and a walker
   // still standing four seconds on hears it once more. Until v40 she waited
   // two seconds first (GO_ON), and with the band's three seconds that was
@@ -411,11 +423,12 @@ export async function runEpisode1(ctx) {
     if (await line('s2-2') === 'rest') continue;
     side.lift(true);
     const lastAt = stoodAt + HALF_MINUTE - ctx.cue('s2-3', 'trettio');
-    let why = await hold(s => stopped(s) || s.t >= lastAt - ctx.seconds('s2-count') - COUNT_BREATH);
+    // heldStop: a page hidden a moment while the walker walks is no stop.
+    let why = await hold(s => heldStop(s) || s.t >= lastAt - ctx.seconds('s2-count') - COUNT_BREATH);
     if (why === 'rest') continue;
-    if (!stopped(ctx.state())) {
+    if (!heldStop(ctx.state())) {
       ctx.log('scene 2: she counts');
-      why = await line('s2-count', undefined, stopped);
+      why = await line('s2-count', undefined, heldStop);
       if (why === 'rest') continue;
     }
     if (why !== 'done') {

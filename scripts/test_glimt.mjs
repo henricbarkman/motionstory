@@ -494,6 +494,19 @@ const EPISODE_WALKERS = {
     whole: ['s0-go1', 's0-go2'],
     lamps: 0, memory: { svarade: true, misstanke: false },
   },
+  // As goes-mid, but the walker stands through her second go line and turns
+  // the phone over from its first word, as Henric did in the credits on 23/10
+  // (HANDLED_2310). Two of those bumps come closer than STRIDE: to her that is
+  // two steps, so the line ends after "Där! Ja.". The cost of ending a go line
+  // on two steps, see `standing` in episod1.js.
+  'handled-go': {
+    walk: t => ({ ...out()(t), steps: true }),
+    stops: { 's0-ask1': ['end', 1.0, 7], 's0-yes1-b': ['end', 1.0, 60], ...END_STOP },
+    handlesAt: { 's0-go2': ['start', 0, 8] },
+    has: ['s0-yes1-a', 's0-yes2', 's0-go1', 's0-go2'], not: ['s0-no1'],
+    whole: ['s0-go1'], broke: { 's0-go2': 'Där! Ja.' },
+    lamps: 0, memory: { svarade: true, misstanke: false },
+  },
   // Stands a little over a second at each question: the step gap is shorter
   // than FEET_STOP, so it is no answer.
   pause: {
@@ -506,6 +519,32 @@ const EPISODE_WALKERS = {
   hidden: {
     walk: t => ({ ...out()(t), steps: !(t >= 54.5 && t < 59.5) }), stops: END_STOP,
     has: ['s0-no1', 's0-no2'], not: ['s0-yes1-a', 's0-yes2', 'x-stod'],
+    lamps: 0, memory: { svarade: false, misstanke: false },
+  },
+  // Walks all the way, and the page gets no motion for a moment where a stop
+  // would show: two seconds while she counts, and two as she walks among the
+  // trees. When the sensor comes back the band starts over and calls the
+  // walker still until three steps; that is no stop. Until v40 it lit the lamp
+  // and cut her count short (the feasibility review, 24/10: 11 of 12 such gaps).
+  blinks: {
+    walk: t => ({ ...out()(t), steps: true }), stops: END_STOP,
+    hidesAt: { 's2-count': ['start', 1, 3], 's2-5': ['start', 2, 4] },
+    has: ['s2-count', 's2-ask', 's2-no', 's4-ok'], not: ['s2-count-stop', 's2-lamp-plea', 's2-lamp-1'],
+    lamps: 0, memory: { svarade: false, misstanke: false },
+  },
+  // The same while she waits at the tree for the stop she asked for.
+  'blinks-tree': {
+    walk: t => ({ ...out()(t), steps: true }), stops: END_STOP,
+    hidesAt: { 's2-ask': ['end', 2, 4] },
+    has: ['s2-ask', 's2-no', 's4-ok'], not: ['s2-lamp-mine', 's2-lamp-1'],
+    lamps: 0, memory: { svarade: false, misstanke: false },
+  },
+  // And five seconds as she runs for the gravel in scene 4, where a lamp
+  // would tell episode 2 of a suspicion the walker never caused.
+  'blinks-4': {
+    walk: t => ({ ...out()(t), steps: true }), stops: END_STOP,
+    hidesAt: { 's4-2': ['start', 1, 6] },
+    has: ['s4-ok'], not: ['s4-lamp-1', 's4-lamp-2'],
     lamps: 0, memory: { svarade: false, misstanke: false },
   },
   // Stops for a moment and walks on, a second and a half on the feet, at each
@@ -772,6 +811,8 @@ function simulateEpisode(name) {
   let nextBump = 0;
   bumpIndex = 0;
   const bumpAt = [];          // single bumps (`bumps`), when they come
+  const handles = [];         // {from, to}: the phone handled as measured (`handlesAt`)
+  const hides = [];           // {from, to}: no motion samples, the page hidden (`hidesAt`)
 
   const fmt = s => `${String(Math.floor(s / 60)).padStart(2)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
   const react = (id, when) => {
@@ -783,6 +824,10 @@ function simulateEpisode(name) {
     if (w && w[0] === when) for (const st of stops) if (st.from <= t + w[1] && st.to > t + w[1]) st.to = t + w[1];
     const bp = (profile.bumps || {})[id];
     if (bp && bp[0] === when) bumpAt.push(t + bp[1]);
+    const hd = (profile.handlesAt || {})[id];
+    if (hd && hd[0] === when) handles.push({ from: t + hd[1], to: t + hd[2] });
+    const hi = (profile.hidesAt || {})[id];
+    if (hi && hi[0] === when) hides.push({ from: t + hi[1], to: t + hi[2] });
   };
   const sound = (id, mark) => {
     const dur = E_SECONDS[id];
@@ -857,6 +902,8 @@ function simulateEpisode(name) {
       let { speed, heading, accuracy = 8, every = 1, doppler = true, jitter = 0, phone = null,
         steps = false, handling = false } = profile.walk(t);
       if (stops.some(st => t >= st.from && t < st.to)) speed = 0;
+      if (handles.some(h => t >= h.from && t < h.to)) handling = HANDLED_2310;
+      if (hides.some(h => t >= h.from && t < h.to)) steps = false;
       if (steps && !NO_STEPS) {
         for (let u = t - 0.24; u <= t + 1e-9; u += 0.02) {
           let m = simulatedMagnitude(u, speed);
