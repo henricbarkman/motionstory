@@ -3,7 +3,7 @@
 // as it does in Chrome, a source started twice throws, and every source knows
 // when it stops sounding. Plus a fake clock whose timers the Synth runs on.
 //
-// Only what synth.js and herside.js use is here. It makes no sound and mixes nothing; the
+// Only what synth.js, herside.js and audio.js's Mixer use is here. It makes no sound and mixes nothing; the
 // questions it answers are "what is still playing", "did anything start that
 // should not have", and, once `watching` is set, "did any gain go up after
 // that" (`raised`). `broken` makes every AudioParam call throw, as an
@@ -127,6 +127,7 @@ export class FakeAudioContext {
   createStereoPanner() { const n = new Node(this); n.pan = new Param(0, this); return n; }
   createBiquadFilter() { const n = new Node(this); n.type = 'lowpass'; n.frequency = new Param(350, this); n.Q = new Param(1, this); return n; }
   createDelay() { const n = new Node(this); n.delayTime = new Param(0, this); return n; }
+  createWaveShaper() { const n = new Node(this); n.curve = null; n.oversample = 'none'; return n; }
   createBufferSource() { return new BufferSource(this); }
   createOscillator() { return new Oscillator(this); }
   createBuffer(channels, length, rate) {

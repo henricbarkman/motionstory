@@ -717,7 +717,8 @@ def provstart(browser, base):
 # lamp) and once where a stop is harmless, while she sits in scene 3; `own`
 # never does, and stops by themselves among the trees and when she gets up
 # in scene 4. Offsets are seconds from the start of the line, which the log
-# marks.
+# marks. Since v40 `asked` walks on after her first "gå" has been said to its
+# end, and a second into the second, so she stops after "Där! Ja.".
 EPISODE_WALKER = """
 (() => {
   const who = %s;
@@ -737,7 +738,7 @@ EPISODE_WALKER = """
     asked: {
       's0-1': walkOn,
       // She asks them to stand until she says gå, and they do.
-      's0-ask1': () => later(15.2, stop), 's0-go1': () => later(1, walkOn),
+      's0-ask1': () => later(15.2, stop), 's0-go1': () => later(3.2, walkOn),
       's0-yes1-b': () => later(7.4, stop), 's0-go2': () => later(1, walkOn),
       's1-3': () => later(10, () => $('sim-turn').click()),
       's2-ask': () => { later(9, stop); later(24, walkOn); },
@@ -775,6 +776,7 @@ EPISODE_WANT = {
                 "s4-ok-lamp", "s4-yes", "s4-all"],
         "not": ["s0-no1", "s0-no2", "x-stod", "x-ga-igen", "s2-count-stop", "s2-no", "s2-lamp-2", "s4-ok", "s4-lamp-1", "s4-lamp-2", "s4-never-1", "r-hjalp"],
         "lamps": 1, "memory": {"svarade": True, "misstanke": False, "klar": True},
+        "whole": ["s0-go1"], "broke": {"s0-go2": "Där! Ja."},
     },
     "own": {
         "has": ["s0-no1", "s0-no2", "s2-5", "s2-6", "x-avvikelse (hennes sida)", "s2-lamp-1", "s4-lamp-1", "s4-lamp-2",
@@ -894,6 +896,13 @@ def episod(browser, base):
         check(not missing, f"episod, {who}: every line of the walker's branches is heard ({'missing ' + ', '.join(missing) if missing else len(heard)})")
         extra = [x for x in want["not"] if any(h.split(" ")[0] == x for h in heard)]
         check(not extra, f"episod, {who}: and none of the other branches ({extra})")
+        # The go lines (v40): one walked away from mid-line ends at the pause
+        # after the words given, one waited out is said to its end.
+        ended = {m.group(1): m.group(2) for m in (re.search(r'‖ (\S+): slutar efter "(.*)" \(', line) for line in log) if m}
+        for line_id, said in want.get("broke", {}).items():
+            check(ended.get(line_id) == said, f"episod, {who}: {line_id} ends after \"{said}\" as the walker goes ({ended.get(line_id)!r})")
+        for line_id in want.get("whole", []):
+            check(line_id not in ended and line_id in heard, f"episod, {who}: {line_id} is said to its end ({ended.get(line_id)!r})")
         lamps = sum(1 for h in heard if h.startswith("x-avvikelse"))
         check(lamps == want["lamps"], f"episod, {who}: the lamp lights {lamps} time(s)")
         scenes = [line.split("  ", 1)[1] for line in log if re.search(r"  (scene \d|end|credits)", line)]

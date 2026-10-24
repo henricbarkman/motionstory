@@ -30,6 +30,11 @@
 //   side            her side of the line (herside.js): walk, other, hand,
 //                   tone, bell, lift, pin, fade, breath, and say(lineId, kind)
 //   cut()           stops the voice line that is playing
+//   play(id, { unless })  a line not said at all if `unless(state)` holds as
+//                   its turn comes; resolves 'skipped' then
+//   breakOff(id)    ends line `id` at its next pause, after the sentence she
+//                   is in (the chapter's "breaks"); false while `id` is not
+//                   playing yet, true once done
 //   credits()       plays the opening credits, resolves when the song is over
 //   seconds(id)     length of a line
 //   cue(id, word)   seconds into a line where a word falls, measured from
@@ -37,9 +42,15 @@
 //   remember(facts) what episode 2 will want to know
 
 const MIN = 60;
-// s she waits for a stop she asked for, after the line: ten when the feet
-// decide (Henric 2026-10-08), twenty on GPS, which reads a stop late.
-const askWindow = s => s.paceSource === 'steps' ? 10 : 20;
+// s she waits for a stop she asked for, after the line: five when the feet
+// decide, twenty on GPS, which reads a stop late. Ten on the feet until v40
+// (Henric 2026-10-08); after his walk of 23/10 it was too long a wait for a
+// no ("det tog lite väl lång tid innan Vega uppfattade att jag inte stannade").
+const askWindow = s => s.paceSource === 'steps' ? 5 : 20;
+// The same at the tree in scene 2, where the answer is the lamp: it reads a
+// stop with the band, three seconds after the last step on the feet, so the
+// window keeps its ten seconds there.
+const treeWindow = s => s.paceSource === 'steps' ? 10 : 20;
 const HALF_MINUTE = 30;     // s without steps before the snäcka asks
 const COUNT_BREATH = 0.8;   // s between the count under her breath and its last numbers
 const RESERVE_MAX = 3;      // times it asks in one walk, then it lets her be
@@ -74,6 +85,30 @@ const stopped = s => !s.moving && s.stillFor >= sure(s);
 // before her window closed is her answer even when it shows after it.
 const seenLate = s => s.paceSource === 'steps' ? 2.5 : 4;
 export const walking = s => s.moving && s.movingFor >= 1.5;
+// A stop on the feet, for an answer: this long since the walk's last step,
+// with the sensor still reporting (SENSOR_FRESH), so a page that stopped
+// getting samples is not a walker who stopped. The band needs about three
+// seconds for the same (STEP_GONE and sure()); this answers a second sooner.
+// 1.5 s was tried against every saved walk on the feet (28/9 to 23/10, 45
+// minutes): 45 gaps that long opened in a walk, against 31 of two seconds,
+// and of the 14 between, 8 were walking on (GPS at a walking pace, no stop
+// after), 2 hesitations just before a real stop, 2 knocks while walking and
+// 2 unclear. Gaps of two seconds were already a yes (the gap rule, below), so
+// this adds no false yes; 1.5 s would add about one every six minutes of walking.
+// The lamp keeps the band: a stop there is costly to see that is not one.
+const FEET_STOP = 2.0;
+const SENSOR_FRESH = 0.5;   // s: the newest motion sample, at most this old
+const SENSOR_SETTLE = 1;    // s after the sensor is back before the band's still is a stop
+const feetStill = s => s.paceSource === 'steps' && s.t - s.lastStepAt >= FEET_STOP
+  && s.t - s.sensorAt < SENSOR_FRESH && !(s.sensorResetAt > s.lastStepAt);
+// A stop the band reports, and not the band starting over: after a page
+// hidden a moment the sensor comes back, the band begins again and calls the
+// walker still until three steps have come. On the feet a stillness that
+// began within SENSOR_SETTLE of that is no stop. v39 heard a yes from it in
+// ask(), and the lamp lit for a walker who never stopped (in 11 of 12 short
+// gaps in her exposed stretches; the feasibility review of v40, 24/10).
+const heldStop = s => stopped(s)
+  && !(s.paceSource === 'steps' && s.t - s.stillFor - s.sensorResetAt < SENSOR_SETTLE);
 // Going again, by the feet: the band says moving, and the last three steps
 // came at a gait's pace, just now. The band wants a second and a half of
 // moving before it calls it walking, and a walker who stood two and a half
@@ -90,18 +125,23 @@ const STRIDE = 0.8;
 export const quickSteps = s => s.paceSource === 'steps' && s.t - s.lastStepAt < STRIDE
   && s.lastStepAt - s.prevStepAt < STRIDE && s.prevStepAt - s.prev2StepAt < STRIDE;
 export const going = s => walking(s) || (s.moving && quickSteps(s));
-// s after the yes she listens for the walker going on before she says gå: the
-// yes on the feet comes with the first step after the stop, and two more at
-// up to STRIDE apart then take a second and a half and the tick it shows on.
-const GO_ON = 2;
-// A stop too short for the band. The feet call a walker still two seconds
-// after the last step and sure() wants one more, so a walker who stopped for
-// two seconds when she asked, and walked on, was a no (Henric's walk 21/10).
-// A gap this long between a walk's last step and the next is a stop all the
-// same: about a second and a half standing. In the recorded pockets (28/9 to
-// 12/10, some 45 minutes of walking) two gaps outside a known stop reached it,
-// 2.0 and 2.2 s, both where the walker may well have hesitated.
-const GAP_YES = 2.0;
+// Still standing, as a line that asks the walker to go needs: on the feet, not
+// two steps since `since` under STRIDE apart; off them, not going. Two steps
+// are enough to stop asking: "Där! Ja." is said, "Gå nu, gå." only to someone
+// who still stands (v40). One was too few: a phone handled while the walker
+// stands bumps about once a second, and every bump ended her go line, so the
+// walker waiting for "gå" never heard it. Two cost one step more and pass a
+// single bump and the random ones. They do not pass handling as measured on
+// 23/10 (single gaps of 0.38-0.68 s): a walker who stands and turns the phone
+// over while she says gå hears "Där! Ja." and no "gå" (walker `handled-go`),
+// and no "Gå." four seconds on either, for the band reads that handling as a
+// gait (walker `handled`). Three steps, or v39's `going`, would say the line
+// whole to that walker, but three come about a second after the first, and
+// the pauses in "Där försvann du." and "Där. Okej." are gone by then: a walker
+// who walks off there, as Henric did on 23/10, would hear "gå" to its end
+// (walker `walks-on`). He did not handle the phone at her questions that day.
+const standing = (s, since) => s.paceSource === 'steps'
+  ? !(s.prevStepAt > since && s.lastStepAt - s.prevStepAt < STRIDE) : !going(s);
 
 export async function runEpisode1(ctx) {
   const side = ctx.side;
@@ -118,7 +158,7 @@ export async function runEpisode1(ctx) {
   const remember = klar => ctx.remember({ svarade: her.askedFor, misstanke: her.lamp4, klar });
 
   // The gate. A stop lights the lamp only while she is exposed.
-  const lit = s => her.exposed && stopped(s);
+  const lit = s => her.exposed && heldStop(s);
   // Both still for half a minute: the snäcka has had nothing to read. She is
   // never exposed and still at once: `stillSince` is null whenever she walks.
   const resting = s => her.stillSince !== null && her.reserves < RESERVE_MAX &&
@@ -158,11 +198,12 @@ export async function runEpisode1(ctx) {
   // Plays a line. 'done' when it reached its end; 'lamp' or 'rest' when a
   // stop cut it short, with the share of it that was heard in `heard`.
   // With `stop`, a state it holds for cuts the line too, as 'stop'.
+  // With `go`, it is a line that asks the walker to go (goLine).
   let heard = 1;
   async function line(id, opts, stop = null) {
     let why = null;
     const began = now();
-    const playing = ctx.play(id, opts).then(() => { if (!why) why = 'done'; });
+    const playing = (opts && opts.go ? goLine(id) : ctx.play(id, opts)).then(() => { if (!why) why = 'done'; });
     const watch = ctx.until(s => {
       if (why) return true;
       if (lit(s)) { why = 'lamp'; lampStop = stopBegan(s); }
@@ -203,8 +244,9 @@ export async function runEpisode1(ctx) {
   // She asks for a stop with line `id`, where she is not exposed. The window
   // opens at `word` in the line (the line's start without one), not at its
   // end: a walker who stops on the word and walks again before she has
-  // finished has answered. It closes ten seconds after the line (twenty on
-  // GPS). With `patience`, a walker who stood there before she asked gets
+  // finished has answered. It closes five seconds after the line on the feet
+  // (askWindow: ten until v40, Henric 8/10; then 23/10, it took too long), and
+  // twenty on GPS. With `patience`, a walker who stood there before she asked gets
   // that long to walk again first.
   // The answer is a stop out of walking: someone waiting at a kerb who shifts
   // their weight makes the phone see a new stop, and that is not one.
@@ -213,9 +255,20 @@ export async function runEpisode1(ctx) {
   // The open is not moved the same way, on purpose: a stop the phone sees
   // after the word can have begun just before it, and a walker stopping as
   // she starts to ask has answered. Moving it would cost the quick ones.
-  // A stop shorter than the band sees counts too, on the feet: the gap
-  // between the walk's last step and the next (GAP_YES). It starts at that
-  // last step, which the feet know to the sample, so it needs no `seenLate`.
+  // On the feet the stop is the walk's last step, which they know to the
+  // sample, so it needs no `seenLate`: FEET_STOP after it while the walker
+  // still stands, or a gap that long once the next step comes (a stop
+  // shorter than the band sees: Henric's walk 21/10).
+  // A window that closes on a walker still walking is a no without waiting
+  // out the rest (Henric 23/10: the no came 13.6 s after the line). On the
+  // feet that is a step after the close, the band calling it walking, and the
+  // last three steps at a gait's pace (quickSteps): a phone in the hand
+  // bumps, a bump is a step, and bumps at 70 a minute make the band say walk,
+  // but they do not come under STRIDE apart twice in a row (HANDLED_2310 in
+  // the tests; with the band alone the field walker heard a no in 4 of 10).
+  // A slower walker waits out the window as before. On GPS it is the band
+  // once `seenLate` has passed, for GPS sees a stop just before the close
+  // only then.
   async function ask(id, word = 'stanna', patience = 0) {
     const askedAt = now() + (word ? ctx.cue(id, word) : 0);
     let walked = false;
@@ -231,14 +284,17 @@ export async function runEpisode1(ctx) {
         // throttled page can skip steps. A gap the sensor was silent through
         // is no stop.
         const gapFrom = s.prevStepAt;
-        if (inWalk && s.paceSource === 'steps' && s.lastStepAt - gapFrom >= GAP_YES && gapFrom >= askedAt && gapFrom < closes
+        if (inWalk && s.paceSource === 'steps' && s.lastStepAt - gapFrom >= FEET_STOP && gapFrom >= askedAt && gapFrom < closes
           && !(s.sensorResetAt > gapFrom)) yes = true;
         step = s.lastStepAt;
         inWalk = walking(s);
       }
+      if (inWalk && feetStill(s) && s.lastStepAt >= askedAt && s.lastStepAt < closes) yes = true;
+      // Nor is the band starting over as the sensor comes back (heldStop).
       const began = stopBegan(s);
-      if (walked && stopped(s) && began >= askedAt && began < closes + seenLate(s)) yes = true;
-      return yes || s.t >= closes + seenLate(s) + sure(s);
+      if (walked && heldStop(s) && began >= askedAt && began < closes + seenLate(s)) yes = true;
+      const walksOn = walking(s) && (s.paceSource === 'steps' ? s.lastStepAt >= closes && quickSteps(s) : s.t >= closes + seenLate(s));
+      return yes || (s.t >= closes && walksOn) || s.t >= closes + seenLate(s) + sure(s);
     });
     await ctx.play(id);
     const s = ctx.state();
@@ -258,22 +314,41 @@ export async function runEpisode1(ctx) {
     if (await ask(id, word, PATIENCE)) return true;
     if (!stoodThrough) return false;
     ctx.log(`${id}: the walker stood through it, she asks again`);
-    await ctx.play('x-stod');
+    await goLine('x-stod');
     await ctx.until(walking, { timeout: MIN });
     return ask(again, againWord);
   }
-  // She has seen the stop. A walker who walks on at once hears her answer
-  // clear. One who stands, as scene 0 asks ("stå kvar tills jag säger till"),
-  // hears her say so with `go`, and her answer once they walk. The lab's
-  // Stanna för ja did the same and was walked right (8/10): standing until
-  // she said "Gå igen" gave the phone the seconds it needs to see a stop.
-  // Through the veil the word is all that carries, so each go line ends on
-  // "gå", and a walker still standing four seconds on hears it once more.
+  // A line that asks the walker to go (the nine under "breakFrom" in
+  // episod-1.json). It is not said to a walker already going, and once the
+  // walker takes two steps it ends at its next pause: after the sentence she is
+  // in, never inside a word (Henric 23/10: "Att stanna upp om hon märker att
+  // jag börjar gå är naturligt, men om ett ord blir avhugget ... så kommer det
+  // inte att låta naturligt"). Past its last pause it is said to its end.
+  function goLine(id) {
+    const since = now();
+    let over = false;
+    let asked = false;
+    const said = ctx.play(id, { unless: going });
+    said.then(() => { over = true; }, () => { over = true; });
+    ctx.until(s => {
+      if (!over && !asked && !standing(s, since)) asked = ctx.breakOff(id);
+      return over || asked;
+    });
+    return said;
+  }
+
+  // She has seen the stop and says so at once with `go`, and the go itself
+  // only to a walker who still stands (goLine): "Där! Ja." and then silence
+  // for one who walks off mid-line, nothing for one already going, who hears
+  // her answer clear instead. Through the veil
+  // the word is all that carries, so each go line ends on "gå", and a walker
+  // still standing four seconds on hears it once more. Until v40 she waited
+  // two seconds first (GO_ON), and with the band's three seconds that was
+  // five from the stop to her voice on Henric's walk 23/10.
   async function goOn(go) {
-    if (await ctx.until(going, { timeout: GO_ON })) return;
-    if (go) await ctx.play(go);
+    if (go) await goLine(go);
     if (await ctx.until(going, { timeout: 4 })) return;
-    await ctx.play('x-ga-igen');
+    await goLine('x-ga-igen');
     await ctx.until(walking, { timeout: 10 });
   }
 
@@ -350,16 +425,17 @@ export async function runEpisode1(ctx) {
     if (await line('s2-2') === 'rest') continue;
     side.lift(true);
     const lastAt = stoodAt + HALF_MINUTE - ctx.cue('s2-3', 'trettio');
-    let why = await hold(s => stopped(s) || s.t >= lastAt - ctx.seconds('s2-count') - COUNT_BREATH);
+    // heldStop: a page hidden a moment while the walker walks is no stop.
+    let why = await hold(s => heldStop(s) || s.t >= lastAt - ctx.seconds('s2-count') - COUNT_BREATH);
     if (why === 'rest') continue;
-    if (!stopped(ctx.state())) {
+    if (!heldStop(ctx.state())) {
       ctx.log('scene 2: she counts');
-      why = await line('s2-count', undefined, stopped);
+      why = await line('s2-count', undefined, heldStop);
       if (why === 'rest') continue;
     }
     if (why !== 'done') {
       ctx.log('scene 2: the walker stops while she counts');
-      if (await line('s2-count-stop') === 'rest') continue;
+      if (await line('s2-count-stop', { go: true }) === 'rest') continue;
       // A phone that never sees the walker walk again does not keep her waiting.
       if (await hold(walking, { by: lastAt + SHORT_WAIT }) === 'rest') continue;
     }
@@ -389,9 +465,9 @@ export async function runEpisode1(ctx) {
     await side.say('x-avvikelse', 'snacka');
     side.pin(false);
     if (!ctx.state().moving) {
-      await ctx.play('s2-lamp-plea');
+      await goLine('s2-lamp-plea');
       // Ten seconds more and she asks again, closer.
-      if (!await ctx.until(walking, { timeout: 10 }) && !ctx.state().moving) await ctx.play('s2-lamp-plea2');
+      if (!await ctx.until(walking, { timeout: 10 }) && !ctx.state().moving) await goLine('s2-lamp-plea2');
     }
     await ctx.until(walking, { timeout: 1.5 * MIN });
     side.tone(false);
@@ -449,7 +525,7 @@ export async function runEpisode1(ctx) {
       askedAt = now() + ctx.cue('s2-ask', 'stanna');
       why = await line('s2-ask');
     }
-    if (why !== 'lamp') why = await pause(askWindow(ctx.state()));
+    if (why !== 'lamp') why = await pause(treeWindow(ctx.state()));
     if (why === 'lamp') {
       await lampAtTheTree(askedAt);
     } else {
@@ -503,7 +579,7 @@ export async function runEpisode1(ctx) {
     await ctx.until(() => false, { timeout: 1.2 });
     await side.say('x-avvikelse', 'snacka');
     side.pin(false);
-    if (!ctx.state().moving) await ctx.play('s4-lamp-1');
+    if (!ctx.state().moving) await goLine('s4-lamp-1');
     await ctx.until(walking, { timeout: 1.5 * MIN });
     side.tone(false);
     her.exposed = false;

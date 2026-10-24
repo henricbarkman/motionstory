@@ -45,13 +45,14 @@ Motorn (`glimt/`):
 
 **Kontakt** är den enda mätaren. Rörelse höjer den, stillhet sänker den (om inte en hållscen pågår), dålig GPS-noggrannhet tar den ner till hälften. Den hörs: vid full kontakt är rösten ren och nära, vid noll är den en dov, avlägsen mumling. Samma inspelning, olika filter.
 
-Simulerad genomkörning av båda kapitlen, fyra vandrarprofiler var, och av episod 1 med tjugosju vandrare som svarar på det hon säger (stannar aldrig, stannar på begäran, stannar självmant, springer, står still genom hennes räkning, står redan vid en trottoarkant när hon frågar, sätter sig i tolv minuter och så vidare). För episoden kollas vilka grenar som hörs, att lampan bara tänds där den ska, och att det går en halv minut från hennes sista steg till "trettio". En vandrare med `seed` får samma skakningar och samma gps varje gång:
+Simulerad genomkörning av båda kapitlen, fyra vandrarprofiler var, och av episod 1 med fyrtioåtta vandrare som svarar på det hon säger (stannar aldrig, stannar på begäran, stannar självmant, springer, står still genom hennes räkning, står redan vid en trottoarkant när hon frågar, sätter sig i tolv minuter och så vidare). För episoden kollas vilka grenar som hörs, att lampan bara tänds där den ska, och att det går en halv minut från hennes sista steg till "trettio". En vandrare med `seed` får samma skakningar och samma gps varje gång:
 
 ```bash
 node scripts/test_glimt.mjs            # allt
 node scripts/test_glimt.mjs 2 stubborn # ett kapitel, en profil
 node scripts/test_glimt.mjs e1 own     # episod 1, en vandrare
 node scripts/test_herside.mjs          # hennes sida: vad som startar, och att allt tystnar
+node scripts/test_breaks.mjs           # gå-repliken som slutar i en paus: var, och att tonen är borta i tystnaden
 ```
 
 Labbens banor, detektorerna och inspelade promenader, och startskärmen i en riktig webbläsare (Playwright, Chromium):
@@ -76,6 +77,7 @@ Episod 1 har fyra röster (`voices` i json-filen, `lineVoices` säger vem som ha
 ```bash
 python3 scripts/check_glimt_audio.py stories/glimt/episod-1.json --listen   # längder, ord, och var "trettio" och "stanna" faller
 python3 scripts/check_glimt_audio.py stories/glimt/episod-1.json --listen --cached   # samma, ur sparade transkript (kostar inget)
+python3 scripts/check_glimt_breaks.py stories/glimt/episod-1.json   # gå-replikerna avbrutna i varje paus: tyst under toningen, hela ord (Scribe)
 python3 scripts/render_side.py stories/glimt/episod-1.json [--force] [--only grus]
 ```
 
