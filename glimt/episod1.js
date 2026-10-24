@@ -132,12 +132,14 @@ export const going = s => walking(s) || (s.moving && quickSteps(s));
 // stands bumps about once a second, and every bump ended her go line, so the
 // walker waiting for "gå" never heard it. Two cost one step more and pass a
 // single bump and the random ones. They do not pass handling as measured on
-// 23/10 (single gaps of 0.38-0.68 s): a walker turning the phone over while
-// she says gå hears the line end at its pause, and "Gå." again four seconds
-// on (walker `handled-go`). Three steps would pass it, but they come about a
-// second after the first, and the pauses in "Där försvann du." and "Där.
-// Okej." are gone by then (walker `walks-on`). He did not handle the phone at
-// her questions on 23/10; walking off mid-line is the case Henric heard.
+// 23/10 (single gaps of 0.38-0.68 s): a walker who stands and turns the phone
+// over while she says gå hears "Där! Ja." and no "gå" (walker `handled-go`),
+// and no "Gå." four seconds on either, for the band reads that handling as a
+// gait (walker `handled`). Three steps, or v39's `going`, would say the line
+// whole to that walker, but three come about a second after the first, and
+// the pauses in "Där försvann du." and "Där. Okej." are gone by then: a walker
+// who walks off there, as Henric did on 23/10, would hear "gå" to its end
+// (walker `walks-on`). He did not handle the phone at her questions that day.
 const standing = (s, since) => s.paceSource === 'steps'
   ? !(s.prevStepAt > since && s.lastStepAt - s.prevStepAt < STRIDE) : !going(s);
 

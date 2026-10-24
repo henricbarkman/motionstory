@@ -497,13 +497,15 @@ const EPISODE_WALKERS = {
   // As goes-mid, but the walker stands through her second go line and turns
   // the phone over from its first word, as Henric did in the credits on 23/10
   // (HANDLED_2310). Two of those bumps come closer than STRIDE: to her that is
-  // two steps, so the line ends after "Där! Ja.". The cost of ending a go line
-  // on two steps, see `standing` in episod1.js.
+  // two steps, so the line ends after "Där! Ja.". And the band reads the
+  // bumps as a gait (as `handled`), so her "Gå." does not come either. The
+  // cost of ending a go line on two steps, see `standing` in episod1.js:
+  // three steps would say it whole here, and fail `walks-on`.
   'handled-go': {
     walk: t => ({ ...out()(t), steps: true }),
     stops: { 's0-ask1': ['end', 1.0, 7], 's0-yes1-b': ['end', 1.0, 60], ...END_STOP },
     handlesAt: { 's0-go2': ['start', 0, 8] },
-    has: ['s0-yes1-a', 's0-yes2', 's0-go1', 's0-go2'], not: ['s0-no1'],
+    has: ['s0-yes1-a', 's0-yes2', 's0-go1', 's0-go2'], not: ['s0-no1', 'x-ga-igen'],
     whole: ['s0-go1'], broke: { 's0-go2': 'Där! Ja.' },
     lamps: 0, memory: { svarade: true, misstanke: false },
   },
