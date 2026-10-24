@@ -530,14 +530,16 @@ const EPISODE_WALKERS = {
     walk: t => ({ ...out()(t), steps: true }), stops: END_STOP,
     hidesAt: { 's2-count': ['start', 1, 3], 's2-5': ['start', 2, 4] },
     has: ['s2-count', 's2-ask', 's2-no', 's4-ok'], not: ['s2-count-stop', 's2-lamp-plea', 's2-lamp-1'],
-    lamps: 0, memory: { svarade: false, misstanke: false },
+    // The count is cut where she thinks the walker stopped, even when "gå" is
+    // then skipped for a walker going again: no line may be cut.
+    cuts: 0, lamps: 0, memory: { svarade: false, misstanke: false },
   },
   // The same while she waits at the tree for the stop she asked for.
   'blinks-tree': {
     walk: t => ({ ...out()(t), steps: true }), stops: END_STOP,
     hidesAt: { 's2-ask': ['end', 2, 4] },
     has: ['s2-ask', 's2-no', 's4-ok'], not: ['s2-lamp-mine', 's2-lamp-1'],
-    lamps: 0, memory: { svarade: false, misstanke: false },
+    cuts: 0, lamps: 0, memory: { svarade: false, misstanke: false },
   },
   // And five seconds as she runs for the gravel in scene 4, where a lamp
   // would tell episode 2 of a suspicion the walker never caused.
@@ -545,7 +547,7 @@ const EPISODE_WALKERS = {
     walk: t => ({ ...out()(t), steps: true }), stops: END_STOP,
     hidesAt: { 's4-2': ['start', 1, 6] },
     has: ['s4-ok'], not: ['s4-lamp-1', 's4-lamp-2'],
-    lamps: 0, memory: { svarade: false, misstanke: false },
+    cuts: 0, lamps: 0, memory: { svarade: false, misstanke: false },
   },
   // Stops for a moment and walks on, a second and a half on the feet, at each
   // question. Henric's walk 21/10 heard a no: the band needs three seconds.
