@@ -75,8 +75,18 @@ Ett stopp är det tydligaste vandraren kan säga.
 ### Stanna för ja
 **Du gör:** stannar för ja och står kvar tills hon säger gå, går vidare för nej.
 **I berättelsen:** ett samtal utan ord från dig. Frågorna kan gå från praktiska till personliga.
-**Omdöme:** Delvis, gående. På stegen blev ja, ja, nej rätt alla tre och kändes i tid (8/10), med "stå kvar tills jag säger gå". I episod 1 (version 37, 21/10) stannade Henric kort och hörde ett nej. I version 38 (23/10) lästes båda ja i starten rätt, det ena som ett kort stopp på stegen, men hon sa gå till honom när han redan gick igen. Version 39 säger gå bara till den som står kvar; inte gången än.
-**Tänk på:** ett ja hörs ungefär tre sekunder efter att vandraren stannat (två för att märka stoppet, en att stå), så be vandraren stå kvar tills hon säger gå, och låt henne säga det. Ett nej hörs när vandraren gått vidare i tio sekunder efter frågan (version 26, Henrics val 8/10; på gps tjugo). Står vandraren redan still när hon frågar, vid ett rödljus till exempel, är det inget svar: hon säger det och frågar igen när vandraren går. Ge henne något att säga medan hon väntar. Ett nej är också ett svar som ska ha en gren.
+**Omdöme:** Delvis, gående. På stegen blev ja, ja, nej rätt alla tre och kändes i tid (8/10), med "stå kvar tills jag säger gå". I episod 1 (version 37, 21/10) stannade Henric kort och hörde ett nej. I version 38 (23/10) lästes båda ja i starten rätt, det ena som ett kort stopp på stegen, men hon sa gå till honom när han redan gick igen. Version 39 säger gå bara till den som står kvar. Version 40 (24/10) hör ja två sekunder efter sista steget och nej fem sekunder efter frågan; inte gången än.
+**Tänk på:** ett ja hörs ungefär två sekunder efter vandrarens sista steg på stegen (version 40; på gps ungefär tre efter stoppet), så be vandraren stå kvar tills hon säger gå, och låt henne säga det. Ett nej hörs fem sekunder efter frågan om vandraren går vidare, direkt om vandraren då tar steg i gångtakt (ändrat i version 40 efter Henrics "det tog lite väl lång tid" 23/10; var tio, hans val 8/10; på gps tjugo). En tvekan på fem till tio sekunder är alltså ett nej. Står vandraren redan still när hon frågar, vid ett rödljus till exempel, är det inget svar: hon säger det och frågar igen när vandraren går. Ge henne något att säga medan hon väntar. Ett nej är också ett svar som ska ha en gren.
+
+### Gå-repliken slutar i en paus
+
+**Du gör:** går iväg medan hon ber dig gå, eller har redan börjat gå när hon ska säga det.
+
+**I berättelsen:** hon märker att du går och tystnar, som någon som ser dig ta första steget. Hon slutar vid nästa paus i repliken, aldrig mitt i ett ord, och går du redan när hon ska börja säger hon den inte alls. Henric 23/10: "Att stanna upp om hon märker att jag börjar gå är naturligt, men om ett ord blir avhugget på grund av det så kommer det inte att låta naturligt."
+
+**Omdöme:** Oprövad. Byggd i version 40 (24/10) och inte gången. Uppspelat på promenaden 23/10: "Där försvann du." och sedan tyst när han gick, "Där! Ja. Gå nu, gå." hel medan han stod.
+
+**Tänk på:** bara de repliker som ber vandraren gå slutar så, och bara där ljudet har en paus: "Där försvann du.", "Där! Ja.", "Där. Okej.", "Gå.", "Du var redan borta när jag frågade.", räkningens "gå.", lampbönerna och "nej." i scen 4. En ny gå-replik behöver en paus efter det hon säger först, och den mäts och kontrolleras med Scribe när repliken spelats in. Hon slutar när vandraren tagit två steg i gångtakt. Den som står still och vrider på telefonen kan höras som steg, så be om gå där vandraren inte har telefonen i handen. Hur fort det tystnar i en riktig telefon är inte mätt.
 
 ### Hopp
 **Du gör:** hoppar ett litet skutt när hon ber om det, mitt i gången, och går vidare.
