@@ -1,5 +1,15 @@
 # PROGRESS — Motionstory
 
+## 2026-10-24
+- Henric: Vega kanske Paula (hittad i ElevenLabs bibliotek), snäckan Joshua eller Rowan, och Luca med; alla i både amerikansk och brittisk brytning.
+- Demi (jobb): **Röstprov omgång 2** överst på [provsidan](https://demi.henricbarkman.se/uploads/glimt-rostprov-en/index.html), första omgången kvar under. Samma repliker som 23/10 (tre för Vega, två för snäckan, växeln med och utan snäckans filter). 24 nya prov, alla hörda ord för ord av Scribe (0,96 där "forty" blev "40").
+  - **Rösterna:** Paula = `FrzKLwOr0y3qieiphjs2` (Soothing, Gentle and Warm, ung brittisk, den Henric lade till i kontot), plus `psJnoAClXdhH5gn8uKNb` (Paula, Deep, Sleepy and Serious, amerikansk, tillagd av Demi för provet: närmast Vegas torra trötthet av de tiotal Paula som finns). Joshua = `WLIAiq6GQcUImAzxzLJT` (Warmth, Comfort and Velvety, amerikansk, Henrics). Rowan och Luca som förut.
+  - **Brytningen:** egen brytning på eleven_v3 utan tagg, som förut. Den andra med en tagg först i repliken. På v3 bytte bara Luca (`[British accent]`); Paula, Paula Deep, Joshua och Rowan är professionella kloner och stod kvar oavsett tagg (`[X accent]`, `[strong X accent]`) och stabilitet (1,0/0,5/0,0). Remix av rösten nekas för bibliotekets röster ("Only your own custom voices can be remixed"). På **eleven_v4** tar taggen: Paula och Rowan med `[strong American accent]`, Paula Deep och Joshua med `[British accent]`. Fyra klipp tagna om sex gånger var, den tagning klassaren hörde tydligast behölls.
+  - **Kontrollen av brytningen:** SpeechBrain CommonAccent ECAPA (16 engelska brytningar), kalibrerad mot första omgångens röster: 10 av 11 rätt, missade Kerrys nordengelska. Alla 24 nya hörs i rätt brytning (kanadensiskt räknat som amerikanskt). Svaga: Paula Deep brittisk självprat (en av sex tagningar lutade brittiskt) och Joshua brittisk "Vega. You are stationary...". Märkta på sidan.
+  - **Följd om Henric väljer en korsad variant:** den rösten spelas då in på eleven_v4, inte v3 som resten av appen; rendering och Scribe-kontroll (`render_glimt.py`, `check_glimt_audio.py`) måste kunna ta modell per röst. Paula Deep håller troligen inte brittiskt genom en hel episod.
+  - Skripten: `~/.cache/demi-scratch/glimt-en/` (`render2.py`, `retake.py`, `page.py`, `accent/classify.py`, utfall i `scribe2.json`, `accent/accent.json`, `retakes.json`). Inget i episodens json-filer, inget inspelat.
+- → Nästa: Henric lyssnar och väljer röst och brytning för Vega och snäckan. Sedan det engelska bygget enligt 23/10:s Nästa, med modell per röst om valet blev en v4-variant.
+
 ## 2026-10-23
 - Henric gick version 38 på morgonen (sensorfilen ligger privat, den har positioner): "Där försvann du. Gå igen" kom vid 1:07,3 fast han gått igen sedan ungefär 1:05,3.
 - Demi (jobb): **Version 39** (PR #49), live på Pages och i den privata kopian (`motionstory-v39-privat-be1368bb`, 302 till Access).
