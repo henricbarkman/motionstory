@@ -16,7 +16,8 @@
     | Nuvarande | 480 Hz | 2700 Hz | 0,7 | 0,5 |
   - **Varför dagens filter tar det mjuka:** Rowans energi ligger till 78 % under 300 Hz. Nuvarande filter lämnar 26 % där, nästan som nu 43 %, mellan 72 %, lätt 80 %. Toppen över 3 kHz: 7,2 % utan, 5,8 / 4,1 / 3,6 / 2,8 % nedåt i nivåerna.
   - Skripten: `~/.cache/demi-scratch/glimt-en/rowan_filter.py` (rendering, ljudstyrka, Scribe; utfall i `rowan_filter.json`) och `page.py`. Appen orörd.
-- → Nästa: Henric väljer filternivå. Sedan det engelska bygget med Paula Soothing och Rowan, med den valda radens värden i `snacka`-grenen.
+- Henric: **filternivå = Mellan** (highpass 260 Hz, lowpass 4500 Hz, lateGain 0,45, gain 0,308). Gäller den engelska snäckan; svenska v40 (Karin) behåller sitt filter tills Henric säger annat.
+- → Nästa: det engelska bygget (jobb j-20261026-225618-e688e4) med Paula Soothing, Rowan och Mellan-raden i `snacka`-grenen för engelskan.
 
 ## 2026-10-24
 - Henric: Vega kanske Paula (hittad i ElevenLabs bibliotek), snäckan Joshua eller Rowan, och Luca med; alla i både amerikansk och brittisk brytning.
