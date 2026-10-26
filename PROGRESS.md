@@ -1,5 +1,9 @@
 # PROGRESS — Motionstory
 
+## 2026-10-26
+- Henric: **snäckan = Rowan, brittisk** (`kLhAstPcnnPxqzk6gS5i`). Rowans egen brytning, alltså eleven_v3 som resten av appen, ingen v4-variant.
+- → Nästa: Vegas röst (Paula Soothing eller Paula Deep, brytning) och snäckans filter (med, utan, lättare) väntar på Henric. Sedan det engelska bygget.
+
 ## 2026-10-24
 - Henric: Vega kanske Paula (hittad i ElevenLabs bibliotek), snäckan Joshua eller Rowan, och Luca med; alla i både amerikansk och brittisk brytning.
 - Demi (jobb): **Röstprov omgång 2** överst på [provsidan](https://demi.henricbarkman.se/uploads/glimt-rostprov-en/index.html), första omgången kvar under. Samma repliker som 23/10 (tre för Vega, två för snäckan, växeln med och utan snäckans filter). 24 nya prov, alla hörda ord för ord av Scribe (0,96 där "forty" blev "40").
