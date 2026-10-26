@@ -4,7 +4,19 @@
 - Henric: **snäckan = Rowan, brittisk** (`kLhAstPcnnPxqzk6gS5i`). Rowans egen brytning, alltså eleven_v3 som resten av appen, ingen v4-variant.
 - Henric: **Vega = Paula Soothing, brittisk** (`FrzKLwOr0y3qieiphjs2`). Hennes egen brytning, alltså också eleven_v3. Båda rösterna på v3, ingen modell per röst behövs.
 - Henric: snäckan **med filter, men lättare** än appens nuvarande. Jobb j-20261026-225454-9917a2 gör nivåer att välja på (provsidan, överst).
-- → Nästa: Henric väljer filternivå. Sedan det engelska bygget med Paula Soothing och Rowan.
+- Demi (jobb): **Rowans filter** i tre lättare nivåer, överst på [provsidan](https://demi.henricbarkman.se/uploads/glimt-rostprov-en/index.html) som rutan "Rowans filter", med "utan" och "nuvarande" som referens. Båda brittiska replikerna (`kLhAstPcnnPxqzk6gS5i-uk-hjalp/avvikelse.mp3`, eleven_v3), renderade i Chromiums egen Web Audio (OfflineAudioContext), alltså samma kedja som `herside.js` `say(..., 'snacka')`. Alla nivåer lika starka (ljudstyrkan matchad mot nuvarande), så volymen är appvärdet. Alla 10 klipp hörda ord för ord av Scribe.
+  - **Inställningarna**, att lägga rakt in i `say()`-grenen `snacka` (Q 0,7 på båda filtren som i dag, kopian alltid 4,2 ms sen; "eko" = `lateGain`, 0 = ingen kopia):
+
+    | Nivå | highpass | lowpass | lateGain | gain |
+    |---|---|---|---|---|
+    | Utan | – | – | – | 0,301 |
+    | Lätt | 150 Hz | 6500 Hz | 0,25 | 0,269 |
+    | Mellan | 260 Hz | 4500 Hz | 0,45 | 0,308 |
+    | Nästan som nu | 380 Hz | 3300 Hz | 0,6 | 0,416 |
+    | Nuvarande | 480 Hz | 2700 Hz | 0,7 | 0,5 |
+  - **Varför dagens filter tar det mjuka:** Rowans energi ligger till 78 % under 300 Hz. Nuvarande filter lämnar 26 % där, nästan som nu 43 %, mellan 72 %, lätt 80 %. Toppen över 3 kHz: 7,2 % utan, 5,8 / 4,1 / 3,6 / 2,8 % nedåt i nivåerna.
+  - Skripten: `~/.cache/demi-scratch/glimt-en/rowan_filter.py` (rendering, ljudstyrka, Scribe; utfall i `rowan_filter.json`) och `page.py`. Appen orörd.
+- → Nästa: Henric väljer filternivå. Sedan det engelska bygget med Paula Soothing och Rowan, med den valda radens värden i `snacka`-grenen.
 
 ## 2026-10-24
 - Henric: Vega kanske Paula (hittad i ElevenLabs bibliotek), snäckan Joshua eller Rowan, och Luca med; alla i både amerikansk och brittisk brytning.
