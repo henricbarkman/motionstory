@@ -2,7 +2,9 @@
 
 ## 2026-10-26
 - Henric: **snäckan = Rowan, brittisk** (`kLhAstPcnnPxqzk6gS5i`). Rowans egen brytning, alltså eleven_v3 som resten av appen, ingen v4-variant.
-- → Nästa: Vegas röst (Paula Soothing eller Paula Deep, brytning) och snäckans filter (med, utan, lättare) väntar på Henric. Sedan det engelska bygget.
+- Henric: **Vega = Paula Soothing, brittisk** (`FrzKLwOr0y3qieiphjs2`). Hennes egen brytning, alltså också eleven_v3. Båda rösterna på v3, ingen modell per röst behövs.
+- Henric: snäckan **med filter, men lättare** än appens nuvarande. Jobb j-20261026-225454-9917a2 gör nivåer att välja på (provsidan, överst).
+- → Nästa: Henric väljer filternivå. Sedan det engelska bygget med Paula Soothing och Rowan.
 
 ## 2026-10-24
 - Henric: Vega kanske Paula (hittad i ElevenLabs bibliotek), snäckan Joshua eller Rowan, och Luca med; alla i både amerikansk och brittisk brytning.
