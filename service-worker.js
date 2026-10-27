@@ -4,10 +4,33 @@ const CACHE = 'motionstory-v41';
 // The private copies sit side by side on one origin (the portal) and share
 // its CacheStorage. Each worker keeps its files under its own scope and
 // clears only its own older caches, so opening one copy never empties
-// another (or the portal's). Caches named the old way, without a scope, are
-// left alone, except the public site's own (motionstory-vNN on Pages).
+// another (or the portal's). A cache named the old way, without a scope, is
+// this copy's when what it holds lies under this scope (a private copy's,
+// motionstory-vNN-privat-<hash>), or when it is the public site's own
+// (motionstory-vNN on Pages); another copy's old cache is left alone.
+//
+// Every lookup goes to STORE only. caches.match() searches every cache on
+// the origin, oldest first, so an older cache left beside the new one would
+// answer first, and a line re-rendered under its old name would play as it was.
+// Their files are not moved over either, for the same reason.
 const STORE = `${CACHE} ${self.registration.scope}`;
-const mine = k => k.endsWith(` ${self.registration.scope}`) || /^motionstory-v\d+$/.test(k);
+async function mine(k) {
+  if (k.endsWith(` ${self.registration.scope}`) || /^motionstory-v\d+$/.test(k)) return true;
+  if (!/^motionstory-v\d+-privat-[0-9a-f]+$/.test(k)) return false;
+  // Someone else's cache that cannot be read is not this copy's to clear,
+  // and must not stop the worker from taking the page.
+  try {
+    const held = await (await caches.open(k)).keys();
+    return held.some(r => r.url.startsWith(self.registration.scope));
+  } catch (err) {
+    return false;
+  }
+}
+// A page is the same page whatever its query (?kapitel=..., ?sim): the app
+// reads the query itself, so offline the cached page answers for any of them.
+const cached = req => caches.open(STORE)
+  .then(c => c.match(req).then(r => r || (req.mode === 'navigate' ? c.match(req, { ignoreSearch: true }) : undefined)))
+  .catch(() => undefined);
 
 // Relative to the service worker scope. Absolute paths ('/audio/...') broke on
 // GitHub Pages where the app lives under /motionstory/, so addAll failed and
@@ -100,8 +123,9 @@ self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
       .then(keys => Promise.all(
-        keys.filter(k => mine(k) && k !== STORE).map(k => caches.delete(k))
+        keys.filter(k => k !== STORE).map(async k => { if (await mine(k)) await caches.delete(k).catch(() => {}); })
       ))
+      .catch(() => {})
       .then(() => self.clients.claim())
   );
 });
@@ -127,7 +151,7 @@ self.addEventListener('fetch', e => {
   if (/\.(mp3|opus)$/.test(url.pathname)) {
     // A file not precached (the English episode's) is kept once fetched
     // whole, so the walk after works without signal too.
-    e.respondWith(caches.match(e.request).then(r => r || fetch(e.request).then(res => {
+    e.respondWith(cached(e.request).then(r => r || fetch(e.request).then(res => {
       if (res.status === 200) {
         const copy = res.clone();
         caches.open(STORE).then(c => c.put(e.request, copy)).catch(() => {});
@@ -143,6 +167,6 @@ self.addEventListener('fetch', e => {
         caches.open(STORE).then(c => c.put(e.request, copy)).catch(() => {});
       }
       return res;
-    }).catch(() => caches.match(e.request))
+    }).catch(() => cached(e.request))
   );
 });
