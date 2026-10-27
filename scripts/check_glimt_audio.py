@@ -23,6 +23,9 @@ Each line's pauses are stamped with the length of the take they were measured
 on ("breaksMeasuredOn"): a line rendered again and measured without --listen
 is reported, for its pauses are where the old take had them.
 
+Scribe listens in the chapter's "language" (default "sv"), and a chapter can
+set the level a pause is quieter than ("silenceDb", default -40 dBFS).
+
 Usage:
     python3 scripts/check_glimt_audio.py stories/glimt/episod-1.json [--listen [--cached]] [--only s3-3[,s3-4]]
 
@@ -47,6 +50,14 @@ SCRATCH = Path.home() / ".cache" / "demi-scratch" / "glimt-listen"
 STT_MODELS = ("scribe_v2", "scribe_v1")
 MATCH_FLOOR = 0.8  # below this a line is reported as not matching its script
 SILENCE_DB = -40   # dBFS: quieter than this is a pause between her words
+# A voice with room tone in its pauses sets its own, as "silenceDb" in the
+# chapter: Paula's English takes sit at about -37 dB RMS with peaks near -28
+# between two sentences, so -40 found no pause in them (2026-10-27); -26 finds
+# the gaps Scribe hears between the words.
+
+
+def silence_db(chapter: dict) -> float:
+    return float(chapter.get("silenceDb", SILENCE_DB))
 SILENCE_MIN = 0.15  # s: a shorter silence is the space inside a phrase, not a pause
 BREAK_MARGIN = 0.06  # s kept clear of the sound at each edge of a pause
 BREAK_MIN = 0.12   # s: what is left of a pause must hold the fade and a tick's lead
@@ -68,11 +79,41 @@ def words(text: str) -> list[str]:
     return re.findall(r"[0-9a-zåäöé]+", text.lower())
 
 
-def silences(path: Path) -> list[tuple[float, float]]:
+# English as Scribe writes it: numbers as digits ("twenty-seven" -> "27") and
+# American spelling ("metres" -> "meters"). Both sides of a comparison go
+# through it, so a counted line or a British word is not a different line.
+EN_UNITS = {w: i for i, w in enumerate("zero one two three four five six seven eight nine ten eleven twelve thirteen "
+                                       "fourteen fifteen sixteen seventeen eighteen nineteen".split())}
+EN_TENS = {w: 10 * i for i, w in enumerate("twenty thirty forty fifty sixty seventy eighty ninety".split(), start=2)}
+EN_SPELLING = {"metres": "meters", "metre": "meter", "colour": "color", "grey": "gray"}
+
+
+def heard_as(ws: list[str], language: str = "sv") -> list[str]:
+    """Words as Scribe writes them in `language`; Swedish is left as it is."""
+    if language != "en":
+        return ws
+    out, i = [], 0
+    while i < len(ws):
+        w = EN_SPELLING.get(ws[i], ws[i])
+        if w in EN_TENS:
+            n = EN_TENS[w]
+            if i + 1 < len(ws) and 0 < EN_UNITS.get(ws[i + 1], 0) < 10:
+                n += EN_UNITS[ws[i + 1]]
+                i += 1
+            out.append(str(n))
+        elif w in EN_UNITS:
+            out.append(str(EN_UNITS[w]))
+        else:
+            out.append(w)
+        i += 1
+    return out
+
+
+def silences(path: Path, db: float = SILENCE_DB) -> list[tuple[float, float]]:
     """The silent stretches of a file, (start, end) in seconds, as ffmpeg hears them."""
     err = subprocess.run(
         ["ffmpeg", "-hide_banner", "-nostats", "-i", str(path),
-         "-af", f"silencedetect=noise={SILENCE_DB}dB:d={SILENCE_MIN}", "-f", "null", "-"],
+         "-af", f"silencedetect=noise={db}dB:d={SILENCE_MIN}", "-f", "null", "-"],
         capture_output=True, text=True, check=True,
     ).stderr
     starts = [float(x) for x in re.findall(r"silence_start: (-?[0-9.]+)", err)]
@@ -112,7 +153,7 @@ def breaks(text: str, heard: dict, quiet: list[tuple[float, float]], from_word: 
     for i in range(max(0, first - 1), len(script) - 1):
         if not script[i][2]:
             continue
-        said = " ".join(t[0] for t in script[:i + 1])
+        said = re.sub(r"(\w)' (\w)", r"\1'\2", " ".join(t[0] for t in script[:i + 1]))
         if i not in at or i + 1 not in at:
             problems.append(f"after {said!r}: Scribe did not hear the words on both sides")
             continue
@@ -130,7 +171,7 @@ def breaks(text: str, heard: dict, quiet: list[tuple[float, float]], from_word: 
     return found, problems
 
 
-def transcribe(api_key: str, path: Path) -> dict:
+def transcribe(api_key: str, path: Path, language: str = "sv") -> dict:
     import requests
 
     last = None
@@ -139,7 +180,7 @@ def transcribe(api_key: str, path: Path) -> dict:
             resp = requests.post(
                 "https://api.elevenlabs.io/v1/speech-to-text",
                 headers={"xi-api-key": api_key},
-                data={"model_id": model, "language_code": "sv",
+                data={"model_id": model, "language_code": language,
                       "timestamps_granularity": "word", "tag_audio_events": "true"},
                 files={"file": (path.name, fh, "audio/mpeg")},
                 timeout=300,
@@ -192,7 +233,7 @@ def main() -> int:
             kept = SCRATCH / f"{chapter['id']}-{line_id}.json"
             if args.cached and kept.exists() and kept.stat().st_mtime >= mp3.stat().st_mtime:
                 return json.loads(kept.read_text(encoding="utf-8"))
-            return transcribe(api_key, mp3)
+            return transcribe(api_key, mp3, chapter.get("language", "sv"))
 
         with ThreadPoolExecutor(max_workers=4) as pool:
             heard = dict(zip(have, pool.map(listen, have)))
@@ -200,8 +241,9 @@ def main() -> int:
             result = heard[line_id]
             (SCRATCH / f"{chapter['id']}-{line_id}.json").write_text(
                 json.dumps(result, ensure_ascii=False, indent=1), encoding="utf-8")
-            want = words(chapter["lines"][line_id])
-            got = words(result.get("text", ""))
+            lang = chapter.get("language", "sv")
+            want = heard_as(words(chapter["lines"][line_id]), lang)
+            got = heard_as(words(result.get("text", "")), lang)
             ratio = difflib.SequenceMatcher(None, want, got).ratio()
             mark = "ok  " if ratio >= MATCH_FLOOR else "DIFF"
             print(f"{mark} {line_id:16} {lengths[line_id]:6.2f}s  {ratio:.2f}  {result.get('text', '').strip()}")
@@ -212,7 +254,7 @@ def main() -> int:
                 last = cue_word.startswith("last:")
                 bare = cue_word.removeprefix("last:")
                 hits = [w for w in result.get("words", [])
-                        if w.get("type") == "word" and words(w.get("text", "")) == [bare]]
+                        if w.get("type") == "word" and heard_as(words(w.get("text", "")), lang) == heard_as([bare], lang)]
                 hit = (hits[-1] if last else hits[0]) if hits else None
                 if hit is None:
                     problems.append(f"{line_id}: cue word {cue_word!r} not heard")
@@ -220,7 +262,7 @@ def main() -> int:
                     cues.setdefault(line_id, {})[cue_word] = round(float(hit["start"]), 2)
             from_word = chapter.get("breakFrom", {}).get(line_id)
             if from_word:
-                found, trouble = breaks(chapter["lines"][line_id], result, silences(audio_dir / f"{line_id}.mp3"), from_word)
+                found, trouble = breaks(chapter["lines"][line_id], result, silences(audio_dir / f"{line_id}.mp3", silence_db(chapter)), from_word)
                 found_breaks[line_id] = found
                 measured_on[line_id] = lengths[line_id]
                 problems += [f"{line_id}: {t}" for t in trouble]

@@ -53,11 +53,14 @@ const KEY_LINES = { morker: 'nyckel-morker', regn: 'nyckel-regn', fullmane: 'nyc
 export const KEY_NAMES = { morker: 'mörker', regn: 'regn', fullmane: 'fullmåne' };
 
 export class Memory {
-  constructor(storage) {
+  // key: the English page keeps its own world (glimt-memory-en), so a walk
+  // there never changes what the Swedish page remembers.
+  constructor(storage, key = KEY) {
     this.storage = storage;
+    this.key = key;
     this.data = { walks: [], keys: {}, cells: [] };
     try {
-      const raw = storage && storage.getItem(KEY);
+      const raw = storage && storage.getItem(key);
       const d = raw ? JSON.parse(raw) : null;
       if (d && Array.isArray(d.walks) && Array.isArray(d.cells) && d.keys && typeof d.keys === 'object') this.data = d;
     } catch (_) { /* a broken entry starts her memory over, it does not stop the walk */ }
@@ -67,7 +70,7 @@ export class Memory {
   }
 
   save() {
-    try { this.storage && this.storage.setItem(KEY, JSON.stringify(this.data)); } catch (_) {}
+    try { this.storage && this.storage.setItem(this.key, JSON.stringify(this.data)); } catch (_) {}
   }
 
   lastWalkAt() {
@@ -119,7 +122,7 @@ export class Memory {
   // stored now, not on what was stored when the walk began: a walk in
   // another tab that ended in between was overwritten otherwise.
   endWalk(now, kind) {
-    const stored = this.storage ? new Memory(this.storage).data : this.data;
+    const stored = this.storage ? new Memory(this.storage, this.key).data : this.data;
     const cells = new Set(stored.cells);
     const added = [...this.fresh].filter(c => !cells.has(c));
     for (const c of added) cells.add(c);

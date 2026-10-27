@@ -1,6 +1,6 @@
 // Bump CACHE whenever audio or app files change, otherwise an installed PWA
 // keeps serving the old files forever.
-const CACHE = 'motionstory-v40';
+const CACHE = 'motionstory-v41';
 
 // Relative to the service worker scope. Absolute paths ('/audio/...') broke on
 // GitHub Pages where the app lives under /motionstory/, so addAll failed and
@@ -37,9 +37,14 @@ const ASSETS = [
   './stories/glimt/kapitel-1.json',
   './stories/glimt/kapitel-2.json',
   './stories/glimt/episod-1.json',
+  './stories/glimt/episode-1.json',
   './stories/glimt/labb.json',
   './glimt/ljud.json',
 ];
+// The English episode (episode-1.json) is left out: only its own link opens
+// it, so a Swedish phone should not download its 11 MB of voices. The
+// English page fetches all its lines when it opens, and the fetch handler
+// keeps them then.
 const CHAPTER_FILES = ['./stories/glimt/kapitel-1.json', './stories/glimt/kapitel-2.json',
   './stories/glimt/episod-1.json', './stories/glimt/labb.json'];
 
@@ -113,7 +118,15 @@ self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (url.origin !== self.location.origin) return;
   if (/\.(mp3|opus)$/.test(url.pathname)) {
-    e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
+    // A file not precached (the English episode's) is kept once fetched
+    // whole, so the walk after works without signal too.
+    e.respondWith(caches.match(e.request).then(r => r || fetch(e.request).then(res => {
+      if (res.status === 200) {
+        const copy = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
+      }
+      return res;
+    })));
     return;
   }
   e.respondWith(

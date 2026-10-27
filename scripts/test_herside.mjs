@@ -5,7 +5,8 @@
 //
 //   node scripts/test_herside.mjs
 
-import { HerSide, SilentSide } from '../glimt/herside.js';
+import { HerSide, SilentSide, SNACKA_FILTERS } from '../glimt/herside.js';
+import { readFileSync } from 'node:fs';
 import { makeClock, FakeAudioContext } from './fake_audio.mjs';
 
 let failures = 0;
@@ -285,6 +286,40 @@ function rig() {
   const why = await s.say(null, 'snacka');
   check(s.silent && s.pinned && why === 'silent', 'the silent side keeps the pin and resolves its lines');
   s.close();
+}
+
+// The earpiece's filter, by level (one line in an episode's json). Without
+// the line it is the filter Karin has had since v40: 480 Hz to 2700 Hz, half
+// the level, the copy 4.2 ms late at 0.7. The English episode asks for
+// Mellan (Henric 26/10): 260 Hz to 4500 Hz, 0.308, the copy at 0.45.
+{
+  const chain = level => {
+    const { audio, side } = rig();
+    if (level !== undefined) side.snackaFilter = level;
+    const made = { filters: [], delays: [], gains: [] };
+    const bq = audio.createBiquadFilter.bind(audio), dl = audio.createDelay.bind(audio), gn = audio.createGain.bind(audio);
+    audio.createBiquadFilter = () => { const n = bq(); made.filters.push(n); return n; };
+    audio.createDelay = (...a) => { const n = dl(...a); made.delays.push(n); return n; };
+    audio.createGain = () => { const n = gn(); made.gains.push(n); return n; };
+    side.say(audio.createBuffer(1, 800, audio.sampleRate), 'snacka');
+    const f = made.filters.map(n => `${n.type} ${n.frequency.value}`).join(', ');
+    // The line's gain is made first, the copy's after it.
+    return { f, gain: made.gains[0].gain.value, late: made.gains[1] ? made.gains[1].gain.value : null,
+      delay: made.delays[0] ? made.delays[0].delayTime.value : null };
+  };
+  const now = chain();
+  check(now.f === 'highpass 480, lowpass 2700' && now.gain === 0.5 && now.late === 0.7 && now.delay === 0.0042,
+    `no level asked for: the filter as before (${now.f}, ${now.gain}, copy ${now.late} at ${now.delay})`);
+  const mid = chain('mellan');
+  check(mid.f === 'highpass 260, lowpass 4500' && mid.gain === 0.308 && mid.late === 0.45 && mid.delay === 0.0042,
+    `Mellan: ${mid.f}, ${mid.gain}, copy ${mid.late}`);
+  const none = chain('utan');
+  check(none.f === '' && none.gain === 0.301 && none.late === null, `Utan: no filter, no copy (${none.f || 'none'}, ${none.gain})`);
+  const odd = chain('okänd');
+  check(odd.f === now.f && odd.gain === now.gain, 'a level it does not know: the filter as before');
+  const read = file => JSON.parse(readFileSync(new URL(`../stories/glimt/${file}`, import.meta.url), 'utf8')).snackaFilter;
+  check(read('episod-1.json') === undefined, 'the Swedish episode names no level');
+  check(read('episode-1.json') === 'mellan' && SNACKA_FILTERS.mellan, 'the English episode asks for Mellan');
 }
 
 process.exit(failures ? 1 : 0);

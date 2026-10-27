@@ -1,7 +1,8 @@
 // Glimt: wires GPS, clock, audio and the chapter script together.
 // ?sim in the URL replaces GPS with a speed slider for testing at a desk.
 // ?kapitel=2 preselects a chapter, ?kapitel=episod1 the episode,
-// ?kapitel=labb1 the lab; the start screen
+// ?kapitel=episode1en the episode in English (no radio for it: the link is
+// the way in, and the page is in English), ?kapitel=labb1 the lab; the start screen
 // has the same choice. ?bana=<id> runs a single lab station (ids in lab.js),
 // ?banor=<id>,<id> some of one lab's stations as a walk of the lab, and
 // ?prov=<id> one of the short test walks (PROV in lab.js).
@@ -9,7 +10,7 @@
 import { Walk, Waiter, simulatedMagnitude, buzzReading } from './engine.js';
 import { runChapter1 } from './chapter1.js';
 import { runChapter2 } from './chapter2.js';
-import { runEpisode1 } from './episod1.js';
+import { runEpisode1, EN as EPISODE_EN } from './episod1.js';
 import { HerSide, SilentSide } from './herside.js';
 import { runLab, labHelpers, LABS, TITLES, PROV, ratedThisRound, RESUMABLE, chosenStations, knockPattern, buzzWords, realTarget, strayJumpsNote, strayTurns, strayTurnsNote } from './lab.js';
 import { Synth, SilentSynth } from './synth.js';
@@ -19,13 +20,17 @@ import { Memory, drawWorld, KEY_NAMES } from './memory.js';
 
 // The version the start screen shows, the same number as the service
 // worker's cache. Bump both together.
-const APP_VERSION = 40;
+const APP_VERSION = 41;
 
 // Seconds the credits wait for their song if it is not fetched when they are
 // due. It has had all of scene 0; a song not here by then is not coming.
 const CREDITS_WAIT = 15;
 
 const params = new URLSearchParams(location.search);
+// The English episode's page: its own link, its text in English. The log
+// stays Swedish, for it is read by Demi.
+const EN_PAGE = params.get('kapitel') === 'episode1en';
+const tr = (sv, en) => (EN_PAGE ? en : sv);
 // ?klarhet=0.5 overrides how clear the line is (0 the whole radio, 1 clean),
 // so a walk can try another level without a new build (readKlarhet in audio.js).
 const KLARHET_URL = readKlarhet(params.get('klarhet'));
@@ -100,6 +105,22 @@ const CHAPTERS = {
       s0: 'Start', s1: 'Slingan', s2: 'Trädet', s3: 'Himlen', s4: 'Klockan',
     },
   },
+  // Episode 1 in English (Henric 23/10), "Keep Going": the same code with
+  // its own words, breaths and pace (EN in episod1.js), Paula and Rowan.
+  // Only reached by its link; there is no radio for it.
+  ...(EN_PAGE ? {
+    episode1en: {
+      url: '../stories/glimt/episode-1.json',
+      voices: '../audio/glimt/vega/glimt-e1en',
+      side: '../audio/glimt/side',
+      first: 's0-1',
+      run: ctx => runEpisode1(ctx, EPISODE_EN),
+      subtitle: 'Episode 1. About ten and a half minutes. Walk or run. She can hear you while you move.',
+      scenes: {
+        s0: 'Start', s1: 'The Loop', s2: 'The Tree', s3: 'The Sky', s4: 'The Bell',
+      },
+    },
+  } : {}),
   // Only reached by a ?prov= link; there is no radio for it.
   ...(TEST ? {
     prov: {
@@ -158,13 +179,19 @@ const RISER_VOICE_AT = 0.7;   // Vega enters at 70 % of the riser
 const LANDMARK_KEY = 'glimt-landmark';
 // What episode 2 will want to know about episode 1. A simulated walk keeps
 // its own, so a try at the desk does not rewrite the evening that was walked.
-const EPISODE_KEY = SIM ? 'glimt-episod-1-sim' : 'glimt-episod-1';
+// The English episode keeps its own: the two are not the same evening.
+const EPISODE_KEY = (EN_PAGE ? 'glimt-episode-1-en' : 'glimt-episod-1') + (SIM ? '-sim' : '');
+// Her world and the last walk's log are the page's own too: the Swedish page
+// reads the same storage keys as before.
+const MEMORY_KEY = EN_PAGE ? 'glimt-memory-en' : 'glimt-memory';
+const LAST_LOG_KEY = EN_PAGE ? 'glimt-last-log-en' : 'glimt-last-log';
 // The contact her voice gets while the walker stands still in an episode:
 // dull and far, at once, where the chapters let it sink over half a minute.
 const VEIL = 0.2;
 const BED_UNDER_SIDE = 0.35;  // the bed's share of itself while her side is forward
 
 const BAND_WORDS = { still: 'stilla', walk: 'gång', run: 'löpning' };
+const BAND_SHOWN = EN_PAGE ? { still: 'still', walk: 'walking', run: 'running' } : BAND_WORDS;
 // 'doppler' is whatever the phone reports as speed. On a six-second fix it is
 // not necessarily satellite Doppler, so the log does not claim it is.
 const SPEED_SOURCE = { doppler: 'telefonens fart', distance: 'räknat ur avstånd' };
@@ -240,7 +267,7 @@ function log(msg) {
   const ol = $('log');
   ol.appendChild(li);
   ol.scrollTop = ol.scrollHeight;
-  try { localStorage.setItem('glimt-last-log', logLines.join('\n')); } catch (_) {}
+  try { localStorage.setItem(LAST_LOG_KEY, logLines.join('\n')); } catch (_) {}
 }
 
 // ---------- landmark memory between chapters ----------
@@ -267,7 +294,7 @@ async function preload() {
   // this one must not hand its chapter or her sounds to the other.
   const turn = ++preloadTurn;
   $('start-btn').disabled = true;
-  $('start-btn').textContent = 'Laddar…';
+  $('start-btn').textContent = tr('Laddar…', 'Loading…');
   try {
     if (!mixer) mixer = new Mixer();
     const loaded = await (await fetch(def.url)).json();
@@ -288,7 +315,7 @@ async function preload() {
     ]);
     if (turn !== preloadTurn) return;
     sideSounds = sounds;
-    if (!firstRaw) throw new Error(`första repliken saknas (${first}.mp3)`);
+    if (!firstRaw) throw new Error(tr(`första repliken saknas (${first}.mp3)`, `the first line is missing (${first}.mp3)`));
     if (bedRaw) bedBuf = await mixer.decode(bedRaw);
     if (riserRaw) riserBuf = await mixer.decode(riserRaw);
     if (turn !== preloadTurn) return;
@@ -307,6 +334,11 @@ async function preload() {
     let note = notes.length
       ? `Ljudet saknar ${notes.join(' och ')} på den här adressen. Rösten fungerar ändå.`
       : 'Sätt på lurarna. Tryck när du står där du vill börja.';
+    if (EN_PAGE) {
+      note = notes.length
+        ? 'Some of the sound (the bed, the credits or her steps) is missing at this address. Her voice works all the same.'
+        : 'Put your headphones on. Tap when you are standing where you want to start.';
+    }
     if (def.prov) {
       note += ' Telefonen i fickan, skärmen olåst.';
     } else if (def.lab) {
@@ -323,7 +355,8 @@ async function preload() {
           : ' Den här webbläsaren vibrerar inte, så Hon knackar hoppas över.';
       }
     }
-    if (ANDROID_FIREFOX) note += ' I Firefox kommer gps:en glest, så svängar och riktning hörs sent. Öppna Glimt i Chrome.';
+    if (ANDROID_FIREFOX) note += tr(' I Firefox kommer gps:en glest, så svängar och riktning hörs sent. Öppna Glimt i Chrome.',
+      ' Firefox hands out GPS fixes sparsely. Open Glimt in Chrome.');
     if (chapterNo === '2') {
       const lm = savedLandmark();
       note += lm
@@ -331,11 +364,11 @@ async function preload() {
         : ' Inget landmärke sparat från kapitel 1 på den här telefonen, hon får be dig välja själv.';
     }
     $('load-note').textContent = note;
-    $('start-btn').textContent = 'Börja gå';
+    $('start-btn').textContent = tr('Börja gå', 'Start walking');
     $('start-btn').disabled = false;
   } catch (err) {
     if (turn !== preloadTurn) return;
-    $('load-note').textContent = 'Kunde inte ladda kapitlet: ' + err.message;
+    $('load-note').textContent = tr('Kunde inte ladda kapitlet: ', 'Could not load the episode: ') + err.message;
   }
 }
 
@@ -376,7 +409,7 @@ async function start() {
   waiter = new Waiter();
   world = defaultWorld();
   // A simulated walk does not go into her world: its squares are made up.
-  memory = new Memory(SIM ? null : localStorage);
+  memory = new Memory(SIM ? null : localStorage, MEMORY_KEY);
 
   // A lab with stations already rated goes on from the first unrated one,
   // unless the walker chose all of them. A link that names stations wins.
@@ -416,6 +449,8 @@ async function start() {
     try {
       side = new HerSide(mixer);
       for (const [name, snd] of Object.entries(sideSounds || {})) side.setSound(name, snd.buffer, snd.slices);
+      // The earpiece's filter level (SNACKA_FILTERS), one line in the json.
+      if (chapter.snackaFilter) { side.snackaFilter = chapter.snackaFilter; log(`snäckans filter: ${chapter.snackaFilter}`); }
     } catch (err) {
       side = new SilentSide();
       log('hennes sida: ' + err.message);
@@ -459,7 +494,12 @@ async function start() {
   // go only while they stand.
   // Resolves how the line went: 'ended', 'break' (ctx.breakOff ended it at a
   // pause), 'skipped' or 'timeout'; undefined when it was dropped or missing.
-  async function speak(id, { clear = false, contact = false, unless = null } = {}, seq = cutSeq) {
+  // However the line goes, even dropped, it counts as ended afterwards: a
+  // song waiting under it (songUnder) then plays at once instead of waiting.
+  async function speak(id, opts, seq = cutSeq) {
+    try { return await speakLine(id, opts, seq); } finally { lineEnds[id] = true; }
+  }
+  async function speakLine(id, { clear = false, contact = false, unless = null } = {}, seq) {
     if (finished) return;
     const buf = await lib.buffer(id);
     if (!buf) { log(`replik saknas: ${id}`); return; }
@@ -479,12 +519,16 @@ async function start() {
     mixer.setKlarhet(def.lab ? 1
       : KLARHET_URL ?? (chapter.klarhetPerScen || {})[id.slice(0, 2)] ?? chapter.klarhet ?? 1);
     speaking = id;
-    const why = await mixer.playVoice(buf, { clear: contact ? false : clear || !!def.lab, aside, at });
+    const playing = mixer.playVoice(buf, { clear: contact ? false : clear || !!def.lab, aside, at });
+    // When it started, for a song under it (credits({ under })).
+    if (mixer.currentVoice) lineStarts[id] = mixer.currentVoice.startedAt;
+    const why = await playing;
     if (speaking === id) speaking = null;
     if (why === 'timeout') log(`ljud: ${id} nådde aldrig slutet, går vidare`);
     return why;
   }
   let speaking = null;          // the line playing now, for breakOff
+  const lineStarts = {}, lineEnds = {};   // AudioContext start, and done, per line id
 
   const ctx = {
     variant,
@@ -562,7 +606,16 @@ async function start() {
       // inte bara som bakgrundsmusik"). A song that could not be fetched is skipped, and so is one
       // still on its way when they are due: a dead connection never settles
       // the fetch, and scene 1 waits behind it.
-      credits() {
+      //
+      // `under` (the English episode): the song starts faint under line
+      // `under`, at its cue word `word` or at its start, and grows to full
+      // once the line has ended (Henric 23/10). It waits for that line beside
+      // the queue, not in it: the line is queued after this call. Resolves
+      // when the song has ended. A song not here when the line has ended
+      // waits as above and plays at full; a line that never comes, the song
+      // at full after it would have.
+      credits({ under = null, word = null } = {}) {
+        if (under) return songUnder(under, word);
         const turn = voiceChain.then(async () => {
           if (finished) return;
           let timer;
@@ -574,7 +627,7 @@ async function start() {
           if (finished) return;
           await wakeAudio();
           if (finished) return;
-          $('scene').textContent = 'Förtexter';
+          $('scene').textContent = tr('Förtexter', 'Credits');
           log(`▶ förtexter (${Math.round(buf.duration)} s)`);
           mixer.muteBed(true);
           if (side) side.hush(true);
@@ -607,6 +660,47 @@ async function start() {
         }
       },
     });
+  }
+
+  async function songUnder(under, word) {
+    if (finished) return;
+    let timer;
+    const late = new Promise(r => { timer = setTimeout(() => r('late'), CREDITS_WAIT * 1000); });
+    // Her line first, for the song's place is in it: queued after this call.
+    const until = (pred, limit) => new Promise(resolve => {
+      const t0w = performance.now();
+      const id = setInterval(() => {
+        if (finished || pred() || performance.now() - t0w > limit * 1000) { clearInterval(id); resolve(); }
+      }, 30);
+    });
+    const buf = await Promise.race([creditsBuf, late]);
+    clearTimeout(timer);
+    if (finished) return;
+    if (buf === 'late') { log(`förtexter: inte hämtade efter ${CREDITS_WAIT} s, hoppar över dem`); return; }
+    if (!buf) { log('förtexter saknas, går vidare'); return; }
+    await until(() => lineStarts[under] !== undefined || lineEnds[under], ctx.seconds(under) + 20);
+    if (finished) return;
+    await wakeAudio();
+    if (finished) return;
+    const startedAt = lineStarts[under];
+    const cue = word ? ctx.cue(under, word) : 0;
+    const faint = startedAt !== undefined && !lineEnds[under];
+    $('scene').textContent = tr('Förtexter', 'Credits');
+    log(`▶ förtexter (${Math.round(buf.duration)} s)${faint ? `, svagt under ${under}${word ? ` från "${word}"` : ''}` : ''}`);
+    mixer.muteBed(true);
+    if (side) side.hush(true);
+    try {
+      const song = mixer.playSong(buf, faint ? { at: startedAt + cue } : { share: 1 });
+      if (faint) {
+        await until(() => lineEnds[under], ctx.seconds(under) + 20);
+        if (!finished) { song.rise(); log('förtexter: full volym'); }
+      }
+      const why = await song.done;
+      if (why === 'timeout') log('ljud: förtexterna nådde aldrig slutet, går vidare');
+    } finally {
+      mixer.muteBed(false);
+      if (side) side.hush(false);
+    }
   }
 
   if (def.lab) {
@@ -789,23 +883,24 @@ function render(s) {
   fill.style.width = `${Math.round(s.contact * 100)}%`;
   fill.style.opacity = String(0.35 + 0.65 * s.contact);
   // An episode holds the contact all the way; what changes is the veil.
-  $('contact-word').textContent =
+  $('contact-word').textContent = EN_PAGE ? (veiled ? 'muffled' : s.contact > 0.8 ? 'close' : s.contact > 0.5 ? 'hears you' : 'faint') :
     side ? (veiled ? 'dov' : s.contact > 0.8 ? 'nära' : s.contact > 0.5 ? 'hör dig' : 'svagt') :
     s.hold ? 'håller' :
     s.contact > 0.8 ? 'nära' :
     s.contact > 0.5 ? 'hör dig' :
     s.contact > 0.2 ? 'svagt' : 'borta';
-  $('band').textContent = BAND_WORDS[s.band] +
-    (s.paceSource === 'steps' ? ` · ${Math.round(s.cadence)} steg/min` : '');
+  $('band').textContent = BAND_SHOWN[s.band] +
+    (s.paceSource === 'steps' ? ` · ${Math.round(s.cadence)} ${tr('steg/min', 'steps/min')}` : '');
   $('speed').textContent = kmh(s.speed);
   $('elapsed').textContent = fmt(s.t);
   let dist = s.distToStart === null ? 'start' :
-    `${Math.round(s.distToStart)} m från start${s.approaching ? ', på väg tillbaka' : ''}`;
+    tr(`${Math.round(s.distToStart)} m från start${s.approaching ? ', på väg tillbaka' : ''}`,
+      `${Math.round(s.distToStart)} m from the start${s.approaching ? ', on the way back' : ''}`);
   if (s.distToTarget !== null) {
     dist += `, ${Math.round(s.distToTarget)} m till ${CHAPTERS[chapterNo].lab ? 'målet' : world.landmark}`;
   }
   $('dist').textContent = dist;
-  $('gps').textContent = !s.gpsSeen ? GPS_TROUBLE_WORD[gpsTrouble] || 'väntar på gps' :
+  $('gps').textContent = !s.gpsSeen ? (EN_PAGE ? GPS_TROUBLE_EN[gpsTrouble] || 'waiting for GPS' : GPS_TROUBLE_WORD[gpsTrouble] || 'väntar på gps') :
     s.accuracy === null ? 'gps' : `gps ±${Math.round(s.accuracy)} m`;
 }
 
@@ -827,6 +922,12 @@ const GPS_ADVICE = {
   3: 'Gps:en har inte hittat dig än. Inomhus är det vanligt.',
 };
 const GPS_TROUBLE_WORD = { 1: 'gps nekad', 2: 'ingen gps' };
+const GPS_ADVICE_EN = {
+  1: 'Glimt may not know where you are. Allow location for the page in the browser (the lock by the address) before you start.',
+  2: 'The phone finds no location. Check that Location is on in the quick settings before you start.',
+  3: 'The GPS has not found you yet. Indoors that is common.',
+};
+const GPS_TROUBLE_EN = { 1: 'GPS refused', 2: 'no GPS' };
 let gpsLast = null, gpsPending = false;  // the start screen's answer, for the log
 let gpsCheckId = 0, gpsCheckTimer = null, gpsTries = 0;
 let gpsTrouble = null;          // the walk's refusal (1) or no-position (2) before a first fix
@@ -850,17 +951,17 @@ function checkGps(fresh = true) {
     gpsPending = false;
     gpsLast = status;
     const again = wait && gpsTries < GPS_TRIES;
-    note.textContent = text + (wait === null || again ? '' : ' Tryck här för att kolla igen.');
+    note.textContent = text + (wait === null || again ? '' : tr(' Tryck här för att kolla igen.', ' Tap here to check again.'));
     if (again) gpsCheckTimer = setTimeout(() => checkGps(false), wait * 1000);
   };
-  if (fresh) { note.textContent = 'Letar efter gps…'; note.hidden = false; }
+  if (fresh) { note.textContent = tr('Letar efter gps…', 'Looking for GPS…'); note.hidden = false; }
   navigator.geolocation.getCurrentPosition(
     pos => {
-      answer(`Gps:en hittar dig, ±${Math.round(pos.coords.accuracy)} m.`,
+      answer(tr(`Gps:en hittar dig, ±${Math.round(pos.coords.accuracy)} m.`, `The GPS finds you, ±${Math.round(pos.coords.accuracy)} m.`),
         `position ±${Math.round(pos.coords.accuracy)} m`, null);
       if (id === gpsCheckId) checkMap(pos.coords);
     },
-    err => answer(GPS_ADVICE[err.code] || `Gps:en svarar inte: ${err.message}`,
+    err => answer((EN_PAGE ? GPS_ADVICE_EN : GPS_ADVICE)[err.code] || tr(`Gps:en svarar inte: ${err.message}`, `The GPS does not answer: ${err.message}`),
       `fel ${err.code}, ${err.message}`, GPS_RECHECK[err.code] || 0),
     { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
 }
@@ -1159,7 +1260,7 @@ function saveRecording() {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 10000);
-  $('save-btn').textContent = PROV_ID ? 'Sparad i Nedladdningar. Lägg filen i chatten med Demi.' : 'Sparad i Nedladdningar';
+  $('save-btn').textContent = PROV_ID ? 'Sparad i Nedladdningar. Lägg filen i chatten med Demi.' : tr('Sparad i Nedladdningar', 'Saved in Downloads');
 }
 
 function startMotion() {
@@ -1239,7 +1340,7 @@ function finish() {
   window.removeEventListener('devicemotion', onMotion);
   window.removeEventListener('deviceorientation', onOrient);
   if (waiter) waiter.abort();
-  if (mixer) mixer.stopVoice();
+  if (mixer) { mixer.stopVoice(); mixer.stopSong(); }
   if (sfx) sfx.close();
   if (side) side.close();
   if (watchId !== null) navigator.geolocation.clearWatch(watchId);
@@ -1255,7 +1356,7 @@ function finish() {
       showWorld('world-end', memory, memory.fresh, 'end');
     } else {
       // Too short to count: her world as it was, no new squares claimed.
-      showWorld('world-end', new Memory(SIM ? null : localStorage), new Set(), 'short');
+      showWorld('world-end', new Memory(SIM ? null : localStorage, MEMORY_KEY), new Set(), 'short');
     }
   }
   if (CHAPTERS[chapterNo].lab) {
@@ -1285,6 +1386,7 @@ const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 const andList = xs => xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} och ${xs[xs.length - 1]}`;
 
 function worldLine(m, when) {
+  if (EN_PAGE) return worldLineEn(m, when);
   const sum = m.summary();
   const short = when === 'short' ? 'Promenaden var under en minut och räknas inte. ' : '';
   if (!sum.cells) return `${short}Hennes värld är tom än. Den växer där du går.`;
@@ -1297,6 +1399,20 @@ function worldLine(m, when) {
   }
   if (short) return `${short}Hennes värld är ${plural(sum.cells, 'ruta', 'rutor')}.${walked}`;
   return `${plural(sum.cells, 'ruta', 'rutor')} från ${plural(sum.walks, 'promenad', 'promenader')}.${walked}`;
+}
+
+function worldLineEn(m, when) {
+  const sum = m.summary();
+  const n = (k, one, many) => `${k} ${k === 1 ? one : many}`;
+  const short = when === 'short' ? 'The walk was under a minute and does not count. ' : '';
+  if (!sum.cells) return `${short}Her world is empty so far. It grows where you walk.`;
+  if (when === 'end') {
+    const fresh = m.fresh.size;
+    return (fresh ? `${n(fresh, 'new square', 'new squares')} this time.` : 'No new squares this time.') +
+      ` Her world is ${n(sum.cells, 'square', 'squares')}.`;
+  }
+  if (short) return `${short}Her world is ${n(sum.cells, 'square', 'squares')}.`;
+  return `${n(sum.cells, 'square', 'squares')} from ${n(sum.walks, 'walk', 'walks')}.`;
 }
 
 // The squares as points of light, the newest brightest, and one sentence.
@@ -1437,9 +1553,9 @@ $('save-btn').addEventListener('click', saveRecording);
 $('copy-btn').addEventListener('click', async () => {
   try {
     await navigator.clipboard.writeText(logLines.join('\n'));
-    $('copy-btn').textContent = 'Kopierad';
+    $('copy-btn').textContent = tr('Kopierad', 'Copied');
   } catch (_) {
-    $('copy-btn').textContent = 'Markera texten och kopiera själv';
+    $('copy-btn').textContent = tr('Markera texten och kopiera själv', 'Select the text and copy it yourself');
   }
 });
 
@@ -1489,8 +1605,10 @@ function selectChapter(n) {
   // The round's choice first: the try-out is offered for the stations it gives.
   showResume(def);
   showVibra();
-  document.title = def.prov ? `Glimt, test: ${def.prov.title}` : def.lab ? `Glimt, labb ${def.lab}`
+  document.title = EN_PAGE ? 'Glimt, episode 1' : def.prov ? `Glimt, test: ${def.prov.title}` : def.lab ? `Glimt, labb ${def.lab}`
     : def.side ? 'Glimt, episod 1' : `Glimt, kapitel ${chapterNo}`;
+  // The English page has one episode and nothing to choose.
+  if (EN_PAGE) $('chapter-box').hidden = true;
   preload();
 }
 
@@ -1519,7 +1637,26 @@ function showResume(def) {
   document.querySelector('input[name="resume"][value="rest"]').checked = true;
 }
 
+// The English page's fixed text, set once before anything else shows.
+function englishPage() {
+  document.documentElement.lang = 'en';
+  const set = (id, text) => { const el = $(id); if (el) el.textContent = text; };
+  set('traffic-note', 'You keep an eye on the traffic, not her. Nothing in the story is worth walking against a red light for.');
+  set('chrome-link', 'Open in Chrome');
+  set('end-word', 'Come back out and walk.');
+  set('copy-btn', 'Copy the log');
+  set('save-btn', 'Save sensor data');
+  set('stop-btn', 'End');
+  set('contact-word', 'searching');
+  set('band', 'still');
+  set('gps', 'waiting for GPS');
+  document.querySelectorAll('.world-name').forEach(el => { el.textContent = 'Her world'; });
+  const summary = document.querySelector('#last-log-box summary');
+  if (summary) summary.textContent = "The last walk's log";
+}
+
 (function initStartScreen() {
+  if (EN_PAGE) englishPage();
   let variant = 'a';
   try { variant = localStorage.getItem('glimt-variant') || 'a'; } catch (_) {}
   if (params.get('variant') === 'a' || params.get('variant') === 'b') variant = params.get('variant');
@@ -1541,12 +1678,12 @@ function showResume(def) {
   });
 
   try {
-    const last = localStorage.getItem('glimt-last-log');
+    const last = localStorage.getItem(LAST_LOG_KEY);
     if (last) { $('last-log').textContent = last; $('last-log-box').hidden = false; }
   } catch (_) {}
 
   try {
-    const m = new Memory(localStorage);
+    const m = new Memory(localStorage, MEMORY_KEY);
     if (!TEST) showWorld('world-start', m, m.lastWalkCells(), 'start');
   } catch (_) {}
   if (TEST) $('save-btn').textContent = 'Spara filen till Demi';
@@ -1580,11 +1717,12 @@ function showResume(def) {
 // ---------- build stamp (same scheme as the root page) ----------
 let buildAnswered = false;
 function setBuild(text) { $('build').textContent = text; }
+if (EN_PAGE) { const b = document.querySelector('.build'); if (b && b.firstChild) b.firstChild.textContent = 'Version on the phone: '; }
 function askBuild() {
   const ctrl = navigator.serviceWorker && navigator.serviceWorker.controller;
-  if (!ctrl) { setBuild('ingen (körs direkt från nätet)'); return; }
+  if (!ctrl) { setBuild(tr('ingen (körs direkt från nätet)', 'none (straight from the web)')); return; }
   ctrl.postMessage('version');
-  setTimeout(() => { if (!buildAnswered) setBuild('äldre version (svarar inte)'); }, 2000);
+  setTimeout(() => { if (!buildAnswered) setBuild(tr('äldre version (svarar inte)', 'older version (not answering)')); }, 2000);
 }
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('message', e => {
@@ -1594,5 +1732,5 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.ready.then(askBuild).catch(() => {});
   navigator.serviceWorker.addEventListener('controllerchange', askBuild);
 } else {
-  setBuild('service worker stöds inte');
+  setBuild(tr('service worker stöds inte', 'service worker not supported'));
 }

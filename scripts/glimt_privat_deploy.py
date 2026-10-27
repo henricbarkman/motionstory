@@ -3,6 +3,7 @@
 
     python3 scripts/glimt_privat_deploy.py <song>                  # episode 1 -> ~/generalassistant/data/uploads/glimt-episod1/
     python3 scripts/glimt_privat_deploy.py --episod 2 <song>       # episode 2 -> .../glimt-episod2/
+    python3 scripts/glimt_privat_deploy.py --episod 1en <song>     # episode 1 in English -> .../glimt-episode1-en/
     python3 scripts/glimt_privat_deploy.py <song> --ut /tmp/g      # somewhere else, for a test
     python3 scripts/glimt_privat_deploy.py <song> --ljud <dir>     # the licensed sounds from elsewhere
 
@@ -36,6 +37,8 @@ that walked an earlier copy fetches whatever changed, and the start screen's bui
 folder's own index.html sends the walker straight to the episode.
 
 Address afterwards: https://demi.henricbarkman.se/uploads/glimt-episodN/glimt/index.html?kapitel=episodN
+(in English, "Nen": .../uploads/glimt-episodeN-en/glimt/index.html?kapitel=episodeNen, file episode-N.json).
+Each language has its own folder, so a copy of one never replaces the other's.
 """
 from __future__ import annotations
 
@@ -62,36 +65,56 @@ STORIES = "stories/glimt"
 MARK = ".glimt-privat"  # written into every copy: only a folder with it is ever replaced
 LOUDNESS = "loudnorm=I=-17:TP=-1.5:LRA=11"  # level with the stand-in and her voice
 INDEX = """<!doctype html>
-<html lang="sv">
+<html lang="{lang}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
-  <title>Glimt, episod {n}</title>
-  <meta http-equiv="refresh" content="0; url=glimt/index.html?kapitel=episod{n}">
+  <title>Glimt, {title}</title>
+  <meta http-equiv="refresh" content="0; url=glimt/index.html?kapitel={kapitel}">
 </head>
-<body><p><a href="glimt/index.html?kapitel=episod{n}">Glimt, episod {n}</a></p></body>
+<body><p><a href="glimt/index.html?kapitel={kapitel}">Glimt, {title}</a></p></body>
 </html>
 """
 
 
-def default_ut(episode: int) -> Path:
-    return UPLOADS / f"glimt-episod{episode}"
+def english(episode: int | str) -> tuple[int, bool]:
+    """The episode's number, and whether it is the English one ("1en")."""
+    m = re.fullmatch(r"(\d+)(en)?", str(episode))
+    if not m:
+        sys.exit(f"no episode {episode!r}: a number, or a number and en (1en)")
+    return int(m.group(1)), bool(m.group(2))
 
 
-def episode_file(episode: int) -> dict:
-    f = REPO / STORIES / f"episod-{episode}.json"
+def default_ut(episode: int | str) -> Path:
+    n, en = english(episode)
+    return UPLOADS / (f"glimt-episode{n}-en" if en else f"glimt-episod{n}")
+
+
+def kapitel(episode: int | str) -> str:
+    """The app's ?kapitel= for the episode."""
+    n, en = english(episode)
+    return f"episode{n}en" if en else f"episod{n}"
+
+
+def episode_name(episode: int | str) -> str:
+    n, en = english(episode)
+    return f"episode-{n}.json" if en else f"episod-{n}.json"
+
+
+def episode_file(episode: int | str) -> dict:
+    f = REPO / STORIES / episode_name(episode)
     if not f.is_file():
         sys.exit(f"no {f.relative_to(REPO)}: episode {episode} has no file to say where its song goes")
     return json.loads(f.read_text(encoding="utf-8"))
 
 
-def song_path(episode: int) -> Path:
+def song_path(episode: int | str) -> Path:
     """Where the song goes in the copy, relative to its root."""
     chapter = episode_file(episode)
     name = (chapter.get("privat") or {}).get("ersatter") or (chapter.get("credits") or {}).get("file")
     if not name or Path(name).name != name:
-        sys.exit(f"stories/glimt/episod-{episode}.json names no song file (privat.ersatter or credits.file)")
+        sys.exit(f"stories/glimt/{episode_name(episode)} names no song file (privat.ersatter or credits.file)")
     return Path("audio/glimt/music") / name
 
 
@@ -164,7 +187,7 @@ def tree_tag(build: Path, skip: Path) -> str:
     return digest.hexdigest()[:8]
 
 
-def deploy(song: Path, ut: Path, episode: int = 1, scratch: Path = SCRATCH, ljud: Path = LJUD) -> str:
+def deploy(song: Path, ut: Path, episode: int | str = 1, scratch: Path = SCRATCH, ljud: Path = LJUD) -> str:
     check_target(ut)
     credits = song_path(episode)
     chapter_id = episode_file(episode)["id"]
@@ -197,7 +220,9 @@ def deploy(song: Path, ut: Path, episode: int = 1, scratch: Path = SCRATCH, ljud
             extra[kind] = rel.as_posix()
         extra["credits"] = {chapter_id: credits.as_posix()}
         (build / "glimt" / "ljud.json").write_text(json.dumps(extra, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        (build / "index.html").write_text(INDEX.format(n=episode), encoding="utf-8")
+        n, en = english(episode)
+        (build / "index.html").write_text(INDEX.format(
+            lang="en" if en else "sv", title=f"episode {n}" if en else f"episod {n}", kapitel=kapitel(episode)), encoding="utf-8")
         (build / MARK).write_text("Made by motionstory scripts/glimt_privat_deploy.py. Holds an unreleased song: never publish.\n",
                                   encoding="utf-8")
         sw = build / "service-worker.js"
@@ -235,7 +260,7 @@ def deploy(song: Path, ut: Path, episode: int = 1, scratch: Path = SCRATCH, ljud
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("song", type=Path, help="the song, read from here only")
-    parser.add_argument("--episod", type=int, default=1, help="which episode (default 1)")
+    parser.add_argument("--episod", default="1", help="which episode (default 1; 1en for episode 1 in English)")
     parser.add_argument("--ut", type=Path, help="where the copy goes (default the uploads folder glimt-episodN)")
     parser.add_argument("--ljud", type=Path, default=LJUD, help=f"the folder with the bed and the riser (default {LJUD})")
     args = parser.parse_args()

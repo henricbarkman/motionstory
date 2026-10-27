@@ -7,11 +7,12 @@ can end it (the pause's start) and at the latest (its end less the fade),
 each faded out over BREAK_FADE as audio.js's endVoiceAtBreak does. For each:
 
   - the file's peak level from 50 ms before the cut to the fade's end must be
-    below SILENCE_DB, so the fade lies in silence and nothing clicks
+    below the chapter's silence level (silenceDb, default -40 dBFS), so the
+    fade lies in silence and nothing clicks
   - ElevenLabs Scribe transcribes the clip, and its words must be the words
     the pause is said to come after: no word cut in half, none missing. The
     late clip is the early one and silence after it, so it passes on the early
-    one's words when the stretch between them is below SILENCE_DB too (Scribe
+    one's words when the stretch between them is that quiet too (Scribe
     heard a whispered "Gå" with a second of quiet after it as "God", 23/10)
 
 Usage:
@@ -32,7 +33,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from check_glimt_audio import ENV_FILE, REPO, SILENCE_DB, transcribe, words  # noqa: E402
+from check_glimt_audio import ENV_FILE, REPO, heard_as, silence_db, transcribe, words  # noqa: E402
 
 AUDIO_JS = REPO / "glimt" / "audio.js"
 BREAK_FADE = float(re.search(r"export const BREAK_FADE = ([0-9.]+);", AUDIO_JS.read_text(encoding="utf-8")).group(1))
@@ -69,6 +70,7 @@ def main() -> int:
     args = parser.parse_args()
 
     chapter = json.loads(args.chapter.read_text(encoding="utf-8"))
+    quiet_db = silence_db(chapter)
     audio_dir = REPO / "audio" / "glimt" / "vega" / chapter["id"]
     only = set(args.only.split(",")) if args.only else None
     found = {i: b for i, b in chapter.get("breaks", {}).items() if not only or i in only}
@@ -95,20 +97,21 @@ def main() -> int:
                               "between": peak_db(src, b["from"], cut + BREAK_FADE)})
 
     with ThreadPoolExecutor(max_workers=4) as pool:
-        heard = list(pool.map(lambda c: transcribe(api_key, c["file"]), clips))
+        heard = list(pool.map(lambda c: transcribe(api_key, c["file"], chapter.get("language", "sv")), clips))
 
     problems = []
     early = {}
     for c, h in zip(clips, heard):
-        want, got = words(c["said"]), words(h.get("text", ""))
+        lang = chapter.get("language", "sv")
+        want, got = heard_as(words(c["said"]), lang), heard_as(words(h.get("text", "")), lang)
         c["heard"] = h.get("text", "").strip()
         ok_words = got == want
         if c["edge"] == "early":
             early[(c["line"], c["said"])] = ok_words
         note = ""
-        if not ok_words and c["edge"] == "late" and early.get((c["line"], c["said"])) and c["between"] < SILENCE_DB:
+        if not ok_words and c["edge"] == "late" and early.get((c["line"], c["said"])) and c["between"] < quiet_db:
             ok_words, note = True, f" (only silence after the early cut, {c['between']:.1f} dB: the same words)"
-        ok_quiet = c["peak"] < SILENCE_DB
+        ok_quiet = c["peak"] < quiet_db
         mark = "ok  " if ok_words and ok_quiet else "FAIL"
         print(f"{mark}  {c['line']} {c['edge']:5} cut {c['cut']:.2f} s, peak {c['peak']:.1f} dB around it: heard {c['heard']!r}{note}")
         if not ok_quiet:

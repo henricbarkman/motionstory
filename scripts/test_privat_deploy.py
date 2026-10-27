@@ -141,6 +141,12 @@ def main() -> int:
     except SystemExit as e:
         check("episod-99.json" in str(e), f"an unknown episode is refused ({e})")
     check(d.default_ut(2).name == "glimt-episod2", "episode 2 gets its own folder")
+    # The English episode has its own file and folder: a copy of it never
+    # replaces the Swedish one.
+    check(d.default_ut("1en").name == "glimt-episode1-en", "episode 1 in English gets its own folder")
+    check(d.default_ut("1").name == "glimt-episod1", "the Swedish episode keeps its folder")
+    check(d.kapitel("1en") == "episode1en" and d.kapitel(1) == "episod1", "each sends the walker to its own episode")
+    check(d.episode_file("1en")["language"] == "en", "1en reads episode-1.json")
 
     if failures:
         print(f"\n{failures} failed (left {root})")

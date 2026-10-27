@@ -1,5 +1,24 @@
 # PROGRESS — Motionstory
 
+## 2026-10-27
+- Demi (jobb j-20261026-225618-e688e4): **Engelska episod 1, version 41**, bredvid den svenska. Bara länken med `?kapitel=episode1en` öppnar den; svenska v40 (texten, ljudet, beteendet utan länken) är orörd.
+  - **Rösterna:** Vega = Paula Soothing (`FrzKLwOr0y3qieiphjs2`), snäckan = Rowan (`kLhAstPcnnPxqzk6gS5i`), båda eleven_v3 i egen brytning utan tagg. 72 repliker i `audio/glimt/vega/glimt-e1en/`, alla hörda ord för ord av Scribe (`check_glimt_audio.py`, språk `en`; Scribe skriver tal som siffror och "meters", det räknas om i `heard_as`). Paula har ett rumsbrus som gör att tystnadsgränsen för engelskan är -26 dB (`silenceDb` i json), inte -40. Bönerna i scen 2 tog flera tagningar (plea-1, plea2-0 valda).
+  - **Brytpunkterna** för gå-replikerna mätta på Paulas tagningar och kontrollerade med Scribe (`check_glimt_breaks.py`): 20 av 20 hela ord före varje brytpunkt. Samma krav som v40: hon tystnar bara i en paus mellan två meningar.
+  - **Snäckans filter är en inställning**: `SNACKA_FILTERS` i `herside.js` har nivåerna utan, lätt, mellan, nastan, nuvarande; avsnittets json väljer med en rad (`"snackaFilter": "mellan"`). Engelskan har **Mellan** (Henrics val 26/10). Utan raden gäller nuvarande, så Karin på svenska låter som förut.
+  - **Svarsorden** see, hear, are, thirty, stop, och stop på sista frågan. Scenerna öppnar 2, 6 och 10 s efter förra i stället för på fasta minuter, slutet 6/10 s, andning före utvalda repliker, självprat (s0-yes2-aside, s2-self, s4-self), allt i `EN` överst i `episod1.js`.
+  - **The Code** börjar svagt (0,2 av låtens nivå) under hennes sista replik och växer till full på 3 s när hon pratat klart: ja-grenen under viskningen "You hear me.", nej-grenen under s0-no2 från ordet "talk" (`Mixer.playSong`). Scribe hörde båda replikerna hela över låten i en mix på samma nivåer. Låten finns bara i den privata kopian.
+  - **Appen:** egen sparnyckel, egen värld (`glimt-memory-en`) och egen senaste logg, så en engelsk promenad rör inte den svenska sidans minne. Engelska texter på start, gps, slutet. Loggen under promenaden är kvar på svenska, den läser jag. Service workern förhämtar inte det engelska ljudet (11 MB) åt svenska telefoner; engelska sidan hämtar alla repliker när den öppnas och de sparas då.
+  - **Privat kopia:** `glimt_privat_deploy.py --episod 1en` → `data/uploads/glimt-episode1-en/`; den svenska `glimt-episod1` orörd.
+  - **Testerna:** `test_glimt.mjs e1en` (alla vandrare, några med egna gränser för engelskans längre tagningar), `test_breaks.mjs` (pauserna på båda språken, låten under repliken), `test_herside.mjs` (filternivåerna), `test_memory.mjs` (egen värld), `test_privat_deploy.py`, och webbläsarscenariot `episode`. Mutationsprövat: filterdefault, Mellans värden, låtens svaga nivå och höjning, andningsklampen, minnesnyckeln.
+  - **Osäkert, att höra i promenaden:**
+    - Andningen före s2-2 blir ungefär 1,1 s, inte 2: annars kommer "thirty" efter mer än en halv minut. Klampen i `episod1.js` håller halvminuten.
+    - Står vandraren still mer än en halv sekund in i nedräkningen och bara gps:en märker det, kommer "thirty" sent.
+    - Engelska s0-go2 har sin paus tidigt (1,41-1,82 s): går vandraren senare hörs "Go now, go." hel.
+    - x-ga-igen bryts före "Go."; s2-lamp-plea bryts först efter "Please, go!".
+    - Ett stopp på exakt 1,5 s (`brief`) ligger på en flyttalskant, i båda språken.
+    - `field`-vandraren faller ibland av slump (1 av 15 även på svenska main).
+- → Nästa: Henric går den engelska versionen på telefonen. Sedan svaret på om andningen före s2-2 ska få plats (kortare repliker runt den, eller en längre halvminut).
+
 ## 2026-10-26
 - Henric: **snäckan = Rowan, brittisk** (`kLhAstPcnnPxqzk6gS5i`). Rowans egen brytning, alltså eleven_v3 som resten av appen, ingen v4-variant.
 - Henric: **Vega = Paula Soothing, brittisk** (`FrzKLwOr0y3qieiphjs2`). Hennes egen brytning, alltså också eleven_v3. Båda rösterna på v3, ingen modell per röst behövs.
