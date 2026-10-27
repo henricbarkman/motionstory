@@ -1673,7 +1673,8 @@ function selectChapter(n) {
   const radio = document.querySelector(`input[name="chapter"][value="${chapterNo}"]`);
   if (radio) radio.checked = true;
   else document.querySelectorAll('input[name="chapter"]').forEach(el => { el.checked = false; });
-  try { if (radio) localStorage.setItem('glimt-chapter', chapterNo); } catch (_) {}
+  // A listen leaves the phone's last choice alone: it is always the episode.
+  try { if (radio && !LISTEN) localStorage.setItem('glimt-chapter', chapterNo); } catch (_) {}
   const def = CHAPTERS[chapterNo];
   $('subtitle').textContent = LISTEN && def.listenSubtitle || def.subtitle;
   $('variant-box').hidden = !!def.lab || !!def.side;

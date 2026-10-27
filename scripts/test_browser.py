@@ -1089,9 +1089,9 @@ LISTENER = """
 LISTEN_PAGES = {
     # name: (link, ready, button words walking/standing, subtitle, voices, the other language's voices, memory key, others untouched)
     "sv": ("?lyssna", "Börja lyssna", ("Stanna", "Gå"), "Lyssna utan att gå", "/vega/glimt-e1/", "/vega/glimt-e1en/",
-           "glimt-episod-1-lyssna", ["glimt-episod-1", "glimt-episod-1-sim", "glimt-memory", "glimt-last-log"]),
+           "glimt-episod-1-lyssna", ["glimt-episod-1", "glimt-episod-1-sim", "glimt-memory", "glimt-last-log", "glimt-chapter", "glimt-landmark"]),
     "en": ("?kapitel=episode1en&lyssna", "Start listening", ("Stop", "Walk"), "Listen without walking", "/vega/glimt-e1en/", "/vega/glimt-e1/",
-           "glimt-episode-1-en-lyssna", ["glimt-episode-1-en", "glimt-episode-1-en-sim", "glimt-memory-en", "glimt-last-log-en"]),
+           "glimt-episode-1-en-lyssna", ["glimt-episode-1-en", "glimt-episode-1-en-sim", "glimt-memory-en", "glimt-last-log-en", "glimt-chapter", "glimt-landmark"]),
 }
 
 
@@ -1161,8 +1161,8 @@ def lyssna(browser, base):
         # The page's log rows are the time and the line run together.
         check(any("start," in x and x.endswith(", lyssning") for x in log) and any("lyssning: stannar" in x for x in log),
               f"lyssna {name}: the log says it was a listen ({log[:1]})")
-        asked = page.evaluate("window.__asked")
-        check(asked == {"geo": 0, "motion": 0}, f"lyssna {name}: never asked for the position or the motion sensor ({asked})")
+        asked = page.evaluate("({ ...window.__asked, vibrate: window.__vib.length })")
+        check(asked == {"geo": 0, "motion": 0, "vibrate": 0}, f"lyssna {name}: never asked for the position, the motion sensor or a buzz ({asked})")
         fetched = page.evaluate("performance.getEntriesByType('resource').map(e => e.name)")
         own = [u for u in fetched if voices in u]
         wrong = [u for u in fetched if other in u]
