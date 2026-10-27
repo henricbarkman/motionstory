@@ -1004,7 +1004,12 @@ def episode(browser, base):
     scenes = [line.split("  ", 1)[1] for line in log if re.search(r"  (scene \d|end|credits)", line)]
     order = [x for x in scenes if re.fullmatch(r"scene \d|end", x)]
     check(order == ["scene 1", "scene 2", "scene 4", "end"], f"episode: the scenes come in order ({order})")
-    starts = {x: clock(line) for line in log for x in ("scene 1", "scene 2", "scene 4") if line.split("  ", 1)[1].startswith(x)}
+    # Where each scene begins: its own line, the first one. "scene 1: no, not
+    # alone" later in the scene is a branch, not its start.
+    starts = {}
+    for line in log:
+        if line.split("  ", 1)[-1] in ("scene 1", "scene 2", "scene 4"):
+            starts.setdefault(line.split("  ", 1)[1], clock(line))
     s0end = clock(credits[0]) + 68 if credits else None
     between = [line for line in log if s0end is not None and s0end - 75 <= clock(line) <= starts.get("scene 1", 0)]
     check(s0end is not None and starts.get("scene 1", 0) - s0end < 15, f"episode: scene 1 soon after the song ({starts}; {between})")
