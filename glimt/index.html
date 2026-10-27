@@ -52,6 +52,7 @@
       <button id="start-btn" disabled>Laddar…</button>
       <p class="hint" id="load-note">Sätt på lurarna. Tryck när du står där du vill börja.</p>
       <p class="hint" id="traffic-note">Du har koll på trafiken, inte hon. Ingenting i berättelsen är värt att gå mot rött för.</p>
+      <a class="quiet" id="listen-link" hidden>Lyssna utan att gå</a>
       <a class="quiet" id="chrome-link" hidden>Öppna i Chrome</a>
       <p class="hint" id="gps-note" hidden></p>
       <p class="hint" id="sensor-note" hidden></p>
@@ -77,6 +78,17 @@
         <div><span id="band" class="big">stilla</span><span class="small" id="speed">0,0 km/h</span></div>
         <div><span id="elapsed" class="big">0:00</span><span class="small" id="dist">start</span></div>
         <div><span id="scene" class="big">–</span><span class="small" id="gps">väntar på gps</span></div>
+      </div>
+
+      <div id="listen" class="listen" hidden>
+        <button id="listen-btn" type="button">Stanna</button>
+        <p class="hint" id="listen-note" aria-live="polite"></p>
+        <div class="listen-extra" id="listen-extra" hidden>
+          <button id="listen-knock" type="button" hidden>Knacka</button>
+          <button id="listen-left" type="button" hidden>Vänster</button>
+          <button id="listen-right" type="button" hidden>Höger</button>
+          <button id="listen-turn" type="button" hidden>Vänd</button>
+        </div>
       </div>
 
       <div id="sim" class="sim" hidden>

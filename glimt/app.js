@@ -1,6 +1,8 @@
 // Glimt: wires GPS, clock, audio and the chapter script together.
 // ?sim in the URL replaces GPS with a speed slider for testing at a desk.
-// ?kapitel=2 preselects a chapter, ?kapitel=episod1 the episode,
+// ?lyssna (?listen does the same) is an episode heard from a sofa: the
+// phone walks at an ordinary pace by itself, and one button stops and starts
+// it. ?kapitel=2 preselects a chapter, ?kapitel=episod1 the episode,
 // ?kapitel=episode1en the episode in English (no radio for it: the link is
 // the way in, and the page is in English), ?kapitel=labb1 the lab; the start screen
 // has the same choice. ?bana=<id> runs a single lab station (ids in lab.js),
@@ -20,7 +22,7 @@ import { Memory, drawWorld, KEY_NAMES } from './memory.js';
 
 // The version the start screen shows, the same number as the service
 // worker's cache. Bump both together.
-const APP_VERSION = 41;
+const APP_VERSION = 42;
 
 // Seconds the credits wait for their song if it is not fetched when they are
 // due. It has had all of scene 0; a song not here by then is not coming.
@@ -34,7 +36,6 @@ const tr = (sv, en) => (EN_PAGE ? en : sv);
 // ?klarhet=0.5 overrides how clear the line is (0 the whole radio, 1 clean),
 // so a walk can try another level without a new build (readKlarhet in audio.js).
 const KLARHET_URL = readKlarhet(params.get('klarhet'));
-const SIM = params.has('sim');
 // A test walk wins over everything else the link says.
 const PROV_ID = Object.hasOwn(PROV, params.get('prov') || '') ? params.get('prov') : null;
 const TEST = PROV_ID ? PROV[PROV_ID] : null;
@@ -44,6 +45,16 @@ const ONLY_STATION = !TEST && TITLES[params.get('bana')] ? params.get('bana') : 
 const CHOSEN = ONLY_STATION || TEST ? null : chosenStations(params.get('banor'));
 // A ?banor= the app could not read says so, instead of walking everything.
 const BAD_CHOICE = !TEST && !ONLY_STATION && !CHOSEN && params.has('banor') ? params.get('banor') : null;
+// Listening (Henric 27/10: "Jag skulle vilja kunna lyssna på berättelsen utan
+// att gå den"): an episode, with no GPS, sensor or vibration asked for. The
+// sim's walker walks at WALK_PACE from the start, and the big button stops it
+// and sets it going again, so a yes is a stop as outside. A link that is a
+// lab's wins over it.
+const LISTEN = (params.has('lyssna') || params.has('listen')) &&
+  !TEST && !ONLY_STATION && !CHOSEN && BAD_CHOICE === null && BAD_PROV === null;
+const SIM = params.has('sim') && !LISTEN;
+const FAKE = SIM || LISTEN;     // positions and steps made up on the page
+const WALK_PACE = 1.4;          // m/s, about 5 km/h: an ordinary walk
 // The stations the link chose, when the chapter on screen is their lab.
 const chosenFor = def => def.lab && CHOSEN && CHOSEN.lab === def.lab ? CHOSEN.stations : null;
 // The stations a walk of the chapter on screen can have: the test walk's,
@@ -101,6 +112,10 @@ const CHAPTERS = {
     // The opening credits after scene 0, a song down the line, come from
     // ljud.json like the bed: only the private copy has one.
     subtitle: 'Episod 1. Ungefär tolv minuter. Gå eller spring. Hon hörs när du går.',
+    // ?lyssna. `asks`: what the episode asks of the walker besides a stop,
+    // 'knock' and 'turn', each a button beside Stanna; episode 1 asks neither.
+    listenSubtitle: 'Episod 1. Ungefär tolv minuter. Lyssna utan att gå.',
+    asks: [],
     scenes: {
       s0: 'Start', s1: 'Slingan', s2: 'Trädet', s3: 'Himlen', s4: 'Klockan',
     },
@@ -116,6 +131,8 @@ const CHAPTERS = {
       first: 's0-1',
       run: ctx => runEpisode1(ctx, EPISODE_EN),
       subtitle: 'Episode 1. About ten and a half minutes. Walk or run. She can hear you while you move.',
+      listenSubtitle: 'Episode 1. About ten and a half minutes. Listen without walking.',
+      asks: [],
       scenes: {
         s0: 'Start', s1: 'The Loop', s2: 'The Tree', s3: 'The Sky', s4: 'The Bell',
       },
@@ -179,12 +196,14 @@ const RISER_VOICE_AT = 0.7;   // Vega enters at 70 % of the riser
 const LANDMARK_KEY = 'glimt-landmark';
 // What episode 2 will want to know about episode 1. A simulated walk keeps
 // its own, so a try at the desk does not rewrite the evening that was walked.
-// The English episode keeps its own: the two are not the same evening.
-const EPISODE_KEY = (EN_PAGE ? 'glimt-episode-1-en' : 'glimt-episod-1') + (SIM ? '-sim' : '');
+// The English episode keeps its own: the two are not the same evening. A
+// listen keeps its own as well: an evening on the sofa is not one walked.
+const EPISODE_KEY = (EN_PAGE ? 'glimt-episode-1-en' : 'glimt-episod-1') + (SIM ? '-sim' : LISTEN ? '-lyssna' : '');
 // Her world and the last walk's log are the page's own too: the Swedish page
-// reads the same storage keys as before.
+// reads the same storage keys as before. A listen does not take the last
+// walk's log, which may be waiting to go to Demi.
 const MEMORY_KEY = EN_PAGE ? 'glimt-memory-en' : 'glimt-memory';
-const LAST_LOG_KEY = EN_PAGE ? 'glimt-last-log-en' : 'glimt-last-log';
+const LAST_LOG_KEY = (EN_PAGE ? 'glimt-last-log-en' : 'glimt-last-log') + (LISTEN ? '-lyssna' : '');
 // The contact her voice gets while the walker stands still in an episode:
 // dull and far, at once, where the chapters let it sink over half a minute.
 const VEIL = 0.2;
@@ -339,6 +358,11 @@ async function preload() {
         ? 'Some of the sound (the bed, the credits or her steps) is missing at this address. Her voice works all the same.'
         : 'Put your headphones on. Tap when you are standing where you want to start.';
     }
+    if (LISTEN) {
+      const how = tr('Telefonen går åt dig i vanlig takt. När hon ber dig stanna trycker du Stanna, som ute, och Gå när du vill vidare.',
+        'Shape walks by itself at an ordinary pace. When she asks you to stop, tap Stop, as you would stop outside, and Walk to go on.');
+      note = notes.length ? `${note} ${how}` : how;
+    }
     if (def.prov) {
       note += ' Telefonen i fickan, skärmen olåst.';
     } else if (def.lab) {
@@ -355,7 +379,7 @@ async function preload() {
           : ' Den här webbläsaren vibrerar inte, så Hon knackar hoppas över.';
       }
     }
-    if (ANDROID_FIREFOX) note += tr(' I Firefox kommer gps:en glest, så svängar och riktning hörs sent. Öppna Glimt i Chrome.',
+    if (ANDROID_FIREFOX && !LISTEN) note += tr(' I Firefox kommer gps:en glest, så svängar och riktning hörs sent. Öppna Glimt i Chrome.',
       ' Firefox hands out GPS fixes sparsely. Open Glimt in Chrome.');
     if (chapterNo === '2') {
       const lm = savedLandmark();
@@ -364,7 +388,7 @@ async function preload() {
         : ' Inget landmärke sparat från kapitel 1 på den här telefonen, hon får be dig välja själv.';
     }
     $('load-note').textContent = note;
-    $('start-btn').textContent = tr('Börja gå', 'Start walking');
+    $('start-btn').textContent = LISTEN ? tr('Börja lyssna', 'Start listening') : tr('Börja gå', 'Start walking');
     $('start-btn').disabled = false;
   } catch (err) {
     if (turn !== preloadTurn) return;
@@ -395,10 +419,11 @@ async function start() {
   $('start-screen').hidden = true;
   $('walking').hidden = false;
   if (SIM) $('sim').hidden = false;
+  if (LISTEN) showListen(def);
 
   // iOS asks before it hands out the accelerometer, and only inside the tap.
   // Android does not ask. Either way GPS carries on if the answer is no.
-  const motionAsk = !SIM && typeof DeviceMotionEvent !== 'undefined' &&
+  const motionAsk = !FAKE && typeof DeviceMotionEvent !== 'undefined' &&
     typeof DeviceMotionEvent.requestPermission === 'function'
     ? DeviceMotionEvent.requestPermission().catch(() => 'denied') : Promise.resolve('granted');
 
@@ -409,7 +434,7 @@ async function start() {
   waiter = new Waiter();
   world = defaultWorld();
   // A simulated walk does not go into her world: its squares are made up.
-  memory = new Memory(SIM ? null : localStorage, MEMORY_KEY);
+  memory = new Memory(FAKE ? null : localStorage, MEMORY_KEY);
 
   // A lab with stations already rated goes on from the first unrated one,
   // unless the walker chose all of them. A link that names stations wins.
@@ -423,23 +448,23 @@ async function start() {
       `${chosen ? `, bara ${andList(chosen.map(id => TITLES[id]))}` : ''}${resume ? `, från ${TITLES[resume[0]]}` : ''}`
     : def.side ? `${chapter.title} (${chapterNo}), version ${APP_VERSION}`
     : `kapitel ${chapterNo}, variant ${variant.toUpperCase()}`;
-  log(`start, ${what}${SIM ? ', simulerad' : ''}`);
+  log(`start, ${what}${SIM ? ', simulerad' : LISTEN ? ', lyssning' : ''}`);
   log(`webbläsare: ${BROWSER}`);
   if (!def.lab && (KLARHET_URL !== null || chapter.klarhet !== undefined)) {
     log(`linjens klarhet ${KLARHET_URL ?? chapter.klarhet}${KLARHET_URL !== null ? ' (från länken)' : ''}`);
   }
   clearTimeout(gpsCheckTimer);
   gpsTrouble = null;
-  if (!SIM) log(`gps före start: ${gpsStatus()}`);
+  if (!FAKE) log(`gps före start: ${gpsStatus()}`);
   // What the test walk's start screen found, so its log says it without the
   // walker having to.
-  if (def.prov && def.prov.sensor && !SIM) log(`sensor före start: ${sensorStatus()}`);
+  if (def.prov && def.prov.sensor && !FAKE) log(`sensor före start: ${sensorStatus()}`);
   if (walkStations(def).some(id => id === 'vagval' || id === 'vandom')) {
     log(`gyro: ${GYRO_OK ? 'läser svängar, gps:en kontrollerar' : 'används inte i den här webbläsaren, gps:en läser svängar'}`);
   }
-  if (def.prov && def.prov.map && !SIM) log(`karta före start: ${mapCheck.status}`);
+  if (def.prov && def.prov.map && !FAKE) log(`karta före start: ${mapCheck.status}`);
   // Only when this walk has Hon knackar, and the phone could have been tried.
-  if (!SIM && CAN_VIBRATE && walkStations(def).includes('vibration')) log(`vibration före start: ${vibraStatus()}`);
+  if (!FAKE && CAN_VIBRATE && walkStations(def).includes('vibration')) log(`vibration före start: ${vibraStatus()}`);
   if (BAD_CHOICE !== null) log(`länkens banor gick inte att läsa: ${BAD_CHOICE}`);
   if (BAD_PROV !== null) log(`länkens test finns inte: ${BAD_PROV}`);
   // Her side starts with the walk: the hum is there from the first second.
@@ -465,8 +490,8 @@ async function start() {
   }
 
   acquireWakeLock();
-  if (SIM) startSim(); else startGps();
-  if (!SIM) motionAsk.then(answer => {
+  if (FAKE) startSim(); else startGps();
+  if (!FAKE) motionAsk.then(answer => {
     if (answer === 'granted') startMotion();
     else log('rörelsesensor: nekad, gps avgör gång och stilla');
   });
@@ -814,7 +839,7 @@ function logSteps(s) {
       sensorQuietFrom = null;
     }
   }
-  if (SIM) return;
+  if (FAKE) return;
   if (s.t >= 5 && st.samples === 0 && !stepsNoted.silent) {
     stepsNoted.silent = true;
     log('rörelsesensor: inga värden, gps avgör gång och stilla');
@@ -938,7 +963,7 @@ const gpsStatus = () => !gpsPending ? gpsLast || 'inte kollad'
 // fresh: asked for by the walker, the page or the permission, not the timer.
 function checkGps(fresh = true) {
   clearTimeout(gpsCheckTimer);
-  if (SIM || !navigator.geolocation || $('start-screen').hidden ||
+  if (FAKE || !navigator.geolocation || $('start-screen').hidden ||
       document.visibilityState !== 'visible') return;
   if (fresh) gpsTries = 0;
   gpsTries++;
@@ -985,7 +1010,7 @@ const sensorStatus = () => sensorCheck.busy
   ? `kollen pågick (${sensorCheck.n} värden hittills${sensorCheck.n ? rotWords(sensorCheck.rot) : ''})`
   : sensorCheck.status;
 function checkSensor() {
-  if (!TEST || !TEST.sensor || SIM || sensorCheck.busy) return;
+  if (!TEST || !TEST.sensor || FAKE || sensorCheck.busy) return;
   const note = $('sensor-note');
   note.hidden = false;
   if (typeof DeviceMotionEvent === 'undefined') {
@@ -1018,7 +1043,7 @@ function checkSensor() {
 const mapCheck = { status: 'inte kollad', busy: false, at: -Infinity };
 const MAP_WORDS = { vatten: 'vatten', skog: 'skog', berg: 'en höjd', bro: 'en bro', kyrkogard: 'en kyrkogård' };
 function checkMap(coords) {
-  if (!TEST || !TEST.map || SIM || mapCheck.busy || performance.now() - mapCheck.at < 60000) return;
+  if (!TEST || !TEST.map || FAKE || mapCheck.busy || performance.now() - mapCheck.at < 60000) return;
   mapCheck.busy = true;
   const note = $('map-note');
   note.hidden = false;
@@ -1107,7 +1132,7 @@ function walkStations(def) {
 
 function showVibra() {
   // Offered when a walk from here has Hon knackar, and a phone to buzz.
-  $('vibra-box').hidden = SIM || !CAN_VIBRATE || !walkStations(CHAPTERS[chapterNo]).includes('vibration');
+  $('vibra-box').hidden = FAKE || !CAN_VIBRATE || !walkStations(CHAPTERS[chapterNo]).includes('vibration');
   const state = vibra.busy ? 'buzzing' : vibra.answer || (vibra.tried ? 'asked' : 'idle');
   $('vibra-box').dataset.state = state === 'vägrad' ? 'refused' : state;
   $('vibra-note').textContent = VIBRA_NOTES[state];
@@ -1301,16 +1326,22 @@ function startSim() {
   const speedEl = $('sim-speed');
   const out = $('sim-out');
   speedEl.addEventListener('input', () => { out.textContent = kmh(parseFloat(speedEl.value)); });
-  $('sim-turn').addEventListener('click', () => { heading += Math.PI; log('sim: vänder'); });
-  $('sim-left').addEventListener('click', () => { heading -= Math.PI / 2; log('sim: vänster'); });
-  $('sim-right').addEventListener('click', () => { heading += Math.PI / 2; log('sim: höger'); });
+  // A listen drives the same slider from its one button (listenWalking), and
+  // has the turns and the knock as buttons of its own when the episode asks.
+  const who = LISTEN ? 'lyssning' : 'sim';
+  const turnBy = (rad, word) => () => { heading += rad; log(`${who}: ${word}`); };
+  const on = (ids, fn) => ids.forEach(id => $(id).addEventListener('click', fn));
+  on(['sim-turn', 'listen-turn'], turnBy(Math.PI, 'vänder'));
+  on(['sim-left', 'listen-left'], turnBy(-Math.PI / 2, 'vänster'));
+  on(['sim-right', 'listen-right'], turnBy(Math.PI / 2, 'höger'));
   // One sharp sample between the simulated steps. Click twice for a double.
   // Walking it is as hard as Henric's recorded walking knocks (18-60): the
   // walking bar is 15, and a standing knock's 9 never cleared it.
-  $('sim-knock').addEventListener('click', () => {
+  on(['sim-knock', 'listen-knock'], () => {
     const m = 9.81 + (walk.state().moving ? 40 : 9);
     record(now(), m);
     walk.motion(now(), m);
+    if (LISTEN) log('lyssning: knackar');
   });
   let first = true;
   simId = setInterval(() => {
@@ -1328,6 +1359,52 @@ function startSim() {
       onFirstPosition(lat, lon);
     }
   }, 1000);
+}
+
+// ---------- listening ----------
+// The walking screen of a listen: the scene, the time, the contact line, and
+// one button. The rest of the walking screen is for a walk outside.
+function showListen(def) {
+  $('listen').hidden = false;
+  const asks = def.asks || [];
+  $('listen-knock').hidden = !asks.includes('knock');
+  for (const id of ['listen-left', 'listen-right', 'listen-turn']) $(id).hidden = !asks.includes('turn');
+  $('listen-extra').hidden = !asks.length;
+  listenWalking(true);
+}
+
+// Walks at WALK_PACE or stands, through the sim's slider; the button names
+// what a tap does next.
+function listenWalking(on) {
+  $('sim-speed').value = String(on ? WALK_PACE : 0);
+  const btn = $('listen-btn');
+  btn.textContent = on ? tr('Stanna', 'Stop') : tr('Gå', 'Walk');
+  btn.dataset.walking = String(on);
+  $('listen-note').textContent = on
+    ? tr('Du går, i vanlig takt.', 'Shape is walking at an ordinary pace.')
+    : tr('Du står still, och hon hörs dovt. Tryck Gå när du vill vidare.',
+      'Shape is standing still, and her voice is muffled. Tap Walk to go on.');
+  if (walking()) log(on ? 'lyssning: går' : 'lyssning: stannar');
+}
+
+// The start screen's way in and back out: the same address with or without
+// ?lyssna, the other words of the link kept. Only an episode can be heard.
+function listenHref(listen) {
+  const q = new URLSearchParams(location.search);
+  for (const k of ['lyssna', 'listen', 'sim']) q.delete(k);
+  q.set('kapitel', chapterNo);
+  // URLSearchParams writes a bare key as "key=".
+  const rest = q.toString().replace(/=(?=&|$)/g, '');
+  const search = [rest, listen ? 'lyssna' : ''].filter(Boolean).join('&');
+  return search ? `?${search}` : location.pathname;
+}
+
+function showListenLink(def) {
+  const a = $('listen-link');
+  a.hidden = !LISTEN && (!def.side || !!TEST);
+  if (a.hidden) return;
+  a.href = listenHref(!LISTEN);
+  a.textContent = LISTEN ? tr('Gå ute i stället', 'Walk outside instead') : tr('Lyssna utan att gå', 'Listen without walking');
 }
 
 // ---------- end ----------
@@ -1348,15 +1425,15 @@ function finish() {
   $('walking').hidden = true;
   $('done').hidden = false;
   // A test walk is not one of her walks: it claims no squares and is not
-  // the last walk her memory lines count from.
-  if (memory && !TEST) {
+  // the last walk her memory lines count from. Nor is a listen.
+  if (memory && !TEST && !LISTEN) {
     if (now() >= MEMORY_MIN_WALK) {
       memory.endWalk(Date.now(), chapterNo);
       log(`minne: ${memory.fresh.size} nya rutor, ${memory.known.size} totalt`);
       showWorld('world-end', memory, memory.fresh, 'end');
     } else {
       // Too short to count: her world as it was, no new squares claimed.
-      showWorld('world-end', new Memory(SIM ? null : localStorage, MEMORY_KEY), new Set(), 'short');
+      showWorld('world-end', new Memory(FAKE ? null : localStorage, MEMORY_KEY), new Set(), 'short');
     }
   }
   if (CHAPTERS[chapterNo].lab) {
@@ -1378,7 +1455,8 @@ function finish() {
   $('final-log').textContent = logLines.join('\n');
   // A test walk's file carries its answers, so it is offered without a
   // sensor too.
-  $('save-btn').hidden = rec.t.length === 0 && !PROV_ID;
+  // A listen's samples are made up.
+  $('save-btn').hidden = LISTEN || (rec.t.length === 0 && !PROV_ID);
 }
 
 // ---------- her world ----------
@@ -1595,12 +1673,15 @@ function selectChapter(n) {
   const radio = document.querySelector(`input[name="chapter"][value="${chapterNo}"]`);
   if (radio) radio.checked = true;
   else document.querySelectorAll('input[name="chapter"]').forEach(el => { el.checked = false; });
-  try { if (radio) localStorage.setItem('glimt-chapter', chapterNo); } catch (_) {}
+  // A listen leaves the phone's last choice alone: it is always the episode.
+  try { if (radio && !LISTEN) localStorage.setItem('glimt-chapter', chapterNo); } catch (_) {}
   const def = CHAPTERS[chapterNo];
-  $('subtitle').textContent = def.subtitle;
+  $('subtitle').textContent = LISTEN && def.listenSubtitle || def.subtitle;
   $('variant-box').hidden = !!def.lab || !!def.side;
-  // A test walk is the link's one choice: nothing else to pick.
-  $('chapter-box').hidden = !!def.prov;
+  // A test walk is the link's one choice: nothing else to pick. Nor a listen,
+  // which is always the episode.
+  $('chapter-box').hidden = !!def.prov || LISTEN;
+  showListenLink(def);
   showProvBox(def);
   // The round's choice first: the try-out is offered for the stations it gives.
   showResume(def);
@@ -1650,6 +1731,10 @@ function englishPage() {
   set('contact-word', 'searching');
   set('band', 'still');
   set('gps', 'waiting for GPS');
+  set('listen-knock', 'Knock');
+  set('listen-left', 'Left');
+  set('listen-right', 'Right');
+  set('listen-turn', 'Turn around');
   document.querySelectorAll('.world-name').forEach(el => { el.textContent = 'Her world'; });
   const summary = document.querySelector('#last-log-box summary');
   if (summary) summary.textContent = "The last walk's log";
@@ -1673,6 +1758,13 @@ function englishPage() {
   // An unreadable ?banor= or ?prov= still meant a lab, and only a lab's
   // start screen has room to say the link was not understood.
   else if (BAD_CHOICE !== null || BAD_PROV !== null) ch = `labb${RESUMABLE[0]}`;
+  // A listen is an episode, whatever chapter the phone chose last.
+  if (LISTEN && !(CHAPTERS[ch] && CHAPTERS[ch].side)) ch = 'episod1';
+  if (LISTEN) {
+    // The page's class: what is about walking outside steps aside (glimt.css).
+    document.body.classList.add('lyssna');
+    $('listen-btn').addEventListener('click', () => listenWalking($('listen-btn').dataset.walking !== 'true'));
+  }
   document.querySelectorAll('input[name="chapter"]').forEach(el => {
     el.addEventListener('change', () => selectChapter(el.value));
   });

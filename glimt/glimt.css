@@ -64,6 +64,36 @@ pre {
 .readout .big { font-family: var(--hennes); font-size: var(--s3); font-weight: 300; line-height: 1.2; font-variant-numeric: tabular-nums; }
 .readout .small { color: var(--dampad); font-size: var(--s-1); }
 
+/* Listening (?lyssna): the scene and the time, the contact line, and one big
+   button, the screen's only filled one. Its word is what a tap does next.
+   Everything about walking outside steps aside. */
+.listen { margin: 0 0 2.5rem; }
+.listen[hidden] { display: none; }
+#listen-btn {
+  display: block;
+  width: 100%;
+  min-height: 8rem;
+  padding: 0 1.5rem;
+  background: var(--mint);
+  border: 0;
+  border-radius: 6px;
+  color: var(--pa-mint);
+  font: 600 var(--s4)/1 var(--telefonens);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+#listen-btn:hover { background: var(--mint-ljus); }
+.listen .hint { margin-top: 0.8rem; }
+.listen-extra { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.5rem; }
+.listen-extra[hidden], .listen-extra button[hidden] { display: none; }
+.listen-extra button {
+  min-height: 44px; padding: 0 1.2rem; background: none; border: 1px solid var(--linje);
+  border-radius: 6px; color: var(--text); font: inherit; font-size: var(--s0); cursor: pointer;
+}
+.lyssna #traffic-note, .lyssna #chrome-link, .lyssna #world-start, .lyssna #last-log-box,
+.lyssna .readout > div:first-child, .lyssna .readout .small, .lyssna #log, .lyssna .final-log { display: none; }
+.lyssna .readout { grid-template-columns: auto 1fr; gap: 2rem; }
+
 .sim {
   margin: 0 0 2rem;
   color: var(--dampad);

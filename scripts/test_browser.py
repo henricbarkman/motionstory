@@ -16,6 +16,7 @@ knock back. The motor there starts late and rings on, as a real one may.
     python3 scripts/test_browser.py prov            # the test walks, about five minutes
     python3 scripts/test_browser.py episod          # episode 1 walked twice side by side, about twelve minutes
     python3 scripts/test_browser.py episode         # episode 1 in English, walked once, about eleven minutes
+    python3 scripts/test_browser.py lyssna          # ?lyssna, both languages through scene 0, about four minutes
     GLIMT_SHOTS=/tmp/shots python3 scripts/test_browser.py first   # with screenshots
 
 It serves this repo on a free local port and lets no request leave the
@@ -1036,6 +1037,158 @@ def episode(browser, base):
     ctx.close()
 
 
+# Someone on the sofa with ?lyssna: Stanna once she has asked and her line is
+# over (the stop answers after her word, never before it), Gå a second into a
+# go line. Language-free: it waits for the line to end, not for a time. It
+# counts every ask for the phone's position or motion the page makes.
+LISTENER = """
+(() => {
+  const $ = id => document.getElementById(id);
+  window.__taps = [];
+  window.__asked = { geo: 0, motion: 0 };
+  const g = navigator.geolocation;
+  for (const k of ['getCurrentPosition', 'watchPosition']) {
+    const f = g[k].bind(g);
+    g[k] = (...a) => { window.__asked.geo++; return f(...a); };
+  }
+  const add = window.addEventListener.bind(window);
+  window.addEventListener = (type, ...rest) => {
+    if (type === 'devicemotion' || type === 'deviceorientation') window.__asked.motion++;
+    return add(type, ...rest);
+  };
+  const tap = walk => {
+    const b = $('listen-btn');
+    if (b.dataset.walking === String(walk)) return;
+    b.click();
+    window.__taps.push(walk ? 'gå' : 'stanna');
+  };
+  const afterLine = fn => {
+    const t0 = performance.now();
+    const id = setInterval(() => {
+      const waited = performance.now() - t0;
+      if ((waited > 500 && !window.glimt.mixer.currentVoice) || waited > 20000) { clearInterval(id); fn(); }
+    }, 50);
+  };
+  const on = {
+    's0-ask1': () => afterLine(() => tap(false)), 's0-yes1-b': () => afterLine(() => tap(false)),
+    's0-go1': () => setTimeout(() => tap(true), 1000), 's0-go2': () => setTimeout(() => tap(true), 1000),
+  };
+  const seen = new WeakSet();
+  const watch = () => new MutationObserver(() => {
+    for (const li of document.querySelectorAll('#log li')) {
+      if (seen.has(li)) continue;
+      seen.add(li);
+      const m = /▶ (\\S+)$/.exec(li.textContent);
+      if (m && on[m[1]]) on[m[1]]();
+    }
+  }).observe(document.documentElement, { childList: true, subtree: true });
+  if (document.documentElement) watch(); else document.addEventListener('DOMContentLoaded', watch);
+})();
+"""
+
+LISTEN_PAGES = {
+    # name: (link, ready, button words walking/standing, subtitle, voices, the other language's voices, memory key, others untouched)
+    "sv": ("?lyssna", "Börja lyssna", ("Stanna", "Gå"), "Lyssna utan att gå", "/vega/glimt-e1/", "/vega/glimt-e1en/",
+           "glimt-episod-1-lyssna", ["glimt-episod-1", "glimt-episod-1-sim", "glimt-memory", "glimt-last-log", "glimt-chapter", "glimt-landmark"]),
+    "en": ("?kapitel=episode1en&lyssna", "Start listening", ("Stop", "Walk"), "Listen without walking", "/vega/glimt-e1en/", "/vega/glimt-e1/",
+           "glimt-episode-1-en-lyssna", ["glimt-episode-1-en", "glimt-episode-1-en-sim", "glimt-memory-en", "glimt-last-log-en", "glimt-chapter", "glimt-landmark"]),
+}
+
+
+def lyssna(browser, base):
+    # GLIMT_LYSSNA=sv: the Swedish page only, for a checkout without the
+    # English episode (the private Swedish copy stays on version 40).
+    langs = [x for x in os.environ.get("GLIMT_LYSSNA", "sv,en").split(",") if x in LISTEN_PAGES]
+    # The way in: a small link on the episode's start screen, none on a lab's.
+    links = {"sv": ("?kapitel=episod1", "?kapitel=episod1&lyssna"), "en": ("?kapitel=episode1en", "?kapitel=episode1en&lyssna")}
+    for url, want in (links[x] for x in langs):
+        ctx, page, errors = open_page(browser, base, url=url, ready="Start walking" if "en" in url[-2:] else "Börja gå")
+        a = page.evaluate("(a => ({ shown: !a.hidden && a.offsetParent !== null, href: a.getAttribute('href'), text: a.textContent }))(document.getElementById('listen-link'))")
+        check(a["shown"] and a["href"] == want, f"lyssna: {url} links to {want} ({a})")
+        ctx.close()
+    ctx, page, errors = open_page(browser, base, url="?kapitel=labb1")
+    check(page.evaluate("document.getElementById('listen-link').hidden"), "lyssna: a lab's start screen has no listen link")
+    ctx.close()
+    # A link that asks for a lab and a listen gets the episode.
+    ctx, page, errors = open_page(browser, base, url="?kapitel=labb2&lyssna", ready="Börja lyssna")
+    check(page.evaluate("document.title") == "Glimt, episod 1", f"lyssna: ?kapitel=labb2&lyssna is the episode ({page.evaluate('document.title')!r})")
+    ctx.close()
+
+    # Both languages listened to side by side, through scene 0's two questions.
+    pages = {}
+    for name, (url, ready, words, sub, voices, other, key, untouched) in ((x, LISTEN_PAGES[x]) for x in langs):
+        ctx, page, errors = open_page(browser, base, url=url, init=LISTENER, motion=False, ready=ready)
+        s = page.evaluate("""() => {
+          const shown = id => { const el = document.getElementById(id); return !!el && !el.hidden && el.offsetParent !== null; };
+          return { sub: document.getElementById('subtitle').textContent, load: document.getElementById('load-note').textContent,
+            chapters: shown('chapter-box'), traffic: shown('traffic-note'), gps: shown('gps-note'), vibra: shown('vibra-box'),
+            world: shown('world-start'), back: document.getElementById('listen-link').getAttribute('href') };
+        }""")
+        check(sub in s["sub"] and not s["chapters"] and not s["traffic"] and not s["gps"] and not s["vibra"] and not s["world"],
+              f"lyssna {name}: the start screen says listen and asks for nothing outside ({s})")
+        check("lyssna" not in (s["back"] or "") and "kapitel=" in (s["back"] or ""), f"lyssna {name}: and links back to walking ({s['back']!r})")
+        shot(page, f"lyssna-{name}-start")
+        page.click("#start-btn")
+        page.wait_for_function("t => document.getElementById('listen-btn').textContent === t", arg=words[0], timeout=10000)
+        w = page.evaluate("""() => {
+          const shown = id => { const el = document.getElementById(id); return !!el && !el.hidden && el.offsetParent !== null; };
+          return { sim: shown('sim'), extra: shown('listen-extra'), band: shown('band'), log: shown('log'), scene: shown('scene') };
+        }""")
+        check(not w["sim"] and not w["extra"] and not w["band"] and not w["log"] and w["scene"],
+              f"lyssna {name}: the walking screen is the scene, the time and one button ({w})")
+        pages[name] = (ctx, page, errors)
+    page_moving = {}
+    for name, (ctx, page, errors) in pages.items():
+        page.wait_for_timeout(500)
+        page_moving[name] = page.evaluate("window.glimt.walk.state().moving") or wait_moving(page)
+        check(page_moving[name], f"lyssna {name}: the walker walks from the start, untouched")
+        shot(page, f"lyssna-{name}-walking")
+    for name, (ctx, page, errors) in pages.items():
+        url, ready, words, sub, voices, other, key, untouched = LISTEN_PAGES[name]
+        yes1 = wait_log(page, "scene 0: yes, sees her", 240000)
+        check(bool(yes1), f"lyssna {name}: Stanna after her question is a yes ({[x for x in walk_log(page) if 'scene 0' in x or 'lyssning' in x][-5:]})")
+        yes2 = wait_log(page, "scene 0: yes, hears her", 240000)
+        check(bool(yes2), f"lyssna {name}: and again for the second ({[x for x in walk_log(page) if 'scene 0' in x or 'lyssning' in x][-5:]})")
+        try:
+            page.wait_for_function("k => localStorage.getItem(k) !== null", arg=key, timeout=180000)
+        except PlaywrightTimeout:
+            pass
+        memory = page.evaluate("k => JSON.parse(localStorage.getItem(k) || 'null')", key)
+        others = page.evaluate("ks => ks.map(k => localStorage.getItem(k))", untouched)
+        check(memory is not None and memory.get("svarade") is True and others == [None] * len(untouched),
+              f"lyssna {name}: what episode 2 learns goes under {key}, a walk's keys untouched ({memory}, {others})")
+        taps = page.evaluate("window.__taps")
+        check(taps[:4] == ["stanna", "gå", "stanna", "gå"], f"lyssna {name}: two stops and two walks, as the listener tapped ({taps})")
+        btn = page.evaluate("document.getElementById('listen-btn').textContent")
+        check(btn == words[0], f"lyssna {name}: walking again, the button says {words[0]} ({btn!r})")
+        log = walk_log(page)
+        # The page's log rows are the time and the line run together.
+        check(any("start," in x and x.endswith(", lyssning") for x in log) and any("lyssning: stannar" in x for x in log),
+              f"lyssna {name}: the log says it was a listen ({log[:1]})")
+        asked = page.evaluate("({ ...window.__asked, vibrate: window.__vib.length })")
+        check(asked == {"geo": 0, "motion": 0, "vibrate": 0}, f"lyssna {name}: never asked for the position, the motion sensor or a buzz ({asked})")
+        fetched = page.evaluate("performance.getEntriesByType('resource').map(e => e.name)")
+        own = [u for u in fetched if voices in u]
+        wrong = [u for u in fetched if other in u]
+        check(own and not wrong, f"lyssna {name}: her voice is this language's ({len(own)} files, {wrong[:2]})")
+        bad = [x for x in log if "replik saknas" in x or "nådde aldrig slutet" in x or "fel:" in x]
+        check(not bad and not errors, f"lyssna {name}: no line missing, no page errors ({bad[:2]}, {errors[:3]})")
+        shot(page, f"lyssna-{name}-scene0")
+        page.click("#stop-btn")
+        page.wait_for_function("!document.getElementById('done').hidden", timeout=10000)
+        end = page.evaluate("({ save: !document.getElementById('save-btn').hidden, world: !document.getElementById('world-end').hidden, last: localStorage.getItem('glimt-last-log' + (location.search.includes('episode1en') ? '-en' : '') + '-lyssna') })")
+        check(not end["save"] and not end["world"] and bool(end["last"]), f"lyssna {name}: the end screen offers no sensor file and no world, the log kept apart ({ {k: bool(v) for k, v in end.items()} })")
+        ctx.close()
+
+
+def wait_moving(page, timeout=15000):
+    try:
+        page.wait_for_function("window.glimt && window.glimt.walk.state().moving", timeout=timeout)
+        return True
+    except PlaywrightTimeout:
+        return False
+
+
 SCENARIOS = {
     "first": first,
     "no": no,
@@ -1053,6 +1206,7 @@ SCENARIOS = {
     "fortexter": fortexter,
     "episod": episod,
     "episode": episode,
+    "lyssna": lyssna,
 }
 
 

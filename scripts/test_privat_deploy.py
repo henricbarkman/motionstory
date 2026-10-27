@@ -10,6 +10,7 @@ licensed sounds (sine tones), never the real ones.
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -94,6 +95,50 @@ def main() -> int:
     check(len(set(tags)) == 4, f"a change to the code, a voice or a file name changes it ({tags})")
     probe_sw.write_text("sw with the new name", encoding="utf-8")
     check(d.tree_tag(probe, probe_sw) == tags[-1], "the service worker itself does not, since it carries the name")
+
+    # No song given: the copy keeps its own, byte for byte, never transcoded
+    # again (new code out without the song at hand, 27/10).
+    before = (ut / stand_in).read_bytes()
+
+    def no_transcode(src: Path, out: Path) -> None:
+        raise AssertionError("transcoded a song it was told to keep")
+
+    d.transcode = no_transcode
+    try:
+        kept_cache = d.deploy(None, ut, 1, scratch, ljud)
+    finally:
+        d.transcode = real
+    check((ut / stand_in).read_bytes() == before, "without a song the copy keeps the one it has, byte for byte")
+    check(kept_cache == cache, f"and the same copy keeps the same cache name ({kept_cache})")
+    try:
+        d.deploy(None, uploads / "glimt-ingen-lat", 1, scratch, ljud)
+        check(False, "no song given and none to keep is refused")
+    except SystemExit as e:
+        check("not there to keep" in str(e) and not (uploads / "glimt-ingen-lat").exists(), f"no song given and none to keep is refused ({e})")
+
+    # --repo: the app from another checkout (the Swedish copy stays on an
+    # older version and still gets a change on top of it).
+    other_repo = root / "annan-checkout"
+    for name in d.TREE:
+        src = d.REPO / name
+        if src.is_dir():
+            shutil.copytree(src, other_repo / name)
+        else:
+            (other_repo / name).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, other_repo / name)
+    shutil.copytree(d.REPO / d.STORIES, other_repo / d.STORIES, ignore=lambda _, names: [n for n in names if not n.endswith(".json")])
+    app = other_repo / "glimt" / "app.js"
+    app.write_text("// from the other checkout\n" + app.read_text(encoding="utf-8"), encoding="utf-8")
+    other_cache = d.deploy(None, ut, 1, scratch, ljud, repo=other_repo)
+    check((ut / "glimt" / "app.js").read_text(encoding="utf-8").startswith("// from the other checkout"),
+          "--repo builds the copy from that checkout")
+    check((ut / stand_in).read_bytes() == before and other_cache != cache,
+          f"with the song kept and a new cache name for the new code ({other_cache})")
+    try:
+        d.check_target(other_repo / "glimt-test", other_repo)
+        check(False, "refuses a copy inside the checkout it is built from")
+    except SystemExit:
+        check(True, "refuses a copy inside the checkout it is built from")
 
     # A swap whose second rename fails puts the old copy back.
     (ut / "gammal.txt").write_text("the copy before", encoding="utf-8")
