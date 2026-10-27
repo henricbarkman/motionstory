@@ -21,6 +21,10 @@
     - Manusets metarader (`episode-1.md` rad 3, 28 och avsnittet "For the English rebuild") säger fortfarande att inget är inspelat eller byggt, och andningen före s2-2 står som 2 s. Rummets text rörs bara på Henrics ja.
     - Räkningen i scen 2 rusar och släpar: s2-count säger femton tal på knappt tio sekunder, sedan kommer 27-32 med ungefär 2,7 s mellan. Lyssna efter det; skaver det renderas s2-count om.
 - → Nästa: Henric går den engelska versionen på telefonen. Sedan svaret på om andningen före s2-2 ska få plats (kortare repliker runt den, eller en längre halvminut).
+- Henric: **Livs mininovell Here ska användas** (`projects/held/universe/stories/here-diary.md`, 20 dagboksfragment). "Ändra inget i manus än." Förslag i rummet att den står lika högt som LORE.md i världsbokens kanonordning.
+  - Redan i världsboken: "här" (rad 2), algoritmerna sätter takten (9), "not even choice" (5), Vegas personlighet = dagbokens "I", "going outside" (16).
+  - Inte använt än: ordboken av papper med uppslagen Alienation (3), Company towns (6), Sabotage (11), Commodification (19); koden (13: pamfletten under R, markerade bokstäver, mötet efter skiftet); lösenordet "clog" (10, 15); förseningen i länken som fördel (17); "Today, we try." (20).
+- → Nästa: när nästa episod skrivs eller episod 1 ses över läses Here först, och varje förslag säger vilket fragment det vilar på.
 
 ## 2026-10-26
 - Henric: **snäckan = Rowan, brittisk** (`kLhAstPcnnPxqzk6gS5i`). Rowans egen brytning, alltså eleven_v3 som resten av appen, ingen v4-variant.
