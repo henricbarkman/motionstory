@@ -172,7 +172,7 @@ def test_sounds():
     return json.dumps(manifest), body
 
 
-def open_page(browser, base, ua=CHROME_UA, url="?banor=vagval,kompass,vibration", init="", answer=True, shake=1.5, lag=0, ring=0, motion=True, overpass=None, rotation=True, hang=(), sounds=False):
+def open_page(browser, base, ua=CHROME_UA, url="?banor=vagval,kompass,vibration", init="", answer=True, shake=1.5, lag=0, ring=0, motion=True, overpass=None, rotation=True, hang=(), sounds=False, ready="Börja gå"):
     ctx = browser.new_context(
         user_agent=ua,
         viewport={"width": 412, "height": 915},
@@ -207,7 +207,7 @@ def open_page(browser, base, ua=CHROME_UA, url="?banor=vagval,kompass,vibration"
     phone = json.dumps({"answer": answer, "shake": shake, "lag": lag, "ring": ring, "motion": motion, "rotation": rotation})
     page.add_init_script(PHONE % phone + init)
     page.goto(f"{base}/glimt/{url}")
-    page.wait_for_function("document.getElementById('start-btn').textContent === 'Börja gå'", timeout=30000)
+    page.wait_for_function("t => document.getElementById('start-btn').textContent === t", arg=ready, timeout=30000)
     return ctx, page, errors
 
 
@@ -964,7 +964,7 @@ EPISODE_EN_WANT = {
 def episode(browser, base):
     # The English page before the walk: English, no chapters to choose, and
     # the Swedish start screen as it was (episodstart).
-    ctx, page, errors = open_page(browser, base, url="?kapitel=episode1en&sim", init=EPISODE_WALKER % json.dumps("asked"), sounds=True)
+    ctx, page, errors = open_page(browser, base, url="?kapitel=episode1en&sim", init=EPISODE_WALKER % json.dumps("asked"), sounds=True, ready="Start walking")
     page.wait_for_function("document.getElementById('start-btn').textContent === 'Start walking'", timeout=60000)
     s = page.evaluate("""() => ({
       lang: document.documentElement.lang, doc: document.title,
@@ -1006,7 +1006,8 @@ def episode(browser, base):
     check(order == ["scene 1", "scene 2", "scene 4", "end"], f"episode: the scenes come in order ({order})")
     starts = {x: clock(line) for line in log for x in ("scene 1", "scene 2", "scene 4") if line.split("  ", 1)[1].startswith(x)}
     s0end = clock(credits[0]) + 68 if credits else None
-    check(s0end is not None and starts.get("scene 1", 0) - s0end < 15, f"episode: scene 1 soon after the song ({starts})")
+    between = [line for line in log if s0end is not None and s0end - 75 <= clock(line) <= starts.get("scene 1", 0)]
+    check(s0end is not None and starts.get("scene 1", 0) - s0end < 15, f"episode: scene 1 soon after the song ({starts}; {between})")
     stood = [clock(line) for line in log if "she stands still" in line]
     counted = [clock(line) for line in log if line.endswith("▶ s2-3")]
     cue = json.loads((REPO / "stories/glimt/episode-1.json").read_text())["cues"]["s2-3"]["thirty"]
