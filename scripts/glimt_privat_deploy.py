@@ -6,6 +6,8 @@
     python3 scripts/glimt_privat_deploy.py --episod 1en <song>     # episode 1 in English -> .../glimt-episode1-en/
     python3 scripts/glimt_privat_deploy.py <song> --ut /tmp/g      # somewhere else, for a test
     python3 scripts/glimt_privat_deploy.py <song> --ljud <dir>     # the licensed sounds from elsewhere
+    python3 scripts/glimt_privat_deploy.py --episod 1en            # new code, the song the copy already has
+    python3 scripts/glimt_privat_deploy.py --repo <checkout>       # the app as another checkout has it
 
 The public app (GitHub Pages) has no songs that are not released, and none of
 the licensed sounds (the bed and the riser, Splice samples whose terms do not
@@ -35,6 +37,12 @@ The copy's service worker gets its own cache name, 'motionstory-vNN-privat-'
 plus a hash of every file in the copy (the service worker aside), so a phone
 that walked an earlier copy fetches whatever changed, and the start screen's build line says which copy it is. The
 folder's own index.html sends the walker straight to the episode.
+
+Without <song> the copy keeps the song it already has, byte for byte: new
+code goes out without the song at hand and without a second transcode. With
+--repo the app, its look and the episode files come from another checkout of
+this repo, so a language can stay on an older version of the story and still
+get a change on top of it (the Swedish copy on version 40, 27/10).
 
 Address afterwards: https://demi.henricbarkman.se/uploads/glimt-episodN/glimt/index.html?kapitel=episodN
 (in English, "Nen": .../uploads/glimt-episodeN-en/glimt/index.html?kapitel=episodeNen, file episode-N.json).
@@ -102,16 +110,16 @@ def episode_name(episode: int | str) -> str:
     return f"episode-{n}.json" if en else f"episod-{n}.json"
 
 
-def episode_file(episode: int | str) -> dict:
-    f = REPO / STORIES / episode_name(episode)
+def episode_file(episode: int | str, repo: Path = REPO) -> dict:
+    f = repo / STORIES / episode_name(episode)
     if not f.is_file():
-        sys.exit(f"no {f.relative_to(REPO)}: episode {episode} has no file to say where its song goes")
+        sys.exit(f"no {f.relative_to(repo)}: episode {episode} has no file to say where its song goes")
     return json.loads(f.read_text(encoding="utf-8"))
 
 
-def song_path(episode: int | str) -> Path:
+def song_path(episode: int | str, repo: Path = REPO) -> Path:
     """Where the song goes in the copy, relative to its root."""
-    chapter = episode_file(episode)
+    chapter = episode_file(episode, repo)
     name = (chapter.get("privat") or {}).get("ersatter") or (chapter.get("credits") or {}).get("file")
     if not name or Path(name).name != name:
         sys.exit(f"stories/glimt/{episode_name(episode)} names no song file (privat.ersatter or credits.file)")
@@ -147,13 +155,13 @@ def seconds(path: Path) -> float:
     return float(out)
 
 
-def check_target(ut: Path) -> None:
-    """The copy holds the song: never inside the repo, never over a folder
-    this script did not make."""
+def check_target(ut: Path, repo: Path = REPO) -> None:
+    """The copy holds the song: never inside the repo (nor the checkout it is
+    built from), never over a folder this script did not make."""
     ut = ut.resolve()
-    repo = REPO.resolve()
-    if ut == repo or repo in ut.parents or ut in repo.parents:
-        sys.exit(f"{ut} is inside the repo or holds it: the song must never come near it")
+    for r in {REPO.resolve(), repo.resolve()}:
+        if ut == r or r in ut.parents or ut in r.parents:
+            sys.exit(f"{ut} is inside the repo or holds it: the song must never come near it")
     if ut.exists() and not (ut / MARK).is_file():
         sys.exit(f"{ut} exists and was not made by this script; refusing to replace it")
 
@@ -187,10 +195,17 @@ def tree_tag(build: Path, skip: Path) -> str:
     return digest.hexdigest()[:8]
 
 
-def deploy(song: Path, ut: Path, episode: int | str = 1, scratch: Path = SCRATCH, ljud: Path = LJUD) -> str:
-    check_target(ut)
-    credits = song_path(episode)
-    chapter_id = episode_file(episode)["id"]
+def deploy(song: Path | None, ut: Path, episode: int | str = 1, scratch: Path = SCRATCH, ljud: Path = LJUD,
+           repo: Path = REPO) -> str:
+    """`song` None: the song the copy at `ut` has now, copied as it is."""
+    check_target(ut, repo)
+    credits = song_path(episode, repo)
+    chapter_id = episode_file(episode, repo)["id"]
+    kept = None
+    if song is None:
+        kept = ut / credits
+        if not kept.is_file():
+            sys.exit(f"no song given, and {kept} is not there to keep")
     sounds = licensed(ljud)
     ut.parent.mkdir(parents=True, exist_ok=True)
     scratch.mkdir(parents=True, exist_ok=True)
@@ -201,16 +216,19 @@ def deploy(song: Path, ut: Path, episode: int | str = 1, scratch: Path = SCRATCH
         build = work / ut.name
         build.mkdir()
         for name in TREE:
-            src = REPO / name
+            src = repo / name
             if src.is_dir():
                 shutil.copytree(src, build / name)
             else:
                 shutil.copy2(src, build / name)
         (build / STORIES).mkdir(parents=True)
-        for f in sorted((REPO / STORIES).glob("*.json")):
+        for f in sorted((repo / STORIES).glob("*.json")):
             shutil.copy2(f, build / STORIES / f.name)
         (build / credits).parent.mkdir(parents=True, exist_ok=True)
-        transcode(song, build / credits)
+        if kept is not None:
+            shutil.copy2(kept, build / credits)
+        else:
+            transcode(song, build / credits)
         where = {"bed": Path("audio/glimt/bed"), "riser": Path("audio/glimt/fx")}
         extra = {}
         for kind, src in sounds.items():
@@ -259,16 +277,19 @@ def deploy(song: Path, ut: Path, episode: int | str = 1, scratch: Path = SCRATCH
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("song", type=Path, help="the song, read from here only")
+    parser.add_argument("song", type=Path, nargs="?", help="the song, read from here only (left out: keep the copy's own)")
     parser.add_argument("--episod", default="1", help="which episode (default 1; 1en for episode 1 in English)")
     parser.add_argument("--ut", type=Path, help="where the copy goes (default the uploads folder glimt-episodN)")
     parser.add_argument("--ljud", type=Path, default=LJUD, help=f"the folder with the bed and the riser (default {LJUD})")
+    parser.add_argument("--repo", type=Path, default=REPO, help="the checkout the app comes from (default this one)")
     args = parser.parse_args()
-    if not args.song.is_file():
+    if args.song is not None and not args.song.is_file():
         sys.exit(f"no file {args.song}")
+    if not (args.repo / "glimt" / "app.js").is_file():
+        sys.exit(f"{args.repo} is not a checkout of this repo (no glimt/app.js)")
     ut = args.ut or default_ut(args.episod)
-    cache = deploy(args.song, ut, args.episod, ljud=args.ljud)
-    song = ut / song_path(args.episod)
+    cache = deploy(args.song, ut, args.episod, ljud=args.ljud, repo=args.repo)
+    song = ut / song_path(args.episod, args.repo)
     print(f"wrote {ut} ({cache}), song {seconds(song):.1f} s")
     return 0
 

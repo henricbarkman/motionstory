@@ -41,7 +41,7 @@ Motorn (`glimt/`):
 | `herside.js` | Hennes sida, ljudet som hörs när rösten blir dov: slingans surr, lampans ton och klockan görs i Web Audio; hennes steg, lojalistens steg och handen mot trädet är ljudeffekter klippta i enskilda steg, så att koden bestämmer takten. Snäckans röst går genom ett filter som gör den tunn och ihålig. |
 | `audio.js` | Web Audio: bädd i loop, riser, Vegas röst genom lågpassfilter och gain som följer kontakten. |
 | `world.js` | Ljus (solhöjd), regn (open-meteo), landmärke inom 400 m med position (Overpass/OSM), alla med fallback. |
-| `app.js` | GPS, klocka, wake lock, logg, kapitelval. `?sim` i adressen ersätter GPS med ett fartreglage. |
+| `app.js` | GPS, klocka, wake lock, logg, kapitelval. `?sim` i adressen ersätter GPS med ett fartreglage. `?lyssna` (engelska: `?kapitel=episode1en&lyssna`) är episoden i soffan: telefonen går själv i vanlig takt och en stor knapp, Stanna/Gå, svarar som ute; inga frågor om gps, sensor eller vibration, och eget minne (`-lyssna`). |
 
 **Kontakt** är den enda mätaren. Rörelse höjer den, stillhet sänker den (om inte en hållscen pågår), dålig GPS-noggrannhet tar den ner till hälften. Den hörs: vid full kontakt är rösten ren och nära, vid noll är den en dov, avlägsen mumling. Samma inspelning, olika filter.
 
