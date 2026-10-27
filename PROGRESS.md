@@ -1,5 +1,11 @@
 # PROGRESS — Motionstory
 
+## 2026-10-27
+- Henric: **Livs mininovell Here ska användas** (`projects/held/universe/stories/here-diary.md`, 20 dagboksfragment). "Ändra inget i manus än." Förslag i rummet att den står lika högt som LORE.md i världsbokens kanonordning.
+  - Redan i världsboken: "här" (rad 2), algoritmerna sätter takten (9), "not even choice" (5), Vegas personlighet = dagbokens "I", "going outside" (16).
+  - Inte använt än: ordboken av papper med uppslagen Alienation (3), Company towns (6), Sabotage (11), Commodification (19); koden (13: pamfletten under R, markerade bokstäver, mötet efter skiftet); lösenordet "clog" (10, 15); förseningen i länken som fördel (17); "Today, we try." (20).
+- → Nästa: när nästa episod skrivs eller episod 1 ses över läses Here först, och varje förslag säger vilket fragment det vilar på.
+
 ## 2026-10-26
 - Henric: **snäckan = Rowan, brittisk** (`kLhAstPcnnPxqzk6gS5i`). Rowans egen brytning, alltså eleven_v3 som resten av appen, ingen v4-variant.
 - Henric: **Vega = Paula Soothing, brittisk** (`FrzKLwOr0y3qieiphjs2`). Hennes egen brytning, alltså också eleven_v3. Båda rösterna på v3, ingen modell per röst behövs.
