@@ -71,8 +71,17 @@ def main():
         check(OLD_OWN not in keys and OLD_PUBLIC not in keys, f"and the worker clears this copy's older caches ({keys})")
         check(OTHER in keys and FOREIGN in keys, "another copy's old cache, and a cache that is not Glimt's, are left alone")
         check(any(k.endswith(f" {base}/en/") for k in keys), "its own cache is named with its scope")
+        # No signal: the server is gone. The link as it is handed out has a
+        # query this phone never fetched online; the cached page answers.
+        server.shutdown()
+        server.server_close()
+        try:
+            page.goto(f"{base}/en/glimt/index.html?kapitel=episode1en", timeout=15000)
+            offline = page.evaluate("document.getElementById('start-btn') !== null")
+        except Exception as e:  # the browser's own error page, or none
+            offline = f"{type(e).__name__}: {str(e).splitlines()[0][:80]}"
+        check(offline is True, f"offline, the episode's link opens the page ({offline})")
         browser.close()
-    server.shutdown()
     (root / "en").unlink()          # the link, never what it points to
     (root / "blank.html").unlink()
     root.rmdir()

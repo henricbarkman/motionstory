@@ -12,14 +12,25 @@ const CACHE = 'motionstory-v41';
 // Every lookup goes to STORE only. caches.match() searches every cache on
 // the origin, oldest first, so an older cache left beside the new one would
 // answer first, and a line re-rendered under its old name would play as it was.
+// Their files are not moved over either, for the same reason.
 const STORE = `${CACHE} ${self.registration.scope}`;
 async function mine(k) {
   if (k.endsWith(` ${self.registration.scope}`) || /^motionstory-v\d+$/.test(k)) return true;
   if (!/^motionstory-v\d+-privat-[0-9a-f]+$/.test(k)) return false;
-  const held = await (await caches.open(k)).keys();
-  return held.some(r => r.url.startsWith(self.registration.scope));
+  // Someone else's cache that cannot be read is not this copy's to clear,
+  // and must not stop the worker from taking the page.
+  try {
+    const held = await (await caches.open(k)).keys();
+    return held.some(r => r.url.startsWith(self.registration.scope));
+  } catch (err) {
+    return false;
+  }
 }
-const cached = req => caches.open(STORE).then(c => c.match(req));
+// A page is the same page whatever its query (?kapitel=..., ?sim): the app
+// reads the query itself, so offline the cached page answers for any of them.
+const cached = req => caches.open(STORE)
+  .then(c => c.match(req).then(r => r || (req.mode === 'navigate' ? c.match(req, { ignoreSearch: true }) : undefined)))
+  .catch(() => undefined);
 
 // Relative to the service worker scope. Absolute paths ('/audio/...') broke on
 // GitHub Pages where the app lives under /motionstory/, so addAll failed and
@@ -112,8 +123,9 @@ self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
       .then(keys => Promise.all(
-        keys.filter(k => k !== STORE).map(async k => { if (await mine(k)) await caches.delete(k); })
+        keys.filter(k => k !== STORE).map(async k => { if (await mine(k)) await caches.delete(k).catch(() => {}); })
       ))
+      .catch(() => {})
       .then(() => self.clients.claim())
   );
 });
