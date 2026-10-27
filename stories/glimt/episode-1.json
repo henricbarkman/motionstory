@@ -1,0 +1,441 @@
+{
+  "id": "glimt-e1en",
+  "title": "Keep Going",
+  "language": "en",
+  "source": "stories/glimt/episode-1.md",
+  "style": "Close and spoken, one person on a bad phone line. Spoken English of a young working woman, not literary, not sitcom. Asides: lower, quicker, turned away from the line. Translated from the Swedish draft 7 (episod-1.json, v40), 2026-10-23; voices chosen 2026-10-26.",
+  "targetMinutes": 10.5,
+  "voices": {
+    "vega": "FrzKLwOr0y3qieiphjs2",
+    "snackan": "kLhAstPcnnPxqzk6gS5i"
+  },
+  "voiceNotes": {
+    "vega": "Paula, Soothing, Gentle and Warm (British, her own accent), eleven_v3, no accent tag (Henric 2026-10-26).",
+    "snackan": "Rowan (British, his own accent), eleven_v3, no tags, stability 1.0 so it stays flat (Henric 2026-10-26). Played through the earpiece filter named under snackaFilter (glimt/herside.js)."
+  },
+  "voiceSettings": {
+    "snackan": {
+      "stability": 1.0
+    }
+  },
+  "snackaFilter": "mellan",
+  "lineVoices": {
+    "x-avvikelse": "snackan",
+    "r-hjalp": "snackan"
+  },
+  "asides": [
+    "s0-1",
+    "s0-yes1-a",
+    "s0-yes2-aside",
+    "s1-self",
+    "s2-self",
+    "s4-self"
+  ],
+  "credits": {
+    "file": "fortexter.opus",
+    "seconds": 67.8
+  },
+  "klarhet": 0.45,
+  "lines": {
+    "s0-1": "[mutters to herself, quick and low] There it is again. Right at the edge.\n\nIt's the lights. It's always the lights. ...It's not the lights.\n\nIt's closer tonight. Now. Do it now. ...Okay.",
+    "s0-2": "[calling out, unsure] Hello? [louder] Hello! [urgent] Wait!\n\n[flustered, quick] No, no, don't wait! Sorry. Keep going. When you stand still, you disappear on me. I'm trying to keep up.\n\n[calmer] I don't know who you are. I don't even know if you can hear this. I can't hear anything from you. Not a sound. I just get glimpses. A shape at the edge. And bits of your world.\n\nBut there's one thing I have to know.",
+    "s0-ask1": "So here's how. I ask, and if it's yes, you stop. [quick, half a laugh at herself] Not now! Once I've asked. And then stay put till I say go. I'm a bit slow. [pause] Can you see me?",
+    "x-stod": "[steady, clear] You'd already disappeared when I asked. Keep going a bit, then I'll ask again.",
+    "s0-again1": "Right. Can you see me?",
+    "s0-go1": "[steady, clear] ...There, I've lost you. Now go.",
+    "x-ga-igen": "[steady, clear] I can't see you when you stand still. Go.",
+    "s0-yes1-a": "[mutters to herself, quick and low] What? That can't be right. You can't see me. You can't.",
+    "s0-yes1-b": "You just wanted to answer. Fine. Once more, then. [pause] Can you hear me?",
+    "s0-no1": "[dry] No. Didn't think so. [pause] Or I missed it. One more thing. Can you hear me?",
+    "s0-again2": "Right. Can you hear me?",
+    "s0-go2": "[steady, clear] ...There! Yes. Go now, go.",
+    "s0-yes2": "[a stunned little laugh] You heard me. I didn't think I'd get this far.\n\n[softly] I see you.\n\n[quietly] And you hear me.",
+    "s0-yes2-aside": "[whispers to herself] You hear me.",
+    "s0-no2": "No. No, of course not. You're steps, not ears. [a short laugh that dies] I'll talk anyway. Never stopped me before.",
+    "s1-walk": "[calmly] There. You're clear now.\n\nYou're walking. Like someone who's allowed to go wherever they like.",
+    "s1-run": "[calmly] There. You're clear now.\n\nYou're running. Nobody runs here. It's not banned. Nobody's got anything to run to, that's all.",
+    "s1-2": "Go however you like. If you have to stop, stop. Your road comes before mine.\n\nI'm walking too. Everyone does, after the shift. Round the loop, forty minutes. \"Health-promoting movement,\" it says on the wall. [deadpan] We're very healthy.\n\nI don't know anything about you, so I'll ask. Same as before: if it's yes, you stop until I say go. It's safe here, I'm just doing my round.",
+    "s1-self": "[mutters to herself, quick and low] Ask something real this time. ...Come on.",
+    "s1-q2": "Are you alone? Out there, I mean.",
+    "s1-again": "Right. Are you alone?",
+    "s1-go": "[steady, clear] There. Got it. Now go.",
+    "s1-q2-yes": "Me too. Even with forty of us on the loop. [chuckles] It's not the same.",
+    "s1-q2-no": "No? [pause] So you've got someone besides me. [dry] I'll have to share.",
+    "s1-3": "They know how we walk. Every step. Too slow, they know. Wrong way, they know. [pause] You're not on any of their lists.\n\nBut here you are anyway. [pause] And now I've got an idea. A stupid one.",
+    "s2-1": "Here's the thing. I'm walking along talking out loud to someone who isn't there, and nobody's said a word. Not one, since you came.\n\nSo I'm going to try something. Something small. Keep going, if you can.",
+    "s2-2": "I'm standing still.\n\n[whispers] Half a minute with no steps, then they want to know what you're up to. I'm counting.",
+    "s2-count": "[whispers, counting quickly under her breath] ...twelve, thirteen, fourteen, fifteen, sixteen, seventeen, eighteen, nineteen, twenty, twenty-one, twenty-two, twenty-three, twenty-four, twenty-five, twenty-six.",
+    "s2-count-stop": "[whispers, urgent] ...go. Or they'll start counting me.",
+    "s2-3": "[whispers] ...twenty-seven. Twenty-eight. Twenty-nine. Thirty. [short pause] Thirty-one. [short pause] Thirty-two.",
+    "s2-4": "[amazed] They're not asking. You're moving, and they think it's me.\n\n[laughs] Four years I've walked this loop, same direction. And now I'm standing here like a post. Best thing I've done since I got here.\n\nNow one more thing. Just keep going.",
+    "s2-self": "[mutters to herself, quick and low] Three metres. It's only three metres.",
+    "s2-5": "I've stepped off the gravel. You don't step off the gravel. There's trees here, three metres in. I've walked past them a thousand times.",
+    "s2-6": "It's plastic. [short pause] The tree's plastic. I knew that. [pause] I'm patting it anyway.",
+    "s2-ask": "Stop for a bit, if you can. Stand here with me.",
+    "s2-lamp-plea": "[whispers] ...no. No, no... Please, go! ...Go!",
+    "s2-lamp-plea2": "[whispers, pleading] Please... I can't move from here till you do. Go.",
+    "s2-lamp-mine": "[quietly] I asked you to stop, and forgot I was still walking.",
+    "s2-lamp-1": "[exhales] That was the lamp. It came on when you stopped. [pause] I've never seen it lit before. [deadpan] It's pretty, actually.\n\nYou move, I'm hidden. ... Sounds like something you'd scratch into a wall.",
+    "s2-lamp-2": "And you stopped when I asked. [short pause] You hear me.",
+    "s2-no": "No? [chuckles] No. Probably for the best. I don't know what happens if you stand still while I'm out here. I don't think I want to find out tonight.",
+    "s3-1": "[exhales] I'm sitting down now. Under the plastic tree. And when I sit still, I see more of you. Not you, you're still just a shape. What's around you.",
+    "s3-dark": "It's dark where you are. Here it's always evening, but never dark. They say it's calming.\n\nThere must be stars where you are. I haven't seen a single one since I came.",
+    "s3-light": "It's light where you are. It's so bright at the edges. Here it's always evening. They say it's calming.\n\nYou've got a real sun. The kind that burns. We've got a lamp called Daylight. It does its best.",
+    "s3-rain": "And it's raining where you are. It's like static over everything. Here we drink the same water over and over. Where you are it just falls. Straight down, on anyone.",
+    "s3-dry": "And it's dry where you are. It never rains here. That would be a waste.",
+    "s3-near": "[slowly] And there's something near you.",
+    "s3-bro": "A bridge. It's blurry, like a pencil line. [pause] We've got a bridge here too. It goes over nothing. Someone copied the bridge and forgot the river.",
+    "s3-vatten": "Water. It's glinting. [pause] We've got water here too. Sounds like water, anyway. I've found the speaker.",
+    "s3-skog": "Woods. Thick ones. [pause] We've got woods here too, right at the back. Flat as a painting, but they rustle. They got that bit right.",
+    "s3-berg": "A hill. [pause] We've got a hill here too. You're not allowed up it. I don't think it'd hold.",
+    "s3-kyrkogard": "A graveyard. [pause] We've got a graveyard here too. No graves. Someone must have thought it looked nice.",
+    "s3-2": "[after a silence] The loop's a copy of a real place, they say. To make us feel at home.\n\nIt looks like where you are. But it isn't where you are.",
+    "s4-1": "[quietly] That's the bell. The loop's closing.",
+    "s4-self": "[mutters to herself, quick and low] Up. Up, up.",
+    "s4-2": "[hurried] In a minute the whole shift comes around the corner, and I'm sitting under a tree. Go now, if you can. Don't stop. Not now.",
+    "s4-3": "[whispers] ...go, go...",
+    "s4-ok": "[exhales] On the gravel. A worker on her round, that's all they see. [deadpan] I've stood like a post, patted a tree and sat on the ground. And nobody saw a thing.",
+    "s4-ok-lamp": "[exhales] On the gravel. A worker on her round, that's all they see. [deadpan] I've stood like a post, patted a tree and sat on the ground. The lamp caught one out of three. Not bad, for a first time.",
+    "s4-lamp-1": "[whispers] ...no. Not now.",
+    "s4-lamp-2": "[quietly] I made it. But it's been logged. A deviation. I'll be hearing about that.",
+    "s4-back": "You're on your way back. I can tell, you're going straight now. [deadpan] I just go round. Same thing, according to the wall.",
+    "s4-onward": "You're heading away from where you started. Straight out. [pause] I can't do that. But I can watch.",
+    "s4-yes": "I don't know what you are. But you hear me, and you stopped when I asked. That's more than I know about most people here.\n\nI've seen you before, you know. Out at the edge. Lots of times. Just a shape, never anything more. [pause] Tonight's the first time you've... answered.\n\nSo you're Shape. That's what I've been calling you in my head. [pause] It'll do.\n\nI'm Vega. In case you were wondering.",
+    "s4-never-1": "I don't know what you are. A glitch in their numbers, maybe. Or someone out there who's got no idea what they did tonight.\n\nI'll ask one more time, then I'll give up. If you hear me: stop.",
+    "s4-never-yes-1": "[quietly] ...there.",
+    "s4-never-yes-2": "[laughs] All night! You've heard me all night. And I've been going on about plastic trees.\n\nI've seen you before, you know. Out at the edge, lots of times. Just a shape. So you're Shape. It'll do. I'm Vega. In case you were wondering.",
+    "s4-never-no": "No. Okay. Then you're steps. [pause] I've been hiding in them all night, so I'm not complaining.\n\nI've seen you out at the edge before. Just a shape. I'll call you Shape anyway. I'm Vega, if anyone's wondering.",
+    "s4-all": "There are people here who whisper. By the presses, where it's loudest. They stop when I come over. I've never been able to go where they go.\n\n[short pause] Maybe now I can.\n\nOne more thing. You've got stars where you are, sometimes. Go out some night when it's clear. I want to know if I see one.\n\nCome back out. If you want. I'll manage otherwise, I have for a long time. But come.",
+    "r-hjalp": "Vega. You are stationary. Do you need assistance?",
+    "r-vilar": "No, thank you. I'm resting.",
+    "x-avvikelse": "Deviation. Steps off route."
+  },
+  "sfx": {
+    "harda": {
+      "file": "harda.mp3",
+      "seconds": 10,
+      "prompt": "One person in hard-soled shoes walking on a gravel path with firm, even, confident steps, close-up recording, dry, no background noise, no voices, no music",
+      "steps": true,
+      "measured": {
+        "seconds": 10.0,
+        "peak": 0.627,
+        "rms": 0.0198
+      },
+      "slices": [
+        [
+          0.41,
+          0.54
+        ],
+        [
+          0.96,
+          0.51
+        ],
+        [
+          1.48,
+          0.5
+        ],
+        [
+          1.99,
+          0.52
+        ],
+        [
+          2.52,
+          0.52
+        ],
+        [
+          3.05,
+          0.52
+        ],
+        [
+          3.58,
+          0.53
+        ],
+        [
+          4.12,
+          0.5
+        ],
+        [
+          4.63,
+          0.57
+        ],
+        [
+          5.21,
+          0.51
+        ],
+        [
+          5.73,
+          0.53
+        ],
+        [
+          6.27,
+          0.52
+        ],
+        [
+          6.8,
+          0.54
+        ],
+        [
+          7.35,
+          0.53
+        ],
+        [
+          7.89,
+          0.56
+        ],
+        [
+          8.46,
+          0.65
+        ],
+        [
+          9.12,
+          0.48
+        ],
+        [
+          9.61,
+          0.39
+        ]
+      ]
+    },
+    "hand": {
+      "file": "hand.mp3",
+      "seconds": 2,
+      "prompt": "A hand pats a hollow plastic tree trunk twice, dull hollow plastic thuds, close-up, dry, no background noise",
+      "measured": {
+        "seconds": 2.0,
+        "peak": 1.256,
+        "rms": 0.0399
+      }
+    }
+  },
+  "cueWords": {
+    "s0-ask1": [
+      "see"
+    ],
+    "s0-again1": [
+      "see"
+    ],
+    "s0-yes1-b": [
+      "hear"
+    ],
+    "s0-no1": [
+      "hear"
+    ],
+    "s0-again2": [
+      "hear"
+    ],
+    "s1-again": [
+      "are"
+    ],
+    "s2-3": [
+      "thirty"
+    ],
+    "s2-ask": [
+      "stop"
+    ],
+    "s4-never-1": [
+      "last:stop"
+    ],
+    "s0-no2": [
+      "talk"
+    ]
+  },
+  "silenceDb": -26,
+  "breakFrom": {
+    "x-stod": "keep",
+    "s0-go1": "now",
+    "x-ga-igen": "i",
+    "s0-go2": "go",
+    "s1-go": "now",
+    "s2-count-stop": "go",
+    "s2-lamp-plea": "go",
+    "s2-lamp-plea2": "please",
+    "s4-lamp-1": "not"
+  },
+  "seconds": {
+    "s0-1": 13.24,
+    "s0-2": 29.96,
+    "s0-ask1": 15.49,
+    "x-stod": 5.25,
+    "s0-again1": 1.8,
+    "s0-go1": 2.69,
+    "x-ga-igen": 3.32,
+    "s0-yes1-a": 5.56,
+    "s0-yes1-b": 7.08,
+    "s0-no1": 9.95,
+    "s0-again2": 1.15,
+    "s0-go2": 2.77,
+    "s0-yes2": 7.39,
+    "s0-yes2-aside": 1.88,
+    "s0-no2": 8.99,
+    "s1-walk": 7.16,
+    "s1-run": 9.56,
+    "s1-2": 31.4,
+    "s1-self": 3.63,
+    "s1-q2": 2.69,
+    "s1-again": 1.72,
+    "s1-go": 2.77,
+    "s1-q2-yes": 4.83,
+    "s1-q2-no": 6.43,
+    "s1-3": 16.93,
+    "s2-1": 15.39,
+    "s2-2": 8.83,
+    "s2-count": 9.95,
+    "s2-count-stop": 2.69,
+    "s2-3": 14.37,
+    "s2-4": 16.04,
+    "s2-self": 3.87,
+    "s2-5": 9.17,
+    "s2-6": 8.59,
+    "s2-ask": 3.47,
+    "s2-lamp-plea": 4.99,
+    "s2-lamp-plea2": 5.72,
+    "s2-lamp-mine": 3.32,
+    "s2-lamp-1": 15.8,
+    "s2-lamp-2": 4.68,
+    "s2-no": 11.65,
+    "s3-1": 11.15,
+    "s3-dark": 11.08,
+    "s3-light": 17.24,
+    "s3-rain": 12.43,
+    "s3-dry": 4.6,
+    "s3-near": 2.12,
+    "s3-bro": 12.51,
+    "s3-vatten": 10.76,
+    "s3-skog": 11.15,
+    "s3-berg": 7.39,
+    "s3-kyrkogard": 7.71,
+    "s3-2": 9.33,
+    "s4-1": 2.85,
+    "s4-self": 2.12,
+    "s4-2": 7.08,
+    "s4-3": 1.49,
+    "s4-ok": 12.51,
+    "s4-ok-lamp": 14.03,
+    "s4-lamp-1": 2.19,
+    "s4-lamp-2": 8.2,
+    "s4-back": 8.28,
+    "s4-onward": 8.28,
+    "s4-yes": 29.73,
+    "s4-never-1": 14.03,
+    "s4-never-yes-1": 1.72,
+    "s4-never-yes-2": 21.0,
+    "s4-never-no": 17.71,
+    "s4-all": 29.39,
+    "r-hjalp": 3.71,
+    "r-vilar": 2.12,
+    "x-avvikelse": 2.59
+  },
+  "cues": {
+    "s0-ask1": {
+      "see": 14.94
+    },
+    "s0-again1": {
+      "see": 1.36
+    },
+    "s0-yes1-b": {
+      "hear": 6.62
+    },
+    "s0-no1": {
+      "hear": 9.24
+    },
+    "s0-again2": {
+      "hear": 0.76
+    },
+    "s0-no2": {
+      "talk": 5.6
+    },
+    "s1-again": {
+      "are": 1.04
+    },
+    "s2-ask": {
+      "stop": 0.1
+    },
+    "s4-never-1": {
+      "last:stop": 13.54
+    },
+    "s2-3": {
+      "thirty": 8.3
+    }
+  },
+  "breaks": {
+    "x-stod": [
+      {
+        "from": 1.94,
+        "to": 3.07,
+        "said": "You'd already disappeared when I asked."
+      }
+    ],
+    "s0-go1": [
+      {
+        "from": 1.46,
+        "to": 2.08,
+        "said": "There, I've lost you."
+      }
+    ],
+    "x-ga-igen": [
+      {
+        "from": 2.08,
+        "to": 2.75,
+        "said": "I can't see you when you stand still."
+      }
+    ],
+    "s0-go2": [
+      {
+        "from": 1.41,
+        "to": 1.82,
+        "said": "There! Yes."
+      }
+    ],
+    "s1-go": [
+      {
+        "from": 1.46,
+        "to": 2.08,
+        "said": "There. Got it."
+      }
+    ],
+    "s2-count-stop": [
+      {
+        "from": 0.52,
+        "to": 1.3,
+        "said": "go."
+      }
+    ],
+    "s2-lamp-plea": [
+      {
+        "from": 3.5,
+        "to": 4.12,
+        "said": "no. No, no... Please, go!"
+      }
+    ],
+    "s2-lamp-plea2": [
+      {
+        "from": 0.88,
+        "to": 1.59,
+        "said": "Please..."
+      },
+      {
+        "from": 3.68,
+        "to": 4.99,
+        "said": "Please... I can't move from here till you do."
+      }
+    ],
+    "s4-lamp-1": [
+      {
+        "from": 0.65,
+        "to": 1.48,
+        "said": "no."
+      }
+    ]
+  },
+  "breaksMeasuredOn": {
+    "x-stod": 5.25,
+    "s0-go1": 2.69,
+    "x-ga-igen": 3.32,
+    "s0-go2": 2.77,
+    "s1-go": 2.77,
+    "s2-count-stop": 2.69,
+    "s2-lamp-plea": 4.99,
+    "s2-lamp-plea2": 5.72,
+    "s4-lamp-1": 2.19
+  }
+}

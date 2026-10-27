@@ -5,7 +5,8 @@
 //           lowpass filter and a gain that follow contact.
 //   song  : episode 1's opening credits. Straight to the master at full
 //           level, past the line and the contact: the song is the song, not
-//           music under a scene (Henric 21/10).
+//           music under a scene (Henric 21/10). In English it starts faint
+//           under her last line and grows once she has finished (playSong).
 //
 // The radio stage is the line itself (Henric 2026-10-17: a light radio on her
 // voice all the time, clearer further on in the story). One knob, klarhet,
@@ -22,6 +23,11 @@ const VOICE_FLOOR_HZ = 300;
 // peak at -3.5 dBFS, her lines -15 to -16: +2.5 dB puts the song at a
 // released track's level and keeps its peak a dB under full scale.
 const SONG_GAIN = 1.33;
+// The English episode starts the song under her last line (Henric 23/10:
+// faint under it, full once she has finished). Its share of SONG_GAIN while
+// she speaks, and the seconds it takes to grow to full after.
+export const SONG_UNDER = 0.2;
+export const SONG_RISE = 3;
 const VOICE_CEIL_HZ = 18000;
 // A line she says to herself (Henric 2026-10-16: lower, turned away from the
 // line): never clearer than this contact, and at this share of the level.
@@ -278,6 +284,54 @@ export class Mixer {
       src.startedAt = startAt;
       this.currentVoice = src;
     });
+  }
+
+  // The credits' song under a line (the English episode 1): its own source,
+  // so the line playing is still the current voice and nothing cuts the song
+  // but the end of the walk. Starts at `at` (AudioContext time) at `share` of
+  // the song's level. Returns `done`, a promise of how it ended as playVoice's
+  // does, and `rise(seconds)`, which brings it to full.
+  playSong(buffer, { at = null, share = SONG_UNDER } = {}) {
+    const c = this.ctx;
+    const src = c.createBufferSource();
+    src.buffer = buffer;
+    const level = c.createGain();
+    const startAt = Math.max(c.currentTime, at === null ? 0 : at);
+    level.gain.setValueAtTime(share, startAt);
+    src.connect(level);
+    level.connect(this.songGain);
+    const done = new Promise(resolve => {
+      let over = false;
+      const finish = why => {
+        if (over) return;
+        over = true;
+        clearTimeout(watchdog);
+        resolve(why);
+      };
+      const lead = Math.max(0, startAt - c.currentTime);
+      const watchdog = setTimeout(() => finish('timeout'), (lead + buffer.duration + 10) * 1000);
+      src.onended = () => finish('ended');
+    });
+    src.start(startAt);
+    this.song = src;
+    return {
+      done,
+      startedAt: startAt,
+      rise(seconds = SONG_RISE) {
+        const now = Math.max(c.currentTime, startAt);
+        level.gain.cancelScheduledValues(now);
+        level.gain.setValueAtTime(share, now);
+        level.gain.linearRampToValueAtTime(1, now + seconds);
+      },
+    };
+  }
+
+  // Stops the song playSong started, if it still plays (the walk's end).
+  stopSong() {
+    if (this.song) {
+      try { this.song.stop(); } catch (_) {}
+      this.song = null;
+    }
   }
 
   // Cuts whatever line is playing. onended fires, so the pending play resolves.

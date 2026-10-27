@@ -1,6 +1,13 @@
 // Bump CACHE whenever audio or app files change, otherwise an installed PWA
 // keeps serving the old files forever.
-const CACHE = 'motionstory-v40';
+const CACHE = 'motionstory-v41';
+// The private copies sit side by side on one origin (the portal) and share
+// its CacheStorage. Each worker keeps its files under its own scope and
+// clears only its own older caches, so opening one copy never empties
+// another (or the portal's). Caches named the old way, without a scope, are
+// left alone, except the public site's own (motionstory-vNN on Pages).
+const STORE = `${CACHE} ${self.registration.scope}`;
+const mine = k => k.endsWith(` ${self.registration.scope}`) || /^motionstory-v\d+$/.test(k);
 
 // Relative to the service worker scope. Absolute paths ('/audio/...') broke on
 // GitHub Pages where the app lives under /motionstory/, so addAll failed and
@@ -37,9 +44,14 @@ const ASSETS = [
   './stories/glimt/kapitel-1.json',
   './stories/glimt/kapitel-2.json',
   './stories/glimt/episod-1.json',
+  './stories/glimt/episode-1.json',
   './stories/glimt/labb.json',
   './glimt/ljud.json',
 ];
+// The English episode (episode-1.json) is left out: only its own link opens
+// it, so a Swedish phone should not download its 11 MB of voices. The
+// English page fetches all its lines when it opens, and the fetch handler
+// keeps them then.
 const CHAPTER_FILES = ['./stories/glimt/kapitel-1.json', './stories/glimt/kapitel-2.json',
   './stories/glimt/episod-1.json', './stories/glimt/labb.json'];
 
@@ -72,7 +84,7 @@ async function extraAssets() {
 
 self.addEventListener('install', e => {
   e.waitUntil((async () => {
-    const cache = await caches.open(CACHE);
+    const cache = await caches.open(STORE);
     const voices = await Promise.all(CHAPTER_FILES.map(chapterAssets));
     const urls = ASSETS.concat(...voices, await extraAssets());
     // cache: 'reload' bypasses the HTTP cache so a new worker never precaches
@@ -88,7 +100,7 @@ self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
       .then(keys => Promise.all(
-        keys.filter(k => k !== CACHE).map(k => caches.delete(k))
+        keys.filter(k => mine(k) && k !== STORE).map(k => caches.delete(k))
       ))
       .then(() => self.clients.claim())
   );
@@ -113,14 +125,22 @@ self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (url.origin !== self.location.origin) return;
   if (/\.(mp3|opus)$/.test(url.pathname)) {
-    e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
+    // A file not precached (the English episode's) is kept once fetched
+    // whole, so the walk after works without signal too.
+    e.respondWith(caches.match(e.request).then(r => r || fetch(e.request).then(res => {
+      if (res.status === 200) {
+        const copy = res.clone();
+        caches.open(STORE).then(c => c.put(e.request, copy)).catch(() => {});
+      }
+      return res;
+    })));
     return;
   }
   e.respondWith(
     fetch(e.request).then(res => {
       if (res.ok) {
         const copy = res.clone();
-        caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
+        caches.open(STORE).then(c => c.put(e.request, copy)).catch(() => {});
       }
       return res;
     }).catch(() => caches.match(e.request))

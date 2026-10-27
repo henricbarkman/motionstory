@@ -110,4 +110,21 @@ const broken = store();
 broken.setItem('glimt-memory', '{not json');
 check(new Memory(broken).summary().walks === 0, 'broken storage starts over');
 
+// The English page keeps its own world: a walk there leaves the Swedish one
+// as it was, and the Swedish key is the one it always was.
+{
+  const s = store();
+  const sv = new Memory(s);
+  sv.visit(59.38, 13.5);
+  sv.endWalk(t0, 'episod1');
+  const before = s.getItem('glimt-memory');
+  const en = new Memory(s, 'glimt-memory-en');
+  check(en.summary().walks === 0, 'the English page starts with its own empty world');
+  en.visit(59.40, 13.6);
+  en.endWalk(t0 + 1000, 'episode1en');
+  check(before !== null && s.getItem('glimt-memory') === before, 'an English walk leaves the Swedish world untouched');
+  check(new Memory(s, 'glimt-memory-en').summary().walks === 1 && new Memory(s).summary().walks === 1,
+    'each page reads back its own walk');
+}
+
 process.exit(failures ? 1 : 0);

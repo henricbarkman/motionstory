@@ -9,6 +9,7 @@
 //   node scripts/test_glimt.mjs 2 stubborn    # one profile
 //   node scripts/test_glimt.mjs e1            # episode 1
 //   node scripts/test_glimt.mjs e1 own        # one of its walkers
+//   node scripts/test_glimt.mjs e1en          # episode 1 in English, the same walkers
 //
 // Episode 1 has more to get wrong than scene order: which stop lights the
 // lamp, which branch each walker hears, and that her half minute is a half
@@ -21,7 +22,7 @@ import { dirname, join } from 'node:path';
 import { Walk, Waiter, simulatedMagnitude } from '../glimt/engine.js';
 import { runChapter1 } from '../glimt/chapter1.js';
 import { runChapter2 } from '../glimt/chapter2.js';
-import { runEpisode1 } from '../glimt/episod1.js';
+import { runEpisode1, SV as EPISODE_SV, EN as EPISODE_EN } from '../glimt/episod1.js';
 import { breakAt, BREAK_LEAD, BREAK_FADE } from '../glimt/audio.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -271,11 +272,30 @@ function answerErrors(log, profile) {
 
 // ---------- episode 1 ----------
 
-const EPISODE = JSON.parse(readFileSync(join(ROOT, 'stories/glimt/episod-1.json'), 'utf8'));
+// `e1en`: the English episode, its file and its words (EN in episod1.js),
+// walked by the same walkers. What they expect of the Swedish words is read
+// across to the English below (brokeSaid).
+const ENGLISH = process.argv[2] === 'e1en';
+const E_OPTS = ENGLISH ? EPISODE_EN : EPISODE_SV;
+const E_WORDS = E_OPTS.words;
+const EPISODE_SV_FILE = JSON.parse(readFileSync(join(ROOT, 'stories/glimt/episod-1.json'), 'utf8'));
+const EPISODE = ENGLISH ? JSON.parse(readFileSync(join(ROOT, 'stories/glimt/episode-1.json'), 'utf8')) : EPISODE_SV_FILE;
 const E_SECONDS = EPISODE.seconds || {};
-const E_CUE = (EPISODE.cues && EPISODE.cues['s2-3'] && EPISODE.cues['s2-3'].trettio) || 0;
+const E_CUE = (EPISODE.cues && EPISODE.cues['s2-3'] && EPISODE.cues['s2-3'][E_WORDS.thirty]) || 0;
+// The end after she is back on the gravel: at most END_GAP, and END_SOON for
+// a walker nearly back, plus the log's whole seconds and a tick.
+const E_END = E_OPTS.end;
 const E_CREDITS = (EPISODE.credits && EPISODE.credits.seconds) || 0;
 const E_BREAKS = EPISODE.breaks || {};
+// The walkers name where a go line ends by its Swedish words; in English the
+// same pause by its place among the line's pauses (the last when the English
+// has fewer).
+function brokeSaid(id, sv) {
+  if (!ENGLISH) return sv;
+  const i = ((EPISODE_SV_FILE.breaks || {})[id] || []).findIndex(b => b.said === sv);
+  const en = E_BREAKS[id] || [];
+  return i < 0 || !en.length ? sv : en[Math.min(i, en.length - 1)].said;
+}
 
 // What a walker does when a line is heard: `[when, from, to]`, a stop from
 // `from` to `to` seconds after the line's 'start' or 'end'. A list of them
@@ -318,6 +338,9 @@ const out = (speed = 1.4, turn = 330) => t => ({ speed: t < 5 ? 0 : speed, headi
 // said at all, the walker going already. `voiceAfterStop`: at most this long
 // from the stop to the go line that answers it. `noAfterLine`: at most this
 // long from the end of a question to her no.
+// `en`: what is different for this walker in English (e1en), where its
+// Swedish timing sat on an edge the English takes move: the same walk, moved
+// to the same side of the edge.
 // `known`: a failure found and not yet fixed, said every run. It fails the
 // suite once the walker passes, so the mark comes off with the fix, and
 // always when the episode throws, hangs or skips a scene. `knownProblems`:
@@ -422,12 +445,17 @@ const EPISODE_WALKERS = {
   counted: {
     walk: out(), stops: { 's2-count': ['start', 4, 9], ...END_STOP },
     has: ['s2-count', 's2-count-stop', 's2-3', 's2-4'], not: ['r-hjalp'],
+    // The English count is 10 s, not 14: the same stop, earlier in it. GPS
+    // sees it about 6.5 s on, and her "go" takes 3.5 more: a stop later than
+    // half a second into the English count makes "thirty" late.
+    en: { stops: { 's2-count': ['start', 0.5, 5.5], ...END_STOP } },
     lamps: 0, memory: { svarade: false, misstanke: false },
   },
   // The same stop, long enough to pass the half minute: she says the last
   // numbers once the walker walks, late.
   'counted-long': {
     walk: out(), stops: { 's2-count': ['start', 4, 24], ...END_STOP },
+    en: { stops: { 's2-count': ['start', 1.5, 24], ...END_STOP } },
     has: ['s2-count-stop', 's2-3', 's2-4'], not: ['r-hjalp'], lateCount: true,
     lamps: 0, memory: { svarade: false, misstanke: false },
   },
@@ -507,6 +535,9 @@ const EPISODE_WALKERS = {
     handlesAt: { 's0-go2': ['start', 0, 8] },
     has: ['s0-yes1-a', 's0-yes2', 's0-go1', 's0-go2'], not: ['s0-no1', 'x-ga-igen'],
     whole: ['s0-go1'], broke: { 's0-go2': 'Där! Ja.' },
+    // The English pause after "There! Yes." is over at 1.82 s, before the
+    // two close bumps (2.2 s): "Go now, go." has no pause, so it is said whole.
+    en: { whole: ['s0-go1', 's0-go2'], broke: {} },
     lamps: 0, memory: { svarade: true, misstanke: false },
   },
   // Stands a little over a second at each question: the step gap is shorter
@@ -555,6 +586,15 @@ const EPISODE_WALKERS = {
   // question. Henric's walk 21/10 heard a no: the band needs three seconds.
   brief: {
     walk: t => ({ ...out()(t), steps: true }), stops: { 's0-ask1': ['end', 0.3, 1.8], 's0-yes1-b': ['end', 0.3, 1.8], 's1-q2': ['end', 0.5, 2.0], ...END_STOP },
+    // A stop of a second and a half leaves a step gap of FEET_STOP to the
+    // floating point: here two seconds after the Swedish line ends, a hair
+    // under after the English, which hears a no. Longer, the feet see the
+    // stop while the walker still stands, and the go line comes. So a stop
+    // this short is a coin toss on a phone too, in both languages.
+    en: {
+      known: 'a 1.5 s stop is a step gap of exactly FEET_STOP, and on the English line ends it rounds under',
+      knownProblems: ['s0-yes1-a never heard', 's0-yes2 never heard', 's0-no1 heard', 's0-no2 heard', 's0-go1 was not skipped', 's0-go2 was not skipped'],
+    },
     has: ['s0-yes1-a', 's0-yes2', 's1-q2-yes', 's4-yes'], not: ['s0-no1', 's0-no2', 's1-q2-no', 's0-go1', 's0-go2', 's1-go'],
     // The yes comes with the step that ends the gap: going again, so her go
     // line is not said at all.
@@ -610,12 +650,19 @@ const EPISODE_WALKERS = {
   'closed-slow': {
     walk: t => ({ ...out(0.6)(t), steps: true }), stops: { 's0-ask1': ['end', 6, 20], ...END_STOP },
     has: ['s0-no1'], not: ['s0-yes1-a'],
+    // The edge (yes before, no after) is at 6 s on the Swedish line and 6.5
+    // on the English, where the slow steps fall half a step later.
+    en: { stops: { 's0-ask1': ['end', 7, 20], ...END_STOP } },
     lamps: 0, memory: { svarade: false, misstanke: false },
   },
   // A red light between scene 1 and 2: forty-two seconds still while she walks.
   light: {
     walk: out(), stops: { 's1-3': ['end', 2, 44], ...END_STOP },
     has: ['s2-no'], not: ['r-hjalp'],
+    // In English the tree follows two seconds after scene 1, so the same red
+    // light is at the start of scene 2: she stops with the walker, counts
+    // nothing, asks them to go and says the last numbers when they do.
+    en: { skips: ['scene 2: she counts'], lateCount: true, has: ['s2-no', 's2-count-stop'] },
     lamps: 0, memory: { svarade: false, misstanke: false },
   },
   // A red light in the credits: the song goes dull, nothing else happens.
@@ -793,8 +840,11 @@ function seeded(seed) {
   };
 }
 
+// A walker as it walks in the language under test.
+const walker = name => (ENGLISH && EPISODE_WALKERS[name].en ? { ...EPISODE_WALKERS[name], ...EPISODE_WALKERS[name].en } : EPISODE_WALKERS[name]);
+
 function simulateEpisode(name) {
-  const profile = EPISODE_WALKERS[name];
+  const profile = walker(name);
   const random = Math.random;
   if (profile.seed !== undefined) Math.random = seeded(profile.seed);
   const walk = new Walk();
@@ -884,8 +934,16 @@ function simulateEpisode(name) {
     seconds: id => E_SECONDS[id] || 0,
     cue: (id, word) => ((EPISODE.cues || {})[id] || {})[word] || 0,
     remember: facts => { memory = { ...facts }; },
-    credits() {
-      log.push(`${fmt(t)}  ▶ förtexter`);
+    // As app.js: `under`, the song starts under that line, at its cue word,
+    // once the line has started; it is credited from then.
+    async credits({ under = null, word = null } = {}) {
+      if (under) {
+        await waiter.until(() => played.some(x => x.id === under), { timeout: (E_SECONDS[under] || 0) + 20 });
+        const line = played.find(x => x.id === under);
+        const at = line ? line.t + (word ? ((EPISODE.cues || {})[under] || {})[word] || 0 : 0) : t;
+        if (at > t) await waiter.until(() => false, { timeout: at - t });
+      }
+      log.push(`${fmt(t)}  ▶ förtexter${under ? ` (under ${under})` : ''}`);
       credited.push(t);
       return waiter.until(() => false, { timeout: E_CREDITS }).then(() => {});
     },
@@ -896,7 +954,7 @@ function simulateEpisode(name) {
     },
   };
 
-  const done = runEpisode1(ctx).then(() => { ended = true; }, err => { log.push(`ERROR ${err.stack}`); ended = true; });
+  const done = runEpisode1(ctx, E_OPTS).then(() => { ended = true; }, err => { log.push(`ERROR ${err.stack}`); ended = true; });
 
   // As simulate() above, but the microtask queue is drained to the bottom
   // between ticks: the episode's helpers are several awaits deep, and her
@@ -948,7 +1006,7 @@ const E_ORDER = ['scene 0: does the walker see her', 'credits', 'scene 1', 'scen
 const logTime = line => { const [m, s] = line.trim().split(/\s+/)[0].split(':').map(Number); return m * 60 + s; };
 
 function episodeProblems(name, run) {
-  const p = EPISODE_WALKERS[name];
+  const p = walker(name);
   const problems = [];
   const { log, played, sideCalls, memory } = run;
   const count = id => played.filter(x => x.id === id).length;
@@ -975,7 +1033,8 @@ function episodeProblems(name, run) {
 
   // The go lines (v40): ended at a pause, said whole, or not said at all.
   const lastOf = id => played.filter(x => x.id === id).pop();
-  for (const [id, want] of Object.entries(p.broke || {})) {
+  for (const [id, sv] of Object.entries(p.broke || {})) {
+    const want = brokeSaid(id, sv);
     const x = lastOf(id);
     if (x && x.broke !== want) problems.push(x.broke ? `${id} ended after "${x.broke}", wanted after "${want}"` : `${id} said to its end, wanted it to end after "${want}"`);
   }
@@ -1021,8 +1080,8 @@ function episodeProblems(name, run) {
   // The end comes soon after she is back on the gravel, also for a walker far
   // from the start: never a minute of hum after a line that sounds like an end.
   const back = played.filter(x => ['s4-ok', 's4-ok-lamp', 's4-lamp-2'].includes(x.id)).pop();
-  if (back && s4end !== null && s4end - (back.t + E_SECONDS[back.id]) > 26) {
-    problems.push(`the end came ${Math.round(s4end - back.t - E_SECONDS[back.id])} s after ${back.id}, wanted at most 25`);
+  if (back && s4end !== null && s4end - (back.t + E_SECONDS[back.id]) > E_END.gap + 1) {
+    problems.push(`the end came ${Math.round(s4end - back.t - E_SECONDS[back.id])} s after ${back.id}, wanted at most ${E_END.gap}`);
   }
   // And sooner for a walker nearly back. Read from where the simulated walker
   // really is 15 s after that line, not from what the phone made of it: under
@@ -1031,11 +1090,11 @@ function episodeProblems(name, run) {
   if (back && s4end !== null) {
     const backEnd = back.t + E_SECONDS[back.id];
     const dist = when => { let d = null; for (const p of run.truth) { if (p.t <= when) d = p.d; } return d; };
-    const near = dist(backEnd + 15), before = dist(backEnd - 30);
-    const readable = run.truth.filter(p => p.t >= backEnd - 30 && p.t <= backEnd + 15).every(p => p.acc <= 50);
+    const near = dist(backEnd + E_END.soon), before = dist(backEnd + E_END.soon - 45);
+    const readable = run.truth.filter(p => p.t >= backEnd + E_END.soon - 45 && p.t <= backEnd + E_END.soon).every(p => p.acc <= 50);
     if (readable && near !== null && before !== null && near < 250 && before - near > 60) {
       run.nearlyBack = true;
-      if (s4end - backEnd > 17) problems.push(`nearly back (${Math.round(near)} m) and the end came ${Math.round(s4end - backEnd)} s after ${back.id}, wanted about 15`);
+      if (s4end - backEnd > E_END.soon + 2) problems.push(`nearly back (${Math.round(near)} m) and the end came ${Math.round(s4end - backEnd)} s after ${back.id}, wanted about ${E_END.soon}`);
     }
   }
 
@@ -1063,7 +1122,7 @@ function episodeProblems(name, run) {
   else {
     const half = counting.t + E_CUE - stood;
     // A walker who stood through the half minute hears it once they walk.
-    if (p.lateCount ? half < 29 : Math.abs(half - 30) > 1) problems.push(`"trettio" came ${half.toFixed(1)} s after she stopped, wanted 30`);
+    if (p.lateCount ? half < 29 : Math.abs(half - 30) > 1) problems.push(`"${E_WORDS.thirty}" came ${half.toFixed(1)} s after she stopped, wanted 30`);
   }
 
   // Her side. The tone never left on, and her own steps are never heard
@@ -1109,9 +1168,11 @@ function coverageProblems(heard) {
     if (!existsSync(join(ROOT, 'audio/glimt/side', sfx.file))) problems.push(`her side: ${sfx.file} is missing`);
     if (sfx.steps && !(sfx.slices && sfx.slices.length >= 4)) problems.push(`her side: ${name} is not cut into steps`);
   }
-  if (!(E_CUE > 0)) problems.push('no measured cue for "trettio" in s2-3');
+  if (!(E_CUE > 0)) problems.push(`no measured cue for "${E_WORDS.thirty}" in s2-3`);
   // The windows open at the question's first word.
-  for (const [id, word] of [['s0-ask1', 'ser'], ['s0-yes1-b', 'hör'], ['s0-no1', 'hör']]) {
+  for (const [id, word] of [['s0-ask1', E_WORDS.see], ['s0-yes1-b', E_WORDS.hear], ['s0-no1', E_WORDS.hear],
+    ['s0-again1', E_WORDS.see], ['s0-again2', E_WORDS.hear], ['s1-again', E_WORDS.are], ['s2-ask', E_WORDS.stop],
+    ['s4-never-1', E_WORDS.lastStop]]) {
     if (!(((EPISODE.cues || {})[id] || {})[word] > 0)) problems.push(`no measured cue for "${word}" in ${id}`);
   }
   if (!(E_CREDITS > 60)) problems.push('the credits have no length');
@@ -1176,20 +1237,20 @@ async function episodeMain(onlyProfile) {
     if (onlyProfile && onlyProfile !== name) continue;
     const run = await simulateEpisode(name);
     run.played.forEach(x => heard.add(x.id));
-    console.log(`\n=== episode 1 / ${name} — ${run.ended ? 'ended at ' + Math.round(run.t / 60 * 10) / 10 + ' min' : 'DID NOT END'}`);
+    console.log(`\n=== episode 1${ENGLISH ? ' (en)' : ''} / ${name} — ${run.ended ? 'ended at ' + Math.round(run.t / 60 * 10) / 10 + ' min' : 'DID NOT END'}`);
     console.log(run.log.join('\n'));
     const problems = episodeProblems(name, run);
     if (run.nearlyBack) nearlyBack++;
     if (!run.ended) problems.unshift('did not end');
     // A known walker still has to run the episode to its end: a crash or a
     // hang is never the known finding.
-    const known = EPISODE_WALKERS[name].known;
+    const known = walker(name).known;
     const broken = problems.filter(x => x === 'did not end' || x === 'the script threw' || x.startsWith('reached '));
     if (known && !broken.length) {
       if (!problems.length) { failures++; console.log(`FAIL: passes now, take away its known (${known})`); continue; }
       // The known failure is locked to its problems, so a new one beside it
       // still fails the suite instead of hiding in the KNOWN line.
-      const expected = EPISODE_WALKERS[name].knownProblems || [];
+      const expected = walker(name).knownProblems || [];
       const added = problems.filter(x => !expected.includes(x));
       const gone = expected.filter(x => !problems.includes(x));
       if (added.length || gone.length) {
@@ -1214,7 +1275,7 @@ async function episodeMain(onlyProfile) {
 }
 
 async function main() {
-  const episodeOnly = process.argv[2] === 'e1';
+  const episodeOnly = process.argv[2] === 'e1' || ENGLISH;
   const onlyChapter = process.argv[2] && !episodeOnly ? parseInt(process.argv[2], 10) : null;
   const onlyProfile = process.argv[3];
   let failures = 0;

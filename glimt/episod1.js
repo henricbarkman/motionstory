@@ -1,6 +1,9 @@
 // Episode 1, "Det är när du går", as straight-line code against the engine.
 // Manuscript: stories/glimt/episod-1.md. Its section "Logiken" is the rule
-// book for this file:
+// book for this file. The English episode, "Keep Going" (episode-1.md), runs
+// the same code with EN below: its answer words, its scenes following each
+// other, its breaths, its asides and The Code under her last words. With no
+// second argument it is the Swedish episode exactly as version 40 ran it.
 //
 //   - The walker walks: the Company reads the walker's steps as hers, and
 //     sees a worker on her round whatever she does.
@@ -76,6 +79,38 @@ const AT = {
   bell: 9.5 * MIN,        // scene 4
 };
 
+// What differs between the two languages. `words`: the word in a line from
+// which a stop is the answer (the files' cueWords). `at`, `after`: a scene
+// opens at `at` at the earliest, and at least `after` seconds after the scene
+// before it ended. `end`: END_SOON and END_GAP. `gaps`: seconds of silence
+// before a line (and before the name, `name`), where clips played back to
+// back left her no breath. `asides`: her lines to herself that only the
+// English has. `songUnder`: The Code starts faint under her last line before
+// the credits and grows when she has finished (the cue word in the line, or
+// its start).
+export const SV = {
+  words: { see: 'ser', hear: 'hör', are: 'är', thirty: 'trettio', stop: 'stanna', lastStop: 'stanna' },
+  at: AT,
+  after: { tree: 20, sky: 20, bell: 25 },
+  end: { soon: END_SOON, gap: END_GAP },
+  gaps: {},
+  asides: {},
+  songUnder: null,
+};
+// Henric's walk of 23/10 measured the pauses (episode-1.md, "Pauses,
+// measured 23/10"): the scenes waited for fixed minutes, 47, 20 and 53 s of
+// silence, and clips came with no breath. The takes have about a tenth of a
+// second of silence at each end, so a gap is the silence heard.
+export const EN = {
+  words: { see: 'see', hear: 'hear', are: 'are', thirty: 'thirty', stop: 'stop', lastStop: 'last:stop' },
+  at: { tree: 0, sky: 0, bell: 0 },
+  after: { tree: 2, sky: 6, bell: 10 },
+  end: { soon: 6, gap: 10 },
+  gaps: { 's0-2': 2, 's0-ask1': 1.5, 's0-yes1-b': 1, 's1-self': 1.5, 's1-q2': 1, 's2-2': 2, 's2-ask': 1, name: 1.5, 's4-all': 2 },
+  asides: { yes2: 's0-yes2-aside', gravel: 's2-self', up: 's4-self' },
+  songUnder: { yes: ['s0-yes2-aside', null], no: ['s0-no2', 'talk'] },
+};
+
 // A stop the walker means. The feet say it two seconds after the last step,
 // so one second more is enough; GPS alone needs longer to be sure.
 const sure = s => s.paceSource === 'steps' ? 1 : 3;
@@ -143,7 +178,8 @@ export const going = s => walking(s) || (s.moving && quickSteps(s));
 const standing = (s, since) => s.paceSource === 'steps'
   ? !(s.prevStepAt > since && s.lastStepAt - s.prevStepAt < STRIDE) : !going(s);
 
-export async function runEpisode1(ctx) {
+export async function runEpisode1(ctx, E = SV) {
+  const W = E.words;
   const side = ctx.side;
   const now = () => ctx.state().t;
   const her = {
@@ -194,6 +230,8 @@ export async function runEpisode1(ctx) {
     return why;
   }
   const pause = seconds => hold(() => false, { timeout: seconds });
+  // The breath before line `id`, where the episode has one (E.gaps).
+  const breath = id => (E.gaps[id] ? pause(E.gaps[id]) : Promise.resolve('ok'));
 
   // Plays a line. 'done' when it reached its end; 'lamp' or 'rest' when a
   // stop cut it short, with the share of it that was heard in `heard`.
@@ -269,7 +307,7 @@ export async function runEpisode1(ctx) {
   // A slower walker waits out the window as before. On GPS it is the band
   // once `seenLate` has passed, for GPS sees a stop just before the close
   // only then.
-  async function ask(id, word = 'stanna', patience = 0) {
+  async function ask(id, word = W.lastStop, patience = 0) {
     const askedAt = now() + (word ? ctx.cue(id, word) : 0);
     let walked = false;
     let yes = false;
@@ -359,42 +397,54 @@ export async function runEpisode1(ctx) {
   // her. Both stops are harmless: she walks her round.
   ctx.hold(true);
   await ctx.play('s0-1');
+  await breath('s0-2');
   await ctx.play('s0-2');
+  await breath('s0-ask1');
   ctx.log('scene 0: does the walker see her');
   let hears;
-  if (await question('s0-ask1', 'ser', 's0-again1', 'ser')) {
+  if (await question('s0-ask1', W.see, 's0-again1', W.see)) {
     ctx.log('scene 0: yes, sees her');
     her.askedFor = true;
     await goOn('s0-go1');
     await ctx.play('s0-yes1-a');
-    hears = await question('s0-yes1-b', 'hör', 's0-again2', 'hör');
+    await breath('s0-yes1-b');
+    hears = await question('s0-yes1-b', W.hear, 's0-again2', W.hear);
   } else {
     ctx.log('scene 0: no');
-    hears = await question('s0-no1', 'hör', 's0-again2', 'hör');
+    hears = await question('s0-no1', W.hear, 's0-again2', W.hear);
   }
+  // The opening credits. Vega is silent while the song plays. In English it
+  // starts faint under her last line and grows once she has finished (Henric
+  // 23/10); "You hear me." comes as it enters, so it stays faint till then.
+  let song = null;
+  const under = E.songUnder && E.songUnder[hears ? 'yes' : 'no'];
   if (hears) {
     ctx.log('scene 0: yes, hears her');
     her.askedFor = true;
     await goOn('s0-go2');
     await ctx.play('s0-yes2');
+    if (under) { ctx.log('credits, under her last words'); song = ctx.credits({ under: under[0], word: under[1] }); }
+    if (E.asides.yes2) await ctx.play(E.asides.yes2);
   } else {
     ctx.log('scene 0: does not hear her');
     her.heardNo = true;
+    if (under) { ctx.log('credits, under her last words'); song = ctx.credits({ under: under[0], word: under[1] }); }
     await ctx.play('s0-no2');
   }
   remember(false);
 
-  // The opening credits. Vega is silent while the song plays.
-  ctx.log('credits');
-  await ctx.credits();
+  if (!song) ctx.log('credits');
+  await (song || ctx.credits());
 
   // 1. The loop. When the song is over and the contact is full.
   await ctx.until(s => full(s) && s.moving && s.movingFor >= 3, { timeout: SHORT_WAIT });
   ctx.log('scene 1');
   await ctx.play(ctx.state().band === 'run' ? 's1-run' : 's1-walk');
   await ctx.play('s1-2');
+  await breath('s1-self');
   await ctx.play('s1-self');
-  if (await question('s1-q2', null, 's1-again', 'är')) {
+  await breath('s1-q2');
+  if (await question('s1-q2', null, 's1-again', W.are)) {
     ctx.log('scene 1: yes, alone');
     her.askedFor = true;
     await goOn('s1-go');
@@ -408,7 +458,7 @@ export async function runEpisode1(ctx) {
 
   // 2. The tree. What she does here needs the walker's steps, so a walker
   // who has stopped for a while is waited for longer than elsewhere.
-  await opens(Math.max(AT.tree, now() + 20), LONG_WAIT);
+  await opens(Math.max(E.at.tree, now() + E.after.tree), LONG_WAIT);
   ctx.log('scene 2');
   await ctx.play('s2-1');
 
@@ -422,9 +472,15 @@ export async function runEpisode1(ctx) {
     const stoodAt = now();
     her.stillSince = stoodAt;
     ctx.log('scene 2: she stands still');
+    // She stops: in English the silence is the stop (E.gaps), as long as
+    // the half minute has room for it with her count whole and a second to
+    // spare for the lines to start (the English lines leave 1.1 s, not the
+    // 2 the manuscript asks for).
+    const room = HALF_MINUTE - ctx.cue('s2-3', W.thirty) - ctx.seconds('s2-count') - COUNT_BREATH - ctx.seconds('s2-2') - 1;
+    if (E.gaps['s2-2'] && await pause(Math.min(E.gaps['s2-2'], Math.max(0, room))) === 'rest') continue;
     if (await line('s2-2') === 'rest') continue;
     side.lift(true);
-    const lastAt = stoodAt + HALF_MINUTE - ctx.cue('s2-3', 'trettio');
+    const lastAt = stoodAt + HALF_MINUTE - ctx.cue('s2-3', W.thirty);
     // heldStop: a page hidden a moment while the walker walks is no stop.
     let why = await hold(s => heldStop(s) || s.t >= lastAt - ctx.seconds('s2-count') - COUNT_BREATH);
     if (why === 'rest') continue;
@@ -446,6 +502,7 @@ export async function runEpisode1(ctx) {
   }
   side.lift(false);
   await say('s2-4');
+  if (E.asides.gravel) await say(E.asides.gravel);
 
   // She steps off the gravel. From here a stop lights the lamp.
   her.stillSince = null;
@@ -520,9 +577,10 @@ export async function runEpisode1(ctx) {
     // A walker in the middle of a stop has decided already; it shows first.
     let askedAt = null;
     let why = ctx.state().moving ? 'ok' : await hold(s => s.moving, { timeout: 4 });
+    if (why !== 'lamp') why = await breath('s2-ask');
     if (why !== 'lamp') {
       ctx.log('scene 2: she asks');
-      askedAt = now() + ctx.cue('s2-ask', 'stanna');
+      askedAt = now() + ctx.cue('s2-ask', W.stop);
       why = await line('s2-ask');
     }
     if (why !== 'lamp') why = await pause(treeWindow(ctx.state()));
@@ -538,7 +596,7 @@ export async function runEpisode1(ctx) {
 
   // 3. The sky. She sits down under the tree; a short stop is harmless again.
   // Until she does, she is still walking out there, and a stop still shows.
-  if (await opens(Math.max(AT.sky, now() + 20)) === 'lamp') {
+  if (await opens(Math.max(E.at.sky, now() + E.after.sky)) === 'lamp') {
     await lampAtTheTree();
     await opens(now() + 10);
   }
@@ -562,7 +620,7 @@ export async function runEpisode1(ctx) {
   // is there. A stop, not a walker who has stood there all along: if the wait
   // ran out on one, she gets back unseen, and episode 2 is not told of a
   // suspicion the walker never caused.
-  const into4 = await opens(Math.max(AT.bell, now() + 25), LONG_WAIT);
+  const into4 = await opens(Math.max(E.at.bell, now() + E.after.bell), LONG_WAIT);
   ctx.log('scene 4');
   side.bell();
   await ctx.until(() => false, { timeout: 2.2 });
@@ -588,7 +646,9 @@ export async function runEpisode1(ctx) {
   }
 
   const getsUp = async () => {
-    let why = await line('s4-2');
+    let why = E.asides.up ? await line(E.asides.up) : 'done';
+    if (why === 'lamp') return why;
+    why = await line('s4-2');
     if (why === 'lamp') return why;
     // She runs for the gravel. Far off, the shift.
     side.lift(true);
@@ -617,15 +677,20 @@ export async function runEpisode1(ctx) {
   // The end. She is on the gravel on her way in: a walker nearly back hears it
   // a little sooner, everyone else a little later, never a minute of hum.
   const end4 = now();
-  await ctx.until(s => s.t >= end4 + END_SOON && (
+  await ctx.until(s => s.t >= end4 + E.end.soon && (
     (s.distToStart !== null && s.approaching && s.distToStart < 300) ||
-    s.t >= end4 + END_GAP));
+    s.t >= end4 + E.end.gap));
   ctx.log('scene 4: the end');
   const last = ctx.state();
   // On the way back, or away from the start, each only when the distance shows it.
   // A walker who stands, or a phone without GPS, hears neither: she does not say where they go if she cannot see it.
-  if (last.approaching && last.distToStart !== null) await ctx.play('s4-back');
-  else if (last.distToStart !== null && last.moving && last.receding) await ctx.play('s4-onward');
+  let where = null;
+  if (last.approaching && last.distToStart !== null) where = 's4-back';
+  else if (last.distToStart !== null && last.moving && last.receding) where = 's4-onward';
+  if (where) {
+    await ctx.play(where);
+    await breath('name');
+  }
 
   if (her.askedFor) {
     await ctx.play('s4-yes');
@@ -643,6 +708,7 @@ export async function runEpisode1(ctx) {
       await ctx.play('s4-never-no');
     }
   }
+  await breath('s4-all');
   await ctx.play('s4-all');
   remember(false);
 

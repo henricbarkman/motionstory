@@ -9,11 +9,11 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Mixer, breakAt, BREAK_FADE, BREAK_LEAD } from '../glimt/audio.js';
+import { Mixer, breakAt, BREAK_FADE, BREAK_LEAD, SONG_UNDER } from '../glimt/audio.js';
 import { makeClock, FakeAudioContext } from './fake_audio.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const EPISODE = JSON.parse(readFileSync(join(ROOT, 'stories/glimt/episod-1.json'), 'utf8'));
+const EPISODE_SV = JSON.parse(readFileSync(join(ROOT, 'stories/glimt/episod-1.json'), 'utf8'));
 
 let failures = 0;
 const check = (ok, what) => { console.log(`${ok ? 'ok  ' : 'FAIL'}  ${what}`); if (!ok) failures++; };
@@ -107,21 +107,56 @@ const PAUSE = [{ from: 1.0, to: 1.5, said: 'Där.' }];
   check(mixer.endVoiceAtBreak(PAUSE) === null, 'no line playing: none');
 }
 
-// ---------- the pauses measured into episode 1 ----------
-const BREAK_MIN = 0.12;      // check_glimt_audio.py: a pause narrower is none
-const goLines = Object.keys(EPISODE.breakFrom || {});
-check(goLines.length >= 9, `${goLines.length} lines are go lines (breakFrom)`);
-for (const id of goLines) {
-  const bs = (EPISODE.breaks || {})[id] || [];
-  const len = (EPISODE.seconds || {})[id];
-  const bad = bs.filter((b, i) => !(b.to - b.from >= BREAK_MIN && b.from > 0 && b.to < len && b.said && (i === 0 || b.from >= bs[i - 1].to)));
-  check(bs.length > 0 && !bad.length, `${id}: ${bs.length} pause(s), each ${BREAK_MIN} s or wider, in order, inside its ${len} s`);
-  // A line rendered again has its pauses elsewhere: they must be from this take.
-  const on = (EPISODE.breaksMeasuredOn || {})[id];
-  check(on === len, `${id}: its pauses measured on this take (${on} s, the file ${len} s)`);
+// ---------- the song under a line (the English credits) ----------
+// It starts at its time at SONG_UNDER of the song's level, beside the line:
+// the line is still the voice playing, and a stop that ends the line at a
+// pause does not touch the song. rise() brings it to full; it resolves when
+// it ends.
+{
+  const { clock, audio, mixer, run, src } = rig();
+  const song = audio.createBuffer(1, audio.sampleRate * 6, audio.sampleRate);
+  const at = clock.time + 0.5;
+  const n = audio.started.length;
+  const s = mixer.playSong(song, { at });
+  const started = audio.started[n].node;
+  check(started.startedAt === at && s.startedAt === at, 'the song starts at the time asked');
+  check(mixer.currentVoice === src, 'the line is still the voice playing');
+  const level = [...started.outs][0];
+  check(Math.abs(level.gain.value - SONG_UNDER) < 1e-9, `faint under her (${level.gain.value})`);
+  // Scribe heard both last lines word for word over the song at 0.2
+  // (2026-10-27); louder than that is untested.
+  check(SONG_UNDER <= 0.2, `no louder under her than Scribe has heard (${SONG_UNDER})`);
+  check(mixer.endVoiceAtBreak(PAUSE) !== null && !started.ended, 'her line ends at its pause, the song plays on');
+  s.rise();
+  check(level.gain.value === 1, 'once she has finished it grows to full');
+  let why = null;
+  s.done.then(w => { why = w; });
+  run(7);
+  await Promise.resolve();
+  check(why === 'ended', `and resolves when it ends (${why})`);
 }
-const strays = Object.keys(EPISODE.breaks || {}).filter(id => !goLines.includes(id));
-check(!strays.length, `pauses only on go lines${strays.length ? ` (also ${strays.join(', ')})` : ''}`);
+
+// ---------- the pauses measured into episode 1 ----------
+// In Swedish and in English (episode-1.json): the same go lines, each its own
+// takes and pauses.
+const BREAK_MIN = 0.12;      // check_glimt_audio.py: a pause narrower is none
+for (const [lang, EPISODE] of [['sv', EPISODE_SV], ['en', JSON.parse(readFileSync(join(ROOT, 'stories/glimt/episode-1.json'), 'utf8'))]]) {
+  console.log(`-- episode 1, ${lang}`);
+  const goLines = Object.keys(EPISODE.breakFrom || {});
+  check(goLines.length >= 9, `${goLines.length} lines are go lines (breakFrom)`);
+  if (lang === 'en') check(goLines.join() === Object.keys(EPISODE_SV.breakFrom).join(), 'the English go lines are the Swedish ones');
+  for (const id of goLines) {
+    const bs = (EPISODE.breaks || {})[id] || [];
+    const len = (EPISODE.seconds || {})[id];
+    const bad = bs.filter((b, i) => !(b.to - b.from >= BREAK_MIN && b.from > 0 && b.to < len && b.said && (i === 0 || b.from >= bs[i - 1].to)));
+    check(bs.length > 0 && !bad.length, `${id}: ${bs.length} pause(s), each ${BREAK_MIN} s or wider, in order, inside its ${len} s`);
+    // A line rendered again has its pauses elsewhere: they must be from this take.
+    const on = (EPISODE.breaksMeasuredOn || {})[id];
+    check(on === len, `${id}: its pauses measured on this take (${on} s, the file ${len} s)`);
+  }
+  const strays = Object.keys(EPISODE.breaks || {}).filter(id => !goLines.includes(id));
+  check(!strays.length, `pauses only on go lines${strays.length ? ` (also ${strays.join(', ')})` : ''}`);
+}
 
 console.log(failures ? `\n${failures} failed` : '\nall ok');
 process.exit(failures ? 1 : 0);

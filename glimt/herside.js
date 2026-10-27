@@ -37,6 +37,21 @@ const OTHER = {
 const CROWD = [104, 112, 121];
 
 // `timers` is for the simulation, which runs this on a fake clock.
+// The earpiece's filter, by level. `nuvarande` is the one Karin has had since
+// the earpiece was built; the lighter ones are the levels Henric chose among
+// on 26/10 (the English earpiece, Rowan, is `mellan`). Each gain is set so the
+// level sounds as loud as `nuvarande`. An episode picks its level with one
+// line in its json, "snackaFilter"; without it, `nuvarande`.
+export const SNACKA_FILTERS = {
+  utan: { gain: 0.301 },
+  latt: { hp: 150, lp: 6500, late: 0.25, gain: 0.269 },
+  mellan: { hp: 260, lp: 4500, late: 0.45, gain: 0.308 },
+  nastan: { hp: 380, lp: 3300, late: 0.6, gain: 0.416 },
+  nuvarande: { hp: 480, lp: 2700, late: 0.7, gain: 0.5 },
+};
+export const SNACKA_DEFAULT = 'nuvarande';
+const SNACKA_LATE_S = 0.0042;   // the copy's delay, the same at every level
+
 export class HerSide {
   constructor(mixer, timers = globalThis) {
     this.ctx = mixer.ctx;
@@ -417,16 +432,17 @@ export class HerSide {
       head = f;
     };
     if (kind === 'snacka') {
-      through('highpass', 480);
-      through('lowpass', 2700);
-      g.gain.value = 0.5;
+      const f = SNACKA_FILTERS[this.snackaFilter] || SNACKA_FILTERS[SNACKA_DEFAULT];
+      if (f.hp) through('highpass', f.hp);
+      if (f.lp) through('lowpass', f.lp);
+      g.gain.value = f.gain;
       // A copy a few milliseconds late hollows it out: the sound of a small
       // speaker in an ear, and of a voice nobody is behind.
-      if (c.createDelay) {
+      if (f.late && c.createDelay) {
         const late = c.createDelay(0.05);
-        late.delayTime.value = 0.0042;
+        late.delayTime.value = SNACKA_LATE_S;
         const lateGain = c.createGain();
-        lateGain.gain.value = 0.7;
+        lateGain.gain.value = f.late;
         head.connect(late);
         late.connect(lateGain);
         lateGain.connect(g);

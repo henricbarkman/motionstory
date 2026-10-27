@@ -15,6 +15,7 @@ knock back. The motor there starts late and rings on, as a real one may.
     python3 scripts/test_browser.py first,resume   # some scenarios
     python3 scripts/test_browser.py prov            # the test walks, about five minutes
     python3 scripts/test_browser.py episod          # episode 1 walked twice side by side, about twelve minutes
+    python3 scripts/test_browser.py episode         # episode 1 in English, walked once, about eleven minutes
     GLIMT_SHOTS=/tmp/shots python3 scripts/test_browser.py first   # with screenshots
 
 It serves this repo on a free local port and lets no request leave the
@@ -152,7 +153,7 @@ def serve():
 BRIDGE = {"elements": [{"type": "way", "tags": {"bridge": "yes"}, "center": {"lat": 59.38, "lon": 13.5 + 180 / (111320 * 0.5096)}}]}
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def test_sounds():
     """Made-up stand-ins for what only the private copy has (the bed, the
     riser, the credits' song), as glimt/ljud.json names them there. Sine
@@ -167,11 +168,11 @@ def test_sounds():
         subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", f"sine=frequency={hz}:duration={length}",
                         "-af", "volume=0.05", "-c:a", "libopus", "-b:a", "16k", str(out)], check=True)
         body[path] = out.read_bytes()
-    manifest = {"bed": files["bed"][0], "riser": files["riser"][0], "credits": {"glimt-e1": files["song"][0]}}
+    manifest = {"bed": files["bed"][0], "riser": files["riser"][0], "credits": {"glimt-e1": files["song"][0], "glimt-e1en": files["song"][0]}}
     return json.dumps(manifest), body
 
 
-def open_page(browser, base, ua=CHROME_UA, url="?banor=vagval,kompass,vibration", init="", answer=True, shake=1.5, lag=0, ring=0, motion=True, overpass=None, rotation=True, hang=(), sounds=False):
+def open_page(browser, base, ua=CHROME_UA, url="?banor=vagval,kompass,vibration", init="", answer=True, shake=1.5, lag=0, ring=0, motion=True, overpass=None, rotation=True, hang=(), sounds=False, ready="Börja gå"):
     ctx = browser.new_context(
         user_agent=ua,
         viewport={"width": 412, "height": 915},
@@ -206,7 +207,7 @@ def open_page(browser, base, ua=CHROME_UA, url="?banor=vagval,kompass,vibration"
     phone = json.dumps({"answer": answer, "shake": shake, "lag": lag, "ring": ring, "motion": motion, "rotation": rotation})
     page.add_init_script(PHONE % phone + init)
     page.goto(f"{base}/glimt/{url}")
-    page.wait_for_function("document.getElementById('start-btn').textContent === 'Börja gå'", timeout=30000)
+    page.wait_for_function("t => document.getElementById('start-btn').textContent === t", arg=ready, timeout=30000)
     return ctx, page, errors
 
 
@@ -809,7 +810,7 @@ def episodstart(browser, base):
     })""")
     check(s["radios"][0] == "episod1" and s["checked"] == "episod1" and s["label"].startswith("Episod 1"),
           f"a phone that has chosen nothing: Episod 1 is first and chosen ({s['radios']}, {s['checked']!r})")
-    check(s["radios"][1:] == ["1", "2", "labb1", "labb2"], f"the chapters and the labs follow as before ({s['radios'][1:]})")
+    check(s["radios"][1:] == ["1", "2", "labb1", "labb2"], f"the chapters and the labs follow as before, no English one ({s['radios'][1:]})")
     check(s["sub"].startswith("Episod 1.") and s["doc"] == "Glimt, episod 1" and not s["variant"] and not s["vibra"],
           f"its subtitle, and neither her variants nor the vibration try-out ({s['sub']!r})")
     check("saknar" not in s["load"], f"everything it needs loaded ({s['load']!r})")
@@ -948,6 +949,93 @@ def episod(browser, base):
         ctx.close()
 
 
+# Episode 1 in English (v41): its own link and page, the same code with its
+# words and pace, Mellan on the earpiece, and the song under her last line.
+EPISODE_EN_WANT = {
+    "has": ["s0-1", "s0-2", "s0-ask1", "s0-go1", "s0-yes1-a", "s0-yes1-b", "s0-go2", "s0-yes2", "s0-yes2-aside", "s1-walk", "s1-2",
+            "s1-self", "s1-q2", "s2-1", "s2-2", "s2-count", "s2-3", "s2-4", "s2-self", "s2-5", "s2-6", "s2-ask",
+            "x-avvikelse (hennes sida)", "s2-lamp-plea", "s2-lamp-1", "s3-1", "s3-2", "s4-1", "s4-self", "s4-2", "s4-3",
+            "s4-ok-lamp", "s4-yes", "s4-all"],
+    "not": ["s0-no1", "s0-no2", "s2-count-stop", "s2-no", "s2-lamp-2", "s4-ok", "s4-lamp-1", "s4-lamp-2", "s4-never-1", "r-hjalp"],
+    "lamps": 1, "memory": {"svarade": True, "misstanke": False, "klar": True},
+}
+
+
+def episode(browser, base):
+    # The English page before the walk: English, no chapters to choose, and
+    # the Swedish start screen as it was (episodstart).
+    ctx, page, errors = open_page(browser, base, url="?kapitel=episode1en&sim", init=EPISODE_WALKER % json.dumps("asked"), sounds=True, ready="Start walking")
+    page.wait_for_function("document.getElementById('start-btn').textContent === 'Start walking'", timeout=60000)
+    s = page.evaluate("""() => ({
+      lang: document.documentElement.lang, doc: document.title,
+      sub: document.getElementById('subtitle').textContent,
+      chapters: !document.getElementById('chapter-box').hidden,
+      load: document.getElementById('load-note').textContent,
+      traffic: document.getElementById('traffic-note').textContent,
+    })""")
+    check(s["lang"] == "en" and s["doc"] == "Glimt, episode 1" and s["sub"].startswith("Episode 1.") and not s["chapters"],
+          f"episode, start: an English page with one episode ({s['doc']!r}, {s['sub']!r}, chapters shown {s['chapters']})")
+    check(s["load"].startswith("Put your headphones on") and "traffic" in s["traffic"], f"episode, start: its notes in English ({s['load']!r})")
+    page.click("#start-btn")
+    try:
+        page.wait_for_function("!document.getElementById('done').hidden", timeout=900000)
+    except PlaywrightTimeout:
+        check(False, f"episode: never reached the end screen ({walk_log(page)[-4:]})")
+        ctx.close()
+        return
+    want = EPISODE_EN_WANT
+    log = page.evaluate("document.getElementById('final-log').textContent.split('\\n')")
+    heard = [line.split("▶ ", 1)[1] for line in log if "▶ " in line]
+    check(any(f"Keep Going (episode1en), version {APP_VERSION}" in line for line in log), f"episode: the log names the English episode ({log[0]!r})")
+    missing = [x for x in want["has"] if x not in heard]
+    check(not missing, f"episode: every line of the walker's branches is heard ({'missing ' + ', '.join(missing) if missing else len(heard)})")
+    extra = [x for x in want["not"] if any(h.split(" ")[0] == x for h in heard)]
+    check(not extra, f"episode: and none of the other branches ({extra})")
+    lamps = sum(1 for h in heard if h.startswith("x-avvikelse"))
+    check(lamps == want["lamps"], f"episode: the lamp lights {lamps} time(s)")
+    check(any("snäckans filter: mellan" in line for line in log) and page.evaluate("window.glimt.side.snackaFilter") == "mellan",
+          "episode: the earpiece has the Mellan filter")
+    # The song under her last line: faint from its start, full once she has finished, after it scene 1.
+    credits = [line for line in log if "▶ förtexter" in line]
+    check(len(credits) == 1 and "(68 s), svagt under s0-yes2-aside" in credits[0], f"episode: the song once, starting under her whisper ({credits})")
+    full = next((clock(line) for line in log if "förtexter: full volym" in line), None)
+    aside = next((clock(line) for line in log if line.endswith("▶ s0-yes2-aside")), None)
+    check(full is not None and aside is not None and 0 <= full - aside <= 4, f"episode: and full once the whisper is over ({aside}, {full})")
+    scenes = [line.split("  ", 1)[1] for line in log if re.search(r"  (scene \d|end|credits)", line)]
+    order = [x for x in scenes if re.fullmatch(r"scene \d|end", x)]
+    check(order == ["scene 1", "scene 2", "scene 4", "end"], f"episode: the scenes come in order ({order})")
+    # Where each scene begins: its own line, the first one. "scene 1: no, not
+    # alone" later in the scene is a branch, not its start.
+    starts = {}
+    for line in log:
+        if line.split("  ", 1)[-1] in ("scene 1", "scene 2", "scene 4"):
+            starts.setdefault(line.split("  ", 1)[1], clock(line))
+    s0end = clock(credits[0]) + 68 if credits else None
+    between = [line for line in log if s0end is not None and s0end - 75 <= clock(line) <= starts.get("scene 1", 0)]
+    check(s0end is not None and starts.get("scene 1", 0) - s0end < 15, f"episode: scene 1 soon after the song ({starts}; {between})")
+    stood = [clock(line) for line in log if "she stands still" in line]
+    counted = [clock(line) for line in log if line.endswith("▶ s2-3")]
+    cue = json.loads((REPO / "stories/glimt/episode-1.json").read_text())["cues"]["s2-3"]["thirty"]
+    half = counted[-1] + cue - stood[-1] if stood and counted else None
+    check(half is not None and abs(half - 30) <= 2, f"episode: from her last step to \"thirty\" is half a minute ({half})")
+    missing_files = [line for line in log if "replik saknas" in line or "nådde aldrig slutet" in line or "fel:" in line]
+    check(not missing_files, f"episode: no line missing or stalled ({missing_files[:3]})")
+    memory = page.evaluate("JSON.parse(localStorage.getItem('glimt-episode-1-en-sim') || 'null')")
+    swedish = page.evaluate("[localStorage.getItem('glimt-episod-1'), localStorage.getItem('glimt-episod-1-sim'), localStorage.getItem('glimt-episode-1-en')]")
+    ok = memory is not None and all(memory.get(k) == v for k, v in want["memory"].items())
+    check(ok and swedish == [None, None, None], f"episode: its own memory, the Swedish one untouched ({memory}, {swedish})")
+    logs = page.evaluate("[localStorage.getItem('glimt-last-log'), (localStorage.getItem('glimt-last-log-en') || '').length]")
+    check(logs[0] is None and logs[1] > 0, f"episode: the last walk's log under its own key, the Swedish one untouched ({logs[0] and logs[0][:40]}, {logs[1]})")
+    end = page.evaluate("({ word: document.getElementById('end-word').textContent, copy: document.getElementById('copy-btn').textContent })")
+    check(end["word"] == "Come back out and walk." and end["copy"] == "Copy the log", f"episode: the end screen in English ({end})")
+    mix = {m["label"]: m for m in page.evaluate("window.__mix")}
+    c = mix.get("credits")
+    check(bool(c) and c["side"] < 0.05 and c["bed"] < 0.05, f"episode: her side and the bed silent under the song ({c})")
+    shot(page, "episode-done")
+    check(not errors, f"episode: no page errors ({errors[:3]})")
+    ctx.close()
+
+
 SCENARIOS = {
     "first": first,
     "no": no,
@@ -964,6 +1052,7 @@ SCENARIOS = {
     "episodstart": episodstart,
     "fortexter": fortexter,
     "episod": episod,
+    "episode": episode,
 }
 
 
