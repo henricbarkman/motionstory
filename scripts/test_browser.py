@@ -1096,8 +1096,12 @@ LISTEN_PAGES = {
 
 
 def lyssna(browser, base):
+    # GLIMT_LYSSNA=sv: the Swedish page only, for a checkout without the
+    # English episode (the private Swedish copy stays on version 40).
+    langs = [x for x in os.environ.get("GLIMT_LYSSNA", "sv,en").split(",") if x in LISTEN_PAGES]
     # The way in: a small link on the episode's start screen, none on a lab's.
-    for url, want in (("?kapitel=episod1", "?kapitel=episod1&lyssna"), ("?kapitel=episode1en", "?kapitel=episode1en&lyssna")):
+    links = {"sv": ("?kapitel=episod1", "?kapitel=episod1&lyssna"), "en": ("?kapitel=episode1en", "?kapitel=episode1en&lyssna")}
+    for url, want in (links[x] for x in langs):
         ctx, page, errors = open_page(browser, base, url=url, ready="Start walking" if "en" in url[-2:] else "Börja gå")
         a = page.evaluate("(a => ({ shown: !a.hidden && a.offsetParent !== null, href: a.getAttribute('href'), text: a.textContent }))(document.getElementById('listen-link'))")
         check(a["shown"] and a["href"] == want, f"lyssna: {url} links to {want} ({a})")
@@ -1112,7 +1116,7 @@ def lyssna(browser, base):
 
     # Both languages listened to side by side, through scene 0's two questions.
     pages = {}
-    for name, (url, ready, words, sub, voices, other, key, untouched) in LISTEN_PAGES.items():
+    for name, (url, ready, words, sub, voices, other, key, untouched) in ((x, LISTEN_PAGES[x]) for x in langs):
         ctx, page, errors = open_page(browser, base, url=url, init=LISTENER, motion=False, ready=ready)
         s = page.evaluate("""() => {
           const shown = id => { const el = document.getElementById(id); return !!el && !el.hidden && el.offsetParent !== null; };
