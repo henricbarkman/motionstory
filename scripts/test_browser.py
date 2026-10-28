@@ -566,6 +566,7 @@ def prov(browser, base):
           todo: document.getElementById('prov-todo').textContent,
           sub: document.getElementById('subtitle').textContent,
           doc: document.title,
+      name: document.querySelector('h1.namn').getAttribute('aria-label') + '|' + document.querySelector('h1.namn').textContent,
         })""")
         check(card["box"] and not card["chapters"] and not card["vibra"] and card["version"] == f"Version {APP_VERSION}" and card["question"] and card["todo"],
               f"?prov={pid}: the start screen shows its card and nothing to choose ({card['title']!r}, {card['version']!r}, {card['sub']!r})")
@@ -808,11 +809,12 @@ def episodstart(browser, base):
       load: document.getElementById('load-note').textContent,
       traffic: (el => el && el.offsetParent !== null ? el.textContent : null)(document.getElementById('traffic-note')),
       doc: document.title,
+      name: document.querySelector('h1.namn').getAttribute('aria-label') + '|' + document.querySelector('h1.namn').textContent,
     })""")
     check(s["radios"][0] == "episod1" and s["checked"] == "episod1" and s["label"].startswith("Episod 1"),
           f"a phone that has chosen nothing: Episod 1 is first and chosen ({s['radios']}, {s['checked']!r})")
     check(s["radios"][1:] == ["1", "2", "labb1", "labb2"], f"the chapters and the labs follow as before, no English one ({s['radios'][1:]})")
-    check(s["sub"].startswith("Episod 1.") and s["doc"] == "Glimt, episod 1" and not s["variant"] and not s["vibra"],
+    check(s["sub"].startswith("Episod 1.") and s["doc"] == "Weavers, episod 1" and s["name"] == "Weavers|Weavers" and not s["variant"] and not s["vibra"],
           f"its subtitle, and neither her variants nor the vibration try-out ({s['sub']!r})")
     check("saknar" not in s["load"], f"everything it needs loaded ({s['load']!r})")
     check(s["traffic"] and "trafiken" in s["traffic"], f"the traffic warning shows before the first tap ({s['traffic']!r})")
@@ -969,12 +971,13 @@ def episode(browser, base):
     page.wait_for_function("document.getElementById('start-btn').textContent === 'Start walking'", timeout=60000)
     s = page.evaluate("""() => ({
       lang: document.documentElement.lang, doc: document.title,
+      name: document.querySelector('h1.namn').getAttribute('aria-label') + '|' + document.querySelector('h1.namn').textContent,
       sub: document.getElementById('subtitle').textContent,
       chapters: !document.getElementById('chapter-box').hidden,
       load: document.getElementById('load-note').textContent,
       traffic: document.getElementById('traffic-note').textContent,
     })""")
-    check(s["lang"] == "en" and s["doc"] == "Glimt, episode 1" and s["sub"].startswith("Episode 1.") and not s["chapters"],
+    check(s["lang"] == "en" and s["doc"] == "Weavers, episode 1" and s["name"] == "Weavers|Weavers" and s["sub"].startswith("Episode 1.") and not s["chapters"],
           f"episode, start: an English page with one episode ({s['doc']!r}, {s['sub']!r}, chapters shown {s['chapters']})")
     check(s["load"].startswith("Put your headphones on") and "traffic" in s["traffic"], f"episode, start: its notes in English ({s['load']!r})")
     page.click("#start-btn")
@@ -1111,7 +1114,7 @@ def lyssna(browser, base):
     ctx.close()
     # A link that asks for a lab and a listen gets the episode.
     ctx, page, errors = open_page(browser, base, url="?kapitel=labb2&lyssna", ready="Börja lyssna")
-    check(page.evaluate("document.title") == "Glimt, episod 1", f"lyssna: ?kapitel=labb2&lyssna is the episode ({page.evaluate('document.title')!r})")
+    check(page.evaluate("document.title") == "Weavers, episod 1", f"lyssna: ?kapitel=labb2&lyssna is the episode ({page.evaluate('document.title')!r})")
     ctx.close()
 
     # Both languages listened to side by side, through scene 0's two questions.

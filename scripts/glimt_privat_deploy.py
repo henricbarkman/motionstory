@@ -78,10 +78,10 @@ INDEX = """<!doctype html>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
-  <title>Glimt, {title}</title>
+  <title>Weavers, {title}</title>
   <meta http-equiv="refresh" content="0; url=glimt/index.html?kapitel={kapitel}">
 </head>
-<body><p><a href="glimt/index.html?kapitel={kapitel}">Glimt, {title}</a></p></body>
+<body><p><a href="glimt/index.html?kapitel={kapitel}">Weavers, {title}</a></p></body>
 </html>
 """
 

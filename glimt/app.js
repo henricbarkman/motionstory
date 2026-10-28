@@ -22,7 +22,7 @@ import { Memory, drawWorld, KEY_NAMES } from './memory.js';
 
 // The version the start screen shows, the same number as the service
 // worker's cache. Bump both together.
-const APP_VERSION = 42;
+const APP_VERSION = 43;
 
 // Seconds the credits wait for their song if it is not fetched when they are
 // due. It has had all of scene 0; a song not here by then is not coming.
@@ -375,12 +375,12 @@ async function preload() {
       if (BAD_PROV !== null) note += ` Länkens test (${BAD_PROV}) finns inte, så det blir labbet som vanligt.`;
       if (!CAN_VIBRATE && labStations(def).includes('vibration')) {
         note += FIREFOX
-          ? ` Firefox vibrerar inte, så Hon knackar hoppas över.${ANDROID_FIREFOX ? '' : ' Öppna Glimt i Chrome.'}`
+          ? ` Firefox vibrerar inte, så Hon knackar hoppas över.${ANDROID_FIREFOX ? '' : ' Öppna Weavers i Chrome.'}`
           : ' Den här webbläsaren vibrerar inte, så Hon knackar hoppas över.';
       }
     }
-    if (ANDROID_FIREFOX && !LISTEN) note += tr(' I Firefox kommer gps:en glest, så svängar och riktning hörs sent. Öppna Glimt i Chrome.',
-      ' Firefox hands out GPS fixes sparsely. Open Glimt in Chrome.');
+    if (ANDROID_FIREFOX && !LISTEN) note += tr(' I Firefox kommer gps:en glest, så svängar och riktning hörs sent. Öppna Weavers i Chrome.',
+      ' Firefox hands out GPS fixes sparsely. Open Weavers in Chrome.');
     if (chapterNo === '2') {
       const lm = savedLandmark();
       note += lm
@@ -942,13 +942,13 @@ function render(s) {
 const GPS_RECHECK = { 2: 5, 3: 30 };  // s until the next try, per error code
 const GPS_TRIES = 12;
 const GPS_ADVICE = {
-  1: 'Glimt får inte veta var du är. Tillåt plats för sidan i webbläsaren (låset vid adressen) innan du börjar.',
+  1: 'Weavers får inte veta var du är. Tillåt plats för sidan i webbläsaren (låset vid adressen) innan du börjar.',
   2: 'Telefonen hittar ingen plats. Kolla att Plats är på i snabbinställningarna innan du börjar.',
   3: 'Gps:en har inte hittat dig än. Inomhus är det vanligt.',
 };
 const GPS_TROUBLE_WORD = { 1: 'gps nekad', 2: 'ingen gps' };
 const GPS_ADVICE_EN = {
-  1: 'Glimt may not know where you are. Allow location for the page in the browser (the lock by the address) before you start.',
+  1: 'Weavers may not know where you are. Allow location for the page in the browser (the lock by the address) before you start.',
   2: 'The phone finds no location. Check that Location is on in the quick settings before you start.',
   3: 'The GPS has not found you yet. Indoors that is common.',
 };
@@ -1686,8 +1686,8 @@ function selectChapter(n) {
   // The round's choice first: the try-out is offered for the stations it gives.
   showResume(def);
   showVibra();
-  document.title = EN_PAGE ? 'Glimt, episode 1' : def.prov ? `Glimt, test: ${def.prov.title}` : def.lab ? `Glimt, labb ${def.lab}`
-    : def.side ? 'Glimt, episod 1' : `Glimt, kapitel ${chapterNo}`;
+  document.title = EN_PAGE ? 'Weavers, episode 1' : def.prov ? `Weavers, test: ${def.prov.title}` : def.lab ? `Weavers, labb ${def.lab}`
+    : def.side ? 'Weavers, episod 1' : `Weavers, kapitel ${chapterNo}`;
   // The English page has one episode and nothing to choose.
   if (EN_PAGE) $('chapter-box').hidden = true;
   preload();
