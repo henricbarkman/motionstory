@@ -810,7 +810,9 @@ def episodstart(browser, base):
       traffic: (el => el && el.offsetParent !== null ? el.textContent : null)(document.getElementById('traffic-note')),
       doc: document.title,
       name: document.querySelector('h1.namn').getAttribute('aria-label') + '|' + document.querySelector('h1.namn').textContent,
+      star: [...document.querySelectorAll('h1.namn *')].some(el => getComputedStyle(el, '::after').content !== 'none'),
     })""")
+    check(not s["star"], "the wordmark is the word alone, no star (v44)")
     check(s["radios"][0] == "episod1" and s["checked"] == "episod1" and s["label"].startswith("Episod 1"),
           f"a phone that has chosen nothing: Episod 1 is first and chosen ({s['radios']}, {s['checked']!r})")
     check(s["radios"][1:] == ["1", "2", "labb1", "labb2"], f"the chapters and the labs follow as before, no English one ({s['radios'][1:]})")
