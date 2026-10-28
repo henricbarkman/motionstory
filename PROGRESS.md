@@ -1,6 +1,9 @@
 # PROGRESS — Motionstory
 
 ## 2026-10-28
+- Henric: "Loggan - ta bort den gröna stjärnan. Bara text för nu."
+- Demi (jobb j-20261028-133259-ce55fc): **Version 44: Weavers-loggan är bara text** (PR #56, 7a4c4cf). Stjärnan i v:ets öppning och dess tändning borta (`.namn .v` struken ur `design/glimt.css`), rubriken är ordet Weavers i samma Literata 300, inget tomrum. Glimts i-stjärna på plansidan och i rummet står kvar. episodstart kollar nu att inget i rubriken ritar en `::after` (faller på v43, går igenom på v44).
+  - **Ute 28/10:** Pages `APP_VERSION = 44`, `motionstory-v44`; privata engelska `glimt-episode1-en` (`motionstory-v44-privat-d343ec66`); privata svenska `glimt-episod1` kvar på v40 med bara loggan bytt (grenen `privat-sv-v40-weavers`, 271f274; `motionstory-v40-privat-8a11a124`). Låten kvar i båda. Skärmdump av alla fyra: [weavers-logga-v44.png](https://demi.henricbarkman.se/uploads/weavers-logga-v44.png).
 - Henric: **Vega ska vara amerikansk**, med en röst som är amerikansk från början, inte styrd dit med tagg. Allt renderas på eleven_v4 framöver, alla repliker görs om. Snäckan (Rowan) rörs inte nu.
 - Demi (jobb j-20261028-133254-54c027): **Röstprov omgång 3** överst på [provsidan](https://demi.henricbarkman.se/uploads/glimt-rostprov-en/index.html), tidigare omgångar kvar under.
   - **Rösterna** (ElevenLabs bibliotek, accent american, en-US; alla kvinna och ung enligt biblioteket utom Paula Deep, medelålders): Paula Deep `psJnoAClXdhH5gn8uKNb` (Henrics önskan), Ash `m3yAHyFEFKtbCIM5n7GF` ("sarkastisk och utmattad"), Caty `54Cze5LrTSyLgbO6Fhlc` (torr, "whatever"), Rae `pYG1XNtdbvDClmVSWMC0` ("torr men varm", 191 användningar), Mid-30s Female Light Rasp `xYa75LlayhWHCRl1yJSH`, Talia `ZLR2VL7jAuie9sowsXqg` (avslappnad, varm), Anna `7Tu2g0pDgCv20ULSZU49` (tjugoårsåldern), Sable `34GELttw6Wph0HRuGIO3` (luftig, inspelad 10-15 dB tystare). Katie, Alexandra och Vivian från 23/10 inte med igen.
