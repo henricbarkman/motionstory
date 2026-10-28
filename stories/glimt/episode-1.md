@@ -23,8 +23,6 @@ English version 1, 2026-10-23, translated from the Swedish draft 7 (`episod-1.md
 
 **Voices:** Vega. The earpiece, a couple of lines: in English a man's voice, very soft, steady and even, calm and polite, close to the microphone, with no feeling in it (Henric 23/10: something like HAL 9000, not a copy of it). Not cold and robotic, and not thin.
 
-Variants in square brackets are chosen by the phone: `[light]`, `[dark]`, `[rain]`, `[dry]`, `[walking]`, `[running]`, and the landmark from the map: `[bridge]`, `[water]`, `[woods]`, `[hill]`, `[graveyard]`.
-
 Pauses are marked where Henric's walk on 23/10 had them too long or too short, as "(pause about N s; was M s on 23/10)". The app does not follow them yet: they are for the English rebuild.
 
 ---
@@ -36,23 +34,27 @@ Pauses are marked where Henric's walk on 23/10 had them too long or too short, a
 >
 > (to herself) There it is again. Right at the edge.
 >
-> (to herself) It's the lights. It's always the lights. ...It's not the lights.
+> (to herself) It's the lights. It's always the lights.
 >
-> (to herself) It's closer tonight. Now. Do it now. ...Okay.
+> (to herself) It's not the lights.
+>
+> (to herself) Okay, now. Do it now.
 >
 > (pause about 2 s; was about 1 s on 23/10)
 >
 > (calling out) Hello? Hello! Wait!
 >
-> (straight to you, fast, flustered) No, no, don't wait! Sorry. Keep going. When you stand still, you disappear on me. I'm trying to keep up.
+> (straight to you, fast, flustered) No, no, no, don't wait! Sorry. Keep going. Don't disappear. When you stand still, you disappear on me. I'm keeping up instead.
 >
-> (calmer) I don't know who you are. I don't even know if you can hear this. I can't hear anything from you. Not a sound. I just get glimpses. A shape at the edge. And bits of your world.
+> I don't know who you are. I don't even know if you can hear this. I can't hear anything from you. Not a sound. I just get glimpses. A shape at the edge. And bits of your world.
 >
-> But there's one thing I have to know.
+> But I have thought about this. About you.
 >
 > (pause about 1.5 s; was 0 s on 23/10)
 >
-> So here's how. I ask, and if it's yes, you stop. (quick, half laughing at herself) Not now! Once I've asked. And then stay put till I say go. I'm a bit slow. (pause) Can you see me?
+> So here's what we are gonna do. I will ask you a question and then say now. If the answer is yes, you stop for a couple of seconds. If it is no, you keep going.
+>
+> (pause, calm, slowly, serious) Ok. Can you see me?
 >
 > (waits)
 
@@ -76,7 +78,7 @@ If the walker is still standing a while after her go, she says it again, after a
 > (straight to you) You just wanted to answer. Fine. Once more, then. (pause) Can you hear me?
 >
 > **No, the walker keeps going:**
-> (dry) No. Didn't think so. (pause) Or I missed it. One more thing. Can you hear me?
+> (dry) No. Didn't think so. (pause) One more thing. (pause) Can you hear me?
 >
 > (both answers go on here)
 >
