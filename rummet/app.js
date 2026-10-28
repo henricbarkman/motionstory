@@ -31,6 +31,7 @@ const S = {
   apptider: null, // rummet/apptider.json
   regi: null,
   regiVersion: null,
+  skrivningar: 0, // own writes so far: a read begun before one is stale
   rader: [],
   paras: [],
   oppen: null, // the id of the line whose drawer is open
@@ -162,6 +163,7 @@ async function andra(fn) {
       const { version } = await S.adapter.skriv(`regi:${S.dok}`, R.skrivRegi(ny), r ? r.version : null);
       S.regi = ny;
       S.regiVersion = version;
+      S.skrivningar++;
       return ny;
     } catch (e) {
       if (e instanceof Krock) continue;
@@ -643,8 +645,9 @@ async function lyssna() {
   if (document.visibilityState !== 'visible' || !S.dok || !S.md || fokusILadan()) return;
   try {
     const dok = S.dok;
+    const fore = S.skrivningar;
     const ny = await lasEpisod(dok);
-    if (dok !== S.dok || fokusILadan() || spel) return;
+    if (dok !== S.dok || fokusILadan() || spel || fore !== S.skrivningar) return;
     if (ny.md.text === S.md.text && (ny.regi ? ny.regi.version : null) === S.regiVersion) return;
     tillstand(dok, ny);
     rita();
