@@ -56,6 +56,10 @@ CLI = REPO / "scripts" / "rummet_cli.mjs"
 EPISODER = ("1", "2", "3", "1en")
 EPISODFIL = {"1": "episod-1", "2": "episod-2", "3": "episod-3", "1en": "episode-1"}
 DOKUMENT = (*EPISODER, "varld", "mekaniker")
+# Since 2026-10-28 these episodes' text lives in the OnlyOffice document Manus
+# and reaches md only through data/glimt-oo/mirror.py in generalassistant,
+# which refuses an md file changed beside it. Their text is changed in Manus.
+I_MANUS = ("1en", "2", "3")
 DOK_HJALP = "1, 2, 3, 1en (episode 1 in English), varld, mekaniker or lore:<id>"
 NAMN = {"henric": "Henric", "liv": "Liv", "demi": "Demi"}
 GALLER = ("orden", "tempo", "paus", "ljud", "nar")
@@ -478,6 +482,12 @@ def main() -> int:
                 eget = "  <- ditt svar" if t.get("id") == ut["id"] else ("  (till Demi)" if t.get("till") == "demi" else "")
                 print(f"  {vem}: {kort(str(t.get('text') or ''), 160)}{eget}")
             return 0
+
+        if a.cmd in ("andra", "lagg-till", "stryk") and dok_av(a) in I_MANUS:
+            print(f"{doknamn(dok_av(a))} skrivs i Manus i OnlyOffice sedan 28/10, inte här: spegeln vägrar en md-fil "
+                  "som ändrats bredvid. Ändra texten i Manus (data/glimt-oo/ i generalassistant), eller kommentera "
+                  "och föreslå här.", file=sys.stderr)
+            return 2
 
         if a.cmd in ("andra", "lagg-till", "stryk"):
             u = {"op": a.cmd, "dok": dok_av(a), "scen": a.scen, "n": a.n, "nar": nu()}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render every line of a Glimt chapter via ElevenLabs v3.
+"""Render every line of a Glimt chapter via ElevenLabs v4.
 
 One mp3 per line id, written to audio/glimt/vega/<chapter>/<line>.mp3.
 Lines listed under "otherVoiceLines" use the second voice. An episode with
@@ -14,6 +14,13 @@ or a single line with --only <id>.
 
 Usage:
     python3 scripts/render_glimt.py stories/glimt/kapitel-1.json [--force] [--only s3-1]
+
+Model: eleven_v4 since 2026-10-28 (Henric). v4 reads the direction as free
+tags in the text ([whispers], [dry, quietly pleased], [pause]) and has no
+style or speed setting, so only "stability" is sent from a voice's settings.
+The manuscript room's directing desk (rummet/) renders single takes through
+render() as well, from the portal (scripts/dashboard/glimt_regi.py in
+generalassistant), so a change of model here changes both.
 
 Requires ELEVENLABS_API_KEY in ~/generalassistant/.env.
 """
@@ -32,9 +39,15 @@ except ImportError:
 REPO = Path(__file__).resolve().parents[1]
 ENV_FILE = Path.home() / "generalassistant" / ".env"
 
-MODEL_ID = "eleven_v3"
+MODEL_ID = "eleven_v4"
 OUTPUT_FORMAT = "mp3_44100_128"
 VOICE_SETTINGS = {"stability": 0.5}
+# What v4 takes of a voice's settings; style, speed and the rest are not v4's.
+V4_SETTINGS = ("stability",)
+
+
+class RenderFel(RuntimeError):
+    """ElevenLabs said no. The message is safe to show: it never holds the key."""
 
 
 def voice_for(chapter: dict, line_id: str) -> str:
@@ -46,6 +59,7 @@ def voice_for(chapter: dict, line_id: str) -> str:
 
 
 def render(api_key: str, voice_id: str, text: str, settings: dict | None = None, language: str = "sv") -> bytes:
+    settings = {k: v for k, v in {**VOICE_SETTINGS, **(settings or {})}.items() if k in V4_SETTINGS}
     resp = requests.post(
         f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}",
         params={"output_format": OUTPUT_FORMAT},
@@ -54,12 +68,12 @@ def render(api_key: str, voice_id: str, text: str, settings: dict | None = None,
             "text": text,
             "model_id": MODEL_ID,
             "language_code": language,
-            "voice_settings": {**VOICE_SETTINGS, **(settings or {})},
+            "voice_settings": settings,
         },
         timeout=300,
     )
     if not resp.ok:
-        sys.exit(f"ElevenLabs error {resp.status_code} for {voice_id}: {resp.text}")
+        raise RenderFel(f"ElevenLabs error {resp.status_code} for {voice_id}: {resp.text[:500]}")
     return resp.content
 
 
@@ -94,7 +108,10 @@ def main() -> None:
         if name not in chapter["voices"]:
             sys.exit(f"line {line_id} wants voice {name!r}, missing under voices")
         settings = chapter.get("voiceSettings", {}).get(name)
-        audio = render(api_key, chapter["voices"][name], text, settings, chapter.get("language", "sv"))
+        try:
+            audio = render(api_key, chapter["voices"][name], text, settings, chapter.get("language", "sv"))
+        except RenderFel as e:
+            sys.exit(str(e))
         out.write_bytes(audio)
         billed += len(text)
         print(f"wrote {out.relative_to(REPO)} ({len(audio) // 1024} KB)")

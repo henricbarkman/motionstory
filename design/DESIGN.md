@@ -146,6 +146,12 @@ Sätt på lurarna. …          <- hint, --dampad, --s0
 
 ## The room
 
+Since 2026-10-28 the room is a directing desk (regibordet): the text is
+written in Manus in OnlyOffice, and the room shows each line with how it is
+heard. Its parts are in `rummet/design/DESIGN.md`; the type below (Scenrubrik,
+Replik, Regi) still holds for how it sets the lines. What follows about
+writing, the margin and comments describes the word processor it was.
+
 The room is a book by moonlight: the page is the measure, the margin
 holds comments. Paragraph kinds by type, not by boxes: Scenrubrik Literata
 600 `--s2`; Replik Literata `--s2`; Regi Literata italic `--dampad`;
