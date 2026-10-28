@@ -116,10 +116,13 @@ body::before {
 }
 ::selection { background: rgb(192 151 201 / 0.32); color: var(--text); }
 
-/* The name. The i's dot is a star of mint light: a dotless i with the star
-   set over it. Markup:
+/* The name. One star of mint light, the only thing on any page allowed to glow.
+   Weavers (the app, since v43): the star rests in the v's mouth, where its two
+   threads meet.
+   <span class="namn" role="img" aria-label="Weavers">Wea<span class="v">v</span>ers</span>
+   Glimt (the plan, the room): the i's dot, a dotless i with the star set over it.
    <span class="namn" role="img" aria-label="Glimt">Gl<span class="i">ı</span>mt</span>
-   (U+0131). The only thing on any page allowed to glow. */
+   (U+0131). */
 .namn {
   font-family: var(--hennes);
   font-weight: 300;
@@ -128,8 +131,8 @@ body::before {
   line-height: 1;
   color: var(--text);
 }
-.namn .i { position: relative; }
-.namn .i::after {
+.namn .i, .namn .v { position: relative; }
+.namn .i::after, .namn .v::after {
   content: "";
   position: absolute;
   left: 50%;
@@ -142,6 +145,7 @@ body::before {
   box-shadow: 0 0 0.12em var(--mint), 0 0 0.5em rgb(144 213 168 / 0.5);
   animation: tands 1.6s ease-out 0.25s both;
 }
+.namn .v::after { top: 0.52em; }
 /* The page's one moment: the star lights once, after the word. */
 @keyframes tands {
   from { opacity: 0; transform: scale(0.4); }
@@ -149,7 +153,7 @@ body::before {
   to { opacity: 1; transform: scale(1); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .namn .i::after { animation: none; }
+  .namn .i::after, .namn .v::after { animation: none; }
 }
 
 /* Verdicts, as marks rather than colours: full, half, ring, faint ring, point.

@@ -810,7 +810,7 @@ def episodstart(browser, base):
     check(s["radios"][0] == "episod1" and s["checked"] == "episod1" and s["label"].startswith("Episod 1"),
           f"a phone that has chosen nothing: Episod 1 is first and chosen ({s['radios']}, {s['checked']!r})")
     check(s["radios"][1:] == ["1", "2", "labb1", "labb2"], f"the chapters and the labs follow as before ({s['radios'][1:]})")
-    check(s["sub"].startswith("Episod 1.") and s["doc"] == "Glimt, episod 1" and not s["variant"] and not s["vibra"],
+    check(s["sub"].startswith("Episod 1.") and s["doc"] == "Weavers, episod 1" and not s["variant"] and not s["vibra"],
           f"its subtitle, and neither her variants nor the vibration try-out ({s['sub']!r})")
     check("saknar" not in s["load"], f"everything it needs loaded ({s['load']!r})")
     check(s["traffic"] and "trafiken" in s["traffic"], f"the traffic warning shows before the first tap ({s['traffic']!r})")
