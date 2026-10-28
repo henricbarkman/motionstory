@@ -11,6 +11,13 @@
 //   skriv(plats, text, version)  -> { version }; throws Krock when the file
 //                                   changed since `version` was read
 //   ljudUrl(ljudId, klippId)     -> where a recorded clip can be fetched
+//   kanRendera                   true when takes can be made here (the portal)
+//   rendera({dok, rad, text, rost}) -> { fil, sek, tecken, modell, voice }: a new
+//                                   take, rendered by the portal and kept with
+//                                   the room's notes
+//   tagningUrl(fil)              -> where a take can be fetched
+//   tillbaka(dok)                asks the portal to carry the desk's rewrites
+//                                   into Manus (data/glimt-oo/tillbaka.py)
 
 export class Krock extends Error {
   constructor(version = null) {
@@ -73,6 +80,7 @@ function sokvagar(rot) {
       mekaniker: () => `${p}/manus/mekaniker.md`,
       held: () => `${p}/manus/held-lore.md`,
       rum: (n) => `${p}/${filnamn(n)}.json`,
+      regi: (n) => `${p}/regi-${n}.json`,
       grund: (n) => `${p}/grund/${filnamn(n)}.json`,
       lore: () => `${p}/lore.json`,
       installningar: () => `${p}/installningar.json`,
@@ -87,6 +95,7 @@ function sokvagar(rot) {
     mekaniker: () => `${glimt}/mekaniker.md`,
     held: () => `${GA}/projects/held/universe/LORE.md`,
     rum: (n) => `${rum}/${filnamn(n)}.json`,
+    regi: (n) => `${rum}/regi-${n}.json`,
     grund: (n) => `${rum}/grund/${filnamn(n)}.json`,
     lore: () => `${rum}/lore.json`,
     installningar: () => `${rum}/installningar.json`,
@@ -168,6 +177,30 @@ export function portalAdapter({ rot = 'skarp', fetch = globalThis.fetch.bind(glo
       return { version: d.mtime };
     },
     ljudUrl: (ljudId, klippId) => `${PUBLIK}/audio/glimt/vega/${ljudId}/${klippId}.mp3`,
+    kanRendera: true,
+    async rendera({ dok, rad, text, rost }) {
+      const r = await fetch(`${bas}/api/glimt/tagning`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rot, dok, rad, text, rost }),
+      });
+      const d = await svar(r);
+      if (!r.ok) throw new DataFel('rendera', d.error || `Tagningen gick inte att göra (${r.status}).`);
+      return d;
+    },
+    tagningUrl: (fil) => `${bas}/api/glimt/tagning?rot=${encodeURIComponent(rot)}&fil=${encodeURIComponent(fil)}`,
+    async tillbaka(dok) {
+      const r = await fetch(`${bas}/api/glimt/tillbaka`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rot, dok }),
+      });
+      const d = await svar(r);
+      if (!r.ok) throw new DataFel('tillbaka', d.error || `Det gick inte att be om Manus (${r.status}).`);
+      return d;
+    },
   };
 }
 
@@ -199,6 +232,14 @@ export function lasAdapter({ fetch = globalThis.fetch.bind(globalThis), sida }) 
       throw new DataFel('laslage', 'Här går det bara att läsa.');
     },
     ljudUrl: (ljudId, klippId) => new URL(`../audio/glimt/vega/${ljudId}/${klippId}.mp3`, sida).href,
+    kanRendera: false,
+    async rendera() {
+      throw new DataFel('laslage', 'Tagningar görs bara i portalen.');
+    },
+    tagningUrl: () => null,
+    async tillbaka() {
+      throw new DataFel('laslage', 'Här går det bara att läsa.');
+    },
   };
 }
 

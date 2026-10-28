@@ -24,7 +24,7 @@ REPO = Path(__file__).resolve().parents[1]
 OUT_DIR = REPO / "rostprov"
 ENV_FILE = Path.home() / "generalassistant" / ".env"
 
-MODEL_ID = "eleven_v3"
+MODEL_ID = "eleven_v4"
 OUTPUT_FORMAT = "mp3_44100_128"
 # v3 takes discrete stability steps: 0.0 creative, 0.5 natural, 1.0 robust.
 # Set explicitly so each voice's own stored defaults cannot differ between

@@ -1,17 +1,16 @@
-/* Manusrummet. The tokens, the two typefaces, the name (.namn) and the
-   verdict marks (.dom) come from ../design/glimt.css; the rules and their
-   reasons are in ../design/DESIGN.md, "The room"; design/referens.html shows
-   it. This file adds only the room's layout: a book by moonlight, the page
-   is the measure and the margin holds comments. Paragraph kinds by type, not
-   by boxes. Who wrote a paragraph is an initial in the margin. */
+/* Regibordet (the directing desk). The tokens, the two typefaces and the
+   name (.namn) come from ../design/glimt.css; the rules and their reasons are
+   in ../design/DESIGN.md, "The room". This file adds only the desk's layout:
+   one column, her lines in Literata, everything about how a line is heard in
+   the phone's type. The silence between two lines is drawn as space, the
+   longer the pause the more room. One filled button: Gör om, in the open
+   drawer. */
 
 :root {
   --serif: var(--hennes);
   --sans: var(--telefonens);
-  --marg: 3rem;          /* left margin: who wrote, listen */
-  --spalt: var(--matt);  /* the text column */
-  --sido: 17rem;         /* comments, wide screens only */
-  --tangentbord: 0px;    /* how much of the screen the keyboard covers */
+  --knapp: 2.75rem;      /* the play button, and the column it stands in */
+  --tangentbord: 0px;
 }
 
 * { box-sizing: border-box; }
@@ -21,20 +20,22 @@ body {
   font-family: var(--sans); font-size: var(--s1); line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
-p, h1, h2, h3, h4, h5, h6 { margin: 0; }
+p, h1, h2, h3 { margin: 0; }
 a { color: var(--text); text-decoration-color: var(--svag); text-decoration-thickness: 1px; text-underline-offset: 0.2em; }
 a:hover { text-decoration-color: var(--text); }
 button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
 button:disabled { cursor: default; }
 :focus-visible { outline: 2px solid var(--mint); outline-offset: 3px; border-radius: 2px; }
 [hidden] { display: none !important; }
+svg { width: 1.1rem; height: 1.1rem; fill: currentColor; stroke: none; }
+.stang svg { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
 
-/* --- bands: sandbox, read only, something wrong --------------------------------- */
+/* --- bands: sandbox, read only, something wrong -------------------------------------- */
 .band { padding: 0.5rem 1.5rem; font-size: var(--s-1); color: var(--dampad); }
 .band.prov { color: var(--text); background: var(--skymning); }
 .band.varning { color: var(--varm); font-size: var(--s0); margin: 1rem 0; padding: 0; }
 
-/* --- top: the name, the documents, saved -------------------------------------------- */
+/* --- top: the name, the episodes ------------------------------------------------------- */
 .topp {
   position: sticky; top: 0; z-index: 5;
   display: flex; align-items: center; gap: 1.75rem;
@@ -50,430 +51,138 @@ button:disabled { cursor: default; }
 }
 .flikar a:hover { color: var(--text); }
 .flikar a[aria-current] { color: var(--text); background: var(--skymning); }
-/* the language of a document in another one than the room's: Episode 1 EN */
 .flikar .sprak { font-size: var(--s-1); color: var(--svag); }
-.lage { margin-left: auto; display: flex; align-items: center; gap: 1rem; font-size: var(--s-1); color: var(--svag); white-space: nowrap; }
-.lage-text.fel { color: var(--varm); }
-.lage-text.fel button { text-decoration: underline 1px; text-underline-offset: 0.2em; }
-/* who you are: your name, a text button that opens your settings */
-.jag { font-size: var(--s0); color: var(--dampad); text-decoration: underline 1px var(--svag); text-underline-offset: 0.2em; }
-.jag:hover { color: var(--text); }
 
-/* --- tools: one row of plain text ------------------------------------------------------ */
-.verktyg {
-  position: sticky; top: 3.6rem; z-index: 4;
-  display: flex; align-items: center; gap: 0.2rem;
-  padding: 0.4rem 1.5rem 0.55rem; overflow-x: auto; scrollbar-width: none;
-  background: var(--bakgrund); font-size: var(--s0); color: var(--dampad);
-}
-.verktyg > * { flex: none; }
-/* the paragraph's style is the toolbar's current item */
-.typval {
-  display: inline-flex; align-items: center; justify-content: space-between; gap: 0.5rem; min-width: 7rem;
-  padding: 0.35rem 0.7rem; border-radius: 6px; background: var(--skymning); color: var(--text);
-}
-.typval::after { content: ''; width: 0.35rem; height: 0.35rem; border-right: 1px solid currentColor; border-bottom: 1px solid currentColor; transform: rotate(45deg) translateY(-0.12rem); opacity: 0.7; }
-.verktyg button:not(.typval) { padding: 0.35rem 0.7rem; border-radius: 6px; }
-.verktyg button:not(.typval):hover { color: var(--text); }
-.verktyg button.ikon { display: inline-grid; place-items: center; padding: 0.35rem 0.5rem; }
-.verktyg .skilje { width: 0.6rem; }
-svg { width: 1.1rem; height: 1.1rem; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
-.vem { margin-left: auto; display: flex; align-items: baseline; gap: 0.9rem; font-size: var(--s-1); color: var(--svag); padding-left: 1rem; }
-
-/* the style menu */
-.meny {
-  position: fixed; z-index: 30; min-width: 14rem; padding: 0.35rem;
-  display: flex; flex-direction: column;
-  border-radius: 6px; background: var(--natt); border: 1px solid var(--linje);
-}
-.meny button {
-  display: flex; align-items: baseline; justify-content: space-between; gap: 1.5rem;
-  padding: 0.5rem 0.7rem; border-radius: 6px; font-size: var(--s0); color: var(--text); text-align: left;
-}
-.meny button:hover, .meny button:focus-visible { background: var(--skymning); outline-offset: -2px; }
-.meny button.vald { background: var(--skymning); }
-.meny kbd { font-family: var(--sans); font-size: var(--s-1); color: var(--svag); }
-
-/* --- the sheet --------------------------------------------------------------------- */
-.blad {
-  position: relative;
-  max-width: calc(var(--marg) + var(--spalt) + var(--sido) + 4rem);
-  margin: 0 auto; padding: 3.5rem 1.5rem 9rem;
-}
-
-/* everything on the sheet that is not the editor lines up with the text */
-#inne > :is(.underflikar, .kalla, .notis, .lore-huvud, .laddar, .band, .falt, .omdomen, .katalog, .sidlista, p, .borttagna, .md, .smal) {
-  margin-left: var(--marg); max-width: var(--spalt);
-}
-.laddar { color: var(--svag); font-size: var(--s0); }
+/* --- the page ---------------------------------------------------------------------------- */
+.blad { max-width: calc(var(--knapp) + var(--matt) + 3rem); margin: 0 auto; padding: 2.5rem 1.5rem 9rem; }
+.blad > .kalla, #inne > :is(.laddar, .band, .smal, .tomt) { margin-left: var(--knapp); max-width: var(--matt); }
 .kalla { font-size: var(--s-1); color: var(--svag); margin-bottom: 2rem; }
-.underflikar { display: flex; flex-wrap: wrap; gap: 0.2rem; margin-bottom: 1.5rem; }
-.underflikar a { text-decoration: none; color: var(--dampad); font-size: var(--s0); padding: 0.3rem 0.7rem; border-radius: 6px; }
-.underflikar a:hover { color: var(--text); }
-.underflikar a[aria-current] { color: var(--text); background: var(--skymning); }
-.notis:empty { display: none; }
-.notis { margin-bottom: 1.5rem; }
-.sedan { font-size: var(--s0); color: var(--dampad); }
-.lank { color: var(--text); text-decoration: underline 1px var(--svag); text-underline-offset: 0.2em; text-align: left; }
+.laddar, .tomt { color: var(--svag); font-size: var(--s0); }
+.lank { color: var(--text); text-decoration: underline 1px var(--svag); text-underline-offset: 0.2em; text-align: left; font-size: var(--s0); }
 .lank:hover { text-decoration-color: var(--text); }
-.lank.fara { color: var(--varm); margin-left: 1rem; }
 .dov { color: var(--dampad); }
-.liten { font-size: var(--s-1); }
+.varm { color: var(--varm); }
 
-/* --- the editor ----------------------------------------------------------------------- */
-.ProseMirror {
-  position: relative; outline: none;
-  word-wrap: break-word; white-space: pre-wrap; white-space: break-spaces;
-  font-variant-ligatures: none; font-feature-settings: "liga" 0;
+/* the scene: its title and "Spela scenen" */
+.scen {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.4rem 1.25rem;
+  margin: 3.25rem 0 1.25rem var(--knapp);
 }
-.ProseMirror-hideselection *::selection { background: transparent; }
-.ProseMirror-hideselection { caret-color: transparent; }
-.ProseMirror [contenteditable="false"] { white-space: normal; }
-.ProseMirror ::selection { background: rgb(192 151 201 / 0.32); }
-.ProseMirror .text { caret-color: var(--mint); outline: none; }
-.ProseMirror-selectednode hr { background: var(--mint); }
+.bord > .scen:first-child { margin-top: 0; }
+.scen h2 { font-family: var(--serif); font-weight: 600; font-size: var(--s2); line-height: 1.3; }
+.scen .lank.spelar { color: var(--mint); text-decoration-color: var(--mint); }
 
-/* a paragraph: margin | words | (comments) */
-.st {
-  position: relative;
-  display: grid; grid-template-columns: var(--marg) minmax(0, var(--spalt)) minmax(0, var(--sido));
-  column-gap: 0; align-items: start;
-}
-.st > .marg {
-  grid-column: 1;
-  display: flex; align-items: baseline; justify-content: flex-end; gap: 0.55rem;
-  padding-right: 1.5rem; padding-top: 0.4rem; min-height: 1.6rem;
-}
-.st > :nth-child(2) { grid-column: 2; position: relative; }
-.st > .kom { position: absolute; top: 0; left: calc(var(--marg) + var(--spalt) + 2rem); width: var(--sido); z-index: 2; }
-.st > .kom:empty { display: none; }
-.st > .under-st { grid-column: 2; }
-.st > .under-st:empty { display: none; }
+/* what is not a line: mechanics, branches, notes, direction that is not a pause */
+.bord > :is(.mek, .gren, .not, .regirad) { margin: 0.6rem 0 0.6rem var(--knapp); max-width: var(--matt); }
+.mek, .gren { font-size: var(--s0); color: var(--dampad); }
+.bord > .gren { margin-top: 1.25rem; }
+.not { font-size: var(--s0); color: var(--svag); }
+.regirad { font-family: var(--serif); font-style: italic; color: var(--dampad); }
 
-/* who last wrote the paragraph: an initial, H, L or D, in --svag, in the
-   paragraph's own type as in design/referens.html: Literata beside her words
-   and the titles (italic beside Regi), Atkinson beside the phone's (Mekanik,
-   Gren, Variant's label, Anteckning, tables) */
-.av { font-size: var(--s-1); line-height: 1; color: var(--svag); min-width: 0.8em; text-align: center; }
-.st:is(.scen, .replik, .regi, .rubrik, .stycke, .punkt) > .marg { font-family: var(--serif); }
-.st.regi > .marg { font-style: italic; }
-.st.stycke[data-form="kursiv"] > .marg { font-family: var(--sans); }
-button.av { position: relative; }
-button.av::after { content: ''; position: absolute; inset: -0.7rem; }
-button.av:hover { color: var(--text); }
-.av.osparat { opacity: 0.55; }
-/* changed by someone else since you were here */
-.av.nytt { color: var(--varm); }
-/* listen: a small ring with a triangle, before a recorded line */
-.ring {
-  display: inline-block; width: 1.15rem; height: 1.15rem; border-radius: 50%; flex: none; align-self: flex-start;
-  border: 1px solid var(--dampad); position: relative; margin-top: -0.2rem;
-  order: -1;  /* the initial keeps its column next to the text */
-}
-.ring::after { content: ''; position: absolute; left: 0.4rem; top: 0.29rem; border-left: 0.36rem solid var(--dampad); border-top: 0.24rem solid transparent; border-bottom: 0.24rem solid transparent; }
-.ring:hover { border-color: var(--text); }
-.ring:hover::after { border-left-color: var(--text); }
-.ring.ny { border-style: dotted; border-color: var(--linje); }
-.ring.ny::after { border-left-color: var(--linje); }
-.ring.spelar { border-color: var(--mint); }
-.ring.spelar::after { left: 50%; top: 50%; width: 0.38rem; height: 0.38rem; border: 0; background: var(--mint); transform: translate(-50%, -50%); border-radius: 1px; }
-
-/* an empty paragraph says what goes there */
-.text { position: relative; }
-.st.tom .text::after {
-  content: attr(data-tom); position: absolute; top: 0; left: 0; right: 0; padding: inherit;
-  color: var(--svag); font-style: italic; pointer-events: none; white-space: normal;
+/* the silence before a line, as space. --hojd is set from the seconds. */
+.tystnad { height: var(--hojd, 0.5rem); margin-left: var(--knapp); display: flex; align-items: center; }
+.tystnad span {
+  display: flex; align-items: center; min-height: calc(var(--hojd, 0.5rem) - 0.5rem);
+  padding-left: 0.9rem; border-left: 1px solid var(--linje); line-height: 1;
+  font-size: var(--s-1); color: var(--svag); font-variant-numeric: tabular-nums;
 }
 
-/* --- paragraph kinds: by type, not by boxes --- */
-/* Replik and Variant: her lines, Literata at --s2 */
-.st.replik .text, .st.variant .text {
-  font-family: var(--serif); font-size: var(--s2); line-height: 1.55; color: var(--text);
-  padding: 0 0 1rem;
+/* --- a line: play | words, and under them how it is heard --------------------------- */
+.rad {
+  display: grid; grid-template-columns: var(--knapp) minmax(0, var(--matt));
+  align-items: start; margin: 0.35rem 0 0.6rem;
 }
-/* Text in the world book and the catalogue: Literata at the body size */
-.st.stycke .text { font-family: var(--serif); font-size: var(--s1); line-height: 1.6; color: var(--text); padding: 0 0 1rem; }
-/* Anteckning: a note to ourselves, the phone's voice, the quietest */
-.st.stycke[data-form="kursiv"] .text { font-family: var(--sans); font-size: var(--s0); line-height: 1.5; color: var(--svag); }
-.st.stycke:is([data-form="citat"], [data-form="citat-kursiv"]) .text { padding-left: 1rem; border-left: 1px solid var(--linje); color: var(--dampad); }
-.st.stycke[data-form="citat-kursiv"] .text { font-style: italic; }
-/* Regi: Literata italic, --dampad, in its parentheses */
-.st.regi .text { font-family: var(--serif); font-style: italic; font-size: var(--s1); line-height: 1.55; color: var(--dampad); padding: 0 0 1rem; }
-.st.regi .text::before { content: '('; }
-.st.regi:not(.tom) .text::after { content: ')'; }
-.st.regi.tom .text::before { content: none; }
-
-/* marks in the words: the md is there, quietly */
-.regi { font-family: var(--serif); font-style: italic; color: var(--dampad); }
-.annan { color: var(--text); }
-.mk { color: var(--svag); }
-/* The marks that make bold and italic are part of the text, and show only in
-   the paragraph being written in. */
-.ProseMirror .st:not(.har) .mk { font-size: 0; }
-.fet { font-weight: 600; }
-.kursiv { font-style: italic; }
-.kod { font-family: var(--sans); font-size: 0.85em; background: var(--skymning); border-radius: 4px; padding: 0 0.25rem; }
-
-/* the title: Literata 300, sentence case */
-.st.rubrik .huvud { padding-bottom: 2.5rem; }
-.st.rubrik h1.text {
-  display: inline-block; min-width: 4rem; max-width: var(--spalt);
-  font-family: var(--serif); font-weight: 300; font-variation-settings: "opsz" 48;
-  font-size: var(--s4); line-height: 1.15; letter-spacing: -0.01em; color: var(--text);
+.rad > .spela { grid-column: 1; grid-row: 1; }
+.rad > :not(.spela) { grid-column: 2; }
+.spela {
+  display: inline-grid; place-items: center; width: 2.25rem; height: 2.25rem;
+  margin-top: 0.05rem; border-radius: 50%; color: var(--dampad); border: 1px solid var(--linje);
 }
-.st.rubrik .under { margin-top: 0.6rem; font-size: var(--s-1); color: var(--svag); }
-.st.rubrik .under:empty { display: none; }
-.st.rubrik h2.text { font-family: var(--serif); font-weight: 400; font-variation-settings: "opsz" 36; font-size: var(--s3); line-height: 1.25; color: var(--text); padding: 2.5rem 0 1rem; }
-.st.rubrik :is(h3, h4, h5, h6).text { font-family: var(--serif); font-weight: 600; font-size: var(--s1); line-height: 1.4; color: var(--text); padding: 1.75rem 0 0.4rem; }
-
-/* Scenrubrik: Literata 600 at --s2 */
-.st.scen { margin-top: 2.5rem; }
-.st.scen > .marg { padding-top: 0.55rem; }
-.st.scen h2.text { font-family: var(--serif); font-weight: 600; font-size: var(--s2); line-height: 1.3; color: var(--text); padding-bottom: 1rem; }
-
-/* Mekanik: how the scene is played. The phone's voice, quiet, no frame. */
-.st.mekanik .ruta { padding: 0 0 1rem; font-size: var(--s0); line-height: 1.55; color: var(--dampad); }
-.st.mekanik .text { font-family: var(--sans); }
-/* A mechanic's name, with its verdict mark, never broken from it. The mark is
-   drawn as glimt.css draws .dom (a decoration in the editor cannot hold an
-   element of its own): full, half, a warm ring, a faint ring, a point. */
-.bricka { white-space: nowrap; cursor: pointer; color: var(--text); font-weight: 400; }
-.bricka:hover { text-decoration: underline 1px var(--svag); text-underline-offset: 0.2em; }
-.bricka::before {
-  content: ''; display: inline-block; box-sizing: border-box;
-  width: 0.55em; height: 0.55em; border-radius: 50%; vertical-align: 0.05em; margin-right: 0.45em;
+.spela:hover { color: var(--text); border-color: var(--dampad); }
+.spela.spelar { color: var(--pa-mint); background: var(--mint); border-color: var(--mint); }
+.ord {
+  display: block; text-align: left; border-radius: 6px;
+  margin: -0.15rem -0.6rem; padding: 0.15rem 0.6rem; width: calc(100% + 1.2rem);
 }
-.bricka.haller::before { background: var(--mint); }
-.bricka.delvis::before { background: linear-gradient(90deg, var(--mint) 50%, transparent 50%); border: 1.5px solid var(--mint); }
-.bricka.osaker::before { border: 1.5px solid var(--varm); }
-.bricka.oprovad::before { border: 1.5px solid var(--svag); }
-.bricka.ide::before { width: 0.3em; height: 0.3em; margin: 0 0.575em 0 0.125em; background: var(--svag); vertical-align: 0.15em; }
-.bricka.inget::before { display: none; }
-.ruta-extra { display: flex; flex-direction: column; align-items: flex-start; gap: 0.3rem; margin-top: 0.45rem; }
-.ruta-extra:empty { display: none; }
-.varsel { display: block; font-size: var(--s-1); color: var(--dampad); }
-.varsel.osaker { color: var(--varm); }
-/* a new mechanic waiting for Demi's answer */
-.vantar { display: inline-block; font-size: var(--s-1); color: var(--varm); }
-.vantar.svarat { color: var(--svag); }
+.ord:hover, .rad.oppen > .ord { background: var(--skymning); }
+.replik { font-family: var(--serif); font-size: var(--s2); line-height: 1.55; }
+.regi-i { font-style: italic; color: var(--dampad); }
+.etikett { font-family: var(--sans); font-size: var(--s-1); color: var(--dampad); }
+.om { font-size: var(--s-1); color: var(--svag); margin-top: 0.15rem; }
+.omskr { font-size: var(--s-1); color: var(--orkide); margin-top: 0.2rem; }
+.omskr.fel { color: var(--varm); }
+.rad.spelas > .ord .replik { color: var(--mint); }
 
-/* Gren: what happens if. The lines under it are indented on a hairline. */
-.st.gren .grenrad { padding: 0.4rem 0 0.25rem; }
-.st.gren .text { font-family: var(--sans); font-size: var(--s0); color: var(--dampad); }
-.st.gren .trad { display: none; }
-.st.igren > :nth-child(2) { padding-left: 1rem; border-left: 1px solid var(--linje); }
-.st.gren.igren > :nth-child(2) { border-left-color: transparent; }
-
-/* Variant: the phone picks one. The label is chosen from a list. */
-.st.variant .rad { display: grid; grid-template-columns: 4.6rem minmax(0, 1fr); column-gap: 0.5rem; }
-.etikett {
-  justify-self: start; align-self: start; margin-top: 0.45rem; max-width: 100%;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  font-family: var(--sans); font-size: var(--s-1); color: var(--dampad);
-  text-decoration: underline 1px var(--linje); text-underline-offset: 0.2em;
+/* --- the drawer: everything about how one line is heard -------------------------------- */
+.lada {
+  display: flex; flex-direction: column; gap: 1.4rem;
+  margin: 0.9rem 0 1.75rem; padding: 1.1rem 0 0.2rem 1rem;
+  border-left: 1px solid var(--linje); font-size: var(--s0);
 }
-.etikett:hover { color: var(--text); }
-.etikett.saknas { color: var(--varm); }
-
-/* lists, tables and the line between parts */
-.st.punkt .punktrad { display: grid; grid-template-columns: 1.4rem minmax(0, 1fr); }
-.punktmarkor { color: var(--svag); font-family: var(--sans); font-size: var(--s0); padding-top: 0.15rem; }
-.st.punkt .text { font-family: var(--serif); font-size: var(--s1); line-height: 1.6; color: var(--text); padding-bottom: 0.35rem; }
-.st.tabell .text { font-family: var(--sans); font-size: var(--s0); line-height: 1.5; padding: 0.15rem 0; font-variant-numeric: tabular-nums; }
-.tabell-skilje { color: var(--svag); }
-.st.linje hr { grid-column: 2; width: 100%; border: 0; height: 1px; margin: 2.5rem 0; background: var(--linje); }
-
-/* where the cursor stands, while someone is writing */
-.ProseMirror-focused .har > :nth-child(2)::before {
-  content: ''; position: absolute; inset: -0.25rem -0.75rem 0.5rem -0.75rem;
-  border-radius: 6px; background: var(--skymning); z-index: -1; pointer-events: none;
+.falt-namn { display: block; font-size: var(--s0); color: var(--dampad); margin-bottom: 0.35rem; }
+.hjalp { font-size: var(--s-1); color: var(--svag); margin-top: 0.35rem; }
+.pauser { display: flex; flex-wrap: wrap; gap: 1rem 2.25rem; }
+.stegare { display: grid; grid-template-columns: auto auto auto; justify-content: start; align-items: center; column-gap: 0.4rem; }
+.stegare .falt-namn { grid-column: 1 / -1; }
+.stegare .kallor { grid-column: 1 / -1; font-size: var(--s-1); color: var(--svag); margin-top: 0.35rem; }
+.steg {
+  width: 2.75rem; height: 2.75rem; border-radius: 6px; border: 1px solid var(--linje);
+  font-size: var(--s1); color: var(--text);
 }
-.ProseMirror-focused .har.linje > :nth-child(2)::before { content: none; }
-.ProseMirror-focused .har.igren > :nth-child(2)::before { left: 0.25rem; }
-.ProseMirror { z-index: 0; }
+.steg:hover:not(:disabled) { border-color: var(--dampad); }
+.steg:disabled { color: var(--svag); }
+.sek { min-width: 4.5rem; text-align: center; font-variant-numeric: tabular-nums; font-size: var(--s1); }
 
-/* why a paragraph is not saved */
-.hallen { font-size: var(--s-1); color: var(--varm); margin: -0.6rem 0 1rem; }
+.val { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.val .falt-namn { width: 100%; margin-bottom: 0; }
+.valknapp { min-height: 44px; padding: 0 1rem; border-radius: 6px; border: 1px solid var(--linje); font-size: var(--s0); }
+.valknapp:hover:not(:disabled) { border-color: var(--dampad); }
+.valknapp[aria-pressed="true"] { background: var(--mint); border-color: var(--mint); color: var(--pa-mint); }
 
-/* --- comments in the margin: a hairline, a name, the words ----------------------------- */
-.kom .kort {
-  display: flex; flex-direction: column; gap: 0.2rem;
-  font-size: var(--s0); line-height: 1.5; color: var(--text);
-  padding: 0.1rem 0 0.1rem 1rem; border-left: 1px solid var(--linje);
-  margin-bottom: 1.25rem;
+textarea, input[type="text"] {
+  width: 100%; font: inherit; color: var(--text); background: var(--skymning);
+  border: 1px solid var(--linje); border-radius: 6px; padding: 0.6rem 0.75rem;
 }
-.kom .kort b { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.15rem 0.5rem; font-weight: 400; color: var(--svag); font-size: var(--s-1); }
-.kom .kort :is(.nar, .till) { color: var(--svag); }
-.vem-namn { display: inline; }
-.vem-namn .ai { color: inherit; }
-.kort-text { white-space: pre-wrap; overflow-wrap: anywhere; }
-.galde { font-size: var(--s-1); color: var(--svag); font-style: italic; }
-.kom .forslag { display: block; font-family: var(--serif); font-size: var(--s1); color: var(--text); margin: 0.1rem 0 0.3rem; overflow-wrap: anywhere; }
-.kom .svar { display: flex; flex-direction: column; gap: 0.15rem; margin: 0.5rem 0 0; padding-left: 0.8rem; border-left: 1px solid var(--linje); }
-.kom .val { display: flex; flex-wrap: wrap; gap: 0.3rem 1.1rem; font-size: var(--s-1); margin-top: 0.25rem; }
-.kom .val button { color: var(--dampad); text-decoration: underline 1px var(--svag); text-underline-offset: 0.2em; padding: 0.2rem 0; }
-.kom .val button:first-child { color: var(--text); }
-.kom .val button:hover { color: var(--text); text-decoration-color: var(--text); }
-/* a proposal: the second colour, orchid, as in the portal's changed rows */
-.kom .kort:has(> .forslag) { border-left-color: var(--orkide); }
-/* two changes that met: what needs you */
-.kom .kort.krock { border-left-color: var(--varm); }
-.kom .kort.krock b { color: var(--varm); }
+textarea:focus, input[type="text"]:focus { border-color: var(--dampad); }
+.regitext, .nyord { font-family: var(--serif); font-size: var(--s1); line-height: 1.5; resize: vertical; }
+input::placeholder { color: var(--svag); }
 
-/* --- the panel: comments, history, the mechanic picker ------------------------------ */
-.panel {
-  position: fixed; z-index: 20; right: 1.25rem; top: 6.6rem;
-  width: min(23rem, 100vw - 2.5rem); max-height: calc(100vh - 8rem);
-  overflow: auto; overscroll-behavior: contain;
-  border-radius: 6px; background: var(--natt); border: 1px solid var(--linje);
-  font-size: var(--s0);
-}
-.panel-topp {
-  position: sticky; top: 0; z-index: 1;
+.tagningar { border: 0; margin: 0; padding: 0; min-width: 0; }
+.tagningar legend { padding: 0; }
+.tagningar ul { list-style: none; margin: 0; padding: 0; }
+.tagningar li {
   display: flex; align-items: center; justify-content: space-between; gap: 1rem;
-  padding: 1rem 1rem 0.6rem 1.25rem; background: var(--natt);
+  padding: 0.45rem 0; border-bottom: 1px solid var(--linje);
 }
-.panel-topp h2 { font-family: var(--serif); font-weight: 400; font-size: var(--s2); line-height: 1.3; color: var(--text); }
-.stang { flex: none; width: 2.75rem; height: 2.75rem; border-radius: 6px; display: grid; place-items: center; color: var(--dampad); }
-.stang:hover { color: var(--text); }
-.panel-inne { padding: 0.2rem 1.25rem 1.4rem; display: flex; flex-direction: column; gap: 1rem; }
-.om { font-size: var(--s0); color: var(--dampad); font-style: italic; }
-.hjalp { font-size: var(--s-1); color: var(--svag); }
-.avsnitt { display: flex; flex-direction: column; gap: 0.7rem; }
-.avsnitt + .avsnitt { margin-top: 0.75rem; }
-.panel h3 { font-family: var(--serif); font-weight: 600; font-size: var(--s1); color: var(--text); }
-.version {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 0.25rem;
-  padding: 0.1rem 0 0.1rem 0.9rem; border-left: 1px solid var(--linje);
-}
-.version.nu { border-left-color: var(--text); }
-.version.krockad { border-left-color: var(--varm); }
-.meta { font-size: var(--s-1); color: var(--svag); }
-.meta .vem-namn { color: var(--dampad); }
-.text-version { font-family: var(--serif); font-size: var(--s1); color: var(--text); overflow-wrap: anywhere; }
-.handelser { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.7rem; }
-.handelser li { display: flex; flex-direction: column; gap: 0.15rem; }
-.handelser .lank { font-size: var(--s0); }
-.handelser .utdrag { font-family: var(--serif); font-size: var(--s0); color: var(--dampad); padding-left: 0.9rem; }
+.tagningar li:last-child { border-bottom: 0; }
+.tagningar label { display: grid; grid-template-columns: 1rem minmax(0, 1fr); align-items: baseline; gap: 0.15rem 0.6rem; cursor: pointer; }
+.tagningar input { accent-color: var(--mint); width: 1rem; height: 1rem; margin: 0; align-self: start; margin-top: 0.2rem; }
+.annan-text { grid-column: 2; font-family: var(--serif); font-size: var(--s-1); color: var(--svag); }
+.tagningar .spela { flex: none; width: 2rem; height: 2rem; }
 
-/* forms */
-.form { display: flex; flex-direction: column; gap: 0.75rem; }
-.falt {
-  width: 100%; font: inherit; color: var(--text);
-  background: var(--skymning); border: 1px solid var(--linje); border-radius: 6px;
-  padding: 0.65rem 0.8rem;
-}
-.falt::placeholder { color: var(--svag); }
-.falt:focus { outline: 2px solid var(--mint); outline-offset: 3px; }
-textarea.falt { font-family: var(--serif); font-size: var(--s1); line-height: 1.55; min-height: 5.5rem; resize: vertical; }
-.kryss { display: inline-flex; align-items: center; gap: 0.5rem; font-size: var(--s0); color: var(--dampad); }
-.kryss input { accent-color: var(--mint); width: 1rem; height: 1rem; }
-.fel { font-size: var(--s-1); color: var(--varm); }
-.fel:empty { display: none; }
-.knappar { display: flex; flex-wrap: wrap; gap: 0.6rem; }
-/* a choice: a 1px outline; the screen's one primary action: filled mint */
-.knapp {
+.gorom .huvud {
   display: inline-flex; align-items: center; justify-content: center;
-  min-height: 44px; padding: 0 1.1rem; border-radius: 6px; border: 1px solid var(--linje);
-  color: var(--text); font-size: var(--s0); text-decoration: none;
+  min-height: 52px; padding: 0 1.75rem; border-radius: 6px;
+  background: var(--mint); color: var(--pa-mint); font-weight: 600; font-size: var(--s1);
 }
-.knapp:hover { border-color: var(--dampad); }
-.knapp.huvud { background: var(--mint); border-color: var(--mint); color: var(--pa-mint); font-weight: 600; }
-.knapp.huvud:hover { background: var(--mint-ljus); }
-.knapp.liten { min-height: 36px; padding: 0 0.8rem; font-size: var(--s-1); }
-.rad-form { flex-direction: row; align-items: center; }
-.rad-form .falt { flex: 1; }
+.gorom .huvud:hover:not(:disabled) { background: var(--mint-ljus); }
+.gorom .huvud:disabled { background: var(--skymning); color: var(--svag); }
+.skrivom .knappar { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; margin-top: 0.75rem; }
+.kontur { min-height: 44px; padding: 0 1.1rem; border-radius: 6px; border: 1px solid var(--linje); font-size: var(--s0); }
+.kontur:hover { border-color: var(--dampad); }
 
-/* a switch: on is mint */
-.brytare { display: flex; align-items: center; gap: 0.75rem; cursor: pointer; color: var(--text); font-size: var(--s0); }
-.brytare input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-.brytare .spar { position: relative; flex: none; width: 2.4rem; height: 1.35rem; border-radius: 999px; border: 1px solid var(--linje); background: var(--skymning); }
-.brytare .spar::after { content: ''; position: absolute; left: 0.18rem; top: 0.17rem; width: 0.9rem; height: 0.9rem; border-radius: 50%; background: var(--dampad); }
-.brytare input:checked + .spar { background: var(--mint); border-color: var(--mint); }
-.brytare input:checked + .spar::after { transform: translateX(1.05rem); background: var(--natt); }
-.brytare input:focus-visible + .spar { outline: 2px solid var(--mint); outline-offset: 3px; }
-
-/* the mechanic picker and the label picker */
-.mek-lista { display: flex; flex-direction: column; gap: 1.25rem; }
-.mek-lista .grupp { display: flex; flex-direction: column; gap: 0.1rem; }
-.mek-lista .grupp h3 { margin-bottom: 0.25rem; }
-.mek-val { display: flex; flex-direction: column; gap: 0.1rem; text-align: left; padding: 0.5rem 0.6rem; border-radius: 6px; }
-.mek-val:hover, .mek-val:focus-visible { background: var(--skymning); }
-.mek-namn { display: inline; color: var(--text); }
-.mek-namn .dom { margin-right: 0.45em; }
-/* a verdict mark and the first word of its name wrap together */
-.hel { white-space: nowrap; }
-.mek-namn .dov { font-size: var(--s-1); color: var(--svag); }
-.mek-du { font-size: var(--s-1); color: var(--dampad); }
-.omdome { display: inline; font-size: var(--s-1); color: var(--dampad); white-space: nowrap; }
-.omdome.inget { color: var(--svag); }
-.etikett-grupp { display: flex; flex-direction: column; gap: 0.4rem; }
-.etiketter { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-.etikett-val { min-height: 40px; padding: 0 0.9rem; border-radius: 6px; border: 1px solid var(--linje); font-size: var(--s0); color: var(--text); }
-.etikett-val:hover { border-color: var(--dampad); }
-.etikett-val.vald { background: var(--mint); border-color: var(--mint); color: var(--pa-mint); }
-.mekanik-detaljer { display: flex; flex-direction: column; gap: 0.55rem; }
-.mekanik-detaljer strong { color: var(--text); font-weight: 600; }
-
-/* --- the mechanics, as a list: rows on a hairline ------------------------------------ */
-#inne > .falt { margin-bottom: 1rem; }
-.omdomen { display: flex; flex-wrap: wrap; gap: 0.4rem 1.2rem; margin-bottom: 2.5rem; }
-.katalog { display: flex; flex-direction: column; gap: 2.5rem; }
-.katalog .grupp { display: flex; flex-direction: column; }
-.katalog .grupp > h2 { font-family: var(--serif); font-weight: 400; font-variation-settings: "opsz" 36; font-size: var(--s3); line-height: 1.25; color: var(--text); margin-bottom: 0.75rem; }
-.mekanik-post { border-bottom: 1px solid var(--linje); }
-.katalog .grupp > h2 + .mekanik-post { border-top: 1px solid var(--linje); }
-.mekanik-post summary {
-  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 0.2rem 1rem;
-  list-style: none; cursor: pointer; padding: 0.85rem 0;
-}
-.mekanik-post summary::-webkit-details-marker { display: none; }
-.mekanik-post summary:hover .mek-namn { text-decoration: underline 1px var(--svag); text-underline-offset: 0.2em; }
-.mekanik-post summary .mek-namn { font-size: var(--s1); }
-.mekanik-post summary .mek-du { grid-column: 1 / -1; font-size: var(--s0); }
-.mekanik-post[open] summary .mek-du { display: none; }
-.mekanik-post > .mekanik-detaljer { padding: 0 0 1.1rem; font-size: var(--s0); }
-.mekanik-post .mek-rad { display: none; }
-.anvands h3 { font-family: var(--serif); font-weight: 600; font-size: var(--s0); color: var(--text); margin: 0.4rem 0 0.3rem; }
-.anvands ul { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.2rem; }
-
-/* --- the world: our pages ------------------------------------------------------------------ */
-.sidlista { list-style: none; margin: 1.5rem 0 0; padding: 0; display: flex; flex-direction: column; }
-.sidlista li { border-bottom: 1px solid var(--linje); }
-.sidlista li:first-child { border-top: 1px solid var(--linje); }
-.sidlista a { display: flex; flex-direction: column; gap: 0.15rem; padding: 0.9rem 0; text-decoration: none; color: var(--text); }
-.sidlista a:hover .sid-titel { text-decoration: underline 1px var(--svag); text-underline-offset: 0.2em; }
-.sid-titel { font-family: var(--serif); font-size: var(--s2); color: var(--text); }
-.utdrag { font-family: var(--serif); color: var(--dampad); }
-.borttagna { margin-top: 2rem; display: flex; flex-direction: column; gap: 0.6rem; }
-.borttagna summary { cursor: pointer; color: var(--dampad); font-size: var(--s0); }
-.borttagna .version { margin-top: 0.5rem; }
-.lore-huvud { display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 2.5rem; }
-.lore-huvud > p:first-child { font-size: var(--s0); }
-.sidtitel {
-  width: 100%; font-family: var(--serif); font-weight: 300; font-variation-settings: "opsz" 48;
-  font-size: var(--s4); line-height: 1.15; letter-spacing: -0.01em; color: var(--text);
-  background: transparent; border: 0; border-radius: 6px; padding: 0;
-}
-.sidtitel:focus { outline: none; background: var(--skymning); box-shadow: 0 0 0 0.5rem var(--skymning); }
-.md { font-family: var(--serif); font-size: var(--s1); line-height: 1.6; color: var(--text); }
-.md h1 { font-weight: 300; font-size: var(--s4); line-height: 1.15; letter-spacing: -0.01em; margin: 0 0 1rem; }
-.md h2 { font-weight: 400; font-size: var(--s3); line-height: 1.25; margin: 2.5rem 0 1rem; }
-.md :is(h3, h4) { font-weight: 600; font-size: var(--s1); margin: 2rem 0 0.4rem; }
-.md p, .md ul, .md ol, .md blockquote { margin: 0 0 1rem; }
-.md blockquote { padding-left: 1rem; border-left: 1px solid var(--linje); color: var(--dampad); }
-.md code { font-family: var(--sans); font-size: 0.85em; background: var(--skymning); border-radius: 4px; padding: 0 0.25rem; }
-.md hr { border: 0; height: 1px; background: var(--linje); margin: 2.5rem 0; }
-.md table { border-collapse: collapse; font-family: var(--sans); font-size: var(--s0); margin: 0 0 1rem; font-variant-numeric: tabular-nums; }
-.md :is(th, td) { padding: 0.4rem 0.75rem 0.4rem 0; text-align: left; vertical-align: top; border-bottom: 1px solid var(--linje); }
-.md th { font-weight: 600; }
+/* login */
 .smal { display: flex; flex-direction: column; gap: 1rem; }
-.smal h2 { font-family: var(--serif); font-weight: 300; font-size: var(--s4); line-height: 1.15; color: var(--text); }
+.smal h2 { font-family: var(--serif); font-weight: 300; font-size: var(--s4); line-height: 1.15; }
+.knapp.huvud {
+  display: inline-flex; align-items: center; min-height: 52px; padding: 0 1.5rem; border-radius: 6px;
+  background: var(--mint); color: var(--pa-mint); font-weight: 600; text-decoration: none;
+}
 
-/* --- the status line ------------------------------------------------------------------------ */
+/* --- the status line ------------------------------------------------------------------- */
 .status {
   position: fixed; z-index: 40; left: 50%; transform: translateX(-50%);
-  bottom: calc(1.25rem + var(--tangentbord));
+  bottom: calc(1.25rem + var(--tangentbord) + env(safe-area-inset-bottom));
   width: max-content; max-width: min(34rem, 100vw - 2rem);
   display: flex; align-items: center; gap: 0.9rem;
   padding: 0.55rem 0.6rem 0.55rem 1rem; border-radius: 6px;
@@ -482,47 +191,16 @@ textarea.falt { font-family: var(--serif); font-size: var(--s1); line-height: 1.
 }
 .status > span:first-child { flex: 1; }
 .status.fel > span:first-child { color: var(--varm); }
+.status .stang { display: inline-grid; place-items: center; width: 2rem; height: 2rem; color: var(--dampad); }
 
-/* --- narrower: comments go under their paragraph ----------------------------------------- */
-@media (max-width: 62rem) {
-  :root { --marg: 2.1rem; }
-  .st { grid-template-columns: var(--marg) minmax(0, 1fr); }
-  .st > .kom { position: static; width: auto; grid-column: 2; margin: -0.25rem 0 1rem; transform: none !important; }
-  .blad { padding: 2.25rem 1.1rem 8rem 0.35rem; }
-  .st > .marg { padding-right: 0.7rem; flex-direction: column; align-items: flex-end; gap: 0.6rem; }
-  .ring { margin-top: 0; order: 0; }
-  .vem { display: none; }
-}
-
-/* --- phone: the tools sit above the keyboard, the panel rises from below ----------------- */
+/* --- phone ----------------------------------------------------------------------------- */
 @media (max-width: 40rem) {
+  :root { --knapp: 2.6rem; }
   .topp { padding: 0.65rem 0.9rem; gap: 0.75rem; flex-wrap: wrap; row-gap: 0.35rem; }
   .marke .namn { font-size: var(--s2); }
-  .marke .rum { display: none; }
   .flikar { order: 3; width: 100%; margin: 0 -0.3rem; }
-  .verktyg {
-    position: fixed; top: auto; bottom: var(--tangentbord); left: 0; right: 0; z-index: 15;
-    padding: 0.55rem 0.8rem calc(0.55rem + env(safe-area-inset-bottom));
-    border-top: 1px solid var(--linje);
-  }
-  body.med-verktyg .blad { padding-bottom: 11rem; }
-  /* her lines at the body size: a page to write on, not only to read. The
-     Scenrubrik stays at --s2 600 above them, Regi stays at --s1. */
-  .st.replik .text, .st.variant .text { font-size: var(--s1); }
-  .st.variant .rad { grid-template-columns: minmax(0, 1fr); }
-  .etikett { margin: 0 0 0.2rem; }
-  .blad { overflow-x: clip; }
-  .st.rubrik .huvud { padding-bottom: 2rem; }
-  .ProseMirror-focused .har > :nth-child(2)::before { left: -0.5rem; right: -0.5rem; }
-  .panel {
-    left: 0; right: 0; top: auto; bottom: var(--tangentbord); width: auto;
-    max-height: min(74vh, 100vh - var(--tangentbord) - 3rem);
-    border-radius: 6px 6px 0 0; border-width: 1px 0 0;
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-  .status { bottom: calc(4.4rem + var(--tangentbord) + env(safe-area-inset-bottom)); }
-  .sidtitel { font-size: var(--s3); }
-  #inne > :is(.underflikar, .kalla, .notis, .lore-huvud, .laddar, .band, .falt, .omdomen, .katalog, .sidlista, p, .borttagna, .md, .smal) {
-    margin-left: calc(var(--marg) - 0.6rem);
-  }
+  .blad { padding: 1.75rem 0.9rem 8rem 0.6rem; overflow-x: clip; }
+  .replik { font-size: var(--s1); }
+  .lada { padding-left: 0.75rem; }
+  .gorom .huvud { width: 100%; }
 }

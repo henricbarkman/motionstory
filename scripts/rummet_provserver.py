@@ -13,6 +13,13 @@ outside it can be read or written.
 
 --uploads DIR serves a built copy (scripts/rummet_deploy.py) at
 /uploads/glimt-rummet/, as the portal does.
+
+The directing desk's three routes (/api/glimt/tagning, GET and POST, and
+/api/glimt/tillbaka) run the portal's own module (scripts/dashboard/glimt_regi.py)
+with its root moved into --rot. Nothing is rendered: a take is a real recording
+from audio/glimt/ (FAKE_TAKE), and tillbaka marks the waiting rewrites as
+carried in, as data/glimt-oo/tillbaka.py would, without touching OnlyOffice.
+Every call is listed at GET /prov/anrop for the tests.
 """
 from __future__ import annotations
 
@@ -30,6 +37,9 @@ REPO = Path(__file__).resolve().parents[1]
 GA = "/home/henric/generalassistant"
 # RUMMET_FILES_PY: another copy of the module, to test a change to it.
 FILES_PY = Path(os.environ.get("RUMMET_FILES_PY") or Path(GA) / "scripts" / "dashboard" / "files.py")
+# RUMMET_GLIMT_PY: likewise for the desk's module.
+GLIMT_PY = Path(os.environ.get("RUMMET_GLIMT_PY") or Path(GA) / "scripts" / "dashboard" / "glimt_regi.py")
+FAKE_TAKE = REPO / "audio" / "glimt" / "vega" / "glimt-e1en" / "s0-1.mp3"
 
 
 def load_files_api(rot: Path):
@@ -42,8 +52,42 @@ def load_files_api(rot: Path):
     return mod
 
 
+def load_glimt_api(rot: Path, anrop: list):
+    """The portal's desk module, rooted in the sandbox, rendering nothing."""
+    if not GLIMT_PY.is_file():
+        return None
+    spec = importlib.util.spec_from_file_location("portal_glimt_regi", GLIMT_PY)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    mod.GA = rot.resolve()
+    mod.GLIMT = mod.GA / "projects" / "motionstory" / "stories" / "glimt"
+
+    def render(vid, text, lang):
+        anrop.append({"slag": "tagning", "voice": vid, "text": text, "sprak": lang})
+        return FAKE_TAKE.read_bytes(), "eleven_v4"
+
+    def popen(cmd, **kw):
+        dok = cmd[cmd.index("--dok") + 1]
+        prov = "--prov" in cmd
+        anrop.append({"slag": "tillbaka", "dok": dok, "prov": prov})
+        path = mod.rot_dir("prov" if prov else "skarp") / f"regi-{dok}.json"
+        if path.is_file():
+            data = json.loads(path.read_text(encoding="utf-8"))
+            for r in (data.get("rader") or {}).values():
+                for o in r.get("omskrivningar") or []:
+                    if o.get("lage") == "vantar":
+                        o.update({"lage": "inford", "svar": "Inne i Manus (provservern)."})
+            path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+    mod.render_stub = render
+    mod.popen_stub = popen
+    return mod
+
+
 def make_handler(files_api, rot: Path, uploads: Path | None, api: bool):
     rot = rot.resolve()
+    anrop: list = []
+    glimt = load_glimt_api(rot, anrop) if api else None
 
     def moved(raw: str) -> Path | None:
         """The room's absolute path, moved into the sandbox. None if it is not
@@ -95,6 +139,17 @@ def make_handler(files_api, rot: Path, uploads: Path | None, api: bool):
                 except PermissionError as e:
                     self._json({"error": str(e)}, 403)
                 return
+            if path == "/prov/anrop":
+                self._json({"anrop": anrop})
+                return
+            if path == "/api/glimt/tagning" and glimt is not None:
+                try:
+                    target = glimt.tagning_fil(parse_qs(parsed.query))
+                except glimt.Fel as e:
+                    self._json({"ok": False, "error": e.text}, e.status)
+                    return
+                self._send(200, target.read_bytes(), "audio/mpeg")
+                return
             if uploads and path.startswith("/uploads/glimt-rummet/"):
                 self._static(uploads, path[len("/uploads/glimt-rummet/"):])
                 return
@@ -120,7 +175,23 @@ def make_handler(files_api, rot: Path, uploads: Path | None, api: bool):
             self._send(200, target.read_bytes(), ctype)
 
         def do_POST(self) -> None:
-            if urlparse(self.path).path != "/api/files/write" or not api:
+            route = urlparse(self.path).path
+            if route in ("/api/glimt/tagning", "/api/glimt/tillbaka") and glimt is not None:
+                if not self._same_origin():
+                    self._json({"error": "bad origin"}, 403)
+                    return
+                try:
+                    body = glimt.read_body(self)
+                    if route == "/api/glimt/tagning":
+                        res = glimt.tagning(body, render=glimt.render_stub)
+                    else:
+                        res = glimt.tillbaka(body, popen=glimt.popen_stub)
+                except glimt.Fel as e:
+                    self._json({"ok": False, "error": e.text}, e.status)
+                    return
+                self._json(res)
+                return
+            if route != "/api/files/write" or not api:
                 self._send(404, b"not found", "text/html")
                 return
             body = self.rfile.read(int(self.headers.get("Content-Length", 0)))

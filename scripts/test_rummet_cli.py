@@ -238,6 +238,14 @@ def main() -> int:
         ok(r.returncode == 2 and M.read_text(encoding="utf-8") == efter, f"andra: two lines in one paragraph is refused, file untouched: {r.stderr[:160]}")
         r = kor(rot, "andra", "--dok", "1", "--stycke", pid, "--typ", "regi", "--text", "väntar")
         ok(r.returncode == 0 and "> (väntar)\n" in M.read_text(encoding="utf-8"), f"andra --typ: the paragraph changes kind, in the file's own form: {r.stderr[:160]}")
+        for dok in ("1en", "2", "3"):
+            fore_en = (rot / "projects/motionstory/stories/glimt" / ("episode-1.md" if dok == "1en" else f"episod-{dok}.md"))
+            innan = fore_en.read_text(encoding="utf-8") if fore_en.exists() else None
+            r = kor(rot, "andra", "--dok", dok, "--stycke", "x", "--text", "Ny text.")
+            ok(r.returncode == 2 and "Manus" in r.stderr and (innan is None or fore_en.read_text(encoding="utf-8") == innan),
+               f"andra --dok {dok}: refused, the text lives in Manus: {r.stderr[:160]}")
+        r = kor(rot, "lagg-till", "--dok", "1en", "--scen", "1", "--typ", "replik", "--text", "Ny.")
+        ok(r.returncode == 2 and "Manus" in r.stderr, "lagg-till --dok 1en: refused")
         r = kor(rot, "andra", "--dok", "1", "--stycke", pid, "--md", "--text", "> [mörkt] Jag måste få veta.")
         ok(r.returncode == 0 and "> [mörkt] Jag måste få veta.\n" in M.read_text(encoding="utf-8"), f"andra --md: a whole md line, read as its kind: {r.stderr[:160]}")
 
@@ -469,12 +477,10 @@ def main() -> int:
                f"en {vad}: a comment on 1en goes into episod-1en.json, as Demi's: {r.stderr[:200]} {k}")
             r = kor(rot, *flagga, "andra", "--dok", "1en", "--stycke", enr[0], "--text", f"{enr[2]} (Demi)")
             t = E.read_text(encoding="utf-8")
-            ut, inn = skillnad(engelska, t)
-            ok(r.returncode == 0 and ut == [f"> {enr[2]}"] and inn == [f"> {enr[2]} (Demi)"],
-               f"en {vad}: andra --dok 1en changes that one line in episode-1.md: {r.stderr[:200]} {ut} {inn}")
+            # Since 28/10 the English text lives in Manus: changing it here is refused.
+            ok(r.returncode == 2 and "Manus" in r.stderr and t == engelska,
+               f"en {vad}: andra --dok 1en is refused and episode-1.md untouched: {r.stderr[:200]}")
             ok(not (mapp / "episod-1en.md").exists() and not (mapp / "episod-1en.json").exists(), f"en {vad}: no episod-1en.md or recordings file was made")
-            h = (json.loads(N.read_text(encoding="utf-8"))["historik"].get(enr[0]) or [{}])[-1]
-            ok(h.get("text") == f"{enr[2]} (Demi)" and h.get("vem") == "demi", f"en {vad}: the history in episod-1en.json has it, as Demi's: {h}")
         ok(M.read_text(encoding="utf-8") == sv_fore, "en: the Swedish episode 1 is untouched by all of it")
         for skarp, bas in ((False, rot / "data" / "glimt-rummet"), (True, rot / "data" / "glimt-rummet" / "prov")):
             sti, _ = R.vagar(rot, skarp)

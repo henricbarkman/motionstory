@@ -33,11 +33,12 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 SRC = REPO / "rummet"
 UT = Path.home() / "generalassistant" / "data" / "uploads" / "glimt-rummet"
-FILES = ["manus.js", "data.js", "ljud.js", "dok.js", "katalog.js", "anteckn.js", "lager.js", "pm.js", "redigerare.js",
-         "md.js", "app.js", "rummet.css", "ljudtider.json"]
-# Copied as they are, under their own names: the editor bundle's licence,
-# which travels with pm.js.
-EXTRAS = ["pm-LICENSE.txt"]
+# The directing desk's files. katalog.js, anteckn.js and lager.js stay in the
+# repo for scripts/rummet.py (Demi's comments, the world book, lore) but the
+# page no longer loads them.
+FILES = ["manus.js", "data.js", "ljud.js", "dok.js", "regi.js", "app.js", "rummet.css", "ljudtider.json", "apptider.json"]
+# Copied as they are, under their own names.
+EXTRAS: list[str] = []
 # Glimt's shared look, outside rummet/: the page links it as ../design/glimt.css.
 DESIGN = REPO / "design"
 GLIMT_CSS = "glimt.css"
@@ -123,8 +124,10 @@ def deploy(ut: Path) -> str:
     (ut / "fonts").mkdir(exist_ok=True)
     for name in FONTS:
         write_atomic(ut / "fonts" / name, (DESIGN / "fonts" / name).read_bytes())
-    # The HELD logo went with the 2026-10-10 look; only this script put it there.
-    (ut / "held-logo.svg").unlink(missing_ok=True)
+    # The HELD logo went with the 2026-10-10 look, the editor bundle's licence
+    # with the word processor on 2026-10-28; only this script put them there.
+    for gone in ("held-logo.svg", "pm-LICENSE.txt"):
+        (ut / gone).unlink(missing_ok=True)
     write_atomic(ut / "index.html", out["index.html"])
     current = sorted(n for n in out if n != "index.html")
     write_atomic(mf, (json.dumps({
