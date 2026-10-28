@@ -1,5 +1,16 @@
 # PROGRESS — Motionstory
 
+## 2026-10-28
+- Henric: "Appens logga är fortfarande Glimt. Ändra till Weavers." Appen heter alltså Weavers, på båda språken (namnet är seriens). Undertiteln per bok är fortfarande öppen.
+- Demi (jobb j-20261028-125002-c4e3dd): **Version 43: loggan och titlarna säger Weavers** (PR #54, 6df0275).
+  - **Ordbilden:** samma stil (Literata 300, en myntastjärna som tänds en gång). Weavers har inget i, så stjärnan vilar i v:ets öppning, där dess två trådar möts (`.namn .v` i `design/glimt.css`, bredvid `.namn .i` som plansidan och rummet fortfarande använder för Glimt). Tre placeringar provades: över v:et i i-prickens höjd (läses som en prick på fel bokstav), i v:ets öppning (vald), djupare ner i v:et.
+  - **Texter:** sidtitlarna (episod, kapitel, labb, prov), raderna "Öppna Weavers i Chrome" och "Weavers får inte veta var du är", på svenska och engelska, och den privata kopians vidaresida. Appen har inget eget manifest, så namnet på hemskärmen kommer från sidtiteln.
+  - **Orört:** mappar, adresser, `?kapitel`-värden, cachenamnen (fortfarande `motionstory-v43…`), repot, loggen, och scenen som heter Glimt i det gamla kapitel 1.
+  - **Svenska privata kopian** står kvar på v40 med samma logga: grenen `privat-sv-v40-weavers` (ad85956, från taggen `privat-sv-v40-lyssna`; taggen var aldrig en gren). Workerns cachenamn byts av sig självt eftersom innehållet ändrats.
+  - **Prov:** nodsviterna gröna, `test_privat_deploy.py` och `test_worker.py` gröna; webbläsarscenariona episodstart, episode, lyssna och provstart 82 ok på v43, episodstart 19 ok på v40-grenen. Start-skärmarna kollar nu att rubriken och sidtiteln säger Weavers.
+  - **Ute 28/10:** Pages svarar `APP_VERSION = 43` och `motionstory-v43`; privata engelska `glimt-episode1-en` (`motionstory-v43-privat-c8e81e62`), privata svenska `glimt-episod1` (`motionstory-v40-privat-f589a150`), båda med låten kvar. Skärmdump av alla fyra i Chromium: [weavers-logga-v43.png](https://demi.henricbarkman.se/uploads/weavers-logga-v43.png). Nästa svenska omdeploy: `git worktree add <mapp> privat-sv-v40-weavers`, sedan `glimt_privat_deploy.py --episod 1 --repo <mapp>`.
+- → Nästa: som 27/10, Henric och Liv lyssnar, låst skärm mitt i en lyssning provas på telefonen. Undertiteln bestäms innan appen läggs i en butik.
+
 ## 2026-10-27
 - Demi (jobb j-20261027-220201-4245ef): **Version 42: lyssningsläge** (Henric 27/10: "Jag skulle vilja kunna lyssna på berättelsen utan att gå den"). `?lyssna` (eller `?listen`) på episodens adress, på engelska `?kapitel=episode1en&lyssna`.
   - **Vad det gör:** Shape går av sig själv i vanlig takt (1,4 m/s; steg och positioner görs på sidan som i `?sim`, med start i Karlstad, så scen 3:s ljus, regn och landmärke läses därifrån). En stor knapp, Stanna/Gå (Stop/Walk), är skärmens enda fyllda; ett stopp efter hennes fråga är ett ja, som ute. Knacka, Vänster, Höger och Vänd visas bara om episoden ber om dem (`asks` i CHAPTERS, tom för episod 1 på båda språken). Ingen fråga om plats, rörelsesensor eller vibration (`FAKE = SIM || LISTEN` grindar alla). Tidsgolven gäller, så det tar som en promenad.
