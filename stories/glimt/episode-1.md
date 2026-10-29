@@ -1,6 +1,6 @@
 # Glimt, episode 1: Keep Going
 
-English version 1, 2026-10-23, translated from the Swedish draft 7 (`episod-1.md`, app version 38). Henric decided on 23/10 that Glimt goes out in English. Five changes he asked for are in this version, and the pauses are marked from his walk the same morning (what changed is at the end). Recorded in app version 41 (27/10, Paula as Vega), and again in version 45 (29/10) with Jessica as Vega, Henric's choice, from the text of Manus version 8.
+English version 1, 2026-10-23, translated from the Swedish draft 7 (`episod-1.md`, app version 38). Henric decided on 23/10 that Glimt goes out in English. Five changes he asked for are in this version, and the pauses are marked from his walk the same morning (what changed is at the end). Recorded in app version 41 (27/10, Paula as Vega), and again in version 45 (29/10) with Jessica as Vega, Henric's choice, from the text of Manus version 8. Version 46 (29/10) adds her "Now." after each question she asks for a stop, since she promises it (Manus version 9); the stop is counted from her Now.
 
 **What the episode has to do:** Vega and the walker meet. The walker should understand three things without anyone explaining them: she sees glimpses of your world but never hears you, she can only be heard while you move, and your steps hide her.
 
@@ -56,14 +56,20 @@ Pauses are marked where Henric's walk on 23/10 had them too long or too short, a
 >
 > (pause, calm, slowly, serious) Ok. Can you see me?
 >
-> (waits)
+> (pause) Now.
+>
+> **VAL: Can you see me?**
+>
+> *A stop after her Now is yes, going on is no.*
 
 If the walker was already standing when she asked, and stays standing, the walker hasn't answered. Then she says this, and asks again once the walker has gone a little way. The same at all three questions:
 
 > (clearly) You'd already disappeared when I asked. Keep going a bit, then I'll ask again.
 >
 > Right. Can you see me?
-
+>
+> (pause) Now.
+>
 > **Yes, the walker stops:**
 > (the walker stays standing, clearly) ...There, I've lost you. Now go.
 
@@ -82,12 +88,18 @@ If the walker is still standing a while after her go, she says it again, after a
 >
 > (both answers go on here)
 >
-> (waits)
+> (pause) Now.
+>
+> **VAL: Can you hear me?**
+>
+> *A stop after her Now is yes, going on is no.*
 
 If the walker was already standing:
 
 > Right. Can you hear me?
-
+>
+> (pause) Now.
+>
 > **Yes, the walker stops:**
 > (the walker stays standing, clearly) ...There! Yes. Go now, go.
 > (stunned) You heard me. I didn't think I'd get this far.
@@ -131,12 +143,18 @@ If the walker was already standing:
 >
 > (straight to you) Are you alone? Out there, I mean.
 >
-> (waits)
+> (pause) Now.
+>
+> **VAL: Are you alone?**
+>
+> *A stop after her Now is yes, going on is no. Harmless here.*
 
 If the walker was already standing:
 
 > Right. Are you alone?
-
+>
+> (pause) Now.
+>
 > **Yes, the walker stops:**
 > (the walker stays standing, clearly) There. Got it. Now go.
 > Me too. Even with forty of us on the loop. (short laugh) It's not the same.

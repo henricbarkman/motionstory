@@ -287,6 +287,12 @@ const E_CUE = (EPISODE.cues && EPISODE.cues['s2-3'] && EPISODE.cues['s2-3'][E_WO
 const E_END = E_OPTS.end;
 const E_CREDITS = (EPISODE.credits && EPISODE.credits.seconds) || 0;
 const E_BREAKS = EPISODE.breaks || {};
+// The seven questions answered by a stop (question() in episod1.js). In
+// English she says "Now." after each (E_OPTS.now, v46), and a walker answers
+// after that: what a walker does at a question's 'end' is done when her now
+// has been said, as she asked in her first question.
+const QUESTIONS = ['s0-ask1', 's0-again1', 's0-yes1-b', 's0-no1', 's0-again2', 's1-q2', 's1-again'];
+const E_NOW = E_OPTS.now || null;
 // The walkers name where a go line ends by its Swedish words; in English the
 // same pause by its place among the line's pauses (the last when the English
 // has fewer).
@@ -487,6 +493,29 @@ const EPISODE_WALKERS = {
   quick: {
     walk: t => ({ ...out()(t), steps: true }), stops: { 's0-ask1': ['start', 16.4, 20.4], ...END_STOP },
     has: ['s0-yes1-a', 's4-yes'], not: ['s0-no1'],
+    lamps: 0, memory: { svarade: true, misstanke: false },
+  },
+  // Stops on the word, before her now, for two and a half seconds, and walks
+  // on: in Swedish that is the yes (the window opens at "ser"), in English
+  // it is no answer, for she said she would say now first and the window
+  // opens there (v46). Before v46 the English heard a yes here too. The stop
+  // is short on purpose: one that stays on until the band sees it, about two
+  // seconds after the last step and so after her now, is a yes in English
+  // too, as at every question (the band's stop counts from when it is seen).
+  eager: {
+    walk: t => ({ ...out()(t), steps: true }), stops: { 's0-ask1': ['start', 14.5, 17.0], ...END_STOP },
+    has: ['s0-yes1-a', 's4-yes'], not: ['s0-no1', 'x-stod'],
+    en: { has: ['s0-no1', 's0-no2'], not: ['s0-yes1-a', 'x-stod'], memory: { svarade: false, misstanke: false } },
+    lamps: 0, memory: { svarade: true, misstanke: false },
+  },
+  // Stops as she begins "Are you alone?", the one question with no word to
+  // open at, for two and a half seconds, and walks on. In Swedish the window
+  // opens as the line starts and that is a yes; in English it is shut until
+  // her now, and the stop is over by then: a no (v46).
+  'alone-early': {
+    walk: t => ({ ...out()(t), steps: true }), stops: { 's1-q2': ['start', 0.2, 2.7], ...END_STOP },
+    has: ['s1-q2-yes'], not: ['s1-q2-no', 'x-stod'],
+    en: { has: ['s1-q2-no'], not: ['s1-q2-yes', 'x-stod'], memory: { svarade: false, misstanke: false } },
     lamps: 0, memory: { svarade: true, misstanke: false },
   },
   // Henric's walk 23/10 (version 38): stops about a second after the question
@@ -856,6 +885,7 @@ function simulateEpisode(name) {
   const walk = new Walk();
   const waiter = new Waiter();
   const log = [];
+  const said = [];            // {msg, t}: the log lines with their exact time
   const played = [];          // {id, t, side}
   const sideCalls = [];       // {t, what, args}
   const stops = [];           // {from, to}
@@ -889,6 +919,7 @@ function simulateEpisode(name) {
     const hi = (profile.hidesAt || {})[id];
     if (hi && hi[0] === when) hides.push({ from: t + hi[1], to: t + hi[2] });
   };
+  let asked = null;            // the question her now (E_NOW) ends, in English
   const sound = (id, mark) => {
     const dur = E_SECONDS[id];
     if (dur === undefined) throw new Error(`unknown line ${id}`);
@@ -898,7 +929,12 @@ function simulateEpisode(name) {
     react(id, 'start');
     // `endAt`: breakOff ended it at a pause, so it is over then, not at its end.
     const me = { id, cut: false, t0: t, endAt: null, entry };
-    return { me, done: waiter.until(s => me.cut || (me.endAt !== null && s.t >= me.endAt), { timeout: dur }).then(() => { react(id, 'end'); }) };
+    const ended = () => {
+      if (E_NOW && QUESTIONS.includes(id)) { asked = id; return; }
+      react(id, 'end');
+      if (id === E_NOW && asked) { react(asked, 'end'); asked = null; }
+    };
+    return { me, done: waiter.until(s => me.cut || (me.endAt !== null && s.t >= me.endAt), { timeout: dur }).then(ended) };
   };
   const call = what => (...args) => { sideCalls.push({ t, what, args }); };
 
@@ -906,7 +942,7 @@ function simulateEpisode(name) {
     variant: 'a',
     world: { light: 'dark', rain: false, landmark: 'skog', landmarkCoord: null, ...(profile.world || {}) },
     state: () => walk.state(),
-    log: msg => log.push(`${fmt(t)}  ${msg}  (contact ${walk.contact.value.toFixed(2)}, ${walk.tempo.band})`),
+    log: msg => { said.push({ msg, t }); log.push(`${fmt(t)}  ${msg}  (contact ${walk.contact.value.toFixed(2)}, ${walk.tempo.band})`); },
     hold: on => { walk.contact.hold = on; },
     play(id, opts = {}) {
       if (opts.unless && opts.unless(walk.state())) {
@@ -1003,7 +1039,7 @@ function simulateEpisode(name) {
     }
     await Promise.race([done, Promise.resolve()]);
     Math.random = random;
-    return { log, ended, t, played, sideCalls, memory, cuts, credited, truth, skipped, stops };
+    return { log, said, ended, t, played, sideCalls, memory, cuts, credited, truth, skipped, stops };
   })();
 }
 
@@ -1032,10 +1068,19 @@ function episodeProblems(name, run) {
   // "Gå." once more comes at most once for each yes (three in the episode).
   for (const id of new Set(played.map(x => x.id))) {
     const allowed = (p.twice || []).includes(id) ? 2 : id === 'x-avvikelse' ? p.lamps
+      : id === E_NOW ? played.filter(x => QUESTIONS.includes(x.id)).length
       : id === 'r-hjalp' || id === 'r-vilar' || id === 'x-ga-igen' ? 3 : 1;
     if (count(id) > allowed) problems.push(`${id} heard ${count(id)} times`);
   }
   if (count('x-avvikelse') !== p.lamps) problems.push(`the lamp lit ${count('x-avvikelse')} times, wanted ${p.lamps}`);
+  // Her now after every question, and nowhere else (v46).
+  if (E_NOW) {
+    const said = played.filter(x => !x.side);
+    said.forEach((x, i) => {
+      if (QUESTIONS.includes(x.id) && (said[i + 1] || {}).id !== E_NOW) problems.push(`${x.id} not followed by ${E_NOW}`);
+      if (x.id === E_NOW && !QUESTIONS.includes((said[i - 1] || {}).id)) problems.push(`${E_NOW} after ${(said[i - 1] || {}).id}, not a question`);
+    });
+  }
 
   // The go lines (v40): ended at a pause, said whole, or not said at all.
   const lastOf = id => played.filter(x => x.id === id).pop();
@@ -1063,7 +1108,8 @@ function episodeProblems(name, run) {
     }
   }
   if (p.noAfterLine !== undefined) {
-    const questions = ['s0-ask1', 's0-again1', 's0-yes1-b', 's0-no1', 's0-again2', 's1-q2', 's1-again'];
+    // From the end of the question, in English the end of her now after it.
+    const questions = E_NOW ? [E_NOW] : QUESTIONS;
     for (const x of played.filter(x => ['s0-no1', 's0-no2', 's1-q2-no'].includes(x.id))) {
       const q = played.filter(y => questions.includes(y.id) && y.t < x.t).pop();
       const after = q ? x.t - q.t - E_SECONDS[q.id] : null;
@@ -1122,7 +1168,11 @@ function episodeProblems(name, run) {
   }
 
   // From her last step to "trettio": half a minute, on the last count she made.
-  const stood = log.filter(l => l.includes('she stands still')).map(logTime).pop();
+  // Read to the tick, not from the log's whole seconds: those add up to a
+  // second, and a scene that begins later in its second fails a walker whose
+  // count is on time (v46: her now in scenes 0 and 1 moved scene 2 by a
+  // fraction of a second, and `counted` read 31.6).
+  const stood = run.said.filter(l => l.msg.includes('she stands still')).map(l => l.t).pop();
   const counting = played.filter(x => x.id === 's2-3').pop();
   if (stood === undefined || !counting) problems.push('she never counted');
   else {
@@ -1178,7 +1228,10 @@ function coverageProblems(heard) {
   // The windows open at the question's first word.
   for (const [id, word] of [['s0-ask1', E_WORDS.see], ['s0-yes1-b', E_WORDS.hear], ['s0-no1', E_WORDS.hear],
     ['s0-again1', E_WORDS.see], ['s0-again2', E_WORDS.hear], ['s1-again', E_WORDS.are], ['s2-ask', E_WORDS.stop],
-    ['s4-never-1', E_WORDS.lastStop]]) {
+    ['s4-never-1', E_WORDS.lastStop], ...(E_NOW ? [[E_NOW, E_WORDS.now]] : [])]) {
+    // In English the questions' own windows open at her now instead, so its
+    // cue is the one that counts there: without it the window opens at the
+    // start of the take, before she says the word.
     if (!(((EPISODE.cues || {})[id] || {})[word] > 0)) problems.push(`no measured cue for "${word}" in ${id}`);
   }
   if (!(E_CREDITS > 60)) problems.push('the credits have no length');
