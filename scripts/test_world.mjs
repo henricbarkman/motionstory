@@ -96,6 +96,7 @@ const never = () => new Promise(() => {});
 // her breath before her Now, which the answer is read from.
 {
   check(withAir(EN, 1) === EN, 'luft 1 is the episode as it is');
+  const before = JSON.stringify(EN);
   const a = withAir(EN, 2);
   const off = Object.entries(EN.gaps).filter(([k, v]) => a.gaps[k] !== (k === EN.now ? v : 2 * v)).map(([k]) => k);
   check(!off.length && Object.keys(a.gaps).length === Object.keys(EN.gaps).length, `luft 2: every breath twice as long, her Now's as it was${off.length ? ` (wrong: ${off.join(', ')})` : ''}`);
@@ -103,7 +104,7 @@ const never = () => new Promise(() => {});
   check(['tree', 'sky', 'bell'].every(k => a.after[k] === 2 * EN.after[k]) && a.end.soon === 2 * EN.end.soon && a.end.gap === 2 * EN.end.gap,
     'the scenes open twice as long after each other, and the end waits twice as long');
   check(a.words === EN.words && a.at === EN.at && a.now === EN.now && a.luft === 2, 'and nothing else changes');
-  check(EN.gaps['s1-2'] === 0.8 && EN.after.tree === 4, 'the episode itself is left as it was');
+  check(JSON.stringify(EN) === before, 'the episode itself is left as it was');
   check(Object.keys(SV.gaps).length === 0, 'the Swedish episode has no breaths of its own, as in v40');
 }
 
