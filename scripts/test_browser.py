@@ -747,14 +747,18 @@ EPISODE_WALKER = """
       's2-ask': () => { later(9, stop); later(24, walkOn); },
       's3-1': () => { later(1, stop); later(10, () => sample('still')); later(13, walkOn); },
       's3-2': () => later(5, () => sample('walking')),
-      's4-all': () => later(39, stop),
+      // A few seconds after her last words (Swedish 35.7 s, English 25.4 s
+      // since v51), so the stop lands inside the end's 20 s and is the end.
+      's4-all': () => later(document.documentElement.lang === 'en' ? 30 : 39, stop),
     },
     own: {
       's0-1': walkOn,
       's1-3': () => later(10, () => $('sim-turn').click()),
       's2-5': () => { later(1, stop); later(14, walkOn); },
       's4-2': () => { later(2, stop); later(15, walkOn); },
-      's4-all': () => later(39, stop),
+      // A few seconds after her last words (Swedish 35.7 s, English 25.4 s
+      // since v51), so the stop lands inside the end's 20 s and is the end.
+      's4-all': () => later(document.documentElement.lang === 'en' ? 30 : 39, stop),
     },
   }[who];
   const seen = new WeakSet();
