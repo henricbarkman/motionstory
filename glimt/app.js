@@ -2,7 +2,8 @@
 // ?sim in the URL replaces GPS with a speed slider for testing at a desk.
 // ?lyssna (?listen does the same) is an episode heard from a sofa: the
 // phone walks at an ordinary pace by itself, and one button stops and starts
-// it. ?kapitel=2 preselects a chapter, ?kapitel=episod1 the episode,
+// it; in English it stops by itself for a yes to "Can you hear me?"
+// (listen.js). ?kapitel=2 preselects a chapter, ?kapitel=episod1 the episode,
 // ?kapitel=episode1en the episode in English (no radio for it: the link is
 // the way in, and the page is in English), ?kapitel=labb1 the lab; the start screen
 // has the same choice. ?bana=<id> runs a single lab station (ids in lab.js),
@@ -19,10 +20,11 @@ import { Synth, SilentSynth } from './synth.js';
 import { Mixer, Library, readKlarhet } from './audio.js';
 import { chooseWorld, defaultWorld, fetchLandmarks, nearestByName } from './world.js';
 import { Memory, drawWorld, KEY_NAMES } from './memory.js';
+import { Listener, LISTEN_YES } from './listen.js';
 
 // The version the start screen shows, the same number as the service
 // worker's cache. Bump both together.
-const APP_VERSION = 46;
+const APP_VERSION = 47;
 
 // Seconds the credits wait for their song if it is not fetched when they are
 // due. It has had all of scene 0; a song not here by then is not coming.
@@ -133,6 +135,8 @@ const CHAPTERS = {
       subtitle: 'Episode 1. About ten and a half minutes. Walk or run. She can hear you while you move.',
       listenSubtitle: 'Episode 1. About ten and a half minutes. Listen without walking.',
       asks: [],
+      // Her now after each question: a listen's yes comes after it (listen.js).
+      nowLine: EPISODE_EN.now,
       scenes: {
         s0: 'Start', s1: 'The Loop', s2: 'The Tree', s3: 'The Sky', s4: 'The Bell',
       },
@@ -239,6 +243,7 @@ let voiceChain = Promise.resolve();
 let bedBuf = null, riserBuf = null;
 let creditsRaw = null;          // a promise of the credits' bytes, fetched with the chapter
 let walk, waiter, world;
+let listener = null;            // the walker of a listen (listen.js)
 let memory = null;
 // A walk shorter than this is not remembered: opening the app and pressing
 // Avsluta should not make her say you were just here.
@@ -360,7 +365,8 @@ async function preload() {
     }
     if (LISTEN) {
       const how = tr('Telefonen går åt dig i vanlig takt. När hon ber dig stanna trycker du Stanna, som ute, och Gå när du vill vidare.',
-        'Shape walks by itself at an ordinary pace. When she asks you to stop, tap Stop, as you would stop outside, and Walk to go on.');
+        'Shape walks by itself at an ordinary pace, and stops by itself to say yes when she asks if you can hear her. ' +
+        'At her other questions, tap Stop if you want to answer yes, as you would stop outside, and Walk to go on.');
       note = notes.length ? `${note} ${how}` : how;
     }
     if (def.prov) {
@@ -549,6 +555,7 @@ async function start() {
     if (mixer.currentVoice) lineStarts[id] = mixer.currentVoice.startedAt;
     const why = await playing;
     if (speaking === id) speaking = null;
+    if (listener) listenAfter(id);
     if (why === 'timeout') log(`ljud: ${id} nådde aldrig slutet, går vidare`);
     return why;
   }
@@ -1370,21 +1377,36 @@ function showListen(def) {
   $('listen-knock').hidden = !asks.includes('knock');
   for (const id of ['listen-left', 'listen-right', 'listen-turn']) $(id).hidden = !asks.includes('turn');
   $('listen-extra').hidden = !asks.length;
+  listener = new Listener(LISTEN_YES[chapterNo] || [], def.nowLine || null);
   listenWalking(true);
 }
 
+// A line of hers has ended: at a question a listen answers yes the walker
+// stops by itself, and walks on after her go (listen.js).
+function listenAfter(id) {
+  const next = listener.ended(id, now());
+  if (next === 'stop') {
+    if (walking()) log(`lyssning: stannar av sig själv, ja efter ${id}`);
+    listenWalking(false, true);
+  } else if (next === 'walk') {
+    listenWalking(true);
+  }
+}
+
 // Walks at WALK_PACE or stands, through the sim's slider; the button names
-// what a tap does next.
-function listenWalking(on) {
+// what a tap does next. `itself`: a stop for a yes (listen.js), logged there.
+function listenWalking(on, itself = false) {
   $('sim-speed').value = String(on ? WALK_PACE : 0);
   const btn = $('listen-btn');
   btn.textContent = on ? tr('Stanna', 'Stop') : tr('Gå', 'Walk');
   btn.dataset.walking = String(on);
   $('listen-note').textContent = on
     ? tr('Du går, i vanlig takt.', 'Shape is walking at an ordinary pace.')
+    : itself ? tr('Du stannar för att svara ja, och går när hon säger till.',
+      'Shape stops to answer yes, and walks on when she says go.')
     : tr('Du står still, och hon hörs dovt. Tryck Gå när du vill vidare.',
       'Shape is standing still, and her voice is muffled. Tap Walk to go on.');
-  if (walking()) log(on ? 'lyssning: går' : 'lyssning: stannar');
+  if (walking() && !itself) log(on ? 'lyssning: går' : 'lyssning: stannar');
 }
 
 // The start screen's way in and back out: the same address with or without
@@ -1763,7 +1785,15 @@ function englishPage() {
   if (LISTEN) {
     // The page's class: what is about walking outside steps aside (glimt.css).
     document.body.classList.add('lyssna');
-    $('listen-btn').addEventListener('click', () => listenWalking($('listen-btn').dataset.walking !== 'true'));
+    // A tap is the listener's own answer: the walker's stop for a yes is off.
+    // Just after that stop it keeps the walker standing instead (TAP_HOLD).
+    $('listen-btn').addEventListener('click', () => {
+      if (listener && !listener.tapped(now())) {
+        if (walking()) log('lyssning: tryck strax efter stoppet för ja, står kvar');
+        return;
+      }
+      listenWalking($('listen-btn').dataset.walking !== 'true');
+    });
   }
   document.querySelectorAll('input[name="chapter"]').forEach(el => {
     el.addEventListener('change', () => selectChapter(el.value));

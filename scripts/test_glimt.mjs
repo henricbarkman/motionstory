@@ -24,6 +24,7 @@ import { runChapter1 } from '../glimt/chapter1.js';
 import { runChapter2 } from '../glimt/chapter2.js';
 import { runEpisode1, SV as EPISODE_SV, EN as EPISODE_EN } from '../glimt/episod1.js';
 import { breakAt, BREAK_LEAD, BREAK_FADE } from '../glimt/audio.js';
+import { Listener, LISTEN_YES } from '../glimt/listen.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -360,6 +361,37 @@ const EPISODE_WALKERS = {
     not: ['s0-yes1-a', 's0-yes2', 's1-q2-yes', 's2-count-stop', 's2-lamp-1', 's2-lamp-2', 's4-lamp-2', 's4-ok-lamp',
       's4-onward', 's4-yes', 's4-never-yes-1', 'r-hjalp'],
     lamps: 0, breath: false, memory: { svarade: false, misstanke: false },
+  },
+  // A listen (?lyssna) nobody touches: the walker of listen.js, which walks
+  // and stops by itself only where the chapter's LISTEN_YES says. In English
+  // that is "Can you hear me?" (Henric 29/10): it walks through "Can you see
+  // me?", a no, stops after her now at s0-no1, a yes, walks on after her go,
+  // heard whole, and every later question is a no. The Swedish has no yes.
+  // On the feet, as a listen is: the page makes up steps and fixes (startSim).
+  listen: {
+    walk: t => ({ ...out()(t), steps: true }), stops: {}, listen: true, voiceAfterStop: 2.5,
+    has: ['s0-no1', 's0-no2', 's1-q2-no', 's2-no', 's4-never-1', 's4-never-no'],
+    not: ['s0-yes1-a', 's0-yes2', 's0-go2', 's4-yes', 'x-stod'],
+    lamps: 0, breath: false, memory: { svarade: false, misstanke: false },
+    en: {
+      has: ['s0-no1', 's0-go2', 's0-yes2', 's0-yes2-aside', 's1-q2-no', 's2-no', 's4-yes'],
+      not: ['s0-yes1-a', 's0-no2', 'x-stod', 'x-ga-igen', 's1-q2-yes', 's4-never-1'],
+      whole: ['s0-go2'], logs: ['scene 0: no', 'scene 0: yes, hears her'],
+      memory: { svarade: true, misstanke: false },
+    },
+  },
+  // The same, but the listener taps Stop 0.4 s after her now, as she asks,
+  // when the walker has already stopped by itself and the button says Walk:
+  // the tap keeps it standing (TAP_HOLD), and the answer is still a yes.
+  'listen-tap': {
+    walk: t => ({ ...out()(t), steps: true }), stops: {}, listen: true, listenTap: 0.4,
+    has: ['s0-no1', 's0-no2'], not: ['s0-yes2', 's4-yes'],
+    lamps: 0, breath: false, memory: { svarade: false, misstanke: false },
+    en: {
+      has: ['s0-no1', 's0-go2', 's0-yes2', 's4-yes'], not: ['s0-no2', 'x-ga-igen', 's4-never-1'],
+      whole: ['s0-go2'], logs: ['scene 0: yes, hears her'],
+      memory: { svarade: true, misstanke: false },
+    },
   },
   // Stops every time she asks, and at the end.
   asked: {
@@ -920,6 +952,26 @@ function simulateEpisode(name) {
     if (hi && hi[0] === when) hides.push({ from: t + hi[1], to: t + hi[2] });
   };
   let asked = null;            // the question her now (E_NOW) ends, in English
+  // A listen's walker (`listen`): app.js tells it each of her lines that ends,
+  // and stands or walks as it answers.
+  const listener = profile.listen ? new Listener(LISTEN_YES[ENGLISH ? 'episode1en' : 'episod1'] || [], E_NOW) : null;
+  const listenAfter = id => {
+    const next = listener.ended(id, t);
+    if (next === 'stop') {
+      stops.push({ from: t, to: Infinity });
+      if (profile.listenTap !== undefined) tapAt = t + profile.listenTap;
+    }
+    if (next === 'walk') for (const st of stops) if (st.to === Infinity) st.to = t;
+  };
+  // A tap on the button (`listenTap`): Walk while it stands, Stop while it
+  // walks, unless the listener keeps it standing.
+  let tapAt = null;
+  const tap = () => {
+    if (!listener.tapped(t)) { log.push(`${fmt(t)}  tap: kept standing`); return; }
+    const open = stops.find(st => st.to === Infinity);
+    if (open) open.to = t; else stops.push({ from: t, to: Infinity });
+    log.push(`${fmt(t)}  tap: ${open ? 'walk' : 'stop'}`);
+  };
   const sound = (id, mark) => {
     const dur = E_SECONDS[id];
     if (dur === undefined) throw new Error(`unknown line ${id}`);
@@ -930,6 +982,7 @@ function simulateEpisode(name) {
     // `endAt`: breakOff ended it at a pause, so it is over then, not at its end.
     const me = { id, cut: false, t0: t, endAt: null, entry };
     const ended = () => {
+      if (listener && !mark) listenAfter(id);
       if (E_NOW && QUESTIONS.includes(id)) { asked = id; return; }
       react(id, 'end');
       if (id === E_NOW && asked) { react(asked, 'end'); asked = null; }
@@ -1033,6 +1086,7 @@ function simulateEpisode(name) {
           });
         }
       }
+      if (tapAt !== null && t >= tapAt) { tapAt = null; tap(); }
       waiter.check(walk.tick(t));
       await new Promise(r => setImmediate(r));
       t = Math.round((t + 0.25) * 4) / 4;
@@ -1105,6 +1159,16 @@ function episodeProblems(name, run) {
       const st = run.stops.filter(st => st.from <= x.t).pop();
       if (!st) problems.push(`${x.id} with no stop before it`);
       else if (x.t - st.from > p.voiceAfterStop) problems.push(`${x.id} came ${(x.t - st.from).toFixed(2)} s after the stop, wanted at most ${p.voiceAfterStop}`);
+    }
+  }
+  // A listen's own stop comes after the question, and in English after her
+  // now: she promised to say it first (v46, v47).
+  if (p.listen) {
+    for (const st of run.stops) {
+      const q = played.filter(x => !x.side && x.t <= st.from).pop();
+      if (!q || !(E_NOW ? q.id === E_NOW : QUESTIONS.includes(q.id)) || st.from < q.t + E_SECONDS[q.id] - 0.25) {
+        problems.push(`the listen stopped at ${fmt2(st.from)}, not after ${E_NOW || 'a question'} (${q ? q.id : 'nothing'})`);
+      }
     }
   }
   if (p.noAfterLine !== undefined) {

@@ -16,7 +16,7 @@ knock back. The motor there starts late and rings on, as a real one may.
     python3 scripts/test_browser.py prov            # the test walks, about five minutes
     python3 scripts/test_browser.py episod          # episode 1 walked twice side by side, about twelve minutes
     python3 scripts/test_browser.py episode         # episode 1 in English, walked once, about eleven minutes
-    python3 scripts/test_browser.py lyssna          # ?lyssna, both languages through scene 0, about four minutes
+    python3 scripts/test_browser.py lyssna          # ?lyssna, both languages through scene 0, and an English listen nobody touches, about four minutes
     GLIMT_SHOTS=/tmp/shots python3 scripts/test_browser.py first   # with screenshots
 
 It serves this repo on a free local port and lets no request leave the
@@ -1091,6 +1091,28 @@ LISTENER = """
 })();
 """
 
+# A listener who taps Stop just after her now at "Can you hear me?", as she
+# asks, when the walker has already stopped by itself (v47, TAP_HOLD).
+TAP_AT_NOW = """
+(() => {
+  const $ = id => document.getElementById(id);
+  window.__taps = [];
+  let armed = false;
+  const watch = () => new MutationObserver(() => {
+    for (const li of document.querySelectorAll('#log li')) {
+      if (li.dataset.seen) continue;
+      li.dataset.seen = '1';
+      if (/▶ s0-no1$/.test(li.textContent)) armed = true;
+      else if (armed && /lyssning: stannar av sig själv/.test(li.textContent)) {
+        armed = false;
+        setTimeout(() => { $('listen-btn').click(); window.__taps.push('stanna'); }, 400);
+      }
+    }
+  }).observe(document.documentElement, { childList: true, subtree: true });
+  if (document.documentElement) watch(); else document.addEventListener('DOMContentLoaded', watch);
+})();
+"""
+
 LISTEN_PAGES = {
     # name: (link, ready, button words walking/standing, subtitle, voices, the other language's voices, memory key, others untouched)
     "sv": ("?lyssna", "Börja lyssna", ("Stanna", "Gå"), "Lyssna utan att gå", "/vega/glimt-e1/", "/vega/glimt-e1en/",
@@ -1120,6 +1142,18 @@ def lyssna(browser, base):
     ctx.close()
 
     # Both languages listened to side by side, through scene 0's two questions.
+    # Beside them, in English, a listen nobody touches (v47): it stops by
+    # itself after her now at "Can you hear me?" and walks on after her go.
+    # And one who taps Stop just after that now, when it has stopped already.
+    untouched_page = tapped_page = None
+    if "en" in langs:
+        url, ready = LISTEN_PAGES["en"][:2]
+        u_ctx, u_page, u_errors = open_page(browser, base, url=url, motion=False, ready=ready)
+        u_page.click("#start-btn")
+        untouched_page = (u_ctx, u_page, u_errors)
+        t_ctx, t_page, t_errors = open_page(browser, base, url=url, init=TAP_AT_NOW, motion=False, ready=ready)
+        t_page.click("#start-btn")
+        tapped_page = (t_ctx, t_page, t_errors)
     pages = {}
     for name, (url, ready, words, sub, voices, other, key, untouched) in ((x, LISTEN_PAGES[x]) for x in langs):
         ctx, page, errors = open_page(browser, base, url=url, init=LISTENER, motion=False, ready=ready)
@@ -1183,6 +1217,39 @@ def lyssna(browser, base):
         page.wait_for_function("!document.getElementById('done').hidden", timeout=10000)
         end = page.evaluate("({ save: !document.getElementById('save-btn').hidden, world: !document.getElementById('world-end').hidden, last: localStorage.getItem('glimt-last-log' + (location.search.includes('episode1en') ? '-en' : '') + '-lyssna') })")
         check(not end["save"] and not end["world"] and bool(end["last"]), f"lyssna {name}: the end screen offers no sensor file and no world, the log kept apart ({ {k: bool(v) for k, v in end.items()} })")
+        ctx.close()
+    if untouched_page:
+        ctx, page, errors = untouched_page
+        yes = wait_log(page, "scene 0: yes, hears her", 240000)
+        log = walk_log(page)
+        s0 = [x for x in log if "scene 0" in x or "lyssning" in x]
+        check(bool(yes) and any("scene 0: no" in x for x in log) and any("lyssning: stannar av sig själv, ja efter x-now" in x for x in log),
+              f"lyssna en, untouched: no to 'Can you see me?', and a stop by itself after her now for a yes to 'Can you hear me?' ({s0[-6:]})")
+        try:
+            page.wait_for_function("document.getElementById('listen-btn').dataset.walking === 'true' && window.glimt.walk.state().moving", timeout=30000)
+            again = True
+        except PlaywrightTimeout:
+            again = False
+        page.wait_for_timeout(5000)
+        log = walk_log(page)
+        played = [x.split("▶ ")[1] for x in log if "▶ " in x]
+        check(again and "s0-go2" in played and "s0-yes2" in played and "x-ga-igen" not in played and "s0-no2" not in played,
+              f"lyssna en, untouched: walks on after her go, hears 'You heard me', no 'go again' ({played[-6:]})")
+        check(not any("s0-go2: slutar efter" in x for x in log), f"lyssna en, untouched: her go heard whole ({[x for x in log if 's0-go2' in x]})")
+        btn = page.evaluate("document.getElementById('listen-btn').textContent")
+        check(btn == "Stop", f"lyssna en, untouched: the button says Stop again ({btn!r})")
+        bad = [x for x in log if "replik saknas" in x or "nådde aldrig slutet" in x or "fel:" in x]
+        check(not bad and not errors, f"lyssna en, untouched: no line missing, no page errors ({bad[:2]}, {errors[:3]})")
+        shot(page, "lyssna-en-untouched")
+        ctx.close()
+    if tapped_page:
+        ctx, page, errors = tapped_page
+        yes = wait_log(page, "scene 0: yes, hears her", 240000)
+        log = walk_log(page)
+        s0 = [x for x in log if "scene 0" in x or "lyssning" in x]
+        check(bool(yes) and page.evaluate("window.__taps") == ["stanna"] and any("lyssning: tryck strax efter stoppet för ja, står kvar" in x for x in log),
+              f"lyssna en, Stop tapped just after her now: stays standing, still a yes ({s0[-6:]})")
+        check(not errors, f"lyssna en, Stop tapped just after her now: no page errors ({errors[:3]})")
         ctx.close()
 
 

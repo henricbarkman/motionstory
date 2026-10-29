@@ -1,6 +1,6 @@
 // Bump CACHE whenever audio or app files change, otherwise an installed PWA
 // keeps serving the old files forever.
-const CACHE = 'motionstory-v46';
+const CACHE = 'motionstory-v47';
 // The private copies sit side by side on one origin (the portal) and share
 // its CacheStorage. Each worker keeps its files under its own scope and
 // clears only its own older caches, so opening one copy never empties
@@ -64,6 +64,7 @@ const ASSETS = [
   './glimt/lab.js',
   './glimt/synth.js',
   './glimt/memory.js',
+  './glimt/listen.js',
   './stories/glimt/kapitel-1.json',
   './stories/glimt/kapitel-2.json',
   './stories/glimt/episod-1.json',
