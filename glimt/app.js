@@ -25,7 +25,7 @@ import { Listener, LISTEN_YES } from './listen.js';
 
 // The version the start screen shows, the same number as the service
 // worker's cache. Bump both together.
-const APP_VERSION = 52;
+const APP_VERSION = 53;
 
 // Seconds the credits wait for their song if it is not fetched when they are
 // due. It has had all of scene 0; a song not here by then is not coming.
@@ -522,6 +522,7 @@ async function start() {
 
   const bakgrund = BAKGRUND_URL ?? chapter.bakgrund ?? 0;
   mixer.setBakgrund(bakgrund);
+  if (side) side.setBakgrund(mixer.bakgrund);   // her side's hum goes with the bed (v53)
   if (BAKGRUND_URL !== null || chapter.bakgrund !== undefined) {
     log(`bakgrund ${mixer.bakgrund} dB${BAKGRUND_URL !== null ? ' (från länken)' : ''}`);
   }

@@ -78,8 +78,9 @@ export function readKlarhet(raw) {
 // 3 dB under her, and the riser (-18.0 LUFS, -21.1 at FX_GAIN) over her first
 // words (Henric 29/10: "alldeles för höga, så sänk dem ganska så mycket").
 // `bakgrund`, in dB, moves both: the chapter's (episode-1.json: -12), or a
-// link's ?bakgrund=-6 to try another level (readBakgrund). Her side's hum and
-// steps are not part of it: they are the story's (herside.js).
+// link's ?bakgrund=-6 to try another level (readBakgrund). Since v53 it moves
+// her side's hum too, the drone under the whole walk (HerSide.setBakgrund);
+// her steps, the hand, the lamp and the bell are the story's and stay.
 export const BED_GAIN = 0.32;
 export const FX_GAIN = 0.7;   // -3 dB
 export const BAKGRUND_MIN = -40;
