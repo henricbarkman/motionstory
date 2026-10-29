@@ -3,7 +3,7 @@
   "title": "Keep Going",
   "language": "en",
   "source": "stories/glimt/episode-1.md",
-  "style": "Close and spoken, one person on a bad phone line. Spoken English of a young working woman, not literary, not sitcom. Asides: lower, quicker, turned away from the line. Translated from the Swedish draft 7 (episod-1.json, v40), 2026-10-23; voices chosen 2026-10-26, Vega recast as Jessica 2026-10-29; her \"Now.\" after each question she asks for a stop (x-now) added 2026-10-29; s0-1's \"It's not the lights.\" after a longer pause and slower, as it dawns on her (Henric 2026-10-29), from a new take put into the v47 one. The count under her breath (s2-count, s2-3) laid one number a second from the v45 takes, 1.2 s after thirty (v49, Henric 29/10: too fast at the start, too slow at the end).",
+  "style": "Close and spoken, one person on a bad phone line. Spoken English of a young working woman, not literary, not sitcom. Asides: lower, quicker, turned away from the line. Translated from the Swedish draft 7 (episod-1.json, v40), 2026-10-23; voices chosen 2026-10-26, Vega recast as Jessica 2026-10-29; her \"Now.\" after each question she asks for a stop (x-now) added 2026-10-29; s0-1's \"It's not the lights.\" after a longer pause and slower, as it dawns on her (Henric 2026-10-29), from a new take put into the v47 one. The count under her breath (s2-count, s2-3) laid one number a second from the v45 takes, 1.2 s after thirty (v49, Henric 29/10: too fast at the start, too slow at the end). s0-2: about 4 s of silence after \"I'm keeping up instead.\", so it sinks in (v50, Henric 29/10: \"Lång paus efteråt\"), 3.6 s laid into the v45 take at 11.28 s where it was 0.4; the hiss there eases to none 18.1 s in (14.5 before), still at \"can you hear this\". A new take of s0-2 needs the same pause laid in.",
   "targetMinutes": 11,
   "voices": {
     "vega": "Y4SxZRpAUjgjFSmjHhym",
@@ -45,7 +45,7 @@
     "s0-2": [
       1,
       0,
-      14.5
+      18.1
     ]
   },
   "bakgrund": -12,
@@ -222,6 +222,10 @@
     }
   },
   "cueWords": {
+    "s0-2": [
+      "instead",
+      "who"
+    ],
     "s0-ask1": [
       "see"
     ],
@@ -291,7 +295,7 @@
   },
   "seconds": {
     "s0-1": 9.4,
-    "s0-2": 25.08,
+    "s0-2": 28.68,
     "s0-ask1": 14.92,
     "x-now": 1.07,
     "x-stod": 4.99,
@@ -419,6 +423,10 @@
       "twenty-four": 12.22,
       "twenty-five": 13.2,
       "twenty-six": 14.2
+    },
+    "s0-2": {
+      "instead": 10.6,
+      "who": 15.62
     }
   },
   "breaks": {
