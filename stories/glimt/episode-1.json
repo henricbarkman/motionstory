@@ -3,7 +3,7 @@
   "title": "Keep Going",
   "language": "en",
   "source": "stories/glimt/episode-1.md",
-  "style": "Close and spoken, one person on a bad phone line. Spoken English of a young working woman, not literary, not sitcom. Asides: lower, quicker, turned away from the line. Translated from the Swedish draft 7 (episod-1.json, v40), 2026-10-23; voices chosen 2026-10-26, Vega recast as Jessica 2026-10-29.",
+  "style": "Close and spoken, one person on a bad phone line. Spoken English of a young working woman, not literary, not sitcom. Asides: lower, quicker, turned away from the line. Translated from the Swedish draft 7 (episod-1.json, v40), 2026-10-23; voices chosen 2026-10-26, Vega recast as Jessica 2026-10-29; her \"Now.\" after each question she asks for a stop (x-now) added 2026-10-29.",
   "targetMinutes": 10.5,
   "voices": {
     "vega": "Y4SxZRpAUjgjFSmjHhym",
@@ -44,6 +44,7 @@
     "s0-1": "[mutters to herself, quick and low] There it is again. Right at the edge.\n\nIt's the lights. It's always the lights.\n\nIt's not the lights.\n\nOkay, now. Do it now.",
     "s0-2": "[calling out, unsure] Hello? [louder] Hello! [urgent] Wait!\n\n[flustered, quick] No, no, no, don't wait! Sorry. Keep going. Don't disappear. When you stand still, you disappear on me. I'm keeping up instead.\n\nI don't know who you are. I don't even know if you can hear this. I can't hear anything from you. Not a sound. I just get glimpses. A shape at the edge. And bits of your world.\n\nBut I have thought about this. About you.",
     "s0-ask1": "So here's what we are gonna do. I will ask you a question and then say now. If the answer is yes, you stop for a couple of seconds. If it is no, you keep going.\n\n[pause] [calm, slowly, serious] Ok. Can you see me?",
+    "x-now": "[calm, serious] Now.",
     "x-stod": "[steady, clear] You'd already disappeared when I asked. Keep going a bit, then I'll ask again.",
     "s0-again1": "Right. Can you see me?",
     "s0-go1": "[steady, clear] ...There, I've lost you. Now go.",
@@ -215,6 +216,9 @@
     "s0-ask1": [
       "see"
     ],
+    "x-now": [
+      "now"
+    ],
     "s0-again1": [
       "see"
     ],
@@ -258,6 +262,7 @@
     "s0-1": 7.97,
     "s0-2": 25.08,
     "s0-ask1": 14.92,
+    "x-now": 1.07,
     "x-stod": 4.99,
     "s0-again1": 1.96,
     "s0-go1": 2.93,
@@ -358,6 +363,9 @@
     },
     "s2-3": {
       "thirty": 4.9
+    },
+    "x-now": {
+      "now": 0.32
     }
   },
   "breaks": {

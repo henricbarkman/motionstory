@@ -87,9 +87,11 @@ const AT = {
 // back left her no breath. `asides`: her lines to herself that only the
 // English has. `songUnder`: The Code starts faint under her last line before
 // the credits and grows when she has finished (the cue word in the line, or
-// its start).
+// its start). `now`: the line she says after each question she asks for a
+// stop, where the window opens instead (`words.now` in it); none in Swedish.
 export const SV = {
   words: { see: 'ser', hear: 'hör', are: 'är', thirty: 'trettio', stop: 'stanna', lastStop: 'stanna' },
+  now: null,
   at: AT,
   after: { tree: 20, sky: 20, bell: 25 },
   end: { soon: END_SOON, gap: END_GAP },
@@ -101,12 +103,19 @@ export const SV = {
 // measured 23/10"): the scenes waited for fixed minutes, 47, 20 and 53 s of
 // silence, and clips came with no breath. The takes have about a tenth of a
 // second of silence at each end, so a gap is the silence heard.
+// She promises "I will ask you a question and then say now" in her first
+// question (Henric's rewrite of 28/10), so in English each question she asks
+// for a stop is followed by "Now." (x-now, one take for all seven, Henric
+// 29/10: "hon ska säga 'now' eftersom hon säger att hon ska säga 'now'").
 export const EN = {
-  words: { see: 'see', hear: 'hear', are: 'are', thirty: 'thirty', stop: 'stop', lastStop: 'last:stop' },
+  words: { see: 'see', hear: 'hear', are: 'are', thirty: 'thirty', stop: 'stop', lastStop: 'last:stop', now: 'now' },
+  now: 'x-now',
   at: { tree: 0, sky: 0, bell: 0 },
   after: { tree: 2, sky: 6, bell: 10 },
   end: { soon: 6, gap: 10 },
-  gaps: { 's0-2': 2, 's0-ask1': 1.5, 's0-yes1-b': 1, 's1-self': 1.5, 's1-q2': 1, 's2-2': 2, 's2-ask': 1, name: 1.5, 's4-all': 2 },
+  // x-now: with the question's own tail and the take's lead, about a second
+  // of silence between the question and her now.
+  gaps: { 's0-2': 2, 's0-ask1': 1.5, 's0-yes1-b': 1, 's1-self': 1.5, 's1-q2': 1, 's2-2': 2, 's2-ask': 1, 'x-now': 0.4, name: 1.5, 's4-all': 2 },
   asides: { yes2: 's0-yes2-aside', gravel: 's2-self', up: 's4-self' },
   songUnder: { yes: ['s0-yes2-aside', null], no: ['s0-no2', 'talk'] },
 };
@@ -307,8 +316,19 @@ export async function runEpisode1(ctx, E = SV) {
   // A slower walker waits out the window as before. On GPS it is the band
   // once `seenLate` has passed, for GPS sees a stop just before the close
   // only then.
-  async function ask(id, word = W.lastStop, patience = 0) {
-    const askedAt = now() + (word ? ctx.cue(id, word) : 0);
+  // With `then` (E.now: in English) she says that line after the question,
+  // after its breath, and the window opens at its word instead: she has
+  // promised to say now, and until v46 she never did, so a walker who waited
+  // for it walked on through the window and was heard as a no (Henric 29/10).
+  // The window is shut while she asks (askedAt Infinity), so a stop on the
+  // question's words is read against her now, as one before the word was
+  // read against the word: a stop the feet ended before it is no answer, and
+  // one who stood from early in the question hears x-stod and the question
+  // again. The band sees a stop about two seconds after the last step, and
+  // counts it from then, so a walker who stopped on the question's last word
+  // and stays standing is a yes, as before v46.
+  async function ask(id, word = W.lastStop, patience = 0, then = null) {
+    let askedAt = then ? Infinity : now() + (word ? ctx.cue(id, word) : 0);
     let walked = false;
     let yes = false;
     let closes = Infinity;
@@ -335,6 +355,11 @@ export async function runEpisode1(ctx, E = SV) {
       return yes || (s.t >= closes && walksOn) || s.t >= closes + seenLate(s) + sure(s);
     });
     await ctx.play(id);
+    if (then) {
+      await breath(then);
+      askedAt = now() + ctx.cue(then, W.now);
+      await ctx.play(then);
+    }
     const s = ctx.state();
     if (!yes && patience && !s.moving && stopBegan(s) < askedAt) await ctx.until(s => yes || walking(s), { timeout: patience });
     closes = now() + askWindow(ctx.state());
@@ -347,14 +372,15 @@ export async function runEpisode1(ctx, E = SV) {
 
   // A question with its second chance. A walker who stood still since before
   // she asked, at a red light or waiting for her "gå", has not answered: she
-  // says so, waits for them to walk, and asks once more with `again`.
+  // says so, waits for them to walk, and asks once more with `again`. In
+  // English both are followed by her now (E.now).
   async function question(id, word, again, againWord) {
-    if (await ask(id, word, PATIENCE)) return true;
+    if (await ask(id, word, PATIENCE, E.now)) return true;
     if (!stoodThrough) return false;
     ctx.log(`${id}: the walker stood through it, she asks again`);
     await goLine('x-stod');
     await ctx.until(walking, { timeout: MIN });
-    return ask(again, againWord);
+    return ask(again, againWord, 0, E.now);
   }
   // A line that asks the walker to go (the nine under "breakFrom" in
   // episod-1.json). It is not said to a walker already going, and once the
