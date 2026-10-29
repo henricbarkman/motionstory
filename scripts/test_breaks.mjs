@@ -9,7 +9,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Mixer, breakAt, brusOf, BREAK_FADE, BREAK_LEAD, SONG_UNDER, RADIO_HISS } from '../glimt/audio.js';
+import { Mixer, breakAt, brusOf, readBakgrund, BREAK_FADE, BREAK_LEAD, SONG_UNDER, RADIO_HISS, BED_GAIN, FX_GAIN, BAKGRUND_MIN, BAKGRUND_MAX } from '../glimt/audio.js';
 import { makeClock, FakeAudioContext } from './fake_audio.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -181,6 +181,38 @@ const PAUSE = [{ from: 1.0, to: 1.5, said: 'Där.' }];
   try { mixer.setBrus(NaN, undefined); mixer.setBrus('x'); } catch (e) { threw = e; }
   const values = calls.filter(c => c[0] === 'setValueAtTime').map(c => c[1]);
   check(!threw && values.every(Number.isFinite), `a level that is no number is no hiss, and nothing throws (${threw || values})`);
+  run(3.1);
+  await said;
+}
+
+// ---------- the bed and the riser (v49) ----------
+// Henric 29/10: the bed and the riser far too loud against Jessica's voice,
+// which lies 8-9 dB under the voice they were set against. The English
+// episode moves both 12 dB down (bakgrund), a link tries another level.
+{
+  const EN = JSON.parse(readFileSync(join(ROOT, 'stories/glimt/episode-1.json'), 'utf8'));
+  const db = x => Math.pow(10, x / 20);
+  check(readBakgrund(null) === null && readBakgrund('') === null && readBakgrund('x') === null && readBakgrund('-6,1,2') === null,
+    'readBakgrund: nothing or no number is null');
+  check(readBakgrund('-12') === -12 && readBakgrund(' -7,5 ') === -7.5 && readBakgrund('\u22126') === -6 && readBakgrund('3') === 3,
+    'readBakgrund: dB, a decimal comma and a typed minus sign');
+  check(readBakgrund('-99') === BAKGRUND_MIN && readBakgrund('40') === BAKGRUND_MAX, 'readBakgrund: clamped');
+  check(EN.bakgrund === -12, `the English episode's bed and riser 12 dB down (${EN.bakgrund})`);
+  check(EPISODE_SV.bakgrund === undefined, 'the Swedish has none: its bed and riser as before');
+
+  const { audio, mixer, run, said } = rig();
+  const bed = audio.createBuffer(1, audio.sampleRate, audio.sampleRate);
+  check(near(mixer.fxGain.gain.value, FX_GAIN) && mixer.bakgrund === 0, 'a mixer not told: the riser at its own level');
+  mixer.setBakgrund(EN.bakgrund);
+  check(near(mixer.fxGain.gain.value, FX_GAIN * db(-12)), `bakgrund -12: the riser 12 dB down (${mixer.fxGain.gain.value.toFixed(3)})`);
+  mixer.startBed(bed);
+  check(near(mixer.bedLevel, BED_GAIN * db(-12)), `and the bed starts 12 dB down (${mixer.bedLevel.toFixed(3)})`);
+  mixer.setBed(0.35);
+  check(near(mixer.bedLevel * mixer.bedShare, BED_GAIN * db(-12) * 0.35), 'stepped back under her side from its own lower level');
+  mixer.setBakgrund('x');
+  check(mixer.bakgrund === 0 && near(mixer.fxGain.gain.value, FX_GAIN), 'a level that is no number: 0, nothing throws');
+  mixer.setBakgrund(-99);
+  check(mixer.bakgrund === BAKGRUND_MIN, 'and one past the edge is clamped');
   run(3.1);
   await said;
 }

@@ -71,6 +71,30 @@ export function readKlarhet(raw) {
   return Number.isFinite(k) ? Math.min(1, Math.max(0, k)) : null;
 }
 
+// The bed (the atmosphere loop) and the riser at bakgrund 0: the levels set
+// against Paula's voice, whose lines measure -15 to -17 LUFS. Jessica's
+// English lines measure -23 to -28 (her Swedish predecessor's level less 8-9
+// dB), so the bed (-18.4 LUFS in the file, -28.3 at BED_GAIN) lay only about
+// 3 dB under her, and the riser (-18.0 LUFS, -21.1 at FX_GAIN) over her first
+// words (Henric 29/10: "alldeles för höga, så sänk dem ganska så mycket").
+// `bakgrund`, in dB, moves both: the chapter's (episode-1.json: -12), or a
+// link's ?bakgrund=-6 to try another level (readBakgrund). Her side's hum and
+// steps are not part of it: they are the story's (herside.js).
+export const BED_GAIN = 0.32;
+export const FX_GAIN = 0.7;   // -3 dB
+export const BAKGRUND_MIN = -40;
+export const BAKGRUND_MAX = 12;
+export const dbGain = db => Math.pow(10, db / 20);
+// ?bakgrund= as a link writes it: dB, a decimal comma read as a point (as
+// readKlarhet), clamped to BAKGRUND_MIN..BAKGRUND_MAX. Null when there is
+// nothing to read.
+export function readBakgrund(raw) {
+  const t = raw == null ? '' : String(raw).trim().replace(',', '.').replace('\u2212', '-');
+  if (!t) return null;
+  const d = Number(t);
+  return Number.isFinite(d) ? Math.min(BAKGRUND_MAX, Math.max(BAKGRUND_MIN, d)) : null;
+}
+
 // The hiss under line `id`, as [at its start, at `until` seconds in or at
 // its end (null)], in units of the whole radio's hiss. A chapter with "brus"
 // names the lines that have it, each a level or [from, to] or [from, to,
@@ -100,7 +124,8 @@ export class Mixer {
     this.bedGain.connect(this.master);
 
     this.fxGain = c.createGain();
-    this.fxGain.gain.value = 0.7;   // -3 dB
+    this.fxGain.gain.value = FX_GAIN;
+    this.bakgrund = 0;
     this.fxGain.connect(this.master);
 
     this.voiceFilter = c.createBiquadFilter();
@@ -240,7 +265,16 @@ export class Mixer {
     return this.ctx.decodeAudioData(arrayBuffer.slice(0));
   }
 
-  startBed(buffer, { gain = 0.32, fadeIn = 2 } = {}) {
+  // The bed and the riser `db` from their own levels (BED_GAIN, FX_GAIN),
+  // clamped; anything that is not a number is 0. Set before startBed and
+  // playFx: the bed takes it as it starts, the riser at once.
+  setBakgrund(db) {
+    const d = Number(db);
+    this.bakgrund = Number.isFinite(d) ? Math.min(BAKGRUND_MAX, Math.max(BAKGRUND_MIN, d)) : 0;
+    this.fxGain.gain.value = FX_GAIN * dbGain(this.bakgrund);
+  }
+
+  startBed(buffer, { gain = BED_GAIN * dbGain(this.bakgrund), fadeIn = 2 } = {}) {
     const src = this.ctx.createBufferSource();
     src.buffer = buffer;
     src.loop = true;

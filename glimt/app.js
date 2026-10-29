@@ -17,14 +17,14 @@ import { runEpisode1, EN as EPISODE_EN, withAir, readLuft } from './episod1.js';
 import { HerSide, SilentSide } from './herside.js';
 import { runLab, labHelpers, LABS, TITLES, PROV, ratedThisRound, RESUMABLE, chosenStations, knockPattern, buzzWords, realTarget, strayJumpsNote, strayTurns, strayTurnsNote } from './lab.js';
 import { Synth, SilentSynth } from './synth.js';
-import { Mixer, Library, readKlarhet, brusOf } from './audio.js';
+import { Mixer, Library, readKlarhet, readBakgrund, brusOf } from './audio.js';
 import { chooseWorld, defaultWorld, fetchLandmarks, nearestByName } from './world.js';
 import { Memory, drawWorld, KEY_NAMES } from './memory.js';
 import { Listener, LISTEN_YES } from './listen.js';
 
 // The version the start screen shows, the same number as the service
 // worker's cache. Bump both together.
-const APP_VERSION = 48;
+const APP_VERSION = 49;
 
 // Seconds the credits wait for their song if it is not fetched when they are
 // due. It has had all of scene 0; a song not here by then is not coming.
@@ -42,6 +42,10 @@ const KLARHET_URL = readKlarhet(params.get('klarhet'));
 // length, ?luft=0.5 half (withAir in episod1.js; 1 is the standard), so
 // Henric can try more or less air without a new build (29/10).
 const LUFT_URL = readLuft(params.get('luft'));
+// ?bakgrund=-6 sets the bed and the riser that many dB from their own levels,
+// over the chapter's own (episode-1.json: -12, v49), so Henric can try
+// another level without a new build (readBakgrund in audio.js).
+const BAKGRUND_URL = readBakgrund(params.get('bakgrund'));
 // A test walk wins over everything else the link says.
 const PROV_ID = Object.hasOwn(PROV, params.get('prov') || '') ? params.get('prov') : null;
 const TEST = PROV_ID ? PROV[PROV_ID] : null;
@@ -495,6 +499,11 @@ async function start() {
   }
   window.glimt = { mixer, walk, world, lib, side };   // for debugging from the console
 
+  const bakgrund = BAKGRUND_URL ?? chapter.bakgrund ?? 0;
+  mixer.setBakgrund(bakgrund);
+  if (BAKGRUND_URL !== null || chapter.bakgrund !== undefined) {
+    log(`bakgrund ${mixer.bakgrund} dB${BAKGRUND_URL !== null ? ' (från länken)' : ''}`);
+  }
   if (bedBuf) mixer.startBed(bedBuf);
   if (riserBuf) {
     const at = mixer.playFx(riserBuf);

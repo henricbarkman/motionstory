@@ -3,7 +3,7 @@
   "title": "Keep Going",
   "language": "en",
   "source": "stories/glimt/episode-1.md",
-  "style": "Close and spoken, one person on a bad phone line. Spoken English of a young working woman, not literary, not sitcom. Asides: lower, quicker, turned away from the line. Translated from the Swedish draft 7 (episod-1.json, v40), 2026-10-23; voices chosen 2026-10-26, Vega recast as Jessica 2026-10-29; her \"Now.\" after each question she asks for a stop (x-now) added 2026-10-29; s0-1's \"It's not the lights.\" after a longer pause and slower, as it dawns on her (Henric 2026-10-29), from a new take put into the v47 one.",
+  "style": "Close and spoken, one person on a bad phone line. Spoken English of a young working woman, not literary, not sitcom. Asides: lower, quicker, turned away from the line. Translated from the Swedish draft 7 (episod-1.json, v40), 2026-10-23; voices chosen 2026-10-26, Vega recast as Jessica 2026-10-29; her \"Now.\" after each question she asks for a stop (x-now) added 2026-10-29; s0-1's \"It's not the lights.\" after a longer pause and slower, as it dawns on her (Henric 2026-10-29), from a new take put into the v47 one. The count under her breath (s2-count, s2-3) laid one number a second from the v45 takes, 1.2 s after thirty (v49, Henric 29/10: too fast at the start, too slow at the end).",
   "targetMinutes": 11,
   "voices": {
     "vega": "Y4SxZRpAUjgjFSmjHhym",
@@ -48,6 +48,7 @@
       14.5
     ]
   },
+  "bakgrund": -12,
   "lines": {
     "s0-1": "[mutters to herself, quick and low] There it is again. Right at the edge.\n\nIt's the lights. It's always the lights.\n\n[pause] [slowly, realising] It's not the lights.\n\n[quick and low] Okay, now. Do it now.",
     "s0-2": "[calling out, unsure] Hello? [louder] Hello! [urgent] Wait!\n\n[flustered, quick] No, no, no, don't wait! Sorry. Keep going. Don't disappear. When you stand still, you disappear on me. I'm keeping up instead.\n\nI don't know who you are. I don't even know if you can hear this. I can't hear anything from you. Not a sound. I just get glimpses. A shape at the edge. And bits of your world.\n\nBut I have thought about this. About you.",
@@ -77,7 +78,7 @@
     "s1-3": "They know how we walk. Every step. Too slow, they know. Wrong way, they know. [pause] You're not on any of their lists.\n\nBut here you are anyway. [pause] And now I've got an idea. A stupid one.",
     "s2-1": "Here's the thing. I'm walking along talking out loud to someone who isn't there, and nobody's said a word. Not one, since you came.\n\nSo I'm going to try something. Something small. Keep going, if you can.",
     "s2-2": "I'm standing still.\n\n[whispers] Half a minute with no steps, then they want to know what you're up to. I'm counting.",
-    "s2-count": "[whispers, counting quickly under her breath] ...twelve, thirteen, fourteen, fifteen, sixteen, seventeen, eighteen, nineteen, twenty, twenty-one, twenty-two, twenty-three, twenty-four, twenty-five, twenty-six.",
+    "s2-count": "[whispers, under her breath, one number a second] ...twelve, thirteen, fourteen, fifteen, sixteen, seventeen, eighteen, nineteen, twenty, twenty-one, twenty-two, twenty-three, twenty-four, twenty-five, twenty-six.",
     "s2-count-stop": "[whispers, urgent] ...go. Or they'll start counting me.",
     "s2-3": "[whispers] ...twenty-seven. Twenty-eight. Twenty-nine. Thirty. [short pause] Thirty-one. [short pause] Thirty-two.",
     "s2-4": "[amazed] They're not asking. You're moving, and they think it's me.\n\n[laughs] Four years I've walked this loop, same direction. And now I'm standing here like a post. Best thing I've done since I got here.\n\nNow one more thing. Just keep going.",
@@ -243,7 +244,12 @@
       "are"
     ],
     "s2-3": [
-      "thirty"
+      "twenty-seven",
+      "twenty-eight",
+      "twenty-nine",
+      "thirty",
+      "thirty-one",
+      "thirty-two"
     ],
     "s2-ask": [
       "stop"
@@ -253,6 +259,23 @@
     ],
     "s0-no2": [
       "talk"
+    ],
+    "s2-count": [
+      "twelve",
+      "thirteen",
+      "fourteen",
+      "fifteen",
+      "sixteen",
+      "seventeen",
+      "eighteen",
+      "nineteen",
+      "twenty",
+      "twenty-one",
+      "twenty-two",
+      "twenty-three",
+      "twenty-four",
+      "twenty-five",
+      "twenty-six"
     ]
   },
   "breakFrom": {
@@ -295,9 +318,9 @@
     "s1-3": 16.12,
     "s2-1": 14.52,
     "s2-2": 7.08,
-    "s2-count": 8.91,
+    "s2-count": 14.89,
     "s2-count-stop": 2.69,
-    "s2-3": 8.05,
+    "s2-3": 6.45,
     "s2-4": 16.59,
     "s2-self": 2.69,
     "s2-5": 8.91,
@@ -370,10 +393,32 @@
       "last:stop": 11.76
     },
     "s2-3": {
-      "thirty": 4.9
+      "thirty": 3.3,
+      "twenty-seven": 0.4,
+      "twenty-eight": 1.28,
+      "twenty-nine": 2.28,
+      "thirty-one": 4.48,
+      "thirty-two": 5.68
     },
     "x-now": {
       "now": 0.32
+    },
+    "s2-count": {
+      "twelve": 0.12,
+      "thirteen": 1.12,
+      "fourteen": 2.1,
+      "fifteen": 3.1,
+      "sixteen": 4.1,
+      "seventeen": 5.1,
+      "eighteen": 6.08,
+      "nineteen": 7.12,
+      "twenty": 8.24,
+      "twenty-one": 9.24,
+      "twenty-two": 10.22,
+      "twenty-three": 11.2,
+      "twenty-four": 12.22,
+      "twenty-five": 13.2,
+      "twenty-six": 14.2
     }
   },
   "breaks": {
