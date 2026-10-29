@@ -8,6 +8,10 @@ turned back to the portal's lunar punk, stripped, on 2026-10-11:
 - Rules and reasons: [`../../design/DESIGN.md`](../../design/DESIGN.md), the section "The room".
 - Tokens, typefaces, the name and the verdict marks: `../../design/glimt.css` (linked by `rummet/index.html`).
 
+The name in the top bar is **Weavers**, the word alone with no star, as in
+the app since v44 (Henric 2026-10-29). Only the English episode 1 has a tab;
+the Swedish episodes are hidden from the desk, not removed.
+
 What the desk adds, in `rummet/rummet.css`:
 
 - One column, a play button in a narrow column to the left of each line. Her
