@@ -322,4 +322,34 @@ function rig() {
   check(read('episode-1.json') === 'mellan' && SNACKA_FILTERS.mellan, 'the English episode asks for Mellan');
 }
 
+// v53: bakgrund takes the hum down with the bed (Henric 29/10: "en ton i
+// bakgrunden ... Sänk den rejält"), and nothing else on her side: the drone
+// and its air go through the hum's gain, a step never does, and the bus keeps
+// its level. Without a bakgrund the hum is where it was.
+{
+  const { audio, side, run } = rig();
+  run(1);
+  const reaches = (node, target, seen = new Set()) => node === target
+    || (!seen.has(node) && (seen.add(node), [...node.outs].some(n => reaches(n, target, seen))));
+  const hum = [...audio.playing];
+  check(side.humGain.gain.value === 1, `no bakgrund: the hum at its own level (${side.humGain.gain.value})`);
+  const under = side.out.gain.value;
+  side.setBakgrund(-12);
+  const g = side.humGain.gain.value;
+  check(Math.abs(g - 10 ** (-12 / 20)) < 1e-9, `bakgrund -12: the hum 12 dB down (${g.toFixed(4)})`);
+  check(hum.length === 4 && hum.every(n => reaches(n, side.humGain)), 'the drone and its air all go through it');
+  const n = audio.started.length;
+  side.walk('grus', { rate: 120 });
+  side.hand();
+  run(2);
+  const later = audio.started.slice(n).map(x => x.node);
+  check(later.length > 2 && later.every(s => !reaches(s, side.humGain) && reaches(s, side.out)),
+    `her steps and the hand pass by it, still on the bus (${later.length})`);
+  check(side.out.gain.value === under, 'and the bus is where it was');
+  side.walk(null);
+  side.setBakgrund('x');
+  check(side.humGain.gain.value === 1, 'a bakgrund that is no number is 0');
+  new SilentSide().setBakgrund(-12);
+}
+
 process.exit(failures ? 1 : 0);

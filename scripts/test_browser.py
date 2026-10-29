@@ -891,6 +891,9 @@ def episodstart(browser, base):
     fx = page.evaluate("window.glimt.mixer.fxGain.gain.value")
     check(any(x.endswith("bakgrund -12 dB") for x in walk_log(page)) and abs(fx - 0.7 * 10 ** (-12 / 20)) < 1e-3,
           f"episode1en: the bed and the riser 12 dB down, and the log says so (riser {fx:.3f}, {[x for x in walk_log(page) if 'bakgrund' in x]})")
+    # v53: her side's hum goes down with them (Henric 29/10: "en ton i bakgrunden").
+    hum = page.evaluate("window.glimt.side.humGain.gain.value")
+    check(abs(hum - 10 ** (-12 / 20)) < 1e-3, f"episode1en: her side's hum 12 dB down with the bed ({hum:.3f})")
     line = wait_log(page, "▶ s0-ask1", 120000)
     page.wait_for_timeout(1000)
     later = page.evaluate("window.glimt.mixer.hissNow()")
@@ -906,6 +909,8 @@ def episodstart(browser, base):
     page.click("#start-btn")
     line = wait_log(page, "bakgrund", 30000)
     check(line.endswith("bakgrund -6.5 dB (från länken)"), f"?bakgrund=-6,5: the link's level over the episode's ({line!r})")
+    hum = page.evaluate("window.glimt.side.humGain.gain.value")
+    check(abs(hum - 10 ** (-6.5 / 20)) < 1e-3, f"?bakgrund=-6,5: the hum follows the link ({hum:.3f})")
     ctx.close()
     # The Swedish has no bakgrund: nothing said, the riser at its own level.
     ctx, page, errors = open_page(browser, base, url="?kapitel=episod1&sim")
@@ -913,6 +918,8 @@ def episodstart(browser, base):
     wait_log(page, "▶ s0-1", 60000)
     fx = page.evaluate("window.glimt.mixer.fxGain.gain.value")
     check(not any("bakgrund" in x for x in walk_log(page)) and abs(fx - 0.7) < 1e-6, f"episod1: no bakgrund, the riser as before ({fx})")
+    hum = page.evaluate("window.glimt.side.humGain.gain.value")
+    check(hum == 1, f"episod1: and the hum as before ({hum})")
     ctx.close()
 
 

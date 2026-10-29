@@ -133,6 +133,7 @@ export class HerSide {
     const c = this.ctx;
     const hum = c.createGain();
     hum.gain.value = 1;
+    this.humGain = hum;
     const low = c.createBiquadFilter();
     low.type = 'lowpass';
     low.frequency.value = 340;
@@ -168,6 +169,20 @@ export class HerSide {
     air.connect(hum);
     noise.start(now);
     this.sources.add(noise);
+  }
+
+  // The hum `db` from its own level, with the bed and the riser: the
+  // episode's bakgrund (app.js), or a link's ?bakgrund=. It was set against
+  // Paula's voice, and Jessica's English lines lie 8-9 dB under hers, so at 0
+  // the hum measures -33.6 LUFS under her (-24 to -28) and -23.2 when the
+  // walker stands still, as loud as she is; the bed at -12 is -40 (Henric
+  // 29/10, after v51: "Det är en ton i bakgrunden ... Sänk den rejält.
+  // Samplen kan du hålla på samma nivå som nu"). Only the drone and its air
+  // move: the steps, the hand, the lamp, the bell and her side's voices stay.
+  setBakgrund(db) {
+    const d = Number(db);
+    this.bakgrund = Number.isFinite(d) ? d : 0;
+    this.humGain.gain.value = Math.pow(10, this.bakgrund / 20);
   }
 
   _noise(seconds) {
@@ -516,6 +531,7 @@ export class HerSide {
 export class SilentSide {
   constructor() { this.silent = true; this.pinned = false; }
   setSound() {}
+  setBakgrund() {}
   setPresence() {}
   pin(on) { this.pinned = !!on; }
   lift() {}
