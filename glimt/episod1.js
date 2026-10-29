@@ -506,6 +506,9 @@ export async function runEpisode1(ctx, E = SV) {
   ctx.hold(true);
   await ctx.play('s0-1');
   await breath('s0-2');
+  // In English s0-2 holds about 4 s of silence after "I'm keeping up
+  // instead." (v50), in the file: the contact is held here, so a stop in it
+  // dulls nothing, and no question is open to read it.
   await ctx.play('s0-2');
   await breath('s0-ask1');
   ctx.log('scene 0: does the walker see her');

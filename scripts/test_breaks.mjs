@@ -144,11 +144,17 @@ const PAUSE = [{ from: 1.0, to: 1.5, said: 'Där.' }];
   const same = (a, b) => a.length === b.length && a.every((x, i) => (x === null && b[i] === null) || Math.abs(x - b[i]) < 1e-9);
   check(same(brusOf(undefined, 's1-2', 0.45), [0.55, 0.55, null]), 'a chapter without brus: as much as its radio, under every line (Swedish, as before)');
   check(same(brusOf(EN.brus, 's0-1', 0.45), [1, 1, null]), 'the English first line: the whole radio\'s hiss');
-  check(same(brusOf(EN.brus, 's0-2', 0.45), [1, 0, 14.5]), 'her second: from all of it to none, 14.5 s in');
+  check(same(brusOf(EN.brus, 's0-2', 0.45), [1, 0, 18.1]), 'her second: from all of it to none, 18.1 s in (v50: after the long pause)');
   const hissed = Object.keys(EN.lines).filter(id => brusOf(EN.brus, id, EN.klarhet).some(x => x > 0));
   check(hissed.join() === 's0-1,s0-2', `and no other English line has any (${hissed.join(', ')})`);
   check(Object.keys(EN.brus).every(id => id in EN.lines), 'brus names only lines of the episode');
-  check(EN.brus['s0-2'][2] < EN.seconds['s0-2'], `the hiss is gone before her second line ends (${EN.brus['s0-2'][2]} of ${EN.seconds['s0-2']} s)`);
+  // v50 (Henric 29/10, "Lång paus efteråt"): about 4 s of silence after "I'm
+  // keeping up instead.", laid into the take. Measured from the file: from
+  // "instead" to "who" was 1.4 s in the v45 take, and the words around the
+  // pause take about one of them.
+  const sinks = EN.cues['s0-2'].who - EN.cues['s0-2'].instead;
+  check(sinks >= 4.5 && sinks <= 6, `a long pause after "I'm keeping up instead." (${sinks.toFixed(2)} s from instead to who)`);
+  check(EN.brus['s0-2'][2] < EN.seconds['s0-2'],`the hiss is gone before her second line ends (${EN.brus['s0-2'][2]} of ${EN.seconds['s0-2']} s)`);
   check(same(brusOf(undefined, 'x', 1.2), [0, 0, null]) && same(brusOf(undefined, 'x', -1), [1, 1, null]),
     'a klarhet outside 0..1 hisses as setKlarhet clamps it, never below none');
 

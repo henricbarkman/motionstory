@@ -441,7 +441,7 @@ def firefox(browser, base):
     ctx, page, errors = open_page(browser, base, ua=FIREFOX_UA)
     s = state(page)
     check(not s["box"], "Firefox on Android: no try-out")
-    check("Firefox vibrerar inte" in s["load"] and "gps:en glest" in s["load"] and s["load"].count("Öppna Glimt i Chrome.") == 1 and s["chrome"], f"it says vibration and GPS, once, with the link ({s['load']!r})")
+    check("Firefox vibrerar inte" in s["load"] and "gps:en glest" in s["load"] and s["load"].count("Öppna Weavers i Chrome.") == 1 and s["chrome"], f"it says vibration and GPS, once, with the link ({s['load']!r})")
     shot(page, "6-firefox")
     ctx.close()
     ctx, page, errors = open_page(browser, base, ua=FIREFOX_UA, url="?kapitel=1")
@@ -450,7 +450,7 @@ def firefox(browser, base):
     ctx.close()
     ctx, page, errors = open_page(browser, base, ua=FIREFOX_DESKTOP_UA)
     s = state(page)
-    check("Firefox vibrerar inte" in s["load"] and "glest" not in s["load"] and s["load"].count("Öppna Glimt i Chrome.") == 1 and not s["chrome"], f"Firefox on a desktop: vibration only ({s['load']!r})")
+    check("Firefox vibrerar inte" in s["load"] and "glest" not in s["load"] and s["load"].count("Öppna Weavers i Chrome.") == 1 and not s["chrome"], f"Firefox on a desktop: vibration only ({s['load']!r})")
     ctx.close()
 
 
