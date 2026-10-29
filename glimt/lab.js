@@ -35,6 +35,7 @@
 // Every station returns { outcome: 'klarade' | 'missade' | 'hoppade', detail }.
 
 import { haversine, bearing, angleDiff, cadencePace, RUN_MS, HAND_EVIDENCE, ORIENT_EVIDENCE } from './engine.js';
+import { orGuess } from './world.js';
 
 // How long after a pattern's last buzz the motor is taken to be running
 // still. The browser asks for each buzz in turn and the motor has to stop, so
@@ -500,7 +501,7 @@ async function linjen(ctx) {
 async function ja(ctx, { expect = null } = {}) {
   await ctx.play('ja-intro');
   const answers = [];
-  const qs = ['ja-q1', ctx.world.light === 'dark' ? 'ja-q2-morkt' : 'ja-q2-ljust', 'ja-q3'];
+  const qs = ['ja-q1', orGuess(ctx.world, 'light') === 'dark' ? 'ja-q2-morkt' : 'ja-q2-ljust', 'ja-q3'];
   for (const q of qs) {
     const a = await askStop(ctx, q);
     answers.push(a);

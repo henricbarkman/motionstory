@@ -232,7 +232,7 @@ If the walker stays standing about ten seconds more:
 *If the walker stops of their own accord while she walks between the trees, the same branch plays, from the tone on.*
 
 ## 3. The Sky
-*Trigger: about six seconds after scene 2 ends, time for her to walk to the tree and sit (on 23/10 it waited for minute seven and a half, 20 s of silence). She sits still under the tree, so a short stop is harmless here. Light and weather are chosen at the start. The landmark comes from the map, within a few hundred metres of the walker, otherwise at random. The first time she sees more than that you're moving. The pauses between her lines here were about a second on 23/10, which is right: keep them.*
+*Trigger: about six seconds after scene 2 ends, time for her to walk to the tree and sit (on 23/10 it waited for minute seven and a half, 20 s of silence). She sits still under the tree, so a short stop is harmless here. Light and weather are read at the start, and what the phone has not read she says nothing about. The landmark is a story from the bag (Kassen in the mechanics): she tells it only if the map has the place within 400 m of where Shape is as she speaks (600 m for a hill), and only once. Otherwise she does not say "And there's something near you." either, and the scene ends on the sky. The first time she sees more than that you're moving. The pauses between her lines here were about a second on 23/10, which is right: keep them.*
 
 > (she sits down: a breath out)
 >
@@ -332,17 +332,17 @@ If the walker stays standing about ten seconds more:
 | 0 | The contact builds from low. Stop for yes, two questions, with the instruction before the first. Then the credits. | The contact holds. Stop for yes, asking the walker to stay put, is version 38 and was walked once (23/10): yes, yes, no, all read. |
 | 1 | Walking or running read at the start. Stop for yes, one question, harmless. | Walking or running worked in version 25. |
 | 2 | She stands still for half a minute while you move. Muffled voice on a stop, and her side heard instead. From the gravel a dangerous stop (the lamp), and she asks you to stop. | The lamp came on when Henric stopped at her request (23/10). |
-| 3 | Light or dark, rain or dry and the landmark from the map, as what she sees. A short stop is harmless. | Light or dark holds, rain has never happened, the map is uncertain (it found a bridge 23/10). |
+| 3 | Light or dark, rain or dry, and a story from the bag about a place the map has near the walker, as what she sees; what the phone has not read she does not say. A short stop is harmless. | Light or dark holds, rain has never happened, the map is uncertain (it found a bridge 23/10). Since version 52 only a place within reach of where the walker is counts; not walked. |
 | 4 | Dangerous stop (the lamp) until she is on the gravel, then "back" from the distance to the start, and the end on the walker's own stop. | Walked 23/10: on the gravel, heading away, the name. |
 
-**Carries over to episode 2:** whether the walker has stopped on any question or request (scene 0, 1, 2 or 4), and whether the lamp came on after the bell (scene 4). Episode 2 reads it as `[svarade]` and `[misstanke]`.
+**Carries over to episode 2:** whether the walker has stopped on any question or request (scene 0, 1, 2 or 4), and whether the lamp came on after the bell (scene 4). Episode 2 reads it as `[svarade]` and `[misstanke]`. Since version 52 it also keeps the place she told a story about in scene 3, or none.
 
 ## Planted
 
 | What | Where | Thought |
 |---|---|---|
 | The shape she has seen at the edge many times before | 0, 4 | Why it is called Shape. Never said: the rebels paired the walker with Vega, and Altair waits further on (world book, Namnen). |
-| What she sees near you, she has too, worse | 3 | She knows the loop is built (the plastic tree, the speaker, the bridge someone drew), not that it is built after the walker's world, and she never says so: she only compares what she sees with what she has. A later episode lets her find out that the loop is a copy, and maybe wonder whether the walker's world is the original (Henric leans that way, 29/10, not decided). The landmark comes from the map, which is uncertain, so the reveal must not rest on it. |
+| What she sees near you, she has too, worse | 3 | She knows the loop is built (the plastic tree, the speaker, the bridge someone drew), not that it is built after the walker's world, and she never says so: she only compares what she sees with what she has. A later episode lets her find out that the loop is a copy, and maybe wonder whether the walker's world is the original (Henric leans that way, 29/10, not decided). The landmark is a story in the bag, told only when the map has the place near the walker, so the reveal must not rest on it. |
 | The star she looks for whenever she gets a bit of your sky | 4 | Her name, never said. A wish, not a task: nothing asks the walker to go out at night, and the next episode starts whenever the walker walks. An evening further on when she might see one; Clear sky is untested, so the payoff needs a way for someone who never walks on a clear night. |
 | "It's been logged" | 4 | The Company's suspicion, the meter between episodes. |
 | The people who whisper | 4 | The collective. Episode 2. |

@@ -14,6 +14,8 @@
 //   fadeOut(seconds)            fade bed and voice to silence
 //   playQuiet(lineId)           the other voice, faint, after the fade
 
+import { orGuess } from './world.js';
+
 const MIN = 60;
 
 export async function runChapter1(ctx) {
@@ -59,11 +61,11 @@ export async function runChapter1(ctx) {
 
   // 3. Glimpse. Light and weather chosen at start.
   await ctx.until(s => s.contact >= 0.7 && s.t >= 3.5 * MIN, { by: 5 * MIN });
-  ctx.log(`scene 3: ${ctx.world.light}, ${ctx.world.rain ? 'rain' : 'dry'}`);
+  ctx.log(`scene 3: ${orGuess(ctx.world, 'light')}, ${orGuess(ctx.world, 'rain') ? 'rain' : 'dry'}`);
   await ctx.play('s3-1');
-  await ctx.play(ctx.world.light === 'dark' ? 's3-dark' : 's3-light');
+  await ctx.play(orGuess(ctx.world, 'light') === 'dark' ? 's3-dark' : 's3-light');
   await ctx.play('s3-2');
-  await ctx.play(ctx.world.rain ? 's3-rain' : 's3-dry');
+  await ctx.play(orGuess(ctx.world, 'rain') ? 's3-rain' : 's3-dry');
 
   // 4. Faster. She asks; the next 60 s decide which follow-up plays.
   await ctx.until(s => s.contact >= 0.5 && s.t >= 4.75 * MIN, { by: 5.75 * MIN });
@@ -81,8 +83,8 @@ export async function runChapter1(ctx) {
 
   // 6. The landmark, from map data when available, otherwise a guess.
   await ctx.until(s => s.contact >= 0.6 && s.t >= 8.25 * MIN, { by: 9.25 * MIN });
-  ctx.log(`scene 6: ${ctx.world.landmark}`);
-  await ctx.play(`s6-${ctx.world.landmark}`);
+  ctx.log(`scene 6: ${orGuess(ctx.world, 'landmark')}`);
+  await ctx.play(`s6-${orGuess(ctx.world, 'landmark')}`);
 
   // 7. Back. Distance to start shrinking, or the clock, or a long stop late.
   await ctx.until(s =>
