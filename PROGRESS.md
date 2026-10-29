@@ -1,5 +1,15 @@
 # PROGRESS — Motionstory
 
+## 2026-10-29
+- Henric: "Jessica it is!" Vega blir Jessica (Soft and Demure, `Y4SxZRpAUjgjFSmjHhym`, en professionell klon). Frågade om övergripande regi och om brusgolvet.
+- Demi (jobb j-20261029-031604-2bbdc3): **rutan "Jessica som Vega"** överst på [provsidan](https://demi.henricbarkman.se/uploads/glimt-rostprov-en/index.html#jessica). Sex repliker ur episode-1.json (s0-1, s0-2, s3-1, s3-vatten, s4-2, s4-yes) med sina egna taggar, fyra varianter × två tagningar, plus tre brusprov. Inget inbyggt i appen.
+  - **Bruset** sitter i rösten: ett sus 0-16 kHz runt −76 dBFS i pauserna (talet −18 till −21), mot Julia −82, Sadie −89, Willow −92. Likhet 0,4/0,95, speaker boost av och stabilitet 0,5 flyttar det inom ±2 dB; spannet mellan tagningar är 12 dB.
+  - **Borttagning:** `afftdn=nr=12:nf=-72:tn=1` tar −11 dB, andetagen −1,6 dB i snitt (de svagaste upp till −5), luften −0,5 dB, röstens frasslut oförändrat; 25 ms fördröjning som måste klippas. nr=20 −17 dB, samma kostnad. RNNoise (bd-modellen) −4 dB men tar andetag och luft. Grind: −1 dB. ElevenLabs röstisolering (1 000 krediter/min, minst 4,6 s): 0 dB, ljusare tal.
+  - **I appen:** på klarhet 0,45 ligger radiolinjens eget sus på −47 dBFS (1-8 kHz) i hennes pauser, hennes eget på −71; filtret ändrar ingenting hörbart i episod 1. Vid klarhet 1 hörs hennes: −72 mot Sadie/Willow −84, −81 med filtret. Plats om det byggs: i renderingen efter ElevenLabs (render_glimt.py och regibordet).
+  - **Regi:** taggen först i repliken sänker henne ~20 Hz (187 → 166-168) och håller den stressade s4-2 låg (236 Hz/12,3 ht → 175-178 Hz). *Enkel* `[understated, plain, not performing]`: melodi 8,0 ht, andas i 12 % av pauserna. *Nära* `[close to the mic, quiet, unhurried]`: 7,0 ht, plattast (s4-yes 6,3 ht). Stabilitet 0,5 mot 0,3: ingen mätbar skillnad (episoden renderar med 0,5 som standard). Ingen tagg uppläst i 24 tagningar. Scribe hör "I found the speaker" i alla åtta s3-vatten.
+  - Skripten i `~/.cache/demi-scratch/glimt-en/`: `jessica.py`, `hiss.py`, `cost.py`, `chain.py`, `regi.py`, `jessica_page.py`, `den.sh`, `iso.py`; utfall `jessica-scribe.json`, `jessica-measure.json`, `cost-*.json`, `hiss-base.json`. Krediter: 4 857 (81 839 → 76 982).
+- → Nästa: Henric väljer regi (förslag Enkel) och om filtret ska in; sedan episod 1 om med Jessica.
+
 ## 2026-10-28
 - Henric, efter omgång 5: "Nu leder 'Sasha Kour' och 'Jessica, soft and demure'. 'Sadie, Calm, Gritty and Expressive' är också bra. Ta fram fler i likhet med dem. Stryk alla andra, men spara Jarin och Willow för referens."
 - Demi (jobb j-20261028-211907-59870b): **Strykning och röstprov omgång 6** på [provsidan](https://demi.henricbarkman.se/uploads/glimt-rostprov-en/index.html).
