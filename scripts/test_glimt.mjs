@@ -423,6 +423,9 @@ const EPISODE_WALKERS = {
   // gravel. No lamp, and nothing she says is cut short.
   harmless: {
     walk: out(), stops: { 's0-ask1': ANSWER, 's2-2': ['start', 1, 6], 's3-1': ['start', 1, 12], 's4-ok': ['start', 0, 9], ...END_STOP },
+    // Jessica's s2-2 is 7.1 s, not 8.8 (29/10): the same stop, earlier, so
+    // the walk seen again before she starts counting.
+    en: { stops: { 's0-ask1': ANSWER, 's2-2': ['start', 0.5, 4.5], 's3-1': ['start', 1, 12], 's4-ok': ['start', 0, 9], ...END_STOP } },
     has: ['s0-yes1-a', 's0-no2', 's2-count', 's2-no', 's4-ok', 's4-yes'], not: ['r-hjalp', 's2-count-stop'],
     lamps: 0, cuts: 0, memory: { svarade: true, misstanke: false },
   },
@@ -587,14 +590,11 @@ const EPISODE_WALKERS = {
   brief: {
     walk: t => ({ ...out()(t), steps: true }), stops: { 's0-ask1': ['end', 0.3, 1.8], 's0-yes1-b': ['end', 0.3, 1.8], 's1-q2': ['end', 0.5, 2.0], ...END_STOP },
     // A stop of a second and a half leaves a step gap of FEET_STOP to the
-    // floating point: here two seconds after the Swedish line ends, a hair
-    // under after the English, which hears a no. Longer, the feet see the
-    // stop while the walker still stands, and the go line comes. So a stop
-    // this short is a coin toss on a phone too, in both languages.
-    en: {
-      known: 'a 1.5 s stop is a step gap of exactly FEET_STOP, and on the English line ends it rounds under',
-      knownProblems: ['s0-yes1-a never heard', 's0-yes2 never heard', 's0-no1 heard', 's0-no2 heard', 's0-go1 was not skipped', 's0-go2 was not skipped'],
-    },
+    // floating point, two seconds after the line ends. Longer, the feet see
+    // the stop while the walker still stands, and the go line comes. So a
+    // stop this short is a coin toss on a phone too. On Paula's English
+    // takes (v41) it rounded under and heard a no; on Jessica's (v45) it
+    // rounds over, as in Swedish.
     has: ['s0-yes1-a', 's0-yes2', 's1-q2-yes', 's4-yes'], not: ['s0-no1', 's0-no2', 's1-q2-no', 's0-go1', 's0-go2', 's1-go'],
     // The yes comes with the step that ends the gap: going again, so her go
     // line is not said at all.
@@ -682,6 +682,9 @@ const EPISODE_WALKERS = {
   // is still out there.
   after: {
     walk: out(), stops: { 's2-no': ['end', 3, 15], ...END_STOP },
+    // On Jessica's takes (29/10) GPS sees a stop 3 s after her no only once
+    // scene 3 has opened, where sitting is harmless: the same stop, sooner.
+    en: { stops: { 's2-no': ['end', 1, 15], ...END_STOP } },
     has: ['s2-ask', 's2-no', 'x-avvikelse', 's2-lamp-1'], not: ['s2-lamp-mine', 's2-lamp-2', 's4-yes'],
     lamps: 1, memory: { svarade: false, misstanke: false },
   },
@@ -689,6 +692,9 @@ const EPISODE_WALKERS = {
   // lamp before she has asked for anything, so it is not her answer.
   brink: {
     walk: out(), stops: { 's2-6': ['start', 4.5, 22], ...END_STOP },
+    // Jessica's s2-6 is 6.3 s, not 8.6 (29/10): 4.5 s in is seen after the
+    // question has begun. The same moment before she asks, sooner.
+    en: { stops: { 's2-6': ['start', 3, 22], ...END_STOP } },
     has: ['s2-6', 'x-avvikelse', 's2-lamp-1'], not: ['s2-ask', 's2-no', 's2-lamp-2', 's4-yes'],
     lamps: 1, cuts: 0, memory: { svarade: false, misstanke: false },
   },

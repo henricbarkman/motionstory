@@ -90,7 +90,7 @@ const MD = [
 const KAP = JSON.parse(las('stories/glimt/episode-1.json'));
 {
   const roster = R.rosterFor(KAP);
-  ok(roster.map((r) => `${r.nyckel}=${r.namn}`).join(',') === 'vega=Paula,snackan=Rowan', 'the roster names the voices from voiceNotes');
+  ok(roster.map((r) => `${r.nyckel}=${r.namn}`).join(',') === 'vega=Jessica,snackan=Rowan', 'the roster names the voices from voiceNotes');
   ok(roster.find((r) => r.nyckel === 'vega').id === KAP.voices.vega, 'the id is the json\'s');
   const byte = { ...KAP, voices: { ...KAP.voices, vega: 'NEW_AMERICAN' } };
   ok(R.rosterFor(byte).find((r) => r.nyckel === 'vega').id === 'NEW_AMERICAN', 'changing Vega\'s voice is one value in the json');
