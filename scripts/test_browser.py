@@ -1074,6 +1074,9 @@ def episode(browser, base):
     check(s["lang"] == "en" and s["doc"] == "Weavers, episode 1" and s["name"] == "Weavers|Weavers" and s["sub"].startswith("Episode 1.") and not s["chapters"],
           f"episode, start: an English page with one episode ({s['doc']!r}, {s['sub']!r}, chapters shown {s['chapters']})")
     check(s["load"].startswith("Put your headphones on") and "traffic" in s["traffic"], f"episode, start: its notes in English ({s['load']!r})")
+    # v55: the safety note stands here, outside the story, since she no longer says it in scene 1.
+    check("stop whenever you need to" in s["traffic"] and "Out here it never is." in s["traffic"],
+          f"episode, start: the safety note says stop when you need to, and that a stop is never dangerous ({s['traffic']!r})")
     page.click("#start-btn")
     try:
         page.wait_for_function("!document.getElementById('done').hidden", timeout=900000)

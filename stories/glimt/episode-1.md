@@ -1,6 +1,6 @@
 # Glimt, episode 1: Keep Going
 
-English version 1, 2026-10-23, translated from the Swedish draft 7 (`episod-1.md`, app version 38). Henric decided on 23/10 that Glimt goes out in English. Five changes he asked for are in this version, and the pauses are marked from his walk the same morning (what changed is at the end). Recorded in app version 41 (27/10, Paula as Vega), and again in version 45 (29/10) with Jessica as Vega, Henric's choice, from the text of Manus version 8. Version 46 (29/10) adds her "Now." after each question she asks for a stop, since she promises it (Manus version 9); the stop is counted from her Now. Version 51 (29/10, Manus version 11, Henric's two notes): the star she wants is a wish, not a task, so nothing asks the walker to go out at night; and she says only what she sees of the walker's world, so the two lines about the loop being a copy are struck and kept as a thread for a later episode (Planted, at the end). Only the changed lines are recorded again.
+English version 1, 2026-10-23, translated from the Swedish draft 7 (`episod-1.md`, app version 38). Henric decided on 23/10 that Glimt goes out in English. Five changes he asked for are in this version, and the pauses are marked from his walk the same morning (what changed is at the end). Recorded in app version 41 (27/10, Paula as Vega), and again in version 45 (29/10) with Jessica as Vega, Henric's choice, from the text of Manus version 8. Version 46 (29/10) adds her "Now." after each question she asks for a stop, since she promises it (Manus version 9); the stop is counted from her Now. Version 51 (29/10, Manus version 11, Henric's two notes): the star she wants is a wish, not a task, so nothing asks the walker to go out at night; and she says only what she sees of the walker's world, so the two lines about the loop being a copy are struck and kept as a thread for a later episode (Planted, at the end). Only the changed lines are recorded again. Version 55 (29/10, Manus version 13): "Go however you like. If you have to stop, stop. Your road comes before mine." is struck from scene 1, for it broke the illusion (Henric); the start screen says it instead, outside the story. Cut out of the take, nothing recorded.
 
 **What the episode has to do:** Vega and the walker meet. The walker should understand three things without anyone explaining them: she sees glimpses of your world but never hears you, she can only be heard while you move, and your steps hide her.
 
@@ -128,8 +128,6 @@ If the walker was already standing:
 >
 > [walking] You're walking. Like someone who's allowed to go wherever they like.
 > [running] You're running. Nobody runs here. It's not banned. Nobody's got anything to run to, that's all.
->
-> Go however you like. If you have to stop, stop. Your road comes before mine.
 >
 > I'm walking too. Everyone does, after the shift. Round the loop, forty minutes. "Health-promoting movement," it says on the wall. (deadpan) We're very healthy.
 >
