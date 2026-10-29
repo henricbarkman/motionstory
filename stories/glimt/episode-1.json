@@ -3,19 +3,23 @@
   "title": "Keep Going",
   "language": "en",
   "source": "stories/glimt/episode-1.md",
-  "style": "Close and spoken, one person on a bad phone line. Spoken English of a young working woman, not literary, not sitcom. Asides: lower, quicker, turned away from the line. Translated from the Swedish draft 7 (episod-1.json, v40), 2026-10-23; voices chosen 2026-10-26.",
+  "style": "Close and spoken, one person on a bad phone line. Spoken English of a young working woman, not literary, not sitcom. Asides: lower, quicker, turned away from the line. Translated from the Swedish draft 7 (episod-1.json, v40), 2026-10-23; voices chosen 2026-10-26, Vega recast as Jessica 2026-10-29.",
   "targetMinutes": 10.5,
   "voices": {
-    "vega": "FrzKLwOr0y3qieiphjs2",
+    "vega": "Y4SxZRpAUjgjFSmjHhym",
     "snackan": "kLhAstPcnnPxqzk6gS5i"
   },
   "voiceNotes": {
-    "vega": "Paula, Soothing, Gentle and Warm (British, her own accent), eleven_v3, no accent tag (Henric 2026-10-26).",
+    "vega": "Jessica, Soft and Demure (American, a professional clone), eleven_v4, stability 0.3, no overall tag (Henric 2026-10-29: 'Som provet'). Her recording carries a hiss, taken by the local filter (denoise: render_glimt.py DENOISE, Henric's nr=12).",
     "snackan": "Rowan (British, his own accent), eleven_v3, no tags, stability 1.0 so it stays flat (Henric 2026-10-26). Played through the earpiece filter named under snackaFilter (glimt/herside.js)."
   },
   "voiceSettings": {
     "snackan": {
       "stability": 1.0
+    },
+    "vega": {
+      "stability": 0.3,
+      "denoise": true
     }
   },
   "snackaFilter": "mellan",
@@ -37,21 +41,21 @@
   },
   "klarhet": 0.45,
   "lines": {
-    "s0-1": "[mutters to herself, quick and low] There it is again. Right at the edge.\n\nIt's the lights. It's always the lights. ...It's not the lights.\n\nIt's closer tonight. Now. Do it now. ...Okay.",
-    "s0-2": "[calling out, unsure] Hello? [louder] Hello! [urgent] Wait!\n\n[flustered, quick] No, no, don't wait! Sorry. Keep going. When you stand still, you disappear on me. I'm trying to keep up.\n\n[calmer] I don't know who you are. I don't even know if you can hear this. I can't hear anything from you. Not a sound. I just get glimpses. A shape at the edge. And bits of your world.\n\nBut there's one thing I have to know.",
-    "s0-ask1": "So here's how. I ask, and if it's yes, you stop. [quick, half a laugh at herself] Not now! Once I've asked. And then stay put till I say go. I'm a bit slow. [pause] Can you see me?",
+    "s0-1": "[mutters to herself, quick and low] There it is again. Right at the edge.\n\nIt's the lights. It's always the lights.\n\nIt's not the lights.\n\nOkay, now. Do it now.",
+    "s0-2": "[calling out, unsure] Hello? [louder] Hello! [urgent] Wait!\n\n[flustered, quick] No, no, no, don't wait! Sorry. Keep going. Don't disappear. When you stand still, you disappear on me. I'm keeping up instead.\n\nI don't know who you are. I don't even know if you can hear this. I can't hear anything from you. Not a sound. I just get glimpses. A shape at the edge. And bits of your world.\n\nBut I have thought about this. About you.",
+    "s0-ask1": "So here's what we are gonna do. I will ask you a question and then say now. If the answer is yes, you stop for a couple of seconds. If it is no, you keep going.\n\n[pause] [calm, slowly, serious] Ok. Can you see me?",
     "x-stod": "[steady, clear] You'd already disappeared when I asked. Keep going a bit, then I'll ask again.",
     "s0-again1": "Right. Can you see me?",
     "s0-go1": "[steady, clear] ...There, I've lost you. Now go.",
     "x-ga-igen": "[steady, clear] I can't see you when you stand still. Go.",
     "s0-yes1-a": "[mutters to herself, quick and low] What? That can't be right. You can't see me. You can't.",
     "s0-yes1-b": "You just wanted to answer. Fine. Once more, then. [pause] Can you hear me?",
-    "s0-no1": "[dry] No. Didn't think so. [pause] Or I missed it. One more thing. Can you hear me?",
+    "s0-no1": "[dry] No. Didn't think so. [pause] One more thing. [pause] Can you hear me?",
     "s0-again2": "Right. Can you hear me?",
     "s0-go2": "[steady, clear] ...There! Yes. Go now, go.",
-    "s0-yes2": "[a stunned little laugh] You heard me. I didn't think I'd get this far.\n\n[softly] I see you.\n\n[quietly] And you hear me.",
+    "s0-yes2": "[stunned] You heard me. I didn't think I'd get this far.\n\n[softly] I see you.\n\n[quietly] And you hear me.",
     "s0-yes2-aside": "[whispers to herself] You hear me.",
-    "s0-no2": "No. No, of course not. You're steps, not ears. [a short laugh that dies] I'll talk anyway. Never stopped me before.",
+    "s0-no2": "No. No, of course not. You're steps, not ears. [quietly] I'll talk anyway. Never stopped me before.",
     "s1-walk": "[calmly] There. You're clear now.\n\nYou're walking. Like someone who's allowed to go wherever they like.",
     "s1-run": "[calmly] There. You're clear now.\n\nYou're running. Nobody runs here. It's not banned. Nobody's got anything to run to, that's all.",
     "s1-2": "Go however you like. If you have to stop, stop. Your road comes before mine.\n\nI'm walking too. Everyone does, after the shift. Round the loop, forty minutes. \"Health-promoting movement,\" it says on the wall. [deadpan] We're very healthy.\n\nI don't know anything about you, so I'll ask. Same as before: if it's yes, you stop until I say go. It's safe here, I'm just doing my round.",
@@ -85,7 +89,7 @@
     "s3-dry": "And it's dry where you are. It never rains here. That would be a waste.",
     "s3-near": "[slowly] And there's something near you.",
     "s3-bro": "A bridge. It's blurry, like a pencil line. [pause] We've got a bridge here too. It goes over nothing. Someone copied the bridge and forgot the river.",
-    "s3-vatten": "Water. It's glinting. [pause] We've got water here too. Sounds like water, anyway. I've found the speaker.",
+    "s3-vatten": "Water. It's glinting. [pause] We've got water here too. Sounds like water, anyway. I have found the speaker.",
     "s3-skog": "Woods. Thick ones. [pause] We've got woods here too, right at the back. Flat as a painting, but they rustle. They got that bit right.",
     "s3-berg": "A hill. [pause] We've got a hill here too. You're not allowed up it. I don't think it'd hold.",
     "s3-kyrkogard": "A graveyard. [pause] We've got a graveyard here too. No graves. Someone must have thought it looked nice.",
@@ -239,7 +243,6 @@
       "talk"
     ]
   },
-  "silenceDb": -26,
   "breakFrom": {
     "x-stod": "keep",
     "s0-go1": "now",
@@ -252,190 +255,190 @@
     "s4-lamp-1": "not"
   },
   "seconds": {
-    "s0-1": 13.24,
-    "s0-2": 29.96,
-    "s0-ask1": 15.49,
-    "x-stod": 5.25,
-    "s0-again1": 1.8,
-    "s0-go1": 2.69,
-    "x-ga-igen": 3.32,
-    "s0-yes1-a": 5.56,
-    "s0-yes1-b": 7.08,
-    "s0-no1": 9.95,
-    "s0-again2": 1.15,
-    "s0-go2": 2.77,
-    "s0-yes2": 7.39,
-    "s0-yes2-aside": 1.88,
-    "s0-no2": 8.99,
-    "s1-walk": 7.16,
-    "s1-run": 9.56,
-    "s1-2": 31.4,
-    "s1-self": 3.63,
-    "s1-q2": 2.69,
-    "s1-again": 1.72,
-    "s1-go": 2.77,
-    "s1-q2-yes": 4.83,
-    "s1-q2-no": 6.43,
-    "s1-3": 16.93,
-    "s2-1": 15.39,
-    "s2-2": 8.83,
-    "s2-count": 9.95,
+    "s0-1": 7.97,
+    "s0-2": 25.08,
+    "s0-ask1": 14.92,
+    "x-stod": 4.99,
+    "s0-again1": 1.96,
+    "s0-go1": 2.93,
+    "x-ga-igen": 3.24,
+    "s0-yes1-a": 3.97,
+    "s0-yes1-b": 6.03,
+    "s0-no1": 5.15,
+    "s0-again2": 1.72,
+    "s0-go2": 3.08,
+    "s0-yes2": 6.61,
+    "s0-yes2-aside": 1.49,
+    "s0-no2": 7.39,
+    "s1-walk": 6.27,
+    "s1-run": 8.44,
+    "s1-2": 26.59,
+    "s1-self": 2.69,
+    "s1-q2": 2.85,
+    "s1-again": 2.04,
+    "s1-go": 2.43,
+    "s1-q2-yes": 5.25,
+    "s1-q2-no": 5.15,
+    "s1-3": 16.12,
+    "s2-1": 14.52,
+    "s2-2": 7.08,
+    "s2-count": 8.91,
     "s2-count-stop": 2.69,
-    "s2-3": 14.37,
-    "s2-4": 16.04,
-    "s2-self": 3.87,
-    "s2-5": 9.17,
-    "s2-6": 8.59,
-    "s2-ask": 3.47,
-    "s2-lamp-plea": 4.99,
-    "s2-lamp-plea2": 5.72,
-    "s2-lamp-mine": 3.32,
-    "s2-lamp-1": 15.8,
-    "s2-lamp-2": 4.68,
-    "s2-no": 11.65,
-    "s3-1": 11.15,
-    "s3-dark": 11.08,
-    "s3-light": 17.24,
-    "s3-rain": 12.43,
-    "s3-dry": 4.6,
-    "s3-near": 2.12,
-    "s3-bro": 12.51,
-    "s3-vatten": 10.76,
-    "s3-skog": 11.15,
-    "s3-berg": 7.39,
-    "s3-kyrkogard": 7.71,
-    "s3-2": 9.33,
+    "s2-3": 8.05,
+    "s2-4": 16.59,
+    "s2-self": 2.69,
+    "s2-5": 8.91,
+    "s2-6": 6.27,
+    "s2-ask": 3.79,
+    "s2-lamp-plea": 4.36,
+    "s2-lamp-plea2": 4.52,
+    "s2-lamp-mine": 3.63,
+    "s2-lamp-1": 13.79,
+    "s2-lamp-2": 3.87,
+    "s2-no": 9.4,
+    "s3-1": 12.36,
+    "s3-dark": 12.36,
+    "s3-light": 14.92,
+    "s3-rain": 12.51,
+    "s3-dry": 4.99,
+    "s3-near": 2.93,
+    "s3-bro": 11.31,
+    "s3-vatten": 8.52,
+    "s3-skog": 9.95,
+    "s3-berg": 6.53,
+    "s3-kyrkogard": 7.89,
+    "s3-2": 8.12,
     "s4-1": 2.85,
-    "s4-self": 2.12,
-    "s4-2": 7.08,
-    "s4-3": 1.49,
-    "s4-ok": 12.51,
-    "s4-ok-lamp": 14.03,
-    "s4-lamp-1": 2.19,
-    "s4-lamp-2": 8.2,
-    "s4-back": 8.28,
-    "s4-onward": 8.28,
-    "s4-yes": 29.73,
-    "s4-never-1": 14.03,
-    "s4-never-yes-1": 1.72,
-    "s4-never-yes-2": 21.0,
-    "s4-never-no": 17.71,
-    "s4-all": 29.39,
+    "s4-self": 1.65,
+    "s4-2": 6.92,
+    "s4-3": 1.65,
+    "s4-ok": 11.65,
+    "s4-ok-lamp": 13.71,
+    "s4-lamp-1": 2.12,
+    "s4-lamp-2": 6.03,
+    "s4-back": 7.63,
+    "s4-onward": 7.81,
+    "s4-yes": 25.97,
+    "s4-never-1": 12.36,
+    "s4-never-yes-1": 1.07,
+    "s4-never-yes-2": 17.4,
+    "s4-never-no": 15.15,
+    "s4-all": 26.75,
     "r-hjalp": 3.71,
-    "r-vilar": 2.12,
+    "r-vilar": 2.19,
     "x-avvikelse": 2.59
   },
   "cues": {
     "s0-ask1": {
-      "see": 14.94
+      "see": 14.32
     },
     "s0-again1": {
-      "see": 1.36
+      "see": 1.32
     },
     "s0-yes1-b": {
-      "hear": 6.62
+      "hear": 5.44
     },
     "s0-no1": {
-      "hear": 9.24
+      "hear": 4.38
     },
     "s0-again2": {
-      "hear": 0.76
+      "hear": 1.14
     },
     "s0-no2": {
-      "talk": 5.6
+      "talk": 4.78
     },
     "s1-again": {
-      "are": 1.04
+      "are": 0.98
     },
     "s2-ask": {
-      "stop": 0.1
+      "stop": 0.18
     },
     "s4-never-1": {
-      "last:stop": 13.54
+      "last:stop": 11.76
     },
     "s2-3": {
-      "thirty": 8.3
+      "thirty": 4.9
     }
   },
   "breaks": {
     "x-stod": [
       {
-        "from": 1.94,
-        "to": 3.07,
+        "from": 2.41,
+        "to": 2.65,
         "said": "You'd already disappeared when I asked."
       }
     ],
     "s0-go1": [
       {
-        "from": 1.46,
-        "to": 2.08,
+        "from": 1.74,
+        "to": 2.02,
         "said": "There, I've lost you."
       }
     ],
     "x-ga-igen": [
       {
-        "from": 2.08,
-        "to": 2.75,
+        "from": 2.38,
+        "to": 2.69,
         "said": "I can't see you when you stand still."
       }
     ],
     "s0-go2": [
       {
-        "from": 1.41,
-        "to": 1.82,
+        "from": 1.42,
+        "to": 1.64,
         "said": "There! Yes."
       }
     ],
     "s1-go": [
       {
-        "from": 1.46,
-        "to": 2.08,
+        "from": 1.45,
+        "to": 1.7,
         "said": "There. Got it."
       }
     ],
     "s2-count-stop": [
       {
-        "from": 0.52,
-        "to": 1.3,
+        "from": 0.6,
+        "to": 0.93,
         "said": "go."
       }
     ],
     "s2-lamp-plea": [
       {
-        "from": 3.5,
-        "to": 4.12,
+        "from": 3.2,
+        "to": 3.38,
         "said": "no. No, no... Please, go!"
       }
     ],
     "s2-lamp-plea2": [
       {
-        "from": 0.88,
-        "to": 1.59,
+        "from": 0.93,
+        "to": 1.36,
         "said": "Please..."
       },
       {
-        "from": 3.68,
-        "to": 4.99,
+        "from": 3.38,
+        "to": 3.87,
         "said": "Please... I can't move from here till you do."
       }
     ],
     "s4-lamp-1": [
       {
-        "from": 0.65,
-        "to": 1.48,
+        "from": 0.61,
+        "to": 0.99,
         "said": "no."
       }
     ]
   },
   "breaksMeasuredOn": {
-    "x-stod": 5.25,
-    "s0-go1": 2.69,
-    "x-ga-igen": 3.32,
-    "s0-go2": 2.77,
-    "s1-go": 2.77,
+    "x-stod": 4.99,
+    "s0-go1": 2.93,
+    "x-ga-igen": 3.24,
+    "s0-go2": 3.08,
+    "s1-go": 2.43,
     "s2-count-stop": 2.69,
-    "s2-lamp-plea": 4.99,
-    "s2-lamp-plea2": 5.72,
-    "s4-lamp-1": 2.19
+    "s2-lamp-plea": 4.36,
+    "s2-lamp-plea2": 4.52,
+    "s4-lamp-1": 2.12
   }
 }

@@ -1,6 +1,6 @@
 # Glimt, episode 1: Keep Going
 
-English version 1, 2026-10-23, translated from the Swedish draft 7 (`episod-1.md`, app version 38). Henric decided on 23/10 that Glimt goes out in English. Five changes he asked for are in this version, and the pauses are marked from his walk the same morning (what changed is at the end). Not recorded yet: the lines are recorded once he has read this and chosen a voice.
+English version 1, 2026-10-23, translated from the Swedish draft 7 (`episod-1.md`, app version 38). Henric decided on 23/10 that Glimt goes out in English. Five changes he asked for are in this version, and the pauses are marked from his walk the same morning (what changed is at the end). Recorded in app version 41 (27/10, Paula as Vega), and again in version 45 (29/10) with Jessica as Vega, Henric's choice, from the text of Manus version 8.
 
 **What the episode has to do:** Vega and the walker meet. The walker should understand three things without anyone explaining them: she sees glimpses of your world but never hears you, she can only be heard while you move, and your steps hide her.
 
@@ -23,7 +23,7 @@ English version 1, 2026-10-23, translated from the Swedish draft 7 (`episod-1.md
 
 **Voices:** Vega. The earpiece, a couple of lines: in English a man's voice, very soft, steady and even, calm and polite, close to the microphone, with no feeling in it (Henric 23/10: something like HAL 9000, not a copy of it). Not cold and robotic, and not thin.
 
-Pauses are marked where Henric's walk on 23/10 had them too long or too short, as "(pause about N s; was M s on 23/10)". The app does not follow them yet: they are for the English rebuild.
+Pauses are marked where Henric's walk on 23/10 had them too long or too short, as "(pause about N s; was M s on 23/10)". The app follows them since version 41 (27/10), except the breath before "I'm standing still.": about 1.1 s, so the half minute still holds.
 
 ---
 
@@ -90,7 +90,7 @@ If the walker was already standing:
 
 > **Yes, the walker stops:**
 > (the walker stays standing, clearly) ...There! Yes. Go now, go.
-> (a stunned little laugh) You heard me. I didn't think I'd get this far.
+> (stunned) You heard me. I didn't think I'd get this far.
 >
 > (softly) I see you.
 >
@@ -101,7 +101,7 @@ If the walker was already standing:
 > (to herself, almost a whisper) You hear me.
 >
 > **No, the walker keeps going:**
-> No. No, of course not. You're steps, not ears. (a short laugh that doesn't hold) I'll talk anyway. Never stopped me before.
+> No. No, of course not. You're steps, not ears. (quietly) I'll talk anyway. Never stopped me before.
 >
 > (The Code starts under "I'll talk anyway".)
 >
@@ -232,7 +232,7 @@ If the walker stays standing about ten seconds more:
 > And there's something near you.
 >
 > [bridge] A bridge. It's blurry, like a pencil line. (pause) We've got a bridge here too. It goes over nothing. Someone copied the bridge and forgot the river.
-> [water] Water. It's glinting. (pause) We've got water here too. Sounds like water, anyway. I've found the speaker.
+> [water] Water. It's glinting. (pause) We've got water here too. Sounds like water, anyway. I have found the speaker.
 > [woods] Woods. Thick ones. (pause) We've got woods here too, right at the back. Flat as a painting, but they rustle. They got that bit right.
 > [hill] A hill. (pause) We've got a hill here too. You're not allowed up it. I don't think it'd hold.
 > [graveyard] A graveyard. (pause) We've got a graveyard here too. No graves. Someone must have thought it looked nice.
@@ -388,7 +388,7 @@ The long gaps all come from one thing: scenes 2, 3 and 4 open at fixed minutes (
 
 ## For the English rebuild
 
-Not built now. The app, the Swedish manuscript and the tests stay as they are until the English version is built.
+Built in version 41 (27/10). The list stays as the record of what the build had to do.
 
 - **The scenes follow each other.** Scene 2 opens about 2 s after scene 1 ends, scene 3 about 6 s after scene 2, scene 4 about 10 s after scene 3, instead of at minutes 5, 7.5 and 9.5. The end comes about 10 s after the gravel (a little less for a walker nearly back) instead of 25. Removing `AT` is not enough: `opens(Math.max(AT.x, now() + 20))` (and `+ 25` for the bell) have their own floors, which would give 20, 20 and 25 s and about 11:20. Change the floors, `END_SOON`/`END_GAP` (15 and 25), `targetMinutes: 12` and the subtitle "Ungefär tolv minuter" too. A short breath (about 1-1.5 s) between clips where the table says so, 2 s where she stops or a name lands.
 - **The Code:** starts faint under her last line before the credits (both branches) and fades up to full volume as she finishes. Version 38 starts it 0.3 s after her last word at full volume. "You hear me." is an aside (played at 0.7) and comes as the song enters, so keep the song faint until after the whisper and let it grow then, or the line Henric asked for drowns.
