@@ -39,9 +39,11 @@ const S = {
   skriverOm: null, // the id of the line being rewritten
 };
 
-// The episodes, in the order of the tabs. The English episode 1 first: it is
-// the one being recorded (Henric 2026-10-23).
-const FLIKAR = ['1en', '1', '2', '3'];
+// The episodes, in the order of the tabs. Only the English episode 1: Glimt
+// is made in English, and the Swedish episodes are hidden from the desk
+// (Henric 2026-10-29). Hidden, not gone: their files stay, and #episod-1 etc.
+// still open them.
+const FLIKAR = ['1en'];
 const FLIKNAMN = { '1en': 'Episode 1', 1: 'Episod 1', 2: 'Episod 2', 3: 'Episod 3' };
 
 // --- Small helpers -------------------------------------------------------------------
