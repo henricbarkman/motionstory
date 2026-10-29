@@ -26,7 +26,7 @@ import { Listener, LISTEN_YES } from './listen.js';
 
 // The version the start screen shows, the same number as the service
 // worker's cache. Bump both together.
-const APP_VERSION = 54;
+const APP_VERSION = 55;
 
 // Seconds the credits wait for their song if it is not fetched when they are
 // due. It has had all of scene 0; a song not here by then is not coming.
@@ -1816,7 +1816,11 @@ function showResume(def) {
 function englishPage() {
   document.documentElement.lang = 'en';
   const set = (id, text) => { const el = $(id); if (el) el.textContent = text; };
-  set('traffic-note', 'You keep an eye on the traffic, not her. Nothing in the story is worth walking against a red light for.');
+  // The safety note, outside the story (v55): until then Vega said it in
+  // scene 1 ("Go however you like. If you have to stop, stop. Your road comes
+  // before mine."), which broke the illusion (Henric 29/10).
+  set('traffic-note', 'You keep an eye on the traffic, not her. Walk at your own pace, and stop whenever you need to. ' +
+    'In the story a stop can sound dangerous. Out here it never is.');
   set('chrome-link', 'Open in Chrome');
   set('end-word', 'Come back out and walk.');
   set('copy-btn', 'Copy the log');
