@@ -18,13 +18,14 @@ import { HerSide, SilentSide } from './herside.js';
 import { runLab, labHelpers, LABS, TITLES, PROV, ratedThisRound, RESUMABLE, chosenStations, knockPattern, buzzWords, realTarget, strayJumpsNote, strayTurns, strayTurnsNote } from './lab.js';
 import { Synth, SilentSynth } from './synth.js';
 import { Mixer, Library, readKlarhet, readBakgrund, brusOf } from './audio.js';
-import { chooseWorld, defaultWorld, fetchLandmarks, nearestByName } from './world.js';
+import { chooseWorld, defaultWorld, fetchLandmarks, nearestByName, orGuess, lookAgain } from './world.js';
+import { Bag } from './bag.js';
 import { Memory, drawWorld, KEY_NAMES } from './memory.js';
 import { Listener, LISTEN_YES } from './listen.js';
 
 // The version the start screen shows, the same number as the service
 // worker's cache. Bump both together.
-const APP_VERSION = 51;
+const APP_VERSION = 52;
 
 // Seconds the credits wait for their song if it is not fetched when they are
 // due. It has had all of scene 0; a song not here by then is not coming.
@@ -46,6 +47,9 @@ const LUFT_URL = readLuft(params.get('luft'));
 // over the chapter's own (episode-1.json: -12, v49), so Henric can try
 // another level without a new build (readBakgrund in audio.js).
 const BAKGRUND_URL = readBakgrund(params.get('bakgrund'));
+// ?kasse=tom empties the carrier bag (bag.js) before the walk, so stories
+// already heard can be heard again: for listening through them (v52).
+const EMPTY_BAG = params.get('kasse') === 'tom';
 // A test walk wins over everything else the link says.
 const PROV_ID = Object.hasOwn(PROV, params.get('prov') || '') ? params.get('prov') : null;
 const TEST = PROV_ID ? PROV[PROV_ID] : null;
@@ -141,6 +145,8 @@ const CHAPTERS = {
       first: 's0-1',
       run: ctx => runEpisode1(ctx, withAir(EPISODE_EN, LUFT_URL ?? 1)),
       air: true,
+      // Its scene 3 tells a story from the carrier bag (bag.js).
+      bag: true,
       subtitle: 'Episode 1. About eleven minutes. Walk or run. She can hear you while you move.',
       listenSubtitle: 'Episode 1. About eleven minutes. Listen without walking.',
       asks: [],
@@ -216,6 +222,10 @@ const EPISODE_KEY = (EN_PAGE ? 'glimt-episode-1-en' : 'glimt-episod-1') + (SIM ?
 // reads the same storage keys as before. A listen does not take the last
 // walk's log, which may be waiting to go to Demi.
 const MEMORY_KEY = EN_PAGE ? 'glimt-memory-en' : 'glimt-memory';
+// The stories she has told (bag.js), the English page's: a sim and a listen
+// keep their own, so a try at the desk or an evening on the sofa does not
+// use up the stories of the walks.
+const BAG_KEY = 'glimt-bag-en' + (SIM ? '-sim' : LISTEN ? '-lyssna' : '');
 const LAST_LOG_KEY = (EN_PAGE ? 'glimt-last-log-en' : 'glimt-last-log') + (LISTEN ? '-lyssna' : '');
 // The contact her voice gets while the walker stands still in an episode:
 // dull and far, at once, where the chapters let it sink over half a minute.
@@ -254,6 +264,7 @@ let creditsRaw = null;          // a promise of the credits' bytes, fetched with
 let walk, waiter, world;
 let listener = null;            // the walker of a listen (listen.js)
 let memory = null;
+let bag = null;                 // the carrier bag's record (bag.js), in an episode that has one
 // A walk shorter than this is not remembered: opening the app and pressing
 // Avsluta should not make her say you were just here.
 const MEMORY_MIN_WALK = 60;     // s
@@ -313,10 +324,13 @@ function savedLandmark() {
   } catch (_) { return null; }
 }
 
+// Chapter 1 still saves its guess when the map had none (orGuess): the
+// Swedish chapters are frozen as they were.
 function saveLandmark(w) {
-  if (!w.landmark) return;
+  const name = orGuess(w, 'landmark');
+  if (!name) return;
   const c = w.landmarkCoord;
-  const v = { name: w.landmark, lat: c ? c.lat : null, lon: c ? c.lon : null, at: Date.now() };
+  const v = { name, lat: c ? c.lat : null, lon: c ? c.lon : null, at: Date.now() };
   try { localStorage.setItem(LANDMARK_KEY, JSON.stringify(v)); } catch (_) {}
 }
 
@@ -465,6 +479,13 @@ async function start() {
     : `kapitel ${chapterNo}, variant ${variant.toUpperCase()}`;
   log(`start, ${what}${SIM ? ', simulerad' : LISTEN ? ', lyssning' : ''}`);
   log(`webbläsare: ${BROWSER}`);
+  // The carrier bag, for an episode that tells from it.
+  bag = def.bag ? new Bag(localStorage, BAG_KEY) : null;
+  if (bag && EMPTY_BAG) { bag.empty(); log('kassen: tömd (från länken)'); }
+  if (bag) {
+    const heard = Object.keys(bag.heard);
+    log(`kassen: ${heard.length ? `hörda ${heard.join(', ')}` : 'inga hörda än'}`);
+  }
   if (!def.lab && (KLARHET_URL !== null || chapter.klarhet !== undefined)) {
     log(`linjens klarhet ${KLARHET_URL ?? chapter.klarhet}${KLARHET_URL !== null ? ' (från länken)' : ''}`);
   }
@@ -586,6 +607,7 @@ async function start() {
     variant,
     world,
     state: () => walk.state(),
+    position: () => walk.position(),
     // After stop the aborted waits let the script run on to its end; its
     // scene marks must not land in the log after "avslutat".
     log: msg => { if (!finished) log(msg); },
@@ -696,14 +718,35 @@ async function start() {
       },
       seconds: id => (chapter.seconds || {})[id] || 0,
       cue: (id, word) => ((chapter.cues || {})[id] || {})[word] || 0,
+      // The stories told, kept as soon as one is (a walk broken off keeps
+      // what was heard before). Not once the walk is over: a line cut short
+      // by the end was not heard.
+      bag: bag && {
+        has: id => bag.has(id),
+        add(id, info) {
+          if (finished) return;
+          bag.add(id, { ...info, episode: chapterNo, version: APP_VERSION });
+          log(`kassen: ${id} berättad, sparad`);
+        },
+      },
+      // The map once more, from where the walker is now (lookAgain): scene
+      // 3's story must be near where they are then, and the first answer was
+      // for where the walk began. Not waited for.
+      lookAround() {
+        const p = walk.position();
+        if (!p) { log('kartan igen: ingen säker position, frågar inte'); return; }
+        lookAgain(world, p.latitude, p.longitude, { log: m => { if (!finished) log(m); } });
+      },
       remember(facts) {
         if (finished) return;
         // A walk broken off does not overwrite one that was walked to its end.
         try {
           const old = JSON.parse(localStorage.getItem(EPISODE_KEY) || 'null');
           if (old && old.klar && !facts.klar) return;
+          // The place she saw: an episode with the bag says which (or none)
+          // in `facts`; the Swedish one saves its landmark, guessed or not.
           localStorage.setItem(EPISODE_KEY, JSON.stringify({
-            ...facts, landmark: world.landmark, at: Date.now(), version: APP_VERSION,
+            landmark: orGuess(world, 'landmark'), ...facts, at: Date.now(), version: APP_VERSION,
           }));
         } catch (_) {}
         if (facts.klar) {
@@ -949,7 +992,7 @@ function render(s) {
     tr(`${Math.round(s.distToStart)} m från start${s.approaching ? ', på väg tillbaka' : ''}`,
       `${Math.round(s.distToStart)} m from the start${s.approaching ? ', on the way back' : ''}`);
   if (s.distToTarget !== null) {
-    dist += `, ${Math.round(s.distToTarget)} m till ${CHAPTERS[chapterNo].lab ? 'målet' : world.landmark}`;
+    dist += `, ${Math.round(s.distToTarget)} m till ${CHAPTERS[chapterNo].lab ? 'målet' : orGuess(world, 'landmark')}`;
   }
   $('dist').textContent = dist;
   $('gps').textContent = !s.gpsSeen ? (EN_PAGE ? GPS_TROUBLE_EN[gpsTrouble] || 'waiting for GPS' : GPS_TROUBLE_WORD[gpsTrouble] || 'väntar på gps') :

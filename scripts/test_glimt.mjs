@@ -26,6 +26,9 @@ import { runChapter2 } from '../glimt/chapter2.js';
 import { runEpisode1, SV as EPISODE_SV, EN as EPISODE_EN, withAir } from '../glimt/episod1.js';
 import { breakAt, BREAK_LEAD, BREAK_FADE } from '../glimt/audio.js';
 import { Listener, LISTEN_YES } from '../glimt/listen.js';
+import { Bag, STORIES } from '../glimt/bag.js';
+import { haversine } from '../glimt/engine.js';
+import { REACH, PEAK_REACH } from '../glimt/world.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -334,6 +337,24 @@ const HESITATES = 7.25;
 
 const END_STOP = { 's4-all': ['end', 3, Infinity] };
 const out = (speed = 1.4, turn = 330) => t => ({ speed: t < 5 ? 0 : speed, heading: t < turn ? 0 : Math.PI });
+
+// The map's answer in a walk: `kind` every 300 m for 1.8 km round the start,
+// so a walker anywhere on a walk has one within reach when she speaks in
+// scene 3 (landmarksNear: at most 212 m off the grid, plus the fix). The
+// Swedish episode's landmark is the world's `landmark`, as before.
+const LAT0 = 59.38, LON0 = 13.5;
+const north = m => LAT0 + m / 111320;
+const east = m => LON0 + m / (111320 * Math.cos(LAT0 * Math.PI / 180));
+const town = kind => {
+  const found = [];
+  for (let i = -6; i <= 6; i++) for (let j = -6; j <= 6; j++) found.push({ name: kind, lat: north(300 * i), lon: east(300 * j) });
+  return found;
+};
+const WOODS = town('skog');
+// The Swedish guesses where the phone read nothing (world.js, orGuess).
+const GUESS = { light: 'light', rain: false, landmark: 'bro' };
+// Every landmark clip, for walkers that must hear none of them.
+const LANDMARK_LINES = ['s3-near', ...STORIES.map(st => st.line)];
 
 // `has`: lines that must be heard. `not`: lines that must not. `twice`:
 // lines said again after an interruption. `lamps`: how many times the lamp
@@ -885,9 +906,88 @@ const EPISODE_WALKERS = {
     walk: t => ({ ...out()(t), accuracy: 200, doppler: false }), stops: {},
     has: ['s2-count-stop', 's2-3', 's4-all'], skips: ['scene 2: she counts'], loose: true, limit: 60 * 60,
   },
+
+  // v52, Henric 29/10: "Inte hitta på något. Om hon inte kan se så spara
+  // replikerna om landmärket till en gång när hon kan se." In English she
+  // says only what the phone read; the Swedish episode still guesses.
+  // The map never answered (five walks of six until v23): in English no
+  // landmark and no "And there's something near you", scene 3 ends on the
+  // weather, and episode 2 is told of no place.
+  'no-map': {
+    walk: out(), stops: END_STOP,
+    world: { landmark: null, found: [], landmarkAnswered: 'fel', guess: GUESS },
+    has: ['s3-dark', 's3-dry', 's3-near', 's3-bro'],
+    lamps: 0, memory: { svarade: false, misstanke: false },
+    en: { has: ['s3-dark', 's3-dry'], not: LANDMARK_LINES, told: null, memory: { svarade: false, misstanke: false, landmark: null },
+      logs: ['scene 3: the bag: nothing read near the walker'], endsOn: 's3-dry' },
+  },
+  // The map found a bridge near where the walk began, and the walker has
+  // walked off: 500 m away by scene 3. Until v52 she named it anyway.
+  'left-behind': {
+    walk: t => ({ speed: t < 5 ? 0 : 1.4, heading: 0 }), stops: END_STOP,
+    world: { landmark: 'bro', found: [{ name: 'bro', lat: north(-200), lon: LON0 }], guess: GUESS },
+    has: ['s3-near', 's3-bro'],
+    lamps: 0, memory: { svarade: false, misstanke: false },
+    en: { has: ['s3-dry'], not: LANDMARK_LINES, told: null, memory: { svarade: false, misstanke: false, landmark: null }, endsOn: 's3-dry' },
+  },
+  // Woods everywhere, and the woods' story heard on an earlier walk: not
+  // told again, nor anything else. The Swedish episode has no bag.
+  'heard-it': {
+    walk: out(), stops: END_STOP, heard: ['woods'],
+    has: ['s3-near', 's3-skog'],
+    lamps: 0, memory: { svarade: false, misstanke: false },
+    en: { has: ['s3-dry'], not: LANDMARK_LINES, told: null, logs: ['every story about it heard'], endsOn: 's3-dry' },
+  },
+  // A bridge and water everywhere, the bridge's story heard: she tells the
+  // water's, and the bag keeps it.
+  'heard-one': {
+    walk: out(), stops: END_STOP, heard: ['bridge'],
+    world: { landmark: 'vatten', found: [...town('bro'), ...town('vatten')] },
+    has: ['s3-near', 's3-vatten'], not: ['s3-bro'],
+    lamps: 0, memory: { svarade: false, misstanke: false },
+    en: { has: ['s3-near', 's3-vatten'], not: ['s3-bro'], told: 'water', memory: { svarade: false, misstanke: false, landmark: 'vatten' } },
+  },
+  // The first lookup found nothing near the start; the second, at scene 2,
+  // finds woods all round: in English she tells the woods.
+  'found-later': {
+    walk: out(), stops: END_STOP,
+    world: { found: [] }, later: WOODS,
+    has: ['s3-near', 's3-skog'],
+    lamps: 0, memory: { svarade: false, misstanke: false },
+    en: { has: ['s3-near', 's3-skog'], told: 'woods', memory: { svarade: false, misstanke: false, landmark: 'skog' }, logs: ['kartan igen: '] },
+  },
+  // The woods' clip never comes (a dropped connection while it loads):
+  // "And there's something near you." and then nothing, so the woods stay
+  // in the bag for another walk and episode 2 is told of no place.
+  'lost-story': {
+    walk: out(), stops: END_STOP, lost: ['s3-skog'],
+    has: ['s3-near'], not: ['s3-skog'],
+    lamps: 0, memory: { svarade: false, misstanke: false },
+    en: { has: ['s3-near'], not: ['s3-skog'], told: null, memory: { svarade: false, misstanke: false, landmark: null },
+      logs: ['scene 3: s3-skog did not play (no sound), woods stays in the bag'] },
+  },
+  // No position all walk, so neither the sun nor the weather nor the map
+  // was read: in English scene 3 is her sitting down and nothing she sees.
+  'unread': {
+    walk: out(), stops: END_STOP,
+    world: { light: null, rain: null, landmark: null, found: [], guess: GUESS },
+    has: ['s3-light', 's3-dry', 's3-near', 's3-bro'],
+    lamps: 0, memory: { svarade: false, misstanke: false },
+    en: { has: ['s3-1'], not: ['s3-light', 's3-dark', 's3-rain', 's3-dry', ...LANDMARK_LINES], told: null, endsOn: 's3-1' },
+  },
+  // Stands from her last words before the credits until well past scene 1's
+  // wait: the phone never reads the walker moving with the line clear, so in
+  // English she does not say "You're walking" (v52). Swedish as v40.
+  'stands-through-1': {
+    walk: out(), stops: { 's0-no2': ['end', 0, E_CREDITS + 200], ...END_STOP },
+    has: ['s1-walk', 's1-2'],
+    lamps: 0, memory: { svarade: false, misstanke: false },
+    en: { has: ['s1-2'], not: ['s1-walk', 's1-run'], logs: ['scene 1: the phone has not read the walker moving'] },
+  },
 };
 
-// Every light, weather and landmark, each on a walker who never stops.
+// Every light, weather and landmark, each on a walker who never stops. The
+// map has the landmark all round the walk (town).
 const EPISODE_WORLDS = [
   { light: 'dark', rain: true, landmark: 'bro' },
   { light: 'light', rain: false, landmark: 'vatten' },
@@ -896,7 +996,7 @@ const EPISODE_WORLDS = [
 ];
 for (const w of EPISODE_WORLDS) {
   EPISODE_WALKERS[`world-${w.landmark}`] = {
-    walk: out(), stops: END_STOP, world: w,
+    walk: out(), stops: END_STOP, world: { ...w, found: town(w.landmark) },
     has: [`s3-${w.light}`, w.rain ? 's3-rain' : 's3-dry', `s3-${w.landmark}`],
     lamps: 0, memory: { svarade: false, misstanke: false },
   };
@@ -933,7 +1033,11 @@ function simulateEpisode(name, E = E_OPTS) {
   let cuts = 0;
   const skipped = [];         // {id, t}: lines not said, the walker already going
   const credited = [];        // when the credits started
-  const truth = [];           // {t, d, acc}: where the walker really is, m from the start, and the fix's accuracy
+  const truth = [];           // {t, d, acc, lat, lon}: where the walker really is, m from the start, and the fix's accuracy
+  // The stories heard (bag.js): those the walker heard before, then this walk's.
+  const bag = new Bag(null);
+  for (const id of profile.heard || []) bag.add(id);
+  const world = { light: 'dark', rain: false, landmark: 'skog', landmarkCoord: null, found: WOODS, ...(profile.world || {}) };
   let current = null;
   let t = 0;
   let lat = 59.38, lon = 13.5;
@@ -1001,11 +1105,25 @@ function simulateEpisode(name, E = E_OPTS) {
 
   const ctx = {
     variant: 'a',
-    world: { light: 'dark', rain: false, landmark: 'skog', landmarkCoord: null, ...(profile.world || {}) },
+    world,
     state: () => walk.state(),
+    position: () => walk.position(),
+    bag,
+    // As app.js at the start of scene 2: the map again, where the walker is
+    // now. `later`: what it finds then that the first lookup did not.
+    lookAround: () => {
+      if (!profile.later) return;
+      world.found = [...world.found, ...profile.later];
+      log.push(`${fmt(t)}  kartan igen: ${profile.later.length} nya`);
+    },
     log: msg => { said.push({ msg, t }); log.push(`${fmt(t)}  ${msg}  (contact ${walk.contact.value.toFixed(2)}, ${walk.tempo.band})`); },
     hold: on => { walk.contact.hold = on; },
     play(id, opts = {}) {
+      // `lost`: a clip that never came, as app.js: logged, no sound, nothing back.
+      if ((profile.lost || []).includes(id)) {
+        log.push(`${fmt(t)}  replik saknas: ${id}`);
+        return Promise.resolve(undefined);
+      }
       if (opts.unless && opts.unless(walk.state())) {
         log.push(`${fmt(t)}  – ${id}: the walker is going, not said`);
         skipped.push({ id, t });
@@ -1083,7 +1201,7 @@ function simulateEpisode(name, E = E_OPTS) {
       if (Number.isInteger(t)) {
         lat += (speed * Math.cos(heading)) / 111320;
         lon += (speed * Math.sin(heading)) / (111320 * Math.cos(lat * Math.PI / 180));
-        truth.push({ t, acc: accuracy, d: Math.hypot((lat - 59.38) * 111320, (lon - 13.5) * 111320 * Math.cos(lat * Math.PI / 180)) });
+        truth.push({ t, acc: accuracy, lat, lon, d: Math.hypot((lat - 59.38) * 111320, (lon - 13.5) * 111320 * Math.cos(lat * Math.PI / 180)) });
         if (t % every === 0) {
           const v = !doppler ? null : phone ? phone(speed) : speed + (speed ? (Math.random() - 0.5) * 0.2 : 0);
           const j = () => (Math.random() - 0.5) * 2 * jitter;
@@ -1101,7 +1219,7 @@ function simulateEpisode(name, E = E_OPTS) {
     }
     await Promise.race([done, Promise.resolve()]);
     Math.random = random;
-    return { log, said, ended, t, played, sideCalls, memory, cuts, credited, truth, skipped, stops, E };
+    return { log, said, ended, t, played, sideCalls, memory, cuts, credited, truth, skipped, stops, E, bag, world, heardBefore: profile.heard || [] };
   })();
 }
 
@@ -1274,6 +1392,45 @@ function episodeProblems(name, run) {
   if (p.reserves !== undefined && count('r-hjalp') !== p.reserves) problems.push(`the snäcka asked ${count('r-hjalp')} times, wanted ${p.reserves}`);
   for (const want of p.logs || []) if (!log.some(l => l.includes(want))) problems.push(`the log never says "${want}"`);
   if (p.cuts !== undefined && run.cuts !== p.cuts) problems.push(`${run.cuts} lines cut short, wanted ${p.cuts}`);
+
+  // She never makes up what she sees (v52). In English: every landmark she
+  // names is within reach of where the walker really is as she says it,
+  // checked against the walker's true path and not the phone's fix;
+  // "something near you" only right before one; a story told once, and one
+  // the walker heard before never; and the bag keeps what she told.
+  if (E_OPTS.bag) {
+    // Her answer to the snäcka (the reserve) can come between, and the line
+    // it broke off is then said again.
+    const said = played.filter(x => !x.side && x.id !== 'r-vilar');
+    said.forEach((x, i) => {
+      const story = STORIES.find(st => st.line === x.id);
+      // A story clip that never came (`lost`) leaves s3-near with nothing after it.
+      const lostStory = (p.lost || []).some(id => STORIES.some(st => st.line === id));
+      if (x.id === 's3-near' && !lostStory && !STORIES.some(st => st.line === (said[i + 1] || {}).id)) problems.push(`s3-near followed by ${(said[i + 1] || {}).id}, not a story`);
+      if (story && ![x.id, 's3-near'].includes((said[i - 1] || {}).id)) problems.push(`${x.id} without s3-near before it`);
+      if (!story) return;
+      if (run.heardBefore.includes(story.id)) problems.push(`${story.id} told again, heard on an earlier walk`);
+      const here = run.truth.filter(f => f.t <= x.t).pop();
+      const reach = story.near === 'berg' ? PEAK_REACH : REACH;
+      const real = here && run.world.found.some(f => f.name === story.near && f.lat !== null &&
+        haversine({ latitude: here.lat, longitude: here.lon }, { latitude: f.lat, longitude: f.lon }) <= reach);
+      if (!real) problems.push(`${x.id} at ${fmt2(x.t)}: no ${story.near} within ${reach} m of the walker`);
+    });
+    const told = STORIES.find(st => said.some(x => x.id === st.line));
+    const tales = new Set(said.filter(x => STORIES.some(st => st.line === x.id)).map(x => x.id));
+    if (tales.size > 1) problems.push(`${tales.size} stories in one walk (${[...tales]}), one at most`);
+    if (told && !run.bag.has(told.id)) problems.push(`${told.id} told and not kept in the bag`);
+    for (const id of Object.keys(run.bag.heard)) {
+      if (!run.heardBefore.includes(id) && !(told && told.id === id)) problems.push(`${id} kept in the bag, never told`);
+    }
+    if (p.told !== undefined && (told ? told.id : null) !== p.told) problems.push(`told ${told ? told.id : 'nothing'}, wanted ${p.told || 'nothing'}`);
+  }
+  // Scene 3 ends on this line: the next of hers is scene 4's.
+  if (p.endsOn) {
+    const said = played.filter(x => !x.side);
+    const i = said.findIndex(x => x.id === 's4-1');
+    if (i < 1 || said[i - 1].id !== p.endsOn) problems.push(`scene 3 ended on ${i < 1 ? '?' : said[i - 1].id}, wanted ${p.endsOn}`);
+  }
 
   // The lamp only between her stepping off the gravel and scene 3, and in
   // scene 4 before she is back on the gravel. Whatever the profile expects,

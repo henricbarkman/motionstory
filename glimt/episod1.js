@@ -43,6 +43,14 @@
 //   cue(id, word)   seconds into a line where a word falls, measured from
 //                   the rendered file ("last:nu" is the line's last "nu")
 //   remember(facts) what episode 2 will want to know
+//   position()      the walker's newest decent fix {t, latitude, longitude,
+//                   accuracy}, or null (engine.js, Walk.position)
+//   bag             the stories heard (bag.js, Bag): has(id), add(id, info);
+//                   none is read as an empty bag
+//   lookAround()    asks the map once more from where the walker is (app.js)
+
+import { STORIES, pickStory } from './bag.js';
+import { landmarksNear, orGuess } from './world.js';
 
 const MIN = 60;
 // s she waits for a stop she asked for, after the line: five when the feet
@@ -101,10 +109,21 @@ const SCENE3 = [0.8, 0.8, 1, 0.6, 1.2];
 // `countBreath`: seconds of silence between the count under her breath and
 // its last numbers. `gaps['off-gravel']`: the pause as she steps off the
 // gravel, before she is exposed (1.6 s without one).
+// `seen`: she says only what the phone has read (v52, Henric 29/10: "Inte
+// hitta på något"). Light and weather the phone has not read are not said,
+// nor "You're walking" in scene 1 to a walker the phone has not read
+// walking with the line clear. The Swedish episode is frozen as v40 had it
+// and still guesses (world.js, orGuess).
+// `bag`: scene 3's landmark is a story from the carrier bag (bag.js), told
+// only when the map has its place near the walker as she tells it, and only
+// once; with none, scene 3 ends on the weather. Null: the Swedish landmark,
+// picked at the start, at random when the map had none.
 
 export const SV = {
   words: { see: 'ser', hear: 'hör', are: 'är', thirty: 'trettio', stop: 'stanna', lastStop: 'stanna' },
   now: null,
+  seen: false,
+  bag: null,
   skyLast: 's3-2',
   countBreath: COUNT_BREATH,
   at: AT,
@@ -160,6 +179,8 @@ export const SV = {
 export const EN = {
   words: { see: 'see', hear: 'hear', are: 'are', thirty: 'thirty', stop: 'stop', lastStop: 'last:stop', now: 'now' },
   now: 'x-now',
+  seen: true,
+  bag: STORIES,
   skyLast: null,
   countBreath: 0,
   at: { tree: 0, sky: 0, bell: 0 },
@@ -281,7 +302,11 @@ export async function runEpisode1(ctx, E = SV) {
     lampTree: false,    // the lamp lit among the trees
     lamp4: false,       // the lamp lit when the shift came round the bend
   };
-  const remember = klar => ctx.remember({ svarade: her.askedFor, misstanke: her.lamp4, klar });
+  let told = null;            // the story she told in scene 3 (E.bag), if any
+  // With the bag, the place she saw is the one she told of (or none), not
+  // one picked at the start: episode 2 is never told of a place she did not see.
+  const remember = klar => ctx.remember({ svarade: her.askedFor, misstanke: her.lamp4, klar,
+    ...(E.bag ? { landmark: told ? told.near : null } : {}) });
 
   // The gate. A stop lights the lamp only while she is exposed.
   const lit = s => her.exposed && heldStop(s);
@@ -334,11 +359,14 @@ export async function runEpisode1(ctx, E = SV) {
   // stop cut it short, with the share of it that was heard in `heard`.
   // With `stop`, a state it holds for cuts the line too, as 'stop'.
   // With `go`, it is a line that asks the walker to go (goLine).
+  // `spoken`: what the last line's play gave, 'ended' when its sound played
+  // to its end; nothing for a clip that was missing or never started.
   let heard = 1;
+  let spoken = null;
   async function line(id, opts, stop = null) {
     let why = null;
     const began = now();
-    const playing = (opts && opts.go ? goLine(id) : ctx.play(id, opts)).then(() => { if (!why) why = 'done'; });
+    const playing = (opts && opts.go ? goLine(id) : ctx.play(id, opts)).then(r => { spoken = r; if (!why) why = 'done'; });
     const watch = ctx.until(s => {
       if (why) return true;
       if (lit(s)) { why = 'lamp'; lampStop = stopBegan(s); }
@@ -558,9 +586,13 @@ export async function runEpisode1(ctx, E = SV) {
   // 1. The loop. When the song is over and the contact is full. In English a
   // breath after the song first (E.gaps, under s1-walk).
   await breath('s1-walk');
-  await ctx.until(s => full(s) && s.moving && s.movingFor >= 3, { timeout: SHORT_WAIT });
+  const clear = await ctx.until(s => full(s) && s.moving && s.movingFor >= 3, { timeout: SHORT_WAIT });
   ctx.log('scene 1');
-  await ctx.play(ctx.state().band === 'run' ? 's1-run' : 's1-walk');
+  // "There. You're clear now. You're walking." claims two readings, so with
+  // E.seen it is said only when the wait found both; scene 1 then opens on
+  // s1-2. A walker standing when it timed out heard "You're walking" until v52.
+  if (clear || !E.seen) await ctx.play(ctx.state().band === 'run' ? 's1-run' : 's1-walk');
+  else ctx.log('scene 1: the phone has not read the walker moving with the line clear, she does not say how they move');
   await breath('s1-2');
   await ctx.play('s1-2');
   await breath('s1-self');
@@ -584,6 +616,9 @@ export async function runEpisode1(ctx, E = SV) {
   // who has stopped for a while is waited for longer than elsewhere.
   await opens(Math.max(E.at.tree, now() + E.after.tree), LONG_WAIT);
   ctx.log('scene 2');
+  // The map once more, from here: scene 3's story must be near the walker
+  // as she tells it, a minute or two on (app.js, lookAround).
+  if (E.bag && ctx.lookAround) ctx.lookAround();
   await ctx.play('s2-1');
 
   // She stands still while the walker walks. From her last step to "trettio"
@@ -743,18 +778,47 @@ export async function runEpisode1(ctx, E = SV) {
   }
   her.exposed = false;
   if (her.stillSince === null) her.stillSince = now();
-  ctx.log(`scene 3: ${ctx.world.light}, ${ctx.world.rain ? 'rain' : 'dry'}, ${ctx.world.landmark}`);
+  // What she sees of the walker's world: with E.seen what the phone read, or
+  // nothing (null); without, the Swedish guesses.
+  const light = E.seen ? ctx.world.light : orGuess(ctx.world, 'light');
+  const rain = E.seen ? ctx.world.rain : orGuess(ctx.world, 'rain');
+  ctx.log(`scene 3: ${light ?? 'light not read'}, ${rain === null ? 'weather not read' : rain ? 'rain' : 'dry'}` +
+    `${E.bag ? '' : `, ${orGuess(ctx.world, 'landmark')}`}`);
   if (E.after.sky > exposedSky) await opens(now() + E.after.sky - exposedSky);
   await breath('s3-1');
   await say('s3-1');
-  const light = ctx.world.light === 'dark' ? 's3-dark' : 's3-light';
-  const weather = ctx.world.rain ? 's3-rain' : 's3-dry';
-  const landmark = `s3-${ctx.world.landmark}`;
-  const sky = [light, weather, 's3-near', landmark];
-  if (E.skyLast) sky.push(E.skyLast);
-  for (const [i, id] of sky.entries()) {
-    await breath(id, SCENE3[i]);
+  // [id, the pause before it]
+  const sky = [];
+  if (light) sky.push([light === 'dark' ? 's3-dark' : 's3-light', SCENE3[0]]);
+  if (rain !== null) sky.push([rain ? 's3-rain' : 's3-dry', SCENE3[1]]);
+  if (!E.bag) sky.push(['s3-near', SCENE3[2]], [`s3-${orGuess(ctx.world, 'landmark')}`, SCENE3[3]]);
+  if (E.skyLast) sky.push([E.skyLast, SCENE3[4]]);
+  for (const [id, gap] of sky) {
+    await breath(id, gap);
     await say(id);
+  }
+  // The bag: what is near the walker now, as she would tell it, and a story
+  // about it not heard yet. Nothing near, or every story near heard: she
+  // says nothing about it, not even "And there's something near you."
+  if (E.bag) {
+    const near = landmarksNear(ctx.world, ctx.position ? ctx.position() : null, now());
+    told = pickStory(E.bag, near, ctx.bag);
+    ctx.log(`scene 3: the bag: ${near.length ? `near ${near.map(n => `${n.name} ${Math.round(n.dist)} m`).join(', ')}` : 'nothing read near the walker'}` +
+      `${told ? `, she tells ${told.id}` : near.length ? ', every story about it heard' : ''}`);
+    if (told) {
+      await breath('s3-near', SCENE3[2]);
+      await say('s3-near');
+      await breath(told.line, SCENE3[3]);
+      await say(told.line);
+      // Heard only if its sound played: a clip that never came keeps the
+      // story in the bag, and episode 2 is told of no place.
+      if (spoken === 'ended') {
+        if (ctx.bag) ctx.bag.add(told.id, { line: told.line });
+      } else {
+        ctx.log(`scene 3: ${told.line} did not play (${spoken || 'no sound'}), ${told.id} stays in the bag`);
+        told = null;
+      }
+    }
   }
 
   // 4. The bell. She is still under the tree and has to get onto the gravel

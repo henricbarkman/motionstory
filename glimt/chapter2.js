@@ -9,6 +9,8 @@
 // question is open the contact meter holds, so stopping to answer never
 // costs her voice.
 
+import { orGuess } from './world.js';
+
 const MIN = 60;
 
 // Plays a question and waits for the answer. Resolves true when the walker
@@ -38,7 +40,7 @@ async function release(ctx) {
 }
 
 export async function runChapter2(ctx) {
-  const lm = ctx.world.landmark;
+  const lm = orGuess(ctx.world, 'landmark');
   const hasMap = !!ctx.world.landmarkCoord;
 
   // 0. Start. She recognises the steps, or decides to.
@@ -69,8 +71,8 @@ export async function runChapter2(ctx) {
 
   // 2. The control question: something she already knows (the light).
   await ctx.until(s => s.contact >= 0.6 && s.t >= 3 * MIN, { by: 4 * MIN });
-  ctx.log(`scene 2: ${ctx.world.light}`);
-  const light = await ask(ctx, ctx.world.light === 'dark' ? 's2-dark' : 's2-light');
+  ctx.log(`scene 2: ${orGuess(ctx.world, 'light')}`);
+  const light = await ask(ctx, orGuess(ctx.world, 'light') === 'dark' ? 's2-dark' : 's2-light');
   ctx.log(`scene 2: ${light ? 'yes' : 'no'}`);
   await ctx.play(light ? 's2-yes' : 's2-no');
   if (light) await release(ctx);

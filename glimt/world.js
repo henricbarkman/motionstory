@@ -1,6 +1,13 @@
-// What the world is like where the walker is: light, rain, and a landmark
-// nearby. Chosen once at the start of a walk. Every lookup has a fallback so
-// a phone without network still gets a chapter, just one where Vega guesses.
+// What the world is like where the walker is: light, rain, and landmarks
+// nearby. Read once at the start of a walk (the map once more later, for an
+// episode that asks: lookAgain).
+//
+// `light`, `rain` and `landmark` are what the phone has read, or null when
+// it has not: Vega never makes up what she sees (Henric 29/10, "Inte hitta på
+// något"). Until v52 every lookup fell back on a guess, and five walks of six
+// got a landmark at random. The guesses are kept in `guess` for the Swedish
+// chapters, the Swedish episode and the lab, which are frozen as they were
+// and still read them (orGuess); nothing English reads them.
 
 import { haversine } from './engine.js';
 
@@ -44,13 +51,15 @@ const RAIN_CODES = new Set([
 // Rain now, and the share of the sky under cloud (0-100 %, null if the
 // answer had none). No scene reads the cloud yet: it is logged at every start
 // so walks build up a record of when the sky was clear ("Klar himmel" in
-// the catalogue).
+// the catalogue). An answer with neither precipitation nor a weather code
+// says nothing about rain, and is an error: until v52 it read as dry.
 export async function fetchWeather(lat, lon, { fetchImpl = fetch, timeout = 6000 } = {}) {
   const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&current=precipitation,weather_code,cloud_cover`;
   const res = await withTimeout(fetchImpl(url), timeout);
   if (!res.ok) throw new Error(`open-meteo ${res.status}`);
   const data = await res.json();
   const cur = data.current || {};
+  if (!Number.isFinite(cur.precipitation) && !Number.isFinite(cur.weather_code)) throw new Error('open-meteo: inget väder i svaret');
   return {
     rain: (cur.precipitation ?? 0) > 0.05 || RAIN_CODES.has(cur.weather_code),
     cloud: Number.isFinite(cur.cloud_cover) ? cur.cloud_cover : null,
@@ -74,8 +83,9 @@ nwr["amenity"="grave_yard"]${a};
 
 // One entry per matching element: {name, lat, lon}. Nodes carry lat/lon,
 // ways and relations a `center` (asked for with `out center`). Elements
-// without either still count, with null coordinates, so a landmark is never
-// lost just because the server left the geometry out.
+// without either still count, with null coordinates, so the Swedish chapters'
+// landmark is never lost just because the server left the geometry out.
+// landmarksNear, which says only what has a place, leaves them out.
 export function classifyElements(elements) {
   const found = [];
   for (const el of elements) {
@@ -145,6 +155,66 @@ export function pick(list, random = Math.random) {
   return list[Math.floor(random() * list.length)];
 }
 
+// What the phone read, or else the old guess. Only for the Swedish chapters,
+// the Swedish episode and the lab, frozen as they were: they still guess.
+export const orGuess = (world, key) => world[key] ?? (world.guess || {})[key] ?? null;
+
+// What Vega may say is near the walker, now: the kinds the map has found
+// within reach of where the walker is when she says it, nearest first, as
+// [{name, dist}]. Empty when she cannot see anything. What counts (v52):
+//   - an element the map found, with a position. One the server sent without
+//     geometry cannot be placed, so it is not near anyone.
+//   - within REACH of the walker's newest decent fix (accuracy at most 50 m,
+//     as the engine keeps them), counted from the far edge of that fix: the
+//     distance plus its accuracy. A hill within PEAK_REACH, as the query asks
+//     (seen from further off).
+//   - a fix no older than FIX_FRESH: over that the GPS has gone quiet, five
+//     of Firefox's fixes (one every 6.2 s) and sixty of Chrome's.
+// Not from the start: the map was asked where the walk began, and scene 3 is
+// six or seven minutes on. On 23/10 it named a bridge 160 m from the start,
+// eight minutes before she said it; where the walker was then nobody checked.
+// REACH is the query's own radius ("a few hundred metres" in the manuscript),
+// not a measured line of sight. Measured to the element's one point: a node's
+// own, a way's or an area's centre (`out center`). A wood or a lake whose
+// centre is beyond reach reads as far even with the walker at its edge, which
+// is silence, not a place she cannot see; only a long bent way can have its
+// centre nearer than its line, and that is rare.
+export const REACH = 400;
+export const PEAK_REACH = 600;
+export const FIX_FRESH = 30;
+export function landmarksNear(world, here, t) {
+  if (!here || !(t - here.t <= FIX_FRESH)) return [];
+  const slack = here.accuracy ?? 0;
+  const best = {};
+  for (const f of (world && world.found) || []) {
+    if (f.lat === null || f.lon === null) continue;
+    const d = haversine(here, { latitude: f.lat, longitude: f.lon }) + slack;
+    if (d > (f.name === 'berg' ? PEAK_REACH : REACH)) continue;
+    if (!(f.name in best) || d < best[f.name]) best[f.name] = d;
+  }
+  return Object.entries(best).map(([name, dist]) => ({ name, dist })).sort((a, b) => a.dist - b.dist);
+}
+
+// Adds what the map finds around (lat, lon) to `world.found`, once more in a
+// walk: the first answer was for where it began. Elements already known are
+// not added twice. Resolves the number added; a map that does not answer
+// adds nothing.
+export async function lookAgain(world, lat, lon, { fetchImpl = fetch, log = () => {} } = {}) {
+  try {
+    const found = await fetchLandmarks(lat, lon, { fetchImpl });
+    const key = f => `${f.name} ${f.lat} ${f.lon}`;
+    const known = new Set((world.found || []).map(key));
+    const fresh = found.filter(f => !known.has(key(f)));
+    world.found = [...(world.found || []), ...fresh];
+    const kinds = [...new Set(found.map(f => f.name))];
+    log(`kartan igen: ${kinds.length ? kinds.join(', ') : 'inget inom 400 m'}, ${fresh.length} nya`);
+    return fresh.length;
+  } catch (err) {
+    log(`kartan igen: svarade inte (${err.message})`);
+    return 0;
+  }
+}
+
 // Fills `world` in place as answers arrive, so the chapter script can read it
 // whenever scene 3 or 6 comes around. Returns when every lookup has settled.
 //
@@ -162,8 +232,8 @@ export async function chooseWorld(world, { lat, lon, date = new Date(), log = ()
     world.cloud = w.cloud;
     log(`väder: ${w.rain ? 'regn' : 'torrt'}, molnigt ${w.cloud === null ? 'okänt' : `${Math.round(w.cloud)} %`} (open-meteo)`);
   }).catch(err => {
-    world.sources.rain = `gissning (${err.message})`;
-    log(`väder: gissar torrt, molnigt okänt (${err.message})`);
+    world.sources.rain = `okänt (${err.message})`;
+    log(`väder: okänt, molnigt okänt (${err.message}); de svenska kapitlen gissar torrt`);
   });
 
   let landmark;
@@ -182,6 +252,9 @@ export async function chooseWorld(world, { lat, lon, date = new Date(), log = ()
       // Every kind the map found, for a station that wants a real place to
       // walk to (Ljudkompassen's test walk) rather than the one picked here.
       world.nearby = nearest;
+      // Every element, for an episode that asks what is near the walker
+      // when she speaks (landmarksNear), not where the walk began.
+      world.found = [...(world.found || []), ...found];
       world.landmarkAnswered = 'karta';
       if (names.length) {
         world.landmark = pick(names);
@@ -189,14 +262,15 @@ export async function chooseWorld(world, { lat, lon, date = new Date(), log = ()
         world.landmarkCoord = c.lat === null ? null : { lat: c.lat, lon: c.lon };
         world.sources.landmark = `karta: ${names.join(', ')}` +
           (world.landmarkCoord ? `, ${Math.round(c.dist)} m bort` : ', utan position');
+        log(`landmärke: ${world.landmark} (${world.sources.landmark})`);
       } else {
-        world.sources.landmark = 'karta: inget inom 400 m, slumpat';
+        world.sources.landmark = 'karta: inget inom 400 m';
+        log(`landmärke: inget (${world.sources.landmark}); de svenska kapitlen gissar ${world.guess.landmark}`);
       }
-      log(`landmärke: ${world.landmark} (${world.sources.landmark})`);
     }).catch(err => {
       world.landmarkAnswered = 'fel';
-      world.sources.landmark = `slumpat (${err.message})`;
-      log(`landmärke: ${world.landmark} slumpat (${err.message})`);
+      world.sources.landmark = err.message;
+      log(`landmärke: inget, kartan svarade inte (${err.message}); de svenska kapitlen gissar ${world.guess.landmark}`);
     });
   }
 
@@ -205,19 +279,25 @@ export async function chooseWorld(world, { lat, lon, date = new Date(), log = ()
 }
 
 export function defaultWorld(date = new Date()) {
+  // The guesses first, in the order the Swedish chapters have always drawn
+  // them (the landmark's pick is the walk's first random number).
+  const guess = { light: lightFromClock(date), rain: false, landmark: pick(LANDMARKS) };
   return {
-    light: lightFromClock(date),
-    rain: false,
+    light: null,          // 'light' | 'dark' from the sun, null until a position
+    rain: null,           // true | false from open-meteo, null until it answers
     cloud: null,          // % of the sky under cloud, null until open-meteo answers
-    landmark: pick(LANDMARKS),
+    landmark: null,       // a kind the map found near the start, null if none
     landmarkCoord: null,
+    // Every element the map has found this walk: {name, lat, lon}.
+    found: [],
+    guess,
     // How the map lookup ended: null until it has, then 'karta' (it
     // answered, maybe with nothing), 'fel' (no server did) or 'sparat'
     // (not asked: the landmark came from the chapter before). `nearby` is
     // what it found, nearest of each kind: {name: {lat, lon, dist}}.
     landmarkAnswered: null,
     nearby: {},
-    sources: { light: 'klocka', rain: 'gissning', landmark: 'slumpat' },
+    sources: { light: 'okänt (ingen position)', rain: 'okänt', landmark: 'okänt' },
   };
 }
 

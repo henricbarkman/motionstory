@@ -1,6 +1,6 @@
 # Glimt: mekanikerna
 
-> Katalogen över vad vandraren kan göra och vad telefonen kan läsa. Skriven för den som skriver manus. Senast genomgången 2026-10-18. Mätningarna bakom varje omdöme står på plansidan; här står bara det en författare behöver.
+> Katalogen över vad vandraren kan göra och vad telefonen kan läsa. Skriven för den som skriver manus. Senast genomgången 2026-10-29. Mätningarna bakom varje omdöme står på plansidan; här står bara det en författare behöver.
 
 En mekanik är något vandraren gör med kroppen, som telefonen märker, och som Vega kan svara på. Vandraren säger aldrig något: inget ljud går över till henne. Allt vandraren svarar med finns i den här listan.
 
@@ -28,6 +28,7 @@ Du behöver aldrig skriva hur telefonen gör. Det räcker med vad vandraren gör
 - **Vandraren får gå, springa eller växla.** Mekaniker märkta *bara gående* ska en episod hoppa över när vandraren springer, eller så ber Vega om en lugn stund först.
 - **Varje mekanik har en riktning.** Någon ber, någon svarar, någon leder. Relationen växer genom att riktningen vänder: först följer du henne, sedan följer hon dig.
 - **Vega skyller aldrig på vandraren.** Frånvaro är aldrig skuld.
+- **Vega hittar aldrig på vad hon ser.** Har telefonen inte läst något säger hon ingenting om det: ingen gissning, ingen slump, ingen replik i stället som låtsas att hon ser (Henric 29/10: "Inte hitta på något."). Skriv scenen så att den håller utan glimten. Gäller från version 52 i den engelska episoden; den svenska kopian är frusen och gissar som förut.
 
 ---
 
@@ -194,10 +195,10 @@ Allt här läser gps och ska gås i Chrome.
 **Omdöme:** Osäker. Enda försöket avbröts.
 
 ### Platser nära dig
-**Du gör:** ingenting. Telefonen frågar kartan efter vatten, skog, berg, bro eller kyrkogård inom några hundra meter.
-**I berättelsen:** det Vega ser av din värld. Varianterna `[bro]`, `[vatten]`, `[skog]`, `[berg]` och `[kyrkogård]` väljer replik.
-**Omdöme:** Osäker. Kartan svarade en gång av sex. Rättningen är inte provad ute.
-**Tänk på:** skriv alltid en replik som fungerar utan plats.
+**Du gör:** ingenting. Telefonen frågar kartan efter vatten, skog, berg, bro eller kyrkogård inom 400 meter (berg 600) när promenaden börjar, och i den engelska episoden igen i början av scen 2, där du är då.
+**I berättelsen:** det Vega ser av din värld. Varianterna `[bro]`, `[vatten]`, `[skog]`, `[berg]` och `[kyrkogård]` väljer replik. I den engelska episoden är replikerna historier i Kassen.
+**Omdöme:** Osäker. Kartan svarade en gång av sex, och den hittade en bro 23/10 som Henric inte såg. Från version 52 räknas bara det kartan har hittat med en plats, inom 400 meter (berg 600) från där du är när hon säger det, räknat från gps:ens sämsta läge och bara om positionen är högst 30 sekunder gammal. Inte gånget.
+**Tänk på:** svarar kartan inte, eller finns inget nära dig, säger hon ingenting om platsen. Skriv ingen replik för det fallet. En stor skog har sin punkt på kartan i mitten, så den som går i kanten av en stor skog kan få tystnad: hellre tyst än fel.
 
 ### Gå till platsen hon minns
 **Du gör:** går tillbaka till ett ställe från en tidigare promenad.
@@ -211,10 +212,12 @@ Det här är glimtarna: vad Vega ser av din värld utan att du gör något.
 ### Ljust eller mörkt
 **I berättelsen:** varianterna `[ljust]` och `[mörkt]`.
 **Omdöme:** Håller. Rätt varje gång.
+**Tänk på:** utan position vet telefonen inte var solen står. Från version 52 säger hon då ingenting om ljuset i den engelska episoden, i stället för att gissa på klockan.
 
 ### Regn eller torrt
 **I berättelsen:** varianterna `[regn]` och `[torrt]`.
 **Omdöme:** Delvis. Det har aldrig regnat under en promenad.
+**Tänk på:** svarar vädret inte är det okänt, inte torrt. Från version 52 säger hon då ingenting om vädret i den engelska episoden.
 
 ### Klar himmel
 
@@ -235,8 +238,14 @@ Det här är glimtarna: vad Vega ser av din värld utan att du gör något.
 **Omdöme:** Osäker. Mörkret kom inte när det skulle.
 
 ### Minnet mellan episoderna
-**I berättelsen:** en episod kan veta vad vandraren gjorde i den förra: om du svarade, om Företaget blev misstänksamt, vilken plats hon såg.
+**I berättelsen:** en episod kan veta vad vandraren gjorde i den förra: om du svarade, om Företaget blev misstänksamt, vilken plats hon såg. I den engelska episoden från version 52 är platsen den hon berättade om, och ingen om hon inte berättade någon.
 **Omdöme:** Oprövad. Episod 1 sparar minnet, men ingen episod har läst det i en promenad än. Minnet ligger i webbläsaren, så det följer inte med till en annan telefon.
+
+### Kassen
+**Du gör:** ingenting. Det räcker att telefonen läser något i din värld som det finns en historia om.
+**I berättelsen:** små historier Vega berättar om något hon ser hos dig. Så lär vi känna henne: genom hur hon reagerar på saker i din värld. En historia ska ha en mening för den större berättelsen, men kan också vara Ma, och meningen kan vara bara att vi lär känna henne bättre och att relationen blir starkare (Henric 29/10). Varje historia hänger på något telefonen faktiskt läser. Den ligger i kassen tills en promenad har det den behöver, i den här episoden eller en senare, och berättas en gång. Telefonen kommer ihåg vilka du har hört. Läser telefonen inte det historien behöver, säger hon ingenting om den. Har flera historier något att hänga på berättar hon den vars plats är närmast. Kassen är Le Guins bärkasse (vald som bokens form 27/10): små saker som samlas, inte en båge. Planera inga bågar över flera episoder (Henric 7/10).
+**Omdöme:** Oprövad. Byggd i version 52 (29/10), i den engelska episod 1. De fem första historierna är landmärkesreplikerna i scen 3 (`[bro]`, `[vatten]`, `[skog]`, `[berg]`, `[kyrkogård]`), som hänger på Platser nära dig, med "And there's something near you." före. Inte gånget. Inte byggt än: en plats för historier i en senare episod (en episod säger vilka historier den kan berätta, och episod 2 och 3 säger inga än), historier som hänger på något annat än en plats (ljus, regn, klar himmel, första gången), och att en historia kan spelas i en annan episod än den den spelades in för (ljudet ligger i episodens egen fil).
+**Tänk på:** skriv varje historia så att den står för sig själv. Ingen annan scen får bygga på att den har hörts, för den kanske aldrig berättas, eller berättas en annan dag. Det som leder fram till historien hör till den och sägs bara med den, och scenen ska hålla utan. Lägger du till en historia: säg vad den hänger på, med telefonens ord ur den här katalogen. `?kasse=tom` i länken tömmer kassen så att historierna kan höras igen.
 
 ### Linjens klarhet
 

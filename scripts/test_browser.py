@@ -152,6 +152,11 @@ def serve():
 # What the map answers, when a scenario asks for one: a bridge 180 m east of
 # where the sim walk starts (59.38, 13.5).
 BRIDGE = {"elements": [{"type": "way", "tags": {"bridge": "yes"}, "center": {"lat": 59.38, "lon": 13.5 + 180 / (111320 * 0.5096)}}]}
+# Woods every 220 m for 1.5 km either way along the meridian the simulated
+# walker keeps to (north from the start, back south after the turn), so
+# wherever scene 3 finds them the map has woods within reach (v52).
+WOODS_PATH = {"elements": [{"type": "way", "tags": {"natural": "wood"}, "center": {"lat": round(59.38 + k * 0.002, 5), "lon": 13.5}}
+                           for k in range(-7, 8)]}
 
 
 @functools.cache
@@ -875,6 +880,12 @@ def episodstart(browser, base):
     page.wait_for_timeout(1500)
     first = page.evaluate("window.glimt.mixer.hissNow()")
     check(bool(line) and first > 0.01, f"episode1en: the hiss under her first line ({first:.4f})")
+    # v52: a map that does not answer gives no landmark, none made up; the
+    # guess is kept for the Swedish chapters. The bag is read at the start.
+    nomap = wait_log(page, "landmärke: inget", 20000)
+    check("kartan svarade inte" in nomap and "de svenska kapitlen gissar" in nomap and page.evaluate("window.glimt.world.landmark") is None,
+          f"episode1en: no map, no landmark ({nomap!r}, {page.evaluate('window.glimt.world.landmark')!r})")
+    check(any(x.endswith("kassen: inga hörda än") for x in walk_log(page)), f"episode1en: the bag read at the start ({[x for x in walk_log(page) if 'kassen' in x]})")
     check(any(x.endswith("luft 1") for x in walk_log(page)), f"episode1en: and the log names the standard air ({[x for x in walk_log(page) if 'luft' in x]})")
     # v49: the bed and the riser 12 dB down in English (the private copy has them).
     fx = page.evaluate("window.glimt.mixer.fxGain.gain.value")
@@ -999,18 +1010,22 @@ def episod(browser, base):
 EPISODE_EN_WANT = {
     "has": ["s0-1", "s0-2", "s0-ask1", "s0-go1", "s0-yes1-a", "s0-yes1-b", "s0-go2", "s0-yes2", "s0-yes2-aside", "s1-walk", "s1-2",
             "s1-self", "s1-q2", "s2-1", "s2-2", "s2-count", "s2-3", "s2-4", "s2-self", "s2-5", "s2-6", "s2-ask",
-            "x-avvikelse (hennes sida)", "s2-lamp-plea", "s2-lamp-1", "s3-1", "s3-near", "s4-1", "s4-self", "s4-2", "s4-3",
+            "x-avvikelse (hennes sida)", "s2-lamp-plea", "s2-lamp-1", "s3-1", "s3-near", "s3-skog", "s4-1", "s4-self", "s4-2", "s4-3",
             "s4-ok-lamp", "s4-yes", "s4-all"],
     # v51: scene 3 ends on the landmark in English ("The loop's a copy" waits for a later episode).
-    "not": ["s0-no1", "s0-no2", "s2-count-stop", "s2-no", "s2-lamp-2", "s4-ok", "s4-lamp-1", "s4-lamp-2", "s4-never-1", "r-hjalp", "s3-2"],
-    "lamps": 1, "memory": {"svarade": True, "misstanke": False, "klar": True},
+    # v52: the landmark is a story from the bag, the woods the map has along
+    # the way (WOODS_PATH); no weather line, for the weather is not read here.
+    "not": ["s0-no1", "s0-no2", "s2-count-stop", "s2-no", "s2-lamp-2", "s4-ok", "s4-lamp-1", "s4-lamp-2", "s4-never-1", "r-hjalp", "s3-2",
+            "s3-bro", "s3-vatten", "s3-berg", "s3-kyrkogard", "s3-rain", "s3-dry"],
+    "lamps": 1, "memory": {"svarade": True, "misstanke": False, "klar": True, "landmark": "skog"},
 }
 
 
 def episode(browser, base):
     # The English page before the walk: English, no chapters to choose, and
     # the Swedish start screen as it was (episodstart).
-    ctx, page, errors = open_page(browser, base, url="?kapitel=episode1en&sim", init=EPISODE_WALKER % json.dumps("asked"), sounds=True, ready="Start walking")
+    ctx, page, errors = open_page(browser, base, url="?kapitel=episode1en&sim", init=EPISODE_WALKER % json.dumps("asked"), sounds=True,
+                                  overpass=WOODS_PATH, ready="Start walking")
     page.wait_for_function("document.getElementById('start-btn').textContent === 'Start walking'", timeout=60000)
     s = page.evaluate("""() => ({
       lang: document.documentElement.lang, doc: document.title,
@@ -1078,8 +1093,35 @@ def episode(browser, base):
     mix = {m["label"]: m for m in page.evaluate("window.__mix")}
     c = mix.get("credits")
     check(bool(c) and c["side"] < 0.05 and c["bed"] < 0.05, f"episode: her side and the bed silent under the song ({c})")
+    # v52, the carrier bag: the woods the map has where the walker is when she
+    # speaks, after "And there's something near you.", told once and kept.
+    near = [i for i, h in enumerate(heard) if h == "s3-near"]
+    check(len(near) == 1 and heard[near[0] + 1:near[0] + 2] == ["s3-skog"], f"episode: s3-near once, the story right after it ({heard[near[0]:near[0] + 3] if near else heard})")
+    bag_log = [line.split("  ", 1)[-1] for line in log if "the bag:" in line or "kassen:" in line or "kartan igen:" in line]
+    check(any(x.startswith("scene 3: the bag: near skog") and x.endswith("she tells woods") for x in bag_log)
+          and "kassen: woods berättad, sparad" in bag_log and "kassen: inga hörda än" in bag_log
+          and any(x.startswith("kartan igen: skog") for x in bag_log),
+          f"episode: the log says what the bag had and what she told ({bag_log})")
+    bags = page.evaluate("['glimt-bag-en-sim', 'glimt-bag-en', 'glimt-bag-en-lyssna'].map(k => JSON.parse(localStorage.getItem(k) || 'null'))")
+    told = ((bags[0] or {}).get("heard") or {}).get("woods") or {}
+    check(list((bags[0] or {}).get("heard") or {}) == ["woods"] and told.get("episode") == "episode1en" and told.get("version") == APP_VERSION
+          and told.get("line") == "s3-skog" and bags[1:] == [None, None],
+          f"episode: the sim's bag keeps the woods, with episode and version; a walk's and a listen's untouched ({bags})")
     shot(page, "episode-done")
     check(not errors, f"episode: no page errors ({errors[:3]})")
+    # The next walk starts with the woods heard, and &kasse=tom empties the bag.
+    for url, want_log, want_heard in (("?kapitel=episode1en&sim", "kassen: hörda woods", ["woods"]),
+                                      ("?kapitel=episode1en&sim&kasse=tom", "kassen: inga hörda än", [])):
+        page.goto(f"{base}/glimt/{url}")
+        page.wait_for_function("document.getElementById('start-btn').textContent === 'Start walking'", timeout=30000)
+        page.click("#start-btn")
+        line = wait_log(page, "kassen: ", 20000)
+        page.wait_for_timeout(500)
+        said = [re.sub(r"^\d+:\d\d\s*", "", x) for x in walk_log(page) if "kassen:" in x]
+        kept = page.evaluate("Object.keys((JSON.parse(localStorage.getItem('glimt-bag-en-sim') || '{}').heard) || {})")
+        emptied = "kasse=tom" in url
+        check(bool(line) and said[-1] == want_log and (("kassen: tömd (från länken)" in said) == emptied) and kept == want_heard,
+              f"episode, {url}: the bag at the start ({said}, kept {kept})")
     ctx.close()
 
 
@@ -1159,7 +1201,8 @@ LISTEN_PAGES = {
     "sv": ("?lyssna", "Börja lyssna", ("Stanna", "Gå"), "Lyssna utan att gå", "/vega/glimt-e1/", "/vega/glimt-e1en/",
            "glimt-episod-1-lyssna", ["glimt-episod-1", "glimt-episod-1-sim", "glimt-memory", "glimt-last-log", "glimt-chapter", "glimt-landmark"]),
     "en": ("?kapitel=episode1en&lyssna", "Start listening", ("Stop", "Walk"), "Listen without walking", "/vega/glimt-e1en/", "/vega/glimt-e1/",
-           "glimt-episode-1-en-lyssna", ["glimt-episode-1-en", "glimt-episode-1-en-sim", "glimt-memory-en", "glimt-last-log-en", "glimt-chapter", "glimt-landmark"]),
+           "glimt-episode-1-en-lyssna", ["glimt-episode-1-en", "glimt-episode-1-en-sim", "glimt-memory-en", "glimt-last-log-en", "glimt-chapter", "glimt-landmark",
+                                         "glimt-bag-en", "glimt-bag-en-sim"]),
 }
 
 
@@ -1245,6 +1288,9 @@ def lyssna(browser, base):
         # The page's log rows are the time and the line run together.
         check(any("start," in x and x.endswith(", lyssning") for x in log) and any("lyssning: stannar" in x for x in log),
               f"lyssna {name}: the log says it was a listen ({log[:1]})")
+        # v52: the English listen reads its own bag, the Swedish has none.
+        bag = [re.sub(r"^\d+:\d\d\s*", "", x) for x in log if "kassen:" in x]
+        check(bag == (["kassen: inga hörda än"] if name == "en" else []), f"lyssna {name}: the bag at the start ({bag})")
         asked = page.evaluate("({ ...window.__asked, vibrate: window.__vib.length })")
         check(asked == {"geo": 0, "motion": 0, "vibrate": 0}, f"lyssna {name}: never asked for the position, the motion sensor or a buzz ({asked})")
         fetched = page.evaluate("performance.getEntriesByType('resource').map(e => e.name)")

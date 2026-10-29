@@ -8,6 +8,8 @@
 //   Nycklar     the first walk in the dark, in rain, under a full moon
 //   Hennes värld  squares of about 100 m; new ground makes her world bigger
 
+import { orGuess } from './world.js';
+
 const KEY = 'glimt-memory';
 const MAX_CELLS = 5000;
 
@@ -96,9 +98,11 @@ export class Memory {
   unlock(world, date) {
     this.newKeys = [];
     const earned = [];
-    if (world.light === 'dark') earned.push('morker');
-    if (world.rain) earned.push('regn');
-    if (world.light === 'dark' && isFullMoon(date)) earned.push('fullmane');
+    // The lab's guess where nothing was read (orGuess): frozen as it was.
+    const light = orGuess(world, 'light');
+    if (light === 'dark') earned.push('morker');
+    if (orGuess(world, 'rain')) earned.push('regn');
+    if (light === 'dark' && isFullMoon(date)) earned.push('fullmane');
     for (const k of earned) {
       if (this.data.keys[k]) continue;
       this.data.keys[k] = date.toISOString();
