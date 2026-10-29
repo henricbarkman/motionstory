@@ -10,19 +10,20 @@
 //   node scripts/test_glimt.mjs e1            # episode 1
 //   node scripts/test_glimt.mjs e1 own        # one of its walkers
 //   node scripts/test_glimt.mjs e1en          # episode 1 in English, the same walkers
+//   GLIMT_LUFT=2 node scripts/test_glimt.mjs e1en   # ... with its pauses twice as long (?luft=2)
 //
 // Episode 1 has more to get wrong than scene order: which stop lights the
 // lamp, which branch each walker hears, and that her half minute is a half
 // minute. Its walkers react to what she says (see EPISODE_WALKERS).
 
-import { readFileSync, existsSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { Walk, Waiter, simulatedMagnitude } from '../glimt/engine.js';
 import { runChapter1 } from '../glimt/chapter1.js';
 import { runChapter2 } from '../glimt/chapter2.js';
-import { runEpisode1, SV as EPISODE_SV, EN as EPISODE_EN } from '../glimt/episod1.js';
+import { runEpisode1, SV as EPISODE_SV, EN as EPISODE_EN, withAir } from '../glimt/episod1.js';
 import { breakAt, BREAK_LEAD, BREAK_FADE } from '../glimt/audio.js';
 import { Listener, LISTEN_YES } from '../glimt/listen.js';
 
@@ -277,7 +278,10 @@ function answerErrors(log, profile) {
 // walked by the same walkers. What they expect of the Swedish words is read
 // across to the English below (brokeSaid).
 const ENGLISH = process.argv[2] === 'e1en';
-const E_OPTS = ENGLISH ? EPISODE_EN : EPISODE_SV;
+// GLIMT_LUFT: the English pauses at that many times their length, as ?luft=
+// gives them in the app (withAir). Unset, the standard.
+const LUFT = process.env.GLIMT_LUFT ? Number(process.env.GLIMT_LUFT) : 1;
+const E_OPTS = ENGLISH ? withAir(EPISODE_EN, LUFT) : EPISODE_SV;
 const E_WORDS = E_OPTS.words;
 const EPISODE_SV_FILE = JSON.parse(readFileSync(join(ROOT, 'stories/glimt/episod-1.json'), 'utf8'));
 const EPISODE = ENGLISH ? JSON.parse(readFileSync(join(ROOT, 'stories/glimt/episode-1.json'), 'utf8')) : EPISODE_SV_FILE;
@@ -285,7 +289,6 @@ const E_SECONDS = EPISODE.seconds || {};
 const E_CUE = (EPISODE.cues && EPISODE.cues['s2-3'] && EPISODE.cues['s2-3'][E_WORDS.thirty]) || 0;
 // The end after she is back on the gravel: at most END_GAP, and END_SOON for
 // a walker nearly back, plus the log's whole seconds and a tick.
-const E_END = E_OPTS.end;
 const E_CREDITS = (EPISODE.credits && EPISODE.credits.seconds) || 0;
 const E_BREAKS = EPISODE.breaks || {};
 // The seven questions answered by a stop (question() in episod1.js). In
@@ -488,8 +491,13 @@ const EPISODE_WALKERS = {
     has: ['s2-count', 's2-count-stop', 's2-3', 's2-4'], not: ['r-hjalp'],
     // The English count is 10 s, not 14: the same stop, earlier in it. GPS
     // sees it about 6.5 s on, and her "go" takes 3.5 more: a stop later than
-    // half a second into the English count makes "thirty" late.
-    en: { stops: { 's2-count': ['start', 0.5, 5.5], ...END_STOP } },
+    // half a second into the English count makes "thirty" late. Her go ends
+    // about at the last numbers' time even so, and how far past depends on
+    // where scene 2 falls between two of the walker's fixes (once a second):
+    // 30.9 s in v47, 31.1 once v48's breaths moved it a quarter second. So a
+    // second and a half here: every stop from 0 to 1 s in and 5.25 to 6.5 s
+    // long gave 31.1.
+    en: { stops: { 's2-count': ['start', 0.5, 5.5], ...END_STOP }, countSlack: 1.5 },
     lamps: 0, memory: { svarade: false, misstanke: false },
   },
   // The same stop, long enough to pass the half minute: she says the last
@@ -910,7 +918,7 @@ function seeded(seed) {
 // A walker as it walks in the language under test.
 const walker = name => (ENGLISH && EPISODE_WALKERS[name].en ? { ...EPISODE_WALKERS[name], ...EPISODE_WALKERS[name].en } : EPISODE_WALKERS[name]);
 
-function simulateEpisode(name) {
+function simulateEpisode(name, E = E_OPTS) {
   const profile = walker(name);
   const random = Math.random;
   if (profile.seed !== undefined) Math.random = seeded(profile.seed);
@@ -1049,7 +1057,7 @@ function simulateEpisode(name) {
     },
   };
 
-  const done = runEpisode1(ctx, E_OPTS).then(() => { ended = true; }, err => { log.push(`ERROR ${err.stack}`); ended = true; });
+  const done = runEpisode1(ctx, E).then(() => { ended = true; }, err => { log.push(`ERROR ${err.stack}`); ended = true; });
 
   // As simulate() above, but the microtask queue is drained to the bottom
   // between ticks: the episode's helpers are several awaits deep, and her
@@ -1093,7 +1101,7 @@ function simulateEpisode(name) {
     }
     await Promise.race([done, Promise.resolve()]);
     Math.random = random;
-    return { log, said, ended, t, played, sideCalls, memory, cuts, credited, truth, skipped, stops };
+    return { log, said, ended, t, played, sideCalls, memory, cuts, credited, truth, skipped, stops, E };
   })();
 }
 
@@ -1101,10 +1109,46 @@ const E_ORDER = ['scene 0: does the walker see her', 'credits', 'scene 1', 'scen
   'scene 2: she counts', 'scene 2: off the gravel', 'scene 3', 'scene 4', 'scene 4: the end', 'end'];
 const logTime = line => { const [m, s] = line.trim().split(/\s+/)[0].split(':').map(Number); return m * 60 + s; };
 
+// Her lines that may follow the one before with no breath, on purpose: her
+// Now (the answer is read from the word), her answer to a stop or to a
+// walker going again (the go lines, the lamp's pleas and what she says once
+// the walker walks), the count and its last numbers, timed to the half
+// minute, scene 4's run for the gravel, and her answer to the snäcka.
+const TIGHT = new Set([E_NOW, 's0-go1', 's0-go2', 's1-go', 'x-ga-igen', 'x-stod', 's2-count', 's2-count-stop', 's2-3',
+  's2-lamp-plea', 's2-lamp-plea2', 's2-lamp-mine', 's2-lamp-1', 's4-lamp-1', 's4-lamp-2', 's4-self', 's4-2', 'r-vilar']);
+// ...except where one of them follows another of hers that is not an answer.
+const AIRED = new Set(['s2-lamp-mine>s2-lamp-1']);
+// The least silence between two of her lines (v48: "Allt är lite för rushed",
+// Henric 29/10): the shortest breath, 0.8 s, less the tick the sim reads it on.
+const MIN_AIR = 0.75;
+
+// Where one of her lines runs into the one before: [prev, next, gap] for every
+// pair under MIN_AIR (times the episode's luft, under 1) that is not tight by
+// design. Over 1 the standard's least: where she is exposed a breath keeps the
+// standard's length (breath() in episod1.js), and airMain checks the rest.
+// A line cut short (the gap from its full length below zero) was cut by what
+// the next one answers.
+function crowded(run) {
+  const out = [];
+  const least = MIN_AIR * Math.min(run.E.luft ?? 1, 1);
+  let prev = null;
+  for (const x of run.played) {
+    if (x.side) continue;
+    if (prev) {
+      const gap = x.t - (prev.t + (prev.brokeAt ?? E_SECONDS[prev.id]));
+      const tight = TIGHT.has(x.id) && !AIRED.has(`${prev.id}>${x.id}`);
+      if (gap >= 0 && gap < least && !tight) out.push([prev.id, x.id, gap]);
+    }
+    prev = x;
+  }
+  return out;
+}
+
 function episodeProblems(name, run) {
   const p = walker(name);
   const problems = [];
   const { log, played, sideCalls, memory } = run;
+  const E_END = run.E.end;
   const count = id => played.filter(x => x.id === id).length;
   const at = label => { const l = log.find(x => x.includes(label) && !x.includes('▶')); return l ? logTime(l) : null; };
 
@@ -1134,6 +1178,11 @@ function episodeProblems(name, run) {
       if (QUESTIONS.includes(x.id) && (said[i + 1] || {}).id !== E_NOW) problems.push(`${x.id} not followed by ${E_NOW}`);
       if (x.id === E_NOW && !QUESTIONS.includes((said[i - 1] || {}).id)) problems.push(`${E_NOW} after ${(said[i - 1] || {}).id}, not a question`);
     });
+  }
+
+  // In English no line of hers runs into the one before (v48).
+  if (ENGLISH) {
+    for (const [a, b, gap] of crowded(run)) problems.push(`${b} came ${gap.toFixed(2)} s after ${a}, wanted a breath`);
   }
 
   // The go lines (v40): ended at a pause, said whole, or not said at all.
@@ -1242,7 +1291,7 @@ function episodeProblems(name, run) {
   else {
     const half = counting.t + E_CUE - stood;
     // A walker who stood through the half minute hears it once they walk.
-    if (p.lateCount ? half < 29 : Math.abs(half - 30) > 1) problems.push(`"${E_WORDS.thirty}" came ${half.toFixed(1)} s after she stopped, wanted 30`);
+    if (p.lateCount ? half < 29 : Math.abs(half - 30) > (p.countSlack ?? 1)) problems.push(`"${E_WORDS.thirty}" came ${half.toFixed(1)} s after she stopped, wanted 30`);
   }
 
   // Her side. The tone never left on, and her own steps are never heard
@@ -1356,10 +1405,18 @@ async function episodeMain(onlyProfile) {
   let failures = 0;
   const heard = new Set();
   let nearlyBack = 0;
+  // GLIMT_TIMELINE=<file>: each walker's lines with their exact start and
+  // length, and the scene marks, for measuring the silence between them.
+  const timeline = {};
   for (const name of Object.keys(EPISODE_WALKERS)) {
     if (onlyProfile && onlyProfile !== name) continue;
     const run = await simulateEpisode(name);
     run.played.forEach(x => heard.add(x.id));
+    timeline[name] = {
+      lines: run.played.map(x => ({ id: x.id, t: x.t, side: x.side, seconds: E_SECONDS[x.id], brokeAt: x.brokeAt ?? null })),
+      marks: run.said.map(x => ({ t: x.t, msg: x.msg })),
+      credits: run.credited,
+    };
     console.log(`\n=== episode 1${ENGLISH ? ' (en)' : ''} / ${name} — ${run.ended ? 'ended at ' + Math.round(run.t / 60 * 10) / 10 + ' min' : 'DID NOT END'}`);
     console.log(run.log.join('\n'));
     const problems = episodeProblems(name, run);
@@ -1393,6 +1450,62 @@ async function episodeMain(onlyProfile) {
     if (problems.length) failures++;
     console.log(`\n=== episode 1 / every line`);
     console.log(problems.length ? `FAIL: ${problems.join('; ')}` : `OK: all ${Object.keys(EPISODE.lines).length} lines heard by some walker, measured and rendered`);
+  }
+  if (process.env.GLIMT_TIMELINE) writeFileSync(process.env.GLIMT_TIMELINE, JSON.stringify(timeline, null, 1));
+  return failures;
+}
+
+// ?luft= (v48): the English pauses from none to three times their length.
+// The same walkers still get their branches and her half minute, the pause
+// before "s1-2" follows the factor, her "Now." after a question keeps its
+// breath (the answer window is counted from it), more air makes a longer
+// walk, and the stretch where a stop lights the lamp (off the gravel to
+// scene 3) is no longer than at the standard (review of v48).
+const AIR_WALKERS = ['listen', 'asked'];
+const AIR_FACTORS = [0, 0.5, 2, 3];
+
+// From "off the gravel" to the lamp or scene 3, whichever is first: where a
+// stop of the walker's lights the lamp. After it has lit there is no more to.
+function exposedFor(run) {
+  const from = run.said.find(x => x.msg === 'scene 2: off the gravel');
+  const to = run.said.find(x => x.msg.startsWith('scene 2: lamp') || x.msg.startsWith('scene 3: '));
+  return from && to ? to.t - from.t : null;
+}
+
+function gapBefore(run, id) {
+  const lines = run.played.filter(x => !x.side);
+  const i = lines.findIndex(x => x.id === id);
+  if (i < 1) return null;
+  const prev = lines[i - 1];
+  return lines[i].t - (prev.t + (prev.brokeAt ?? E_SECONDS[prev.id]));
+}
+
+async function airMain() {
+  let failures = 0;
+  for (const name of AIR_WALKERS) {
+    const base = await simulateEpisode(name, withAir(EPISODE_EN, 1));
+    let prevLength = null;
+    const exposed1 = exposedFor(base);
+    for (const f of [...AIR_FACTORS.filter(x => x < 1), 1, ...AIR_FACTORS.filter(x => x > 1)]) {
+      const run = f === 1 ? base : await simulateEpisode(name, withAir(EPISODE_EN, f));
+      const problems = run.ended ? episodeProblems(name, run) : ['did not end'];
+      // Heard, the pause is the breath and what the sim adds to every line
+      // (its end up to half a second late, the waiter's 0.25 s ticks), so it
+      // is measured against the same walker at luft 1.
+      const want = EPISODE_EN.gaps['s1-2'] * (f - 1);
+      const gap = gapBefore(run, 's1-2'), gap1 = gapBefore(base, 's1-2');
+      if (gap === null || Math.abs(gap - gap1 - want) > 0.5) problems.push(`the pause before s1-2 was ${gap?.toFixed(2)} s, ${gap1?.toFixed(2)} at luft 1: wanted ${want.toFixed(2)} s more`);
+      // Less than one of the waiter's ticks: a scaled breath (0.2 or 0.8 s) moves it a tick or two.
+      const now = gapBefore(run, EPISODE_EN.now), now1 = gapBefore(base, EPISODE_EN.now);
+      if (now === null || Math.abs(now - now1) > 0.2) problems.push(`the breath before "Now." was ${now?.toFixed(2)} s at luft ${f}, ${now1?.toFixed(2)} at 1`);
+      if (prevLength !== null && !(run.t > prevLength)) problems.push(`luft ${f} made the walk ${Math.round(run.t)} s, no longer than ${Math.round(prevLength)} s`);
+      const exposed = exposedFor(run);
+      if (exposed === null || (f > 1 && exposed > exposed1 + 0.5)) problems.push(`she was exposed ${exposed?.toFixed(1)} s at luft ${f}, ${exposed1?.toFixed(1)} at 1`);
+      prevLength = run.t;
+      console.log(`\n=== episode 1 (en) at luft ${f} / ${name} — ${run.ended ? 'ended at ' + Math.round(run.t / 60 * 10) / 10 + ' min' : 'DID NOT END'}`);
+      if (problems.length) failures++;
+      console.log(problems.length ? `FAIL: ${problems.join('; ')}` : `OK: the same branches, ${gap.toFixed(2)} s before s1-2, "Now." after ${now.toFixed(2)} s`);
+    }
   }
   return failures;
 }
@@ -1428,6 +1541,7 @@ async function main() {
     }
   }
   if (!onlyChapter) failures += await episodeMain(episodeOnly ? onlyProfile : null);
+  if (ENGLISH && !onlyProfile && LUFT === 1) failures += await airMain();
   process.exit(failures ? 1 : 0);
 }
 

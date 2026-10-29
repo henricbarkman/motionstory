@@ -850,7 +850,7 @@ def episodstart(browser, base):
     page.click("#start-btn")
     line = wait_log(page, "▶ s0-2", 60000)
     page.wait_for_timeout(1500)
-    k = page.evaluate("({ k: window.glimt.mixer.klarhet, hiss: window.glimt.mixer.hissGain.gain.value, lp: window.glimt.mixer.radioLp.frequency.value })")
+    k = page.evaluate("({ k: window.glimt.mixer.klarhet, hiss: window.glimt.mixer.hissNow(), lp: window.glimt.mixer.radioLp.frequency.value })")
     check(bool(line) and k["k"] == 0.2 and k["hiss"] > 0.01 and k["lp"] < 5000,
           f"?klarhet=0.2: her first line on the radio, with the hiss under it ({k})")
     check(any("linjens klarhet 0.2 (från länken)" in x for x in walk_log(page)), "and the log says the link set it")
@@ -862,6 +862,26 @@ def episodstart(browser, base):
     line = wait_log(page, "▶ s0-1", 60000)
     page.wait_for_timeout(500)
     check(bool(line) and page.evaluate("window.glimt.mixer.klarhet") == 0.5, f"?klarhet=0,5 reads as 0.5 ({page.evaluate('window.glimt.mixer.klarhet')})")
+    ctx.close()
+    # English (v48): the hiss only while the contact builds, under her first
+    # line and into the second, none from her first question on.
+    ctx, page, errors = open_page(browser, base, url="?kapitel=episode1en&sim", ready="Start walking")
+    page.click("#start-btn")
+    line = wait_log(page, "▶ s0-1", 60000)
+    page.wait_for_timeout(1500)
+    first = page.evaluate("window.glimt.mixer.hissNow()")
+    check(bool(line) and first > 0.01, f"episode1en: the hiss under her first line ({first:.4f})")
+    check(any(x.endswith("luft 1") for x in walk_log(page)), f"episode1en: and the log names the standard air ({[x for x in walk_log(page) if 'luft' in x]})")
+    line = wait_log(page, "▶ s0-ask1", 120000)
+    page.wait_for_timeout(1000)
+    later = page.evaluate("window.glimt.mixer.hissNow()")
+    check(bool(line) and later < 0.001, f"episode1en: and none under her first question ({later:.5f})")
+    check(not errors, f"episode1en: no page errors ({errors[:2]})")
+    ctx.close()
+    ctx, page, errors = open_page(browser, base, url="?kapitel=episode1en&sim&luft=2", ready="Start walking")
+    page.click("#start-btn")
+    line = wait_log(page, "luft 2", 30000)
+    check(line.endswith("luft 2 (från länken)"), f"?luft=2: the log says the link gave twice the air ({line!r})")
     ctx.close()
 
 
@@ -932,7 +952,7 @@ def episod(browser, base):
         check(any("minne till episod 2" in line for line in log), f"episod, {who}: and the log says what it was told")
         check(any("linjens klarhet 0.45" in line for line in log) and page.evaluate("window.glimt.mixer.klarhet") == 0.45,
               f"episod, {who}: her voice on the episode's line, klarhet 0.45")
-        check(page.evaluate("window.glimt.mixer.hissGain.gain.value") < 0.001, f"episod, {who}: and no hiss once she is silent")
+        check(page.evaluate("window.glimt.mixer.hissNow()") < 0.001, f"episod, {who}: and no hiss once she is silent")
         if who == "asked":
             mix = {m["label"]: m for m in page.evaluate("window.__mix")}
             still, walking = mix.get("still"), mix.get("walking")
