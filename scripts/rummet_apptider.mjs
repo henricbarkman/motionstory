@@ -24,10 +24,11 @@ export async function apptider() {
   const app = await import(pathToFileURL(join(REPO, 'glimt', 'episod1.js')).href);
   const ut = {};
   for (const [namn, fil] of Object.entries(SPRAK)) {
-    const id = JSON.parse(readFileSync(join(REPO, fil), 'utf8')).id;
-    const gaps = { ...((app[namn] && app[namn].gaps) || {}) };
-    delete gaps.name; // the pause before her name is said, not a clip
-    ut[id] = gaps;
+    const story = JSON.parse(readFileSync(join(REPO, fil), 'utf8'));
+    // Only the pauses before a clip: not the one before her name is said
+    // (`name`) or before she goes on after the lamp (`lamp-tree`).
+    const gaps = Object.entries((app[namn] && app[namn].gaps) || {}).filter(([line]) => line in story.lines);
+    ut[story.id] = Object.fromEntries(gaps);
   }
   return ut;
 }

@@ -13,18 +13,18 @@
 import { Walk, Waiter, simulatedMagnitude, buzzReading } from './engine.js';
 import { runChapter1 } from './chapter1.js';
 import { runChapter2 } from './chapter2.js';
-import { runEpisode1, EN as EPISODE_EN } from './episod1.js';
+import { runEpisode1, EN as EPISODE_EN, withAir, readLuft } from './episod1.js';
 import { HerSide, SilentSide } from './herside.js';
 import { runLab, labHelpers, LABS, TITLES, PROV, ratedThisRound, RESUMABLE, chosenStations, knockPattern, buzzWords, realTarget, strayJumpsNote, strayTurns, strayTurnsNote } from './lab.js';
 import { Synth, SilentSynth } from './synth.js';
-import { Mixer, Library, readKlarhet } from './audio.js';
+import { Mixer, Library, readKlarhet, brusOf } from './audio.js';
 import { chooseWorld, defaultWorld, fetchLandmarks, nearestByName } from './world.js';
 import { Memory, drawWorld, KEY_NAMES } from './memory.js';
 import { Listener, LISTEN_YES } from './listen.js';
 
 // The version the start screen shows, the same number as the service
 // worker's cache. Bump both together.
-const APP_VERSION = 47;
+const APP_VERSION = 48;
 
 // Seconds the credits wait for their song if it is not fetched when they are
 // due. It has had all of scene 0; a song not here by then is not coming.
@@ -38,6 +38,10 @@ const tr = (sv, en) => (EN_PAGE ? en : sv);
 // ?klarhet=0.5 overrides how clear the line is (0 the whole radio, 1 clean),
 // so a walk can try another level without a new build (readKlarhet in audio.js).
 const KLARHET_URL = readKlarhet(params.get('klarhet'));
+// ?luft=1.5 gives the English episode's pauses one and a half times their
+// length, ?luft=0.5 half (withAir in episod1.js; 1 is the standard), so
+// Henric can try more or less air without a new build (29/10).
+const LUFT_URL = readLuft(params.get('luft'));
 // A test walk wins over everything else the link says.
 const PROV_ID = Object.hasOwn(PROV, params.get('prov') || '') ? params.get('prov') : null;
 const TEST = PROV_ID ? PROV[PROV_ID] : null;
@@ -131,9 +135,10 @@ const CHAPTERS = {
       voices: '../audio/glimt/vega/glimt-e1en',
       side: '../audio/glimt/side',
       first: 's0-1',
-      run: ctx => runEpisode1(ctx, EPISODE_EN),
-      subtitle: 'Episode 1. About ten and a half minutes. Walk or run. She can hear you while you move.',
-      listenSubtitle: 'Episode 1. About ten and a half minutes. Listen without walking.',
+      run: ctx => runEpisode1(ctx, withAir(EPISODE_EN, LUFT_URL ?? 1)),
+      air: true,
+      subtitle: 'Episode 1. About eleven minutes. Walk or run. She can hear you while you move.',
+      listenSubtitle: 'Episode 1. About eleven minutes. Listen without walking.',
       asks: [],
       // Her now after each question: a listen's yes comes after it (listen.js).
       nowLine: EPISODE_EN.now,
@@ -459,6 +464,7 @@ async function start() {
   if (!def.lab && (KLARHET_URL !== null || chapter.klarhet !== undefined)) {
     log(`linjens klarhet ${KLARHET_URL ?? chapter.klarhet}${KLARHET_URL !== null ? ' (från länken)' : ''}`);
   }
+  if (def.air) log(`luft ${LUFT_URL ?? 1}${LUFT_URL !== null ? ' (från länken)' : ''}`);
   clearTimeout(gpsCheckTimer);
   gpsTrouble = null;
   if (!FAKE) log(`gps före start: ${gpsStatus()}`);
@@ -547,8 +553,13 @@ async function start() {
     const aside = (chapter.asides || []).includes(id);
     // The line's clarity: the link, else the scene's, else the episode's,
     // else clean. The lab is always clean.
-    mixer.setKlarhet(def.lab ? 1
-      : KLARHET_URL ?? (chapter.klarhetPerScen || {})[id.slice(0, 2)] ?? chapter.klarhet ?? 1);
+    const klarhet = def.lab ? 1
+      : KLARHET_URL ?? (chapter.klarhetPerScen || {})[id.slice(0, 2)] ?? chapter.klarhet ?? 1;
+    mixer.setKlarhet(klarhet);
+    // The hiss under it: the episode's own for this line (brus), else as
+    // much as the radio has (brusOf in audio.js). The lab has none.
+    const [brusFrom, brusTo, brusUntil] = def.lab ? [0, 0, null] : brusOf(chapter.brus, id, klarhet);
+    mixer.setBrus(brusFrom, brusTo, { at, seconds: brusUntil ?? buf.duration });
     speaking = id;
     const playing = mixer.playVoice(buf, { clear: contact ? false : clear || !!def.lab, aside, at });
     // When it started, for a song under it (credits({ under })).

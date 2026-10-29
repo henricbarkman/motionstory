@@ -36,7 +36,7 @@ Pauses are marked where Henric's walk on 23/10 had them too long or too short, a
 >
 > (to herself) It's the lights. It's always the lights.
 >
-> (to herself) It's not the lights.
+> (to herself, after a pause, slowly, as it dawns on her) It's not the lights.
 >
 > (to herself) Okay, now. Do it now.
 >

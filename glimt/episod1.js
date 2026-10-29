@@ -83,12 +83,18 @@ const AT = {
 // which a stop is the answer (the files' cueWords). `at`, `after`: a scene
 // opens at `at` at the earliest, and at least `after` seconds after the scene
 // before it ended. `end`: END_SOON and END_GAP. `gaps`: seconds of silence
-// before a line (and before the name, `name`), where clips played back to
-// back left her no breath. `asides`: her lines to herself that only the
-// English has. `songUnder`: The Code starts faint under her last line before
+// before a line (before the name, `name`, and before she goes on among the
+// trees after the lamp, `lamp-tree`), where clips played back to back left
+// her no breath; scene 3's lines have SCENE3 when it names none.
+// `asides`: her lines to herself that only the English has. `songUnder`: The Code starts faint under her last line before
 // the credits and grows when she has finished (the cue word in the line, or
 // its start). `now`: the line she says after each question she asks for a
 // stop, where the window opens instead (`words.now` in it); none in Swedish.
+// The pauses between her lines in scene 3, under the tree: before her light,
+// her weather, "near you", the landmark and the last line. About a second was
+// right on Henric's walk of 23/10.
+const SCENE3 = [0.8, 0.8, 1, 0.6, 1.2];
+
 export const SV = {
   words: { see: 'ser', hear: 'hör', are: 'är', thirty: 'trettio', stop: 'stanna', lastStop: 'stanna' },
   now: null,
@@ -107,18 +113,60 @@ export const SV = {
 // question (Henric's rewrite of 28/10), so in English each question she asks
 // for a stop is followed by "Now." (x-now, one take for all seven, Henric
 // 29/10: "hon ska säga 'now' eftersom hon säger att hon ska säga 'now'").
+//
+// More air (v48, Henric 29/10 after listening to v47: "Allt är lite för
+// rushed bara"). Measured in a listen of v47 (the sim's `listen` walker, the
+// takes' own silent edges added, about 0.1 s before and 0.26 s after her
+// words): eight places where one line ran into the next with 0.5-0.9 s of
+// silence heard, the breaths of 23/10 at 1.2-2.6 s, scene 1 into scene 2 at
+// 2.3 s, and the pauses between her sentences inside a take 0.5-0.6 s. So:
+// those eight get 0.8 s (1.2 and 1.5 where a thought turns), every breath and
+// scene 3's pauses half as long again, scene 2 opens 4 s after scene 1 and
+// scene 3 8 s after scene 2. The bell (12 s, from 10) and the end (8 and 12,
+// from 6 and 10) had the most already. Not touched: her Now after a question
+// (x-now: the answer is read from it), the count, the lamp, scene 4's run
+// for the gravel, and her answer to a stop (the go lines), which must come
+// at once. `?luft=` scales all the rest (withAir).
 export const EN = {
   words: { see: 'see', hear: 'hear', are: 'are', thirty: 'thirty', stop: 'stop', lastStop: 'last:stop', now: 'now' },
   now: 'x-now',
   at: { tree: 0, sky: 0, bell: 0 },
-  after: { tree: 2, sky: 6, bell: 10 },
-  end: { soon: 6, gap: 10 },
+  after: { tree: 4, sky: 8, bell: 12 },
+  end: { soon: 8, gap: 12 },
   // x-now: with the question's own tail and the take's lead, about a second
   // of silence between the question and her now.
-  gaps: { 's0-2': 2, 's0-ask1': 1.5, 's0-yes1-b': 1, 's1-self': 1.5, 's1-q2': 1, 's2-2': 2, 's2-ask': 1, 'x-now': 0.4, name: 1.5, 's4-all': 2 },
+  gaps: {
+    's0-2': 3, 's0-ask1': 2.25, 's0-yes1-a': 0.8, 's0-yes1-b': 1.5, 's0-yes2': 0.8, 's0-yes2-aside': 0.8,
+    's1-2': 0.8, 's1-self': 2.25, 's1-q2': 1.5, 's1-q2-yes': 0.8, 's1-3': 1.2,
+    's2-2': 3, 's2-4': 1.5, 's2-self': 0.8, 's2-ask': 1.5, 's2-lamp-1': 0.8, 's2-lamp-2': 0.8, 'lamp-tree': 0.8,
+    's3-dark': 1.2, 's3-light': 1.2, 's3-rain': 1.2, 's3-dry': 1.2, 's3-near': 1.5,
+    's3-bro': 0.9, 's3-vatten': 0.9, 's3-skog': 0.9, 's3-berg': 0.9, 's3-kyrkogard': 0.9, 's3-2': 1.8,
+    'x-now': 0.4, name: 2.25, 's4-all': 3,
+  },
   asides: { yes2: 's0-yes2-aside', gravel: 's2-self', up: 's4-self' },
   songUnder: { yes: ['s0-yes2-aside', null], no: ['s0-no2', 'talk'] },
 };
+
+// The episode's pauses at `luft` times their length: the breaths before her
+// lines, when the scenes open after each other, and how long the end waits.
+// Her breath before her Now (E.now) keeps its length, for the answer is read
+// from the word: a walker who stopped on the question's last word and stood
+// is a yes because the band sees the stop after it.
+export function withAir(E, luft = 1) {
+  if (luft === 1) return E;
+  const times = o => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, k === E.now ? v : v * luft]));
+  return { ...E, luft, gaps: times(E.gaps), after: times(E.after), end: times(E.end) };
+}
+
+// ?luft= as a link writes it: a factor from 0 to 3, a decimal comma read as
+// a point (as readKlarhet). Null when there is nothing to read.
+export const LUFT_MAX = 3;
+export function readLuft(raw) {
+  const t = raw == null ? '' : String(raw).trim().replace(',', '.');
+  if (!t) return null;
+  const f = Number(t);
+  return Number.isFinite(f) ? Math.min(LUFT_MAX, Math.max(0, f)) : null;
+}
 
 // A stop the walker means. The feet say it two seconds after the last step,
 // so one second more is enough; GPS alone needs longer to be sure.
@@ -239,8 +287,15 @@ export async function runEpisode1(ctx, E = SV) {
     return why;
   }
   const pause = seconds => hold(() => false, { timeout: seconds });
-  // The breath before line `id`, where the episode has one (E.gaps).
-  const breath = id => (E.gaps[id] ? pause(E.gaps[id]) : Promise.resolve('ok'));
+  // The breath before line `id`, where the episode has one (E.gaps), else
+  // `seconds`. While she is exposed a stop lights the lamp, so there a link
+  // with more air than the standard (?luft= over 1) gives the standard's
+  // breath: a longer pause never makes the lamp likelier (review of v48).
+  const breath = (id, seconds = 0) => {
+    let s = E.gaps[id] ?? seconds;
+    if (her.exposed && E.luft > 1) s /= E.luft;
+    return s ? pause(s) : Promise.resolve('ok');
+  };
 
   // Plays a line. 'done' when it reached its end; 'lamp' or 'rest' when a
   // stop cut it short, with the share of it that was heard in `heard`.
@@ -432,6 +487,7 @@ export async function runEpisode1(ctx, E = SV) {
     ctx.log('scene 0: yes, sees her');
     her.askedFor = true;
     await goOn('s0-go1');
+    await breath('s0-yes1-a');
     await ctx.play('s0-yes1-a');
     await breath('s0-yes1-b');
     hears = await question('s0-yes1-b', W.hear, 's0-again2', W.hear);
@@ -448,9 +504,10 @@ export async function runEpisode1(ctx, E = SV) {
     ctx.log('scene 0: yes, hears her');
     her.askedFor = true;
     await goOn('s0-go2');
+    await breath('s0-yes2');
     await ctx.play('s0-yes2');
     if (under) { ctx.log('credits, under her last words'); song = ctx.credits({ under: under[0], word: under[1] }); }
-    if (E.asides.yes2) await ctx.play(E.asides.yes2);
+    if (E.asides.yes2) { await breath(E.asides.yes2); await ctx.play(E.asides.yes2); }
   } else {
     ctx.log('scene 0: does not hear her');
     her.heardNo = true;
@@ -466,6 +523,7 @@ export async function runEpisode1(ctx, E = SV) {
   await ctx.until(s => full(s) && s.moving && s.movingFor >= 3, { timeout: SHORT_WAIT });
   ctx.log('scene 1');
   await ctx.play(ctx.state().band === 'run' ? 's1-run' : 's1-walk');
+  await breath('s1-2');
   await ctx.play('s1-2');
   await breath('s1-self');
   await ctx.play('s1-self');
@@ -474,11 +532,13 @@ export async function runEpisode1(ctx, E = SV) {
     ctx.log('scene 1: yes, alone');
     her.askedFor = true;
     await goOn('s1-go');
+    await breath('s1-q2-yes');
     await ctx.play('s1-q2-yes');
   } else {
     ctx.log('scene 1: no, not alone');
     await ctx.play('s1-q2-no');
   }
+  await breath('s1-3');
   await ctx.play('s1-3');
   remember(false);
 
@@ -527,8 +587,9 @@ export async function runEpisode1(ctx, E = SV) {
     break;
   }
   side.lift(false);
+  await breath('s2-4');
   await say('s2-4');
-  if (E.asides.gravel) await say(E.asides.gravel);
+  if (E.asides.gravel) { await breath(E.asides.gravel); await say(E.asides.gravel); }
 
   // She steps off the gravel. From here a stop lights the lamp.
   her.stillSince = null;
@@ -557,11 +618,11 @@ export async function runEpisode1(ctx, E = SV) {
     her.exposed = false;
     her.stillSince = now();      // she does not move from the tree again
     // She asked for the stop and forgot that she was walking: hers, not the walker's.
-    if (asked) await say('s2-lamp-mine');
+    if (asked) { await say('s2-lamp-mine'); await breath('s2-lamp-1'); }
     await say('s2-lamp-1');
     if (asked) {
       // [svarade nej i starten]: she had decided the walker cannot hear her.
-      if (her.heardNo) await say('s2-lamp-2');
+      if (her.heardNo) { await breath('s2-lamp-2'); await say('s2-lamp-2'); }
       her.askedFor = true;
     }
   }
@@ -592,8 +653,10 @@ export async function runEpisode1(ctx, E = SV) {
   }
   if (next < beats.length) {
     // The walker stopped by themselves while she walked among the trees.
+    // After the lamp, a breath before she goes back to what she was doing.
     const from = again ? next : next + 1;
     await lampAtTheTree();
+    if (from < beats.length) await breath('lamp-tree');
     for (let i = from; i < beats.length; i++) {
       const why = await beats[i]();
       if (why === 'rest') i--;
@@ -622,24 +685,25 @@ export async function runEpisode1(ctx, E = SV) {
 
   // 3. The sky. She sits down under the tree; a short stop is harmless again.
   // Until she does, she is still walking out there, and a stop still shows.
-  if (await opens(Math.max(E.at.sky, now() + E.after.sky)) === 'lamp') {
+  // Air beyond the standard's (?luft= over 1) comes once she has sat down,
+  // so that a longer wait does not light the lamp more often.
+  const exposedSky = E.luft > 1 ? E.after.sky / E.luft : E.after.sky;
+  if (await opens(Math.max(E.at.sky, now() + exposedSky)) === 'lamp') {
     await lampAtTheTree();
     await opens(now() + 10);
   }
   her.exposed = false;
   if (her.stillSince === null) her.stillSince = now();
   ctx.log(`scene 3: ${ctx.world.light}, ${ctx.world.rain ? 'rain' : 'dry'}, ${ctx.world.landmark}`);
+  if (E.after.sky > exposedSky) await opens(now() + E.after.sky - exposedSky);
   await say('s3-1');
-  await pause(0.8);
-  await say(ctx.world.light === 'dark' ? 's3-dark' : 's3-light');
-  await pause(0.8);
-  await say(ctx.world.rain ? 's3-rain' : 's3-dry');
-  await pause(1);
-  await say('s3-near');
-  await pause(0.6);
-  await say(`s3-${ctx.world.landmark}`);
-  await pause(1.2);
-  await say('s3-2');
+  const light = ctx.world.light === 'dark' ? 's3-dark' : 's3-light';
+  const weather = ctx.world.rain ? 's3-rain' : 's3-dry';
+  const landmark = `s3-${ctx.world.landmark}`;
+  for (const [i, id] of [light, weather, 's3-near', landmark, 's3-2'].entries()) {
+    await breath(id, SCENE3[i]);
+    await say(id);
+  }
 
   // 4. The bell. She is still under the tree and has to get onto the gravel
   // before the shift comes round the bend: a stop lights the lamp until she

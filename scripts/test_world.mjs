@@ -7,6 +7,7 @@
 
 import { fetchLandmarks, fetchWeather, chooseWorld, defaultWorld } from '../glimt/world.js';
 import { readKlarhet } from '../glimt/audio.js';
+import { readLuft, withAir, LUFT_MAX, EN, SV } from '../glimt/episod1.js';
 
 let failures = 0;
 const check = (ok, what) => { console.log(`${ok ? 'ok  ' : 'FAIL'}  ${what}`); if (!ok) failures++; };
@@ -83,6 +84,27 @@ const never = () => new Promise(() => {});
 {
   const cases = [['0,5', 0.5], ['0.5', 0.5], [' 0,25 ', 0.25], ['1,7', 1], ['-0,2', 0], ['x', null], [null, null], ['1', 1], ['1,2,3', null], ['', null], ['0,5x', null]];
   for (const [raw, want] of cases) check(readKlarhet(raw) === want, `klarhet ${JSON.stringify(raw)} reads ${readKlarhet(raw)}, wanted ${want}`);
+}
+
+// ?luft= the same way, a factor from 0 to LUFT_MAX (v48).
+{
+  const cases = [['1,5', 1.5], ['2', 2], [' 0,5 ', 0.5], ['0', 0], ['9', LUFT_MAX], ['-1', 0], ['x', null], [null, null], ['', null], ['1,5,2', null]];
+  for (const [raw, want] of cases) check(readLuft(raw) === want, `luft ${JSON.stringify(raw)} reads ${readLuft(raw)}, wanted ${want}`);
+}
+
+// withAir: every pause of the English episode at luft times its length, but
+// her breath before her Now, which the answer is read from.
+{
+  check(withAir(EN, 1) === EN, 'luft 1 is the episode as it is');
+  const a = withAir(EN, 2);
+  const off = Object.entries(EN.gaps).filter(([k, v]) => a.gaps[k] !== (k === EN.now ? v : 2 * v)).map(([k]) => k);
+  check(!off.length && Object.keys(a.gaps).length === Object.keys(EN.gaps).length, `luft 2: every breath twice as long, her Now's as it was${off.length ? ` (wrong: ${off.join(', ')})` : ''}`);
+  check(a.gaps[EN.now] === EN.gaps[EN.now] && EN.gaps[EN.now] > 0, `her Now keeps its ${EN.gaps[EN.now]} s`);
+  check(['tree', 'sky', 'bell'].every(k => a.after[k] === 2 * EN.after[k]) && a.end.soon === 2 * EN.end.soon && a.end.gap === 2 * EN.end.gap,
+    'the scenes open twice as long after each other, and the end waits twice as long');
+  check(a.words === EN.words && a.at === EN.at && a.now === EN.now && a.luft === 2, 'and nothing else changes');
+  check(EN.gaps['s1-2'] === 0.8 && EN.after.tree === 4, 'the episode itself is left as it was');
+  check(Object.keys(SV.gaps).length === 0, 'the Swedish episode has no breaths of its own, as in v40');
 }
 
 if (failures) { console.log(`\n${failures} failed`); process.exit(1); }

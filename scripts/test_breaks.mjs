@@ -9,7 +9,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Mixer, breakAt, BREAK_FADE, BREAK_LEAD, SONG_UNDER } from '../glimt/audio.js';
+import { Mixer, breakAt, brusOf, BREAK_FADE, BREAK_LEAD, SONG_UNDER, RADIO_HISS } from '../glimt/audio.js';
 import { makeClock, FakeAudioContext } from './fake_audio.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -134,6 +134,55 @@ const PAUSE = [{ from: 1.0, to: 1.5, said: 'Där.' }];
   run(7);
   await Promise.resolve();
   check(why === 'ended', `and resolves when it ends (${why})`);
+}
+
+// ---------- the hiss (v48) ----------
+// Its own knob, brus, beside klarhet: until v47 the hiss was 1 - klarhet under
+// every line. A chapter with "brus" has it only under the lines it names.
+{
+  const EN = JSON.parse(readFileSync(join(ROOT, 'stories/glimt/episode-1.json'), 'utf8'));
+  const same = (a, b) => a.length === b.length && a.every((x, i) => (x === null && b[i] === null) || Math.abs(x - b[i]) < 1e-9);
+  check(same(brusOf(undefined, 's1-2', 0.45), [0.55, 0.55, null]), 'a chapter without brus: as much as its radio, under every line (Swedish, as before)');
+  check(same(brusOf(EN.brus, 's0-1', 0.45), [1, 1, null]), 'the English first line: the whole radio\'s hiss');
+  check(same(brusOf(EN.brus, 's0-2', 0.45), [1, 0, 14.5]), 'her second: from all of it to none, 14.5 s in');
+  const hissed = Object.keys(EN.lines).filter(id => brusOf(EN.brus, id, EN.klarhet).some(x => x > 0));
+  check(hissed.join() === 's0-1,s0-2', `and no other English line has any (${hissed.join(', ')})`);
+  check(Object.keys(EN.brus).every(id => id in EN.lines), 'brus names only lines of the episode');
+  check(EN.brus['s0-2'][2] < EN.seconds['s0-2'], `the hiss is gone before her second line ends (${EN.brus['s0-2'][2]} of ${EN.seconds['s0-2']} s)`);
+  check(same(brusOf(undefined, 'x', 1.2), [0, 0, null]) && same(brusOf(undefined, 'x', -1), [1, 1, null]),
+    'a klarhet outside 0..1 hisses as setKlarhet clamps it, never below none');
+
+  // The Mixer: klarhet no longer touches the hiss, and setBrus schedules it
+  // from the line's start to its end.
+  const { clock, mixer, run, said } = rig();
+  const g = mixer.hissLevel.gain;
+  const calls = [];
+  for (const m of ['setValueAtTime', 'linearRampToValueAtTime', 'setTargetAtTime']) {
+    const f = g[m].bind(g);
+    g[m] = (...a) => { calls.push([m, ...a]); return f(...a); };
+  }
+  mixer.setKlarhet(0.2);
+  check(calls.length === 0, 'setKlarhet leaves the hiss alone');
+  check(mixer.hissNow() === 0, 'and there is none until a line asks for it');
+  const at = clock.time + 0.5;
+  mixer.setBrus(1, 0, { at, seconds: 14.5 });
+  const start = calls.filter(c => c[0] === 'setValueAtTime').pop();
+  const ramp = calls.find(c => c[0] === 'linearRampToValueAtTime');
+  check(start && near(start[1], RADIO_HISS) && near(start[2], at), `the whole radio's hiss as the line starts (${start})`);
+  check(ramp && ramp[1] === 0 && near(ramp[2], at + 14.5), `none 14.5 s on (${ramp})`);
+  calls.length = 0;
+  mixer.setBrus(0.5);
+  check(!calls.some(c => c[0] === 'linearRampToValueAtTime') && near(calls.filter(c => c[0] === 'setValueAtTime').pop()[1], 0.5 * RADIO_HISS),
+    'a level alone: it stays there, no ramp');
+  mixer.setBrus(0);
+  check(mixer.hissNow() === 0 && mixer.brus === 0, 'brus 0: no hiss, the line still playing');
+  calls.length = 0;
+  let threw = null;
+  try { mixer.setBrus(NaN, undefined); mixer.setBrus('x'); } catch (e) { threw = e; }
+  const values = calls.filter(c => c[0] === 'setValueAtTime').map(c => c[1]);
+  check(!threw && values.every(Number.isFinite), `a level that is no number is no hiss, and nothing throws (${threw || values})`);
+  run(3.1);
+  await said;
 }
 
 // ---------- the pauses measured into episode 1 ----------

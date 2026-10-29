@@ -10,10 +10,14 @@
 //
 // The radio stage is the line itself (Henric 2026-10-17: a light radio on her
 // voice all the time, clearer further on in the story). One knob, klarhet,
-// 0 = the whole radio, 1 = her voice clean: a band (highpass + lowpass), a
-// light saturation and a faint hiss that lies only under her lines, never in
-// the silence. The contact filter sits after it, so a stop dulls her exactly
-// as before, on top of the radio.
+// 0 = the whole radio, 1 = her voice clean: a band (highpass + lowpass) and a
+// light saturation. Beside it a faint hiss that lies only under her lines,
+// never in the silence, with a knob of its own, brus (setBrus): until v47 it
+// followed klarhet, so the English episode hissed under every line, and least
+// at the start, where the contact's lowpass took most of it (Henric 29/10:
+// "för mycket brus ... muffled alldeles i början och med brus, men sen bara
+// med en radioeffekt på"). The contact filter sits after both, so a stop
+// dulls her exactly as before, on top of the radio.
 //
 // Contact 1 is her voice clean and close. Contact 0 is a far, dull murmur:
 // the same recording heard through a wall.
@@ -34,11 +38,11 @@ const VOICE_CEIL_HZ = 18000;
 const ASIDE_CONTACT = 0.7;
 const ASIDE_GAIN = 0.7;
 // The radio at klarhet 0. Each part eases to nothing on the way to 1:
-// the band's edges on a log scale, the drive and the hiss in proportion.
+// the band's edges on a log scale, the drive in proportion.
 const RADIO_LOW_HZ = 700;      // highpass at full radio (20 Hz when clean)
 const RADIO_HIGH_HZ = 2800;    // lowpass at full radio (20 kHz when clean)
 const RADIO_DRIVE = 3;         // waveshaper tanh(kx), k = 1 + RADIO_DRIVE at full radio
-const RADIO_HISS = 0.03;       // hiss level at full radio, under her lines only
+export const RADIO_HISS = 0.03; // hiss level at brus 1 (the whole radio's), under her lines only
 const RADIO_HISS_HZ = 3000;    // the hiss's band
 // A line ended early, at a pause between two of her sentences (episode 1: a
 // walker who goes while she asks them to). The fade is short and lies wholly
@@ -65,6 +69,20 @@ export function readKlarhet(raw) {
   if (!t) return null;
   const k = Number(t);   // the whole value or nothing: '1,2,3' is no level
   return Number.isFinite(k) ? Math.min(1, Math.max(0, k)) : null;
+}
+
+// The hiss under line `id`, as [at its start, at `until` seconds in or at
+// its end (null)], in units of the whole radio's hiss. A chapter with "brus"
+// names the lines that have it, each a level or [from, to] or [from, to,
+// seconds], and every other line has none (the English episode 1, v48: only
+// her first two lines, while the contact is found). A chapter without it
+// hisses as much as its radio, 1 - klarhet, under every line, as before v48.
+export function brusOf(brus, id, klarhet) {
+  if (!brus) { const b = 1 - Math.min(1, Math.max(0, Number(klarhet))); return [b, b, null]; }
+  const b = brus[id];
+  if (b === undefined) return [0, 0, null];
+  if (!Array.isArray(b)) return [b, b, null];
+  return [b[0], b[1] ?? b[0], b[2] ?? null];
 }
 
 export class Mixer {
@@ -112,7 +130,8 @@ export class Mixer {
     this.radioLp.connect(this.radioShape);
     this.radioShape.connect(this.radioMakeup);
     this.radioMakeup.connect(this.voiceFilter);
-    // The hiss: a noise loop through a band, silent until a line plays.
+    // The hiss: a noise loop through a band, at the line's level (hissLevel,
+    // setBrus), and open only while a line plays (hissGain, hiss()).
     const noise = c.createBuffer(1, c.sampleRate * 2, c.sampleRate);
     const data = noise.getChannelData(0);
     for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
@@ -123,14 +142,18 @@ export class Mixer {
     hissBand.type = 'bandpass';
     hissBand.frequency.value = RADIO_HISS_HZ;
     hissBand.Q.value = 0.6;
+    this.hissLevel = c.createGain();
+    this.hissLevel.gain.value = 0;
     this.hissGain = c.createGain();
     this.hissGain.gain.value = 0;
     this.hissSource.connect(hissBand);
-    hissBand.connect(this.hissGain);
+    hissBand.connect(this.hissLevel);
+    this.hissLevel.connect(this.hissGain);
     this.hissGain.connect(this.voiceFilter);
     this.hissSource.start();
     this.voicesOn = 0;
     this.klarhet = null;
+    this.brus = 0;
     this.setKlarhet(1);
 
     this.contact = 1;
@@ -169,9 +192,29 @@ export class Mixer {
       // Never past full scale: the curve peaks at 1 (only near klarhet 0 would it).
       this.radioMakeup.gain.value = Math.min(1, (t / drive) * Math.pow(10, (16 * r ** 4 + 1.5 * r * (1 - r)) / 20));
     }
-    this.hissLevel = RADIO_HISS * r;
-    if (this.voicesOn > 0) this.hissGain.gain.setTargetAtTime(this.hissLevel, now, 0.05);
   }
+
+  // How much hiss lies under the next line, in units of the whole radio's:
+  // `from` as it starts (`at`, AudioContext time, else now), easing in a
+  // straight line to `to` over `seconds` (none: it stays at `from`). Set
+  // before playVoice; the next line's call replaces what is left of it.
+  setBrus(from, to = from, { at = null, seconds = 0 } = {}) {
+    // A level that is no number is no hiss, never a thrown line (review of v48).
+    const level = x => (Number.isFinite(x) ? Math.min(1, Math.max(0, x)) : 0);
+    from = level(from);
+    to = level(to);
+    const g = this.hissLevel.gain;
+    const now = this.ctx.currentTime;
+    const when = Math.max(now, at === null ? now : at);
+    g.cancelScheduledValues(now);
+    g.setValueAtTime(g.value, now);
+    g.setValueAtTime(RADIO_HISS * from, when);
+    if (seconds > 0 && to !== from) g.linearRampToValueAtTime(RADIO_HISS * to, when + seconds);
+    this.brus = from;
+  }
+
+  // The hiss as heard now: its level, open or closed (tests and the console).
+  hissNow() { return this.hissLevel.gain.value * this.hissGain.gain.value; }
 
   // The hiss comes in with a line on the radio and goes when the last ends.
   hiss(on, at = null) {
@@ -182,7 +225,7 @@ export class Mixer {
     const g = this.hissGain.gain;
     g.cancelScheduledValues(now);
     g.setValueAtTime(g.value, now);
-    g.setTargetAtTime(this.voicesOn > 0 ? this.hissLevel : 0, when, on ? 0.08 : 0.15);
+    g.setTargetAtTime(this.voicesOn > 0 ? 1 : 0, when, on ? 0.08 : 0.15);
   }
 
   async fetchBuffer(url) {
