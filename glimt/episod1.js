@@ -94,6 +94,10 @@ const AT = {
 // her weather, "near you", the landmark and the last line. About a second was
 // right on Henric's walk of 23/10.
 const SCENE3 = [0.8, 0.8, 1, 0.6, 1.2];
+// `skyLast`: scene 3's last line, after the landmark. None in English since
+// v51 (Henric 29/10: she knows only what she sees of the walker's world, so
+// "The loop's a copy of a real place" waits for a later episode); scene 3
+// ends on the landmark.
 // `countBreath`: seconds of silence between the count under her breath and
 // its last numbers. `gaps['off-gravel']`: the pause as she steps off the
 // gravel, before she is exposed (1.6 s without one).
@@ -101,6 +105,7 @@ const SCENE3 = [0.8, 0.8, 1, 0.6, 1.2];
 export const SV = {
   words: { see: 'ser', hear: 'hör', are: 'är', thirty: 'trettio', stop: 'stanna', lastStop: 'stanna' },
   now: null,
+  skyLast: 's3-2',
   countBreath: COUNT_BREATH,
   at: AT,
   after: { tree: 20, sky: 20, bell: 25 },
@@ -155,6 +160,7 @@ export const SV = {
 export const EN = {
   words: { see: 'see', hear: 'hear', are: 'are', thirty: 'thirty', stop: 'stop', lastStop: 'last:stop', now: 'now' },
   now: 'x-now',
+  skyLast: null,
   countBreath: 0,
   at: { tree: 0, sky: 0, bell: 0 },
   after: { tree: 6, sky: 8, bell: 12 },
@@ -167,7 +173,7 @@ export const EN = {
     's1-walk': 2.5, 's1-2': 0.8, 's1-self': 2.25, 's1-q2': 2, 's1-q2-yes': 0.8, 's1-3': 1.2,
     's2-2': 3, 's2-4': 1.5, 's2-self': 1.5, 'off-gravel': 2.2, 's2-ask': 1.5, 's2-lamp-1': 0.8, 's2-lamp-2': 0.8, 'lamp-tree': 0.8,
     's3-1': 2.5, 's3-dark': 1.2, 's3-light': 1.2, 's3-rain': 1.2, 's3-dry': 1.2, 's3-near': 1.5,
-    's3-bro': 0.9, 's3-vatten': 0.9, 's3-skog': 0.9, 's3-berg': 0.9, 's3-kyrkogard': 0.9, 's3-2': 1.8,
+    's3-bro': 0.9, 's3-vatten': 0.9, 's3-skog': 0.9, 's3-berg': 0.9, 's3-kyrkogard': 0.9,
     's4-self': 0.8, 'x-now': 0.4, name: 2.25, 's4-all': 3,
   },
   asides: { yes2: 's0-yes2-aside', gravel: 's2-self', up: 's4-self' },
@@ -744,7 +750,9 @@ export async function runEpisode1(ctx, E = SV) {
   const light = ctx.world.light === 'dark' ? 's3-dark' : 's3-light';
   const weather = ctx.world.rain ? 's3-rain' : 's3-dry';
   const landmark = `s3-${ctx.world.landmark}`;
-  for (const [i, id] of [light, weather, 's3-near', landmark, 's3-2'].entries()) {
+  const sky = [light, weather, 's3-near', landmark];
+  if (E.skyLast) sky.push(E.skyLast);
+  for (const [i, id] of sky.entries()) {
     await breath(id, SCENE3[i]);
     await say(id);
   }

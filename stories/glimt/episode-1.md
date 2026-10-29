@@ -1,6 +1,6 @@
 # Glimt, episode 1: Keep Going
 
-English version 1, 2026-10-23, translated from the Swedish draft 7 (`episod-1.md`, app version 38). Henric decided on 23/10 that Glimt goes out in English. Five changes he asked for are in this version, and the pauses are marked from his walk the same morning (what changed is at the end). Recorded in app version 41 (27/10, Paula as Vega), and again in version 45 (29/10) with Jessica as Vega, Henric's choice, from the text of Manus version 8. Version 46 (29/10) adds her "Now." after each question she asks for a stop, since she promises it (Manus version 9); the stop is counted from her Now.
+English version 1, 2026-10-23, translated from the Swedish draft 7 (`episod-1.md`, app version 38). Henric decided on 23/10 that Glimt goes out in English. Five changes he asked for are in this version, and the pauses are marked from his walk the same morning (what changed is at the end). Recorded in app version 41 (27/10, Paula as Vega), and again in version 45 (29/10) with Jessica as Vega, Henric's choice, from the text of Manus version 8. Version 46 (29/10) adds her "Now." after each question she asks for a stop, since she promises it (Manus version 9); the stop is counted from her Now. Version 51 (29/10, Manus version 11, Henric's two notes): the star she wants is a wish, not a task, so nothing asks the walker to go out at night; and she says only what she sees of the walker's world, so the two lines about the loop being a copy are struck and kept as a thread for a later episode (Planted, at the end). Only the changed lines are recorded again.
 
 **What the episode has to do:** Vega and the walker meet. The walker should understand three things without anyone explaining them: she sees glimpses of your world but never hears you, she can only be heard while you move, and your steps hide her.
 
@@ -241,23 +241,20 @@ If the walker stays standing about ten seconds more:
 > [dark] It's dark where you are. Here it's always evening, but never dark. They say it's calming.
 > [light] It's light where you are. It's so bright at the edges. Here it's always evening. They say it's calming.
 >
-> [dark] There must be stars where you are. I haven't seen a single one since I came.
-> [light] You've got a real sun. The kind that burns. We've got a lamp called Daylight. It does its best.
+> [dark] And above you it just goes on. All the way up.
 >
-> [rain] And it's raining where you are. It's like static over everything. Here we drink the same water over and over. Where you are it just falls. Straight down, on anyone.
+> [light] Your sky's lit all the way up. We've got a lamp called Daylight. It does its best.
+>
+> [rain] And it's raining where you are. It's like static over everything. Here we drink the same water over and over. Where you are it's just falling. Straight down. All of it.
 > [dry] And it's dry where you are. It never rains here. That would be a waste.
 >
 > And there's something near you.
 >
-> [bridge] A bridge. It's blurry, like a pencil line. (pause) We've got a bridge here too. It goes over nothing. Someone copied the bridge and forgot the river.
+> [bridge] A bridge. It's blurry, like a pencil line. (pause) We've got a bridge here too. It goes over nothing. (pause) Someone drew the bridge and forgot the river.
 > [water] Water. It's glinting. (pause) We've got water here too. Sounds like water, anyway. I have found the speaker.
 > [woods] Woods. Thick ones. (pause) We've got woods here too, right at the back. Flat as a painting, but they rustle. They got that bit right.
 > [hill] A hill. (pause) We've got a hill here too. You're not allowed up it. I don't think it'd hold.
 > [graveyard] A graveyard. (pause) We've got a graveyard here too. No graves. Someone must have thought it looked nice.
->
-> (quiet for a moment) The loop's a copy of a real place, they say. To make us feel at home.
->
-> It looks like where you are. But it isn't where you are.
 
 ## 4. The Bell
 *Trigger: about ten seconds after scene 3 ends, when the walker is moving (on 23/10 it waited for minute nine and a half, 53 s of silence, long enough to think the episode had ended). She is still sitting under the tree and has to get up onto the gravel before the shift comes around the corner. A stop turns the lamp on until she is on the gravel. Then she goes in, and the rest is harmless. The end comes about ten seconds after she is on the gravel (was 25 s on 23/10; keep it a little shorter for a walker nearly back at the start), in two kinds: `[on the way back]` when the distance to the start shrinks, `[heading away]` when it clearly grows, otherwise neither. If the walker stops within a quarter of a minute of the last line, her voice fades into the hum. If the walker keeps going, it fades anyway, and episode 2 can start right after, with the same something under the hum.*
@@ -320,7 +317,7 @@ If the walker stays standing about ten seconds more:
 >
 > (pause) Maybe now I can.
 >
-> One more thing. You've got stars where you are, sometimes. Go out some night when it's clear. I want to know if I see one.
+> And from now on, whenever I get a bit of your sky, I'm going to look for a star. (pause) Just one.
 >
 > Come back out. If you want. I'll manage otherwise, I have for a long time. But come.
 >
@@ -345,8 +342,8 @@ If the walker stays standing about ten seconds more:
 | What | Where | Thought |
 |---|---|---|
 | The shape she has seen at the edge many times before | 0, 4 | Why it is called Shape. Never said: the rebels paired the walker with Vega, and Altair waits further on (world book, Namnen). |
-| What she sees near you is also where she is, worse | 3 | The loop is a copy of the place where the walker walks. Confirmed later. |
-| The stars she never sees, and "go out some night when it's clear" | 3, 4 | Her name, never said. An evening further on when she might see one. |
+| What she sees near you, she has too, worse | 3 | She knows the loop is built (the plastic tree, the speaker, the bridge someone drew), not that it is built after the walker's world, and she never says so: she only compares what she sees with what she has. A later episode lets her find out that the loop is a copy, and maybe wonder whether the walker's world is the original (Henric leans that way, 29/10, not decided). The landmark comes from the map, which is uncertain, so the reveal must not rest on it. |
+| The star she looks for whenever she gets a bit of your sky | 4 | Her name, never said. A wish, not a task: nothing asks the walker to go out at night, and the next episode starts whenever the walker walks. An evening further on when she might see one; Clear sky is untested, so the payoff needs a way for someone who never walks on a clear night. |
 | "It's been logged" | 4 | The Company's suspicion, the meter between episodes. |
 | The people who whisper | 4 | The collective. Episode 2. |
 | Something under the hum | 4 | There is something else. Neither of them knows what. |

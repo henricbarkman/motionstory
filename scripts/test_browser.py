@@ -995,9 +995,10 @@ def episod(browser, base):
 EPISODE_EN_WANT = {
     "has": ["s0-1", "s0-2", "s0-ask1", "s0-go1", "s0-yes1-a", "s0-yes1-b", "s0-go2", "s0-yes2", "s0-yes2-aside", "s1-walk", "s1-2",
             "s1-self", "s1-q2", "s2-1", "s2-2", "s2-count", "s2-3", "s2-4", "s2-self", "s2-5", "s2-6", "s2-ask",
-            "x-avvikelse (hennes sida)", "s2-lamp-plea", "s2-lamp-1", "s3-1", "s3-2", "s4-1", "s4-self", "s4-2", "s4-3",
+            "x-avvikelse (hennes sida)", "s2-lamp-plea", "s2-lamp-1", "s3-1", "s3-near", "s4-1", "s4-self", "s4-2", "s4-3",
             "s4-ok-lamp", "s4-yes", "s4-all"],
-    "not": ["s0-no1", "s0-no2", "s2-count-stop", "s2-no", "s2-lamp-2", "s4-ok", "s4-lamp-1", "s4-lamp-2", "s4-never-1", "r-hjalp"],
+    # v51: scene 3 ends on the landmark in English ("The loop's a copy" waits for a later episode).
+    "not": ["s0-no1", "s0-no2", "s2-count-stop", "s2-no", "s2-lamp-2", "s4-ok", "s4-lamp-1", "s4-lamp-2", "s4-never-1", "r-hjalp", "s3-2"],
     "lamps": 1, "memory": {"svarade": True, "misstanke": False, "klar": True},
 }
 
