@@ -804,10 +804,39 @@ def clock(line):
     return int(m) * 60 + int(s)
 
 
+def standard(browser, base):
+    # English is the standard (v54, Henric 29/10): a link with no chapter is
+    # the English episode, after a reload too, even on a phone whose last
+    # choice was the Swedish episode (its 'glimt-chapter', shared by every
+    # copy on the portal). Until v53 such a link opened the Swedish one.
+    swedish_phone = "try { localStorage.setItem('glimt-chapter', 'episod1'); } catch (_) {}"
+    for url, ready in (("", "Start walking"), ("index.html", "Start walking"), ("?sim", "Start walking"),
+                       ("?lyssna", "Start listening"), ("?kapitel=finns-inte", "Start walking")):
+        ctx, page, errors = open_page(browser, base, url=url, init=swedish_phone, ready=ready)
+        for when in ("opened", "reloaded"):
+            if when == "reloaded":
+                page.reload()
+                page.wait_for_function("t => document.getElementById('start-btn').textContent === t", arg=ready, timeout=30000)
+            s = page.evaluate("""() => ({ doc: document.title, sub: document.getElementById('subtitle').textContent,
+              chapters: !document.getElementById('chapter-box').hidden,
+              voices: performance.getEntriesByType('resource').some(e => e.name.includes('/vega/glimt-e1en/')) })""")
+            check(s["doc"] == "Weavers, episode 1" and s["sub"].startswith("Episode 1.") and not s["chapters"] and s["voices"] and not errors,
+                  f"standard: {url or '(no query)'} {when} is the English episode, no Swedish radios ({s}, {errors[:2]})")
+        ctx.close()
+    # The Swedish ones are still there by name.
+    for url, ready, doc in (("?kapitel=episod1", "Börja gå", "Weavers, episod 1"), ("?kapitel=episod1&lyssna", "Börja lyssna", "Weavers, episod 1"),
+                            ("?kapitel=labb1", "Börja gå", "Weavers, labb 1"), ("?bana=vibration", "Börja gå", None)):
+        ctx, page, errors = open_page(browser, base, url=url, ready=ready)
+        got = page.evaluate("document.title")
+        check((doc is None or got == doc) and not errors, f"standard: {url} is still Swedish ({got!r}, {errors[:2]})")
+        ctx.close()
+
+
 def episodstart(browser, base):
-    # The start screen: the episode is first and chosen, and the chapters,
-    # the labs and the test links are where they were.
-    ctx, page, errors = open_page(browser, base, url="?sim")
+    # The start screen of the Swedish episode (named by its link since v54):
+    # the episode is first and chosen, and the chapters, the labs and the
+    # test links are where they were.
+    ctx, page, errors = open_page(browser, base, url="?kapitel=episod1&sim")
     s = page.evaluate("""() => ({
       radios: [...document.querySelectorAll('input[name="chapter"]')].map(el => el.value),
       checked: document.querySelector('input[name="chapter"]:checked')?.value,
@@ -840,7 +869,7 @@ def episodstart(browser, base):
     check(s1["sub"].startswith("Kapitel 1.") and s1["variant"], f"chapter 1 is a tap away, with its variants ({s1['sub']!r})")
     check(not errors, f"no page errors ({errors[:3]})")
     ctx.close()
-    for url, want in (("?kapitel=2&sim", "2"), ("?kapitel=episod1", "episod1"), ("?kapitel=labb2", "labb2"), ("?kapitel=finns-inte", "episod1")):
+    for url, want in (("?kapitel=2&sim", "2"), ("?kapitel=episod1", "episod1"), ("?kapitel=labb2", "labb2")):
         ctx, page, errors = open_page(browser, base, url=url)
         got = page.evaluate("document.querySelector('input[name=\"chapter\"]:checked')?.value")
         check(got == want and not errors, f"{url} chooses {want} ({got!r}, {errors[:2]})")
@@ -1205,7 +1234,7 @@ TAP_AT_NOW = """
 
 LISTEN_PAGES = {
     # name: (link, ready, button words walking/standing, subtitle, voices, the other language's voices, memory key, others untouched)
-    "sv": ("?lyssna", "Börja lyssna", ("Stanna", "Gå"), "Lyssna utan att gå", "/vega/glimt-e1/", "/vega/glimt-e1en/",
+    "sv": ("?kapitel=episod1&lyssna", "Börja lyssna", ("Stanna", "Gå"), "Lyssna utan att gå", "/vega/glimt-e1/", "/vega/glimt-e1en/",
            "glimt-episod-1-lyssna", ["glimt-episod-1", "glimt-episod-1-sim", "glimt-memory", "glimt-last-log", "glimt-chapter", "glimt-landmark"]),
     "en": ("?kapitel=episode1en&lyssna", "Start listening", ("Stop", "Walk"), "Listen without walking", "/vega/glimt-e1en/", "/vega/glimt-e1/",
            "glimt-episode-1-en-lyssna", ["glimt-episode-1-en", "glimt-episode-1-en-sim", "glimt-memory-en", "glimt-last-log-en", "glimt-chapter", "glimt-landmark",
@@ -1368,6 +1397,7 @@ SCENARIOS = {
     "station": station,
     "provstart": provstart,
     "prov": prov,
+    "standard": standard,
     "episodstart": episodstart,
     "fortexter": fortexter,
     "episod": episod,

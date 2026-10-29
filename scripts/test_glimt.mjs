@@ -967,13 +967,24 @@ const EPISODE_WALKERS = {
       logs: ['scene 3: s3-skog did not play (no sound), woods stays in the bag'] },
   },
   // No position all walk, so neither the sun nor the weather nor the map
-  // was read: in English scene 3 is her sitting down and nothing she sees.
+  // was read: in English scene 3 is silent (v54). Until v53 she said "I see
+  // more of you... What's around you." and then nothing.
   'unread': {
     walk: out(), stops: END_STOP,
     world: { light: null, rain: null, landmark: null, found: [], guess: GUESS },
-    has: ['s3-light', 's3-dry', 's3-near', 's3-bro'],
+    has: ['s3-1', 's3-light', 's3-dry', 's3-near', 's3-bro'],
     lamps: 0, memory: { svarade: false, misstanke: false },
-    en: { has: ['s3-1'], not: ['s3-light', 's3-dark', 's3-rain', 's3-dry', ...LANDMARK_LINES], told: null, endsOn: 's3-1' },
+    en: { has: ['s4-1'], not: ['s3-1', 's3-light', 's3-dark', 's3-rain', 's3-dry', ...LANDMARK_LINES], told: null,
+      logs: ['scene 3: the phone read nothing she can see, no s3-1'] },
+  },
+  // Neither sun nor weather read, but the map has woods all round: s3-1 is
+  // followed by the woods' story, so she says it.
+  'unread-sky': {
+    walk: out(), stops: END_STOP,
+    world: { light: null, rain: null, found: WOODS, guess: GUESS },
+    has: ['s3-1', 's3-light', 's3-dry', 's3-near', 's3-skog'],
+    lamps: 0, memory: { svarade: false, misstanke: false },
+    en: { has: ['s3-1', 's3-near', 's3-skog'], not: ['s3-light', 's3-dark', 's3-rain', 's3-dry'], told: 'woods', endsOn: 's3-skog' },
   },
   // Stands from her last words before the credits until well past scene 1's
   // wait: the phone never reads the walker moving with the line clear, so in
@@ -1424,6 +1435,13 @@ function episodeProblems(name, run) {
       if (!run.heardBefore.includes(id) && !(told && told.id === id)) problems.push(`${id} kept in the bag, never told`);
     }
     if (p.told !== undefined && (told ? told.id : null) !== p.told) problems.push(`told ${told ? told.id : 'nothing'}, wanted ${p.told || 'nothing'}`);
+  }
+  // She never says she sees more of the walker and then nothing (v54): in
+  // English s3-1 is always followed by something she sees.
+  if (E_OPTS.seen) {
+    const said = played.filter(x => !x.side && x.id !== 'r-vilar');
+    const i = said.findIndex(x => x.id === 's3-1');
+    if (i >= 0 && (!said[i + 1] || said[i + 1].id === 's4-1')) problems.push('s3-1 with nothing she sees after it');
   }
   // Scene 3 ends on this line: the next of hers is scene 4's.
   if (p.endsOn) {

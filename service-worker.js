@@ -1,6 +1,6 @@
 // Bump CACHE whenever audio or app files change, otherwise an installed PWA
 // keeps serving the old files forever.
-const CACHE = 'motionstory-v53';
+const CACHE = 'motionstory-v54';
 // The private copies sit side by side on one origin (the portal) and share
 // its CacheStorage. Each worker keeps its files under its own scope and
 // clears only its own older caches, so opening one copy never empties
@@ -73,10 +73,10 @@ const ASSETS = [
   './stories/glimt/labb.json',
   './glimt/ljud.json',
 ];
-// The English episode (episode-1.json) is left out: only its own link opens
-// it, so a Swedish phone should not download its 11 MB of voices. The
-// English page fetches all its lines when it opens, and the fetch handler
-// keeps them then.
+// The English episode (episode-1.json) is left out, though it is the
+// standard page since v54: the English page fetches all its lines when it
+// opens, and the fetch handler keeps them then, so precaching its 11 MB of
+// voices too would only download them twice.
 const CHAPTER_FILES = ['./stories/glimt/kapitel-1.json', './stories/glimt/kapitel-2.json',
   './stories/glimt/episod-1.json', './stories/glimt/labb.json'];
 
