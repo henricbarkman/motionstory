@@ -3,10 +3,11 @@
 // ?lyssna (?listen does the same) is an episode heard from a sofa: the
 // phone walks at an ordinary pace by itself, and one button stops and starts
 // it; in English it stops by itself for a yes to "Can you hear me?"
-// (listen.js). ?kapitel=2 preselects a chapter, ?kapitel=episod1 the episode,
-// ?kapitel=episode1en the episode in English (no radio for it: the link is
-// the way in, and the page is in English), ?kapitel=labb1 the lab; the start screen
-// has the same choice. ?bana=<id> runs a single lab station (ids in lab.js),
+// (listen.js). A link with no chapter opens the episode in English (also
+// ?kapitel=episode1en; no radio for it, and the page is in English).
+// ?kapitel=2 preselects a Swedish chapter, ?kapitel=episod1 the Swedish
+// episode, ?kapitel=labb1 the lab; their start screen has the same choice.
+// ?bana=<id> runs a single lab station (ids in lab.js),
 // ?banor=<id>,<id> some of one lab's stations as a walk of the lab, and
 // ?prov=<id> one of the short test walks (PROV in lab.js).
 
@@ -32,9 +33,16 @@ const APP_VERSION = 54;
 const CREDITS_WAIT = 15;
 
 const params = new URLSearchParams(location.search);
-// The English episode's page: its own link, its text in English. The log
-// stays Swedish, for it is read by Demi.
-const EN_PAGE = params.get('kapitel') === 'episode1en';
+// The English episode's page, its text in English. The log stays Swedish,
+// for it is read by Demi. English is the standard (v54, Henric 29/10:
+// "Engelska ska vara standard. Den svenska är utdaterad."): a link that
+// names no Swedish chapter, test walk or lab station opens it, whatever the
+// phone chose last. Until v53 a link that had lost its ?kapitel=episode1en
+// opened the Swedish episode. The Swedish ones are reached only by naming
+// them: ?kapitel=episod1, 1, 2, labb1, labb2, or ?prov=, ?bana=, ?banor=.
+const SWEDISH_CHAPTERS = ['episod1', '1', '2', 'labb1', 'labb2'];
+const EN_PAGE = !SWEDISH_CHAPTERS.includes(params.get('kapitel')) &&
+  !['prov', 'bana', 'banor'].some(k => params.has(k));
 const tr = (sv, en) => (EN_PAGE ? en : sv);
 // ?klarhet=0.5 overrides how clear the line is (0 the whole radio, 1 clean),
 // so a walk can try another level without a new build (readKlarhet in audio.js).
@@ -136,7 +144,7 @@ const CHAPTERS = {
   },
   // Episode 1 in English (Henric 23/10), "Keep Going": the same code with
   // its own words, breaths and pace (EN in episod1.js), Paula and Rowan.
-  // Only reached by its link; there is no radio for it.
+  // The standard page (EN_PAGE); there is no radio for it.
   ...(EN_PAGE ? {
     episode1en: {
       url: '../stories/glimt/episode-1.json',
@@ -1834,9 +1842,9 @@ function englishPage() {
   if (variant !== 'a' && variant !== 'b') variant = 'a';
   document.querySelector(`input[name="variant"][value="${variant}"]`).checked = true;
 
-  let ch = 'episod1';
-  try { ch = localStorage.getItem('glimt-chapter') || 'episod1'; } catch (_) {}
-  if (params.has('kapitel')) ch = params.get('kapitel');
+  // The phone's last choice ('glimt-chapter') no longer picks the page
+  // (v54): a link that names no Swedish chapter is the English episode.
+  let ch = EN_PAGE ? 'episode1en' : params.get('kapitel') || 'episod1';
   // A single station belongs to whichever lab has it.
   if (ONLY_STATION) ch = LABS[2].includes(ONLY_STATION) ? 'labb2' : 'labb1';
   if (TEST) ch = 'prov';
