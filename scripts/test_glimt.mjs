@@ -727,11 +727,11 @@ const EPISODE_WALKERS = {
   // A red light between scene 1 and 2: forty-two seconds still while she walks.
   light: {
     walk: out(), stops: { 's1-3': ['end', 2, 44], ...END_STOP },
-    has: ['s2-no'], not: ['r-hjalp'],
-    // In English the tree follows two seconds after scene 1, so the same red
-    // light is at the start of scene 2: she stops with the walker, counts
-    // nothing, asks them to go and says the last numbers when they do.
-    en: { skips: ['scene 2: she counts'], lateCount: true, has: ['s2-no', 's2-count-stop'] },
+    has: ['s2-no', 's2-count'], not: ['r-hjalp', 's2-count-stop'],
+    // In English the tree follows six seconds after scene 1 (v49; four until
+    // then): GPS has seen the stop by then, so scene 2 waits for the walker
+    // as in Swedish. With four it opened on a stop not yet seen, and she
+    // stood through the count asking them to go (as 'counted-long' still does).
     lamps: 0, memory: { svarade: false, misstanke: false },
   },
   // A red light in the credits: the song goes dull, nothing else happens.
@@ -1109,6 +1109,48 @@ const E_ORDER = ['scene 0: does the walker see her', 'credits', 'scene 1', 'scen
   'scene 2: she counts', 'scene 2: off the gravel', 'scene 3', 'scene 4', 'scene 4: the end', 'end'];
 const logTime = line => { const [m, s] = line.trim().split(/\s+/)[0].split(':').map(Number); return m * 60 + s; };
 
+// The count in English, a second a number (v49, Henric 29/10: "räknar för
+// fort ... I slutet saktar hon ner jättemycket"; v48 went 0.56 s a number to
+// twenty-six and 1.5 s from there to thirty). The cue of every number in the
+// two counting lines is measured from the files (check_glimt_audio.py), so
+// these read the takes, not a number written down beside them.
+// s a number may fall off its second in a walk: the sim moves in quarter
+// seconds and ends a line on the tick after it (its waits start counting on
+// the next tick), so the last numbers come about 0.6 s late here; the app
+// plays them on the count's own end. v48 had twelve 3.5 s late and
+// twenty-seven 1.6 s early.
+const COUNT_SLACK = 0.75;
+const COUNT_STEP = [0.85, 1.15];    // s from one number to the next, to thirty
+const COUNT_AFTER_30 = [0.85, 1.4]; // after thirty, her [short pause] twice
+const EN_N = Object.fromEntries('zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen'.split(' ').map((w, i) => [w, i]));
+const EN_T = { twenty: 20, thirty: 30, forty: 40 };
+function numberOf(word) {
+  const [t, u] = word.split('-');
+  return t in EN_T ? EN_T[t] + (u ? EN_N[u] : 0) : EN_N[t];
+}
+// The numbers in the files, in order, with where each falls on one clock: the
+// count from 0, its last numbers after it and the episode's countBreath.
+function countTimeline(story, countBreath) {
+  const at = [];
+  const count = story.cues['s2-count'] || {};
+  for (const [w, c] of Object.entries(count)) at.push([numberOf(w), c]);
+  const from = (story.seconds['s2-count'] || 0) + countBreath;
+  for (const [w, c] of Object.entries(story.cues['s2-3'] || {})) at.push([numberOf(w), from + c]);
+  return at.sort((x, y) => x[0] - y[0]);
+}
+function countProblems(story, countBreath) {
+  const at = countTimeline(story, countBreath);
+  const out = [];
+  if (at.length !== 21 || at[0][0] !== 12 || at[20][0] !== 32) out.push(`the count's cues name ${at.map(x => x[0]).join(',')}, not every number from twelve to thirty-two`);
+  for (let i = 1; i < at.length; i++) {
+    const [n, t] = at[i];
+    const step = t - at[i - 1][1];
+    const [lo, hi] = n > 30 ? COUNT_AFTER_30 : COUNT_STEP;
+    if (n !== at[i - 1][0] + 1 || step < lo || step > hi) out.push(`${at[i - 1][0]} to ${n}: ${step.toFixed(2)} s, wanted ${lo}-${hi}`);
+  }
+  return out;
+}
+
 // Her lines that may follow the one before with no breath, on purpose: her
 // Now (the answer is read from the word), her answer to a stop or to a
 // walker going again (the go lines, the lamp's pleas and what she says once
@@ -1292,6 +1334,18 @@ function episodeProblems(name, run) {
     const half = counting.t + E_CUE - stood;
     // A walker who stood through the half minute hears it once they walk.
     if (p.lateCount ? half < 29 : Math.abs(half - 30) > (p.countSlack ?? 1)) problems.push(`"${E_WORDS.thirty}" came ${half.toFixed(1)} s after she stopped, wanted 30`);
+    // In English she counts the seconds as they pass (v49): where she counts
+    // whole, each number up to thirty falls that many seconds after her stop.
+    const cnt = played.filter(x => x.id === 's2-count').pop();
+    if (ENGLISH && cnt && cnt.t > stood && !played.some(x => x.id === 's2-count-stop')) {
+      for (const [id, x] of [['s2-count', cnt], ['s2-3', counting]]) {
+        for (const [word, c] of Object.entries(EPISODE.cues[id] || {})) {
+          const n = numberOf(word);
+          const at = x.t + c - stood;
+          if (n <= 30 && Math.abs(at - n) > COUNT_SLACK) problems.push(`"${word}" came ${at.toFixed(1)} s after she stopped, wanted ${n}`);
+        }
+      }
+    }
   }
 
   // Her side. The tone never left on, and her own steps are never heard
@@ -1403,6 +1457,11 @@ function soundProblems() {
 
 async function episodeMain(onlyProfile) {
   let failures = 0;
+  if (ENGLISH) {
+    const problems = countProblems(EPISODE, E_OPTS.countBreath);
+    console.log(problems.length ? `FAIL: the count: ${problems.join('; ')}` : 'OK: the count, a second a number from twelve to thirty');
+    if (problems.length) failures++;
+  }
   const heard = new Set();
   let nearlyBack = 0;
   // GLIMT_TIMELINE=<file>: each walker's lines with their exact start and

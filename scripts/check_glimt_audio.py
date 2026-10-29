@@ -253,8 +253,10 @@ def main() -> int:
                 # "last:nu" is the last "nu" in the line: "när jag säger nu. Nu."
                 last = cue_word.startswith("last:")
                 bare = cue_word.removeprefix("last:")
+                # Through words() as well, so a number written "twenty-six" is
+                # the 26 Scribe writes (v49: every number of the count).
                 hits = [w for w in result.get("words", [])
-                        if w.get("type") == "word" and heard_as(words(w.get("text", "")), lang) == heard_as([bare], lang)]
+                        if w.get("type") == "word" and heard_as(words(w.get("text", "")), lang) == heard_as(words(bare), lang)]
                 hit = (hits[-1] if last else hits[0]) if hits else None
                 if hit is None:
                     problems.append(f"{line_id}: cue word {cue_word!r} not heard")

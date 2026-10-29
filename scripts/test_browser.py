@@ -872,6 +872,10 @@ def episodstart(browser, base):
     first = page.evaluate("window.glimt.mixer.hissNow()")
     check(bool(line) and first > 0.01, f"episode1en: the hiss under her first line ({first:.4f})")
     check(any(x.endswith("luft 1") for x in walk_log(page)), f"episode1en: and the log names the standard air ({[x for x in walk_log(page) if 'luft' in x]})")
+    # v49: the bed and the riser 12 dB down in English (the private copy has them).
+    fx = page.evaluate("window.glimt.mixer.fxGain.gain.value")
+    check(any(x.endswith("bakgrund -12 dB") for x in walk_log(page)) and abs(fx - 0.7 * 10 ** (-12 / 20)) < 1e-3,
+          f"episode1en: the bed and the riser 12 dB down, and the log says so (riser {fx:.3f}, {[x for x in walk_log(page) if 'bakgrund' in x]})")
     line = wait_log(page, "▶ s0-ask1", 120000)
     page.wait_for_timeout(1000)
     later = page.evaluate("window.glimt.mixer.hissNow()")
@@ -882,6 +886,18 @@ def episodstart(browser, base):
     page.click("#start-btn")
     line = wait_log(page, "luft 2", 30000)
     check(line.endswith("luft 2 (från länken)"), f"?luft=2: the log says the link gave twice the air ({line!r})")
+    ctx.close()
+    ctx, page, errors = open_page(browser, base, url="?kapitel=episode1en&sim&bakgrund=-6,5", ready="Start walking")
+    page.click("#start-btn")
+    line = wait_log(page, "bakgrund", 30000)
+    check(line.endswith("bakgrund -6.5 dB (från länken)"), f"?bakgrund=-6,5: the link's level over the episode's ({line!r})")
+    ctx.close()
+    # The Swedish has no bakgrund: nothing said, the riser at its own level.
+    ctx, page, errors = open_page(browser, base, url="?kapitel=episod1&sim")
+    page.click("#start-btn")
+    wait_log(page, "▶ s0-1", 60000)
+    fx = page.evaluate("window.glimt.mixer.fxGain.gain.value")
+    check(not any("bakgrund" in x for x in walk_log(page)) and abs(fx - 0.7) < 1e-6, f"episod1: no bakgrund, the riser as before ({fx})")
     ctx.close()
 
 

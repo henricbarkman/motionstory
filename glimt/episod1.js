@@ -55,7 +55,7 @@ const askWindow = s => s.paceSource === 'steps' ? 5 : 20;
 // window keeps its ten seconds there.
 const treeWindow = s => s.paceSource === 'steps' ? 10 : 20;
 const HALF_MINUTE = 30;     // s without steps before the snäcka asks
-const COUNT_BREATH = 0.8;   // s between the count under her breath and its last numbers
+const COUNT_BREATH = 0.8;   // s between the count under her breath and its last numbers (Swedish)
 const RESERVE_MAX = 3;      // times it asks in one walk, then it lets her be
 const SHORT_WAIT = 2.5 * MIN; // s a scene waits for a walker who is not walking
 const LONG_WAIT = 10 * MIN;   // the same, when the feet say the walker stands
@@ -94,10 +94,14 @@ const AT = {
 // her weather, "near you", the landmark and the last line. About a second was
 // right on Henric's walk of 23/10.
 const SCENE3 = [0.8, 0.8, 1, 0.6, 1.2];
+// `countBreath`: seconds of silence between the count under her breath and
+// its last numbers. `gaps['off-gravel']`: the pause as she steps off the
+// gravel, before she is exposed (1.6 s without one).
 
 export const SV = {
   words: { see: 'ser', hear: 'hör', are: 'är', thirty: 'trettio', stop: 'stanna', lastStop: 'stanna' },
   now: null,
+  countBreath: COUNT_BREATH,
   at: AT,
   after: { tree: 20, sky: 20, bell: 25 },
   end: { soon: END_SOON, gap: END_GAP },
@@ -127,21 +131,44 @@ export const SV = {
 // (x-now: the answer is read from it), the count, the lamp, scene 4's run
 // for the gravel, and her answer to a stop (the go lines), which must come
 // at once. `?luft=` scales all the rest (withAir).
+//
+// A little more again where the story turns (v49, Henric 29/10 after v48:
+// "Fundera själv på var det kan passa med ett snäpp längre pauser ...
+// mellan olika sektioner ... när hon börjar prata för sig själv"). Around
+// her lines to herself (asides): before "What? That can't be right" 1.5 s
+// (0.8), after it 2 (1.5); before the whispered "You hear me." 1.5 (0.8);
+// after "Ask something real this time" 2 (1.5; before it 2.25 already);
+// before "Three metres" 1.5 (0.8) and the step off the gravel after it 2.2
+// (1.6); before "Up. Up, up." 0.8 (none), while she still sits, so the stop
+// that lights the lamp is no likelier. Between the scenes: 2.5 s after the
+// credits' song before scene 1 (none), scene 2 6 s after scene 1 (4), and
+// 2.5 s once she has sat down under the tree before scene 3's first line
+// (none; the 8 s before it are her walk back, exposed, and stay). The bell
+// (12 s) and the end keep theirs.
+//
+// The count (v49, Henric 29/10: "räknar för fort ... I slutet saktar hon
+// ner jättemycket, men i början ... en halv sekund kanske"): v48's takes went
+// 0.56 s a number from twelve to twenty-six and 1.5 s from twenty-seven to
+// thirty. The numbers are now laid a second apart in the files (1.2 s after
+// thirty, her [short pause]), the last of the count a second before the
+// first of the last numbers with no silence between the files.
 export const EN = {
   words: { see: 'see', hear: 'hear', are: 'are', thirty: 'thirty', stop: 'stop', lastStop: 'last:stop', now: 'now' },
   now: 'x-now',
+  countBreath: 0,
   at: { tree: 0, sky: 0, bell: 0 },
-  after: { tree: 4, sky: 8, bell: 12 },
+  after: { tree: 6, sky: 8, bell: 12 },
   end: { soon: 8, gap: 12 },
   // x-now: with the question's own tail and the take's lead, about a second
-  // of silence between the question and her now.
+  // of silence between the question and her now. s1-walk: after the credits,
+  // the same before s1-run.
   gaps: {
-    's0-2': 3, 's0-ask1': 2.25, 's0-yes1-a': 0.8, 's0-yes1-b': 1.5, 's0-yes2': 0.8, 's0-yes2-aside': 0.8,
-    's1-2': 0.8, 's1-self': 2.25, 's1-q2': 1.5, 's1-q2-yes': 0.8, 's1-3': 1.2,
-    's2-2': 3, 's2-4': 1.5, 's2-self': 0.8, 's2-ask': 1.5, 's2-lamp-1': 0.8, 's2-lamp-2': 0.8, 'lamp-tree': 0.8,
-    's3-dark': 1.2, 's3-light': 1.2, 's3-rain': 1.2, 's3-dry': 1.2, 's3-near': 1.5,
+    's0-2': 3, 's0-ask1': 2.25, 's0-yes1-a': 1.5, 's0-yes1-b': 2, 's0-yes2': 0.8, 's0-yes2-aside': 1.5,
+    's1-walk': 2.5, 's1-2': 0.8, 's1-self': 2.25, 's1-q2': 2, 's1-q2-yes': 0.8, 's1-3': 1.2,
+    's2-2': 3, 's2-4': 1.5, 's2-self': 1.5, 'off-gravel': 2.2, 's2-ask': 1.5, 's2-lamp-1': 0.8, 's2-lamp-2': 0.8, 'lamp-tree': 0.8,
+    's3-1': 2.5, 's3-dark': 1.2, 's3-light': 1.2, 's3-rain': 1.2, 's3-dry': 1.2, 's3-near': 1.5,
     's3-bro': 0.9, 's3-vatten': 0.9, 's3-skog': 0.9, 's3-berg': 0.9, 's3-kyrkogard': 0.9, 's3-2': 1.8,
-    'x-now': 0.4, name: 2.25, 's4-all': 3,
+    's4-self': 0.8, 'x-now': 0.4, name: 2.25, 's4-all': 3,
   },
   asides: { yes2: 's0-yes2-aside', gravel: 's2-self', up: 's4-self' },
   songUnder: { yes: ['s0-yes2-aside', null], no: ['s0-no2', 'talk'] },
@@ -519,7 +546,9 @@ export async function runEpisode1(ctx, E = SV) {
   if (!song) ctx.log('credits');
   await (song || ctx.credits());
 
-  // 1. The loop. When the song is over and the contact is full.
+  // 1. The loop. When the song is over and the contact is full. In English a
+  // breath after the song first (E.gaps, under s1-walk).
+  await breath('s1-walk');
   await ctx.until(s => full(s) && s.moving && s.movingFor >= 3, { timeout: SHORT_WAIT });
   ctx.log('scene 1');
   await ctx.play(ctx.state().band === 'run' ? 's1-run' : 's1-walk');
@@ -560,18 +589,21 @@ export async function runEpisode1(ctx, E = SV) {
     ctx.log('scene 2: she stands still');
     // She stops: in English the silence is the stop (E.gaps), as long as
     // the half minute has room for it with her count whole and a second to
-    // spare for the lines to start (the English lines leave 1.1 s, not the
-    // 2 the manuscript asks for).
-    const room = HALF_MINUTE - ctx.cue('s2-3', W.thirty) - ctx.seconds('s2-count') - COUNT_BREATH - ctx.seconds('s2-2') - 1;
+    // spare for the lines to start. In English (v49) that is 3.7 s, so the
+    // 3 s stop is whole, and "twelve" falls about 12 s after her last step
+    // (until v49 at 15.5, and thirty at 30 only for her slowing down).
+    const room = HALF_MINUTE - ctx.cue('s2-3', W.thirty) - ctx.seconds('s2-count') - E.countBreath - ctx.seconds('s2-2') - 1;
     if (E.gaps['s2-2'] && await pause(Math.min(E.gaps['s2-2'], Math.max(0, room))) === 'rest') continue;
     if (await line('s2-2') === 'rest') continue;
     side.lift(true);
     const lastAt = stoodAt + HALF_MINUTE - ctx.cue('s2-3', W.thirty);
     // heldStop: a page hidden a moment while the walker walks is no stop.
-    let why = await hold(s => heldStop(s) || s.t >= lastAt - ctx.seconds('s2-count') - COUNT_BREATH);
+    let why = await hold(s => heldStop(s) || s.t >= lastAt - ctx.seconds('s2-count') - E.countBreath);
     if (why === 'rest') continue;
+    let countFrom = null;
     if (!heldStop(ctx.state())) {
       ctx.log('scene 2: she counts');
+      countFrom = now();
       why = await line('s2-count', undefined, heldStop);
       if (why === 'rest') continue;
     }
@@ -581,7 +613,15 @@ export async function runEpisode1(ctx, E = SV) {
       // A phone that never sees the walker walk again does not keep her waiting.
       if (await hold(walking, { by: lastAt + SHORT_WAIT }) === 'rest') continue;
     }
-    if (await hold(s => s.t >= lastAt) === 'rest') continue;
+    // A count heard to its end at the last numbers' time goes straight on to
+    // them: a wait ends at the app's next tick, up to a quarter second late,
+    // and in English the count ends right there (countBreath 0), a second
+    // from twenty-six to twenty-seven. It began no earlier than it was due
+    // (the tick that saw it due, `countFrom`), so it ends no earlier than
+    // countBreath before lastAt: in English, never early. Read from that and
+    // not from now(), which is the last tick's time, not the clock's.
+    const onTime = why === 'done' && countFrom + ctx.seconds('s2-count') >= lastAt;
+    if (!onTime && await hold(s => s.t >= lastAt) === 'rest') continue;
     ctx.log('scene 2: the last numbers');
     if (await line('s2-3') === 'rest') continue;
     break;
@@ -593,7 +633,7 @@ export async function runEpisode1(ctx, E = SV) {
 
   // She steps off the gravel. From here a stop lights the lamp.
   her.stillSince = null;
-  await pause(1.6);
+  await pause(E.gaps['off-gravel'] ?? 1.6);
   her.exposed = true;
   ctx.log('scene 2: off the gravel');
 
@@ -696,6 +736,7 @@ export async function runEpisode1(ctx, E = SV) {
   if (her.stillSince === null) her.stillSince = now();
   ctx.log(`scene 3: ${ctx.world.light}, ${ctx.world.rain ? 'rain' : 'dry'}, ${ctx.world.landmark}`);
   if (E.after.sky > exposedSky) await opens(now() + E.after.sky - exposedSky);
+  await breath('s3-1');
   await say('s3-1');
   const light = ctx.world.light === 'dark' ? 's3-dark' : 's3-light';
   const weather = ctx.world.rain ? 's3-rain' : 's3-dry';
@@ -715,6 +756,8 @@ export async function runEpisode1(ctx, E = SV) {
   side.bell();
   await ctx.until(() => false, { timeout: 2.2 });
   await say('s4-1');
+  // A breath before she mutters "Up", while she still sits (not exposed).
+  if (E.asides.up) await breath(E.asides.up);
   her.stillSince = null;          // she gets up
   her.exposed = into4 !== 'late' || ctx.state().moving;
   if (!her.exposed) ctx.log('scene 4: the walker stands, no lamp');
