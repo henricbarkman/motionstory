@@ -785,24 +785,39 @@ export async function runEpisode1(ctx, E = SV) {
   ctx.log(`scene 3: ${light ?? 'light not read'}, ${rain === null ? 'weather not read' : rain ? 'rain' : 'dry'}` +
     `${E.bag ? '' : `, ${orGuess(ctx.world, 'landmark')}`}`);
   if (E.after.sky > exposedSky) await opens(now() + E.after.sky - exposedSky);
-  await breath('s3-1');
-  await say('s3-1');
   // [id, the pause before it]
   const sky = [];
   if (light) sky.push([light === 'dark' ? 's3-dark' : 's3-light', SCENE3[0]]);
   if (rain !== null) sky.push([rain ? 's3-rain' : 's3-dry', SCENE3[1]]);
   if (!E.bag) sky.push(['s3-near', SCENE3[2]], [`s3-${orGuess(ctx.world, 'landmark')}`, SCENE3[3]]);
   if (E.skyLast) sky.push([E.skyLast, SCENE3[4]]);
+  // The bag: what is near the walker now, as she would tell it, and a story
+  // about it not heard yet. Nothing near, or every story near heard: she
+  // says nothing about it, not even "And there's something near you".
+  // Picked after the sky, where the walker is as she tells it; with no sky
+  // to say, before s3-1, since then it decides whether she says s3-1 at all.
+  let near = null;
+  const pick = () => {
+    near = landmarksNear(ctx.world, ctx.position ? ctx.position() : null, now());
+    told = pickStory(E.bag, near, ctx.bag);
+  };
+  if (E.bag && !sky.length) pick();
+  // "I see more of you... What's around you." only when something she sees
+  // follows (v54): a phone that read nothing of the walker's world (no
+  // position, so no sun, weather or map) gets a silent scene 3, and she
+  // never promises what she then does not say. No new line.
+  if (sky.length || told) {
+    await breath('s3-1');
+    await say('s3-1');
+  } else {
+    ctx.log('scene 3: the phone read nothing she can see, no s3-1');
+  }
   for (const [id, gap] of sky) {
     await breath(id, gap);
     await say(id);
   }
-  // The bag: what is near the walker now, as she would tell it, and a story
-  // about it not heard yet. Nothing near, or every story near heard: she
-  // says nothing about it, not even "And there's something near you."
   if (E.bag) {
-    const near = landmarksNear(ctx.world, ctx.position ? ctx.position() : null, now());
-    told = pickStory(E.bag, near, ctx.bag);
+    if (near === null) pick();
     ctx.log(`scene 3: the bag: ${near.length ? `near ${near.map(n => `${n.name} ${Math.round(n.dist)} m`).join(', ')}` : 'nothing read near the walker'}` +
       `${told ? `, she tells ${told.id}` : near.length ? ', every story about it heard' : ''}`);
     if (told) {
