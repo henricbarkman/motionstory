@@ -71,7 +71,7 @@ export function overpassQuery(lat, lon, radius = 400) {
   const a = `(around:${radius},${lat.toFixed(5)},${lon.toFixed(5)})`;
   return `[out:json][timeout:8];(
 nwr["natural"="water"]${a};
-way["waterway"~"^(river|stream|canal)$"]${a};
+way["waterway"~"^(river|stream|canal)$"][!"tunnel"]["covered"!="yes"]${a};
 nwr["natural"="wood"]${a};
 nwr["landuse"="forest"]${a};
 node["natural"="peak"](around:${radius + 200},${lat.toFixed(5)},${lon.toFixed(5)});
@@ -91,7 +91,9 @@ export function classifyElements(elements) {
   for (const el of elements) {
     const t = el.tags || {};
     const names = [];
-    if (t.natural === 'water' || /^(river|stream|canal)$/.test(t.waterway || '')) names.push('vatten');
+    // A stream in a culvert runs under the road: no water to see (v58, as
+    // episode 2's places, placeKind).
+    if (t.natural === 'water' || (/^(river|stream|canal)$/.test(t.waterway || '') && !t.tunnel && t.covered !== 'yes')) names.push('vatten');
     if (t.natural === 'wood' || t.landuse === 'forest') names.push('skog');
     if (t.natural === 'peak') names.push('berg');
     if (t.bridge === 'yes') names.push('bro');

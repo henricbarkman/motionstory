@@ -167,7 +167,7 @@ If the walker was already standing:
 > But here you are anyway. (pause) And now I've got an idea. A stupid one.
 
 ## 2. The Tree
-*Trigger: about two seconds after scene 1 ends (on 23/10 it waited for minute five, 47 s of silence after "A stupid one", the longest gap in the walk). First she stands still while the walker moves. From when she stops to when she says thirty, half a minute really passes. Then she steps off the gravel, and from then on a stop turns the lamp on.*
+*Trigger: about two seconds after scene 1 ends (on 23/10 it waited for minute five, 47 s of silence after "A stupid one", the longest gap in the walk). First she stands still while Shape moves. From when she stops to when she says thirty, half a minute really passes. Then she steps off the gravel, and from then on a stop turns the lamp on. After the last numbers she says "You're moving" only once the phone reads Shape moving: she waits for it, on the gravel where a stop is harmless. If the phone never reads it, she says the line as "They're not asking, and they think it's me."*
 
 > Here's the thing. I'm walking along talking out loud to someone who isn't there, and nobody's said a word. Not one, since you came.
 >
@@ -279,8 +279,9 @@ If the walker stays standing about ten seconds more:
 > (the walker moves again, her voice back, low) I made it. But it's been logged. A deviation. I'll be hearing about that.
 >
 > **Everyone:**
-> [on the way back] You're on your way back. I can tell, you're going straight now. (deadpan) I just go round. Same thing, according to the wall.
-> [heading away] You're heading away from where you started. Straight out. (pause) I can't do that. But I can watch.
+> [on the way back] You're on your way back. (deadpan) I just go round. Same thing, according to the wall.
+>
+> [heading away] You're heading away from where you started. (pause) I can't do that. But I can watch.
 >
 > (pause about 1.5 s; was 0 s on 23/10)
 >

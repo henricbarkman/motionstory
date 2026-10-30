@@ -909,6 +909,18 @@ const EPISODE_WALKERS = {
   blind: {
     walk: t => ({ ...out()(t), accuracy: 200, doppler: false }), stops: {},
     has: ['s2-count-stop', 's2-3', 's4-all'], skips: ['scene 2: she counts'], loose: true, limit: 60 * 60,
+    // In English she cannot say "You're moving" to it (v58): the line without.
+    en: { has: ['s2-count-stop', 's2-3', 's2-4-unmoved', 's4-all'], not: ['s2-4'],
+      logs: ['scene 2: the phone has not read the walker moving'] },
+  },
+  // Stops with her last numbers and stands a while after them: in English
+  // she waits for the walk before "You're moving" (v58), on the gravel where
+  // the stop costs nothing, and says the whole line once it comes.
+  'still-at-thirty': {
+    walk: out(), stops: { 's2-3': ['start', 0, 16], ...END_STOP },
+    has: ['s2-3', 's2-4'], not: ['r-hjalp'],
+    lamps: 0, memory: { svarade: false, misstanke: false },
+    en: { not: ['r-hjalp', 's2-4-unmoved'], logs: ['she waits for the walker to move before "You\'re moving"'] },
   },
 
   // v52, Henric 29/10: "Inte hitta på något. Om hon inte kan se så spara

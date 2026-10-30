@@ -124,6 +124,7 @@ export const SV = {
   now: null,
   seen: false,
   alone: null,
+  unmoved: null,
   bag: null,
   skyLast: 's3-2',
   countBreath: COUNT_BREATH,
@@ -183,6 +184,9 @@ export const EN = {
   seen: true,
   // s1-2 without "too", for a walker the phone has not read walking (v57).
   alone: 's1-2-alone',
+  // s2-4 without "You're moving", for a walker the phone has not read
+  // moving after the count (v58).
+  unmoved: 's2-4-unmoved',
   bag: STORIES,
   skyLast: null,
   countBreath: 0,
@@ -633,6 +637,7 @@ export async function runEpisode1(ctx, E = SV) {
   // A walker who stops while she counts is told to walk, and she says the
   // last numbers once they do. If the walker stands still through it the
   // snäcka does ask, and she starts over.
+  let moved = true;           // the walker read going before s2-4 (E.unmoved)
   for (;;) {
     const stoodAt = now();
     her.stillSince = stoodAt;
@@ -674,11 +679,24 @@ export async function runEpisode1(ctx, E = SV) {
     if (!onTime && await hold(s => s.t >= lastAt) === 'rest') continue;
     ctx.log('scene 2: the last numbers');
     if (await line('s2-3') === 'rest') continue;
+    // "You're moving" (s2-4) says she has read the walker move (v58), so in
+    // English a walker the phone does not read going after the last numbers
+    // is waited for, here on the gravel where a stop is harmless. One who
+    // stands half a minute is asked by the snäcka, and she starts over. A
+    // phone that reads neither, at the deadline, hears the line without
+    // "You're moving" (E.unmoved).
+    if (E.unmoved && !going(ctx.state())) {
+      ctx.log('scene 2: she waits for the walker to move before "You\'re moving"');
+      const w = await hold(going, { timeout: SHORT_WAIT });
+      if (w === 'rest') continue;
+      moved = w === 'ok';
+    }
     break;
   }
   side.lift(false);
   await breath('s2-4');
-  await say('s2-4');
+  if (!moved) ctx.log('scene 2: the phone has not read the walker moving, she does not say they move');
+  await say(moved ? 's2-4' : E.unmoved);
   if (E.asides.gravel) { await breath(E.asides.gravel); await say(E.asides.gravel); }
 
   // She steps off the gravel. From here a stop lights the lamp.
