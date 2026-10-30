@@ -69,6 +69,9 @@ export const HITTA = {
   anyWalk: 30,      // s walking before a stop is yes, when the map had nothing
   wait: 20,         // s more she waits for the map once she has asked to be shown
   goAgain: 5,       // s standing after "oh. Go." before she says it again
+  slack: 15,        // m more a stop may be off after her "Here": the next fix can differ
+  nearWait: 12,     // s standing after "Nearly" before she says she can't see them stand
+  noneEvery: 40,    // s between her round's lines while the walker picks a place
 };
 
 // Knack: two quick knocks within about ten seconds of her Now, walking.
@@ -295,12 +298,20 @@ export async function runEpisode2(ctx) {
     await say('s2-none1');
     await say('s2-none2');
     let walked = 0, last = now();
-    const r = await ctx.until(s => {
-      const dt = s.t - last; last = s.t;
-      if (s.moving) walked += dt;
-      return walked >= HITTA.anyWalk && heldStop(s) && stopBegan(s) > t2;
-    }, { by: Math.max(t2 + HITTA.bell, now() + HITTA.anyWalk + 30) });
-    yes = r;
+    const deadline = Math.max(t2 + HITTA.bell, now() + HITTA.anyWalk + 30);
+    // Her round between, so the search is not minutes of silence (the
+    // feasibility review of v56): two of the walking lines, spaced out.
+    const between = ['s2-walk2', 's2-walk3'];
+    for (;;) {
+      const r = await ctx.until(s => {
+        const dt = s.t - last; last = s.t;
+        if (s.moving) walked += dt;
+        return walked >= HITTA.anyWalk && heldStop(s) && stopBegan(s) > t2;
+      }, { by: between.length ? Math.min(deadline, now() + HITTA.noneEvery) : deadline });
+      if (r) { yes = true; break; }
+      if (!between.length || now() >= deadline - 1) break;
+      await say(between.shift());
+    }
     if (yes) log('scene 2: the walker stopped, she sees the sky');
   } else {
     facts.place = target.kind;
@@ -309,6 +320,9 @@ export async function runEpisode2(ctx) {
     const point = here0 ? placeNearestPoint(target.place, here0) : null;
     if (point && ctx.setTarget) ctx.setTarget(point);
     const first = dist(ctx.state());
+    // A stop counts from the moment she asks for it, not from the end of
+    // her asking: a walker who stops at "Stop here" has stopped before it ends.
+    const tStops = now();
     if (first !== null && first <= HITTA.there) {
       // Why to stop before where: "When we're there, stop ... It's right by you. Stop here."
       log('scene 2: the walker is there already');
@@ -318,7 +332,6 @@ export async function runEpisode2(ctx) {
       await say('s2-take');
       await say(mem.svarade ? 's2-stop-ans' : 's2-stop');
     }
-    const tStops = now();
     // Warmer and colder, and the stop. The report goes out every `every`
     // seconds, measured against the last one she gave; "here" as soon as the
     // walker is there; the walking lines now and then between.
@@ -333,7 +346,8 @@ export async function runEpisode2(ctx) {
         if (heldStop(s) && stopBegan(s) > tStops - 2 && stopBegan(s) !== stopSeen) {
           const d = dist(s);
           stopSeen = stopBegan(s);
-          if (d !== null && d <= HITTA.there) { ev = 'there'; return true; }
+          // After her "Here" the fix that saw it may be a few metres off the one that sees the stop.
+          if (d !== null && d <= HITTA.there + (saidHere ? HITTA.slack : 0)) { ev = 'there'; return true; }
           if (d !== null && d <= HITTA.near) { ev = 'near'; return true; }
         }
         const d = dist(s);
@@ -347,7 +361,11 @@ export async function runEpisode2(ctx) {
       if (ev === 'near') {
         log('scene 2: a stop near the place, not at it');
         await say('s2-near');
-        await ctx.until(walking, { timeout: MIN });
+        // A walker who thinks they are there and stays: she can't see them standing.
+        if (!await ctx.until(walking, { timeout: HITTA.nearWait })) {
+          await say('s2-go-again');
+          await ctx.until(walking, { timeout: MIN });
+        }
         lastAt = now();
         continue;
       }
@@ -517,7 +535,9 @@ export async function runEpisode2(ctx) {
 
   // ==== 4. The Presses ====
   log('scene 4');
-  const baseStep = before(HALF_MINUTE, 'cadence');
+  // The walker's own pace from before Faster: a walker who did as she asked
+  // is still fast in the last half minute, and would meet 135 with no steps up.
+  const baseStep = baseC || before(HALF_MINUTE, 'cadence');
   const runner = ctx.state().band === 'run';
   const from135 = !baseStep || runner || baseStep >= TAKT.bpm * (1 - TAKT.near);
   const steps = from135 ? [TAKT.bpm] : taktSteps(Math.max(60, baseStep), TAKT.bpm, TAKT.step);

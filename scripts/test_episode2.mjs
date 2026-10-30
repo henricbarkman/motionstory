@@ -35,6 +35,8 @@ const PLACES = {
   water: [{ kind: 'water', id: 'way/2', area: true, parts: [square(-150, 290, 300)], point: null }],
   bridge: [{ kind: 'bridge', id: 'way/3', area: false, parts: [[at(-30, 310), at(30, 310)]], point: null }],
   hill: [{ kind: 'hill', id: 'node/4', area: false, parts: [], point: at(0, 380) }],
+  // Round the walker from the start: there already when she asks.
+  around: [{ kind: 'woods', id: 'way/6', area: true, parts: [square(-300, -100, 700)], point: null }],
   // East of the start, for a walker who walks north and away from it.
   east: [{ kind: 'woods', id: 'way/5', area: true, parts: [square(200, -100, 200)], point: null }],
 };
@@ -58,8 +60,7 @@ const W = {
     },
     followBeats: true, endStop: true,
     expect: ['s0-dark', 's0-susp', 's2-woods', 's2-take', 's2-stop-ans', 's2-here', 's2-oh', 's2-go-again', 's2-held', 's2-saw-woods',
-      's2-going', 's2-bell', 's3-yes1', 's3-yes2', 's3-left', 's3-followed', 's3-errand', 's4-instep', 's4-sing', 's5-two'],
-    // Still fast from Fortare when the beats start: they start on the song's 135, no pull.
+      's2-going', 's2-bell', 's3-yes1', 's3-yes2', 's3-left', 's3-followed', 's3-errand', 's4-pull', 's4-instep', 's4-sing', 's5-two'],
     never: ['s0-nosusp', 's2-stop', 's3-run', 's3-no1', 's3-lost', 's4-hum', 'x-avvikelse', 's5-nothing', 's4-run', 's5-runfree'],
     facts: { place: 'woods', saw: 'woods', bellFirst: false, knock3: true, choice: 'left', faster: true, song: 'whole', knock5: 'knock' },
     song: 'whole',
@@ -110,7 +111,8 @@ const W = {
   },
   'map-fails': {
     places: null,
-    expect: ['s2-none1', 's2-none2', 's2-bell-first'],
+    // Her round between, not five minutes of silence.
+    expect: ['s2-none1', 's2-none2', 's2-walk2', 's2-walk3', 's2-bell-first'],
     never: ['s2-oh', 's2-held'],
     facts: { bellFirst: true },
   },
@@ -127,6 +129,22 @@ const W = {
     stopAtY: [{ y: 255, for: 6 }],
     stopHere: 5, on: {},
     expect: ['s2-near', 's2-here', 's2-oh', 's2-saw-woods'],
+    facts: { saw: 'woods' },
+  },
+  // Stops as soon as she names the place, and stays through her asking.
+  'already-standing': {
+    places: PLACES.around,
+    on: { 's2-woods': [{ do: 'stop', in: 0.3, for: 20 }] },
+    expect: ['s2-stop', 's2-byyou', 's2-oh', 's2-saw-woods'],
+    never: ['s2-bell-first'],
+    facts: { saw: 'woods', bellFirst: false },
+  },
+  // Stops 45 m short and stays, thinking it is there.
+  'near-stand': {
+    places: PLACES.woods,
+    stopAtY: [{ y: 255, for: 35 }],
+    stopHere: 5,
+    expect: ['s2-near', 's2-go-again', 's2-here', 's2-oh'],
     facts: { saw: 'woods' },
   },
   'no-steps': {
@@ -369,7 +387,7 @@ for (const name of Object.keys(W)) {
   }
   if (!r.memory || !r.memory.klar) fail(name, 'the end not remembered');
   // Every line once at most, apart from those said again after a stop cut them.
-  const twice = [...new Set(ids.filter((id, i) => ids.indexOf(id) !== i && !/^x-|^s2-(warm|cold|almost|close|byyou)|^s3-wait/.test(id)))];
+  const twice = [...new Set(ids.filter((id, i) => ids.indexOf(id) !== i && !/^x-|^s2-(warm|cold|almost|close|byyou|go-again)|^s3-wait/.test(id)))];
   for (const id of twice) if (!r.log.some(l => l.includes('cut'))) fail(name, `${id} said twice`);
   // The song in phase: its first beat on a scheduled beat.
   for (const s of r.songs) {

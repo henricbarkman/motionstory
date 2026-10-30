@@ -6,7 +6,7 @@
 //   node scripts/test_world.mjs
 
 import { fetchLandmarks, fetchWeather, chooseWorld, defaultWorld, orGuess, landmarksNear, lookAgain, REACH, PEAK_REACH, FIX_FRESH, LANDMARKS,
-  placesQuery, classifyPlaces, placeDistance, placeNearestPoint, nearestPlace, fetchPlaces } from '../glimt/world.js';
+  placesQuery, classifyPlaces, placeDistance, placeNearestPoint, nearestPlace, fetchPlaces, insideQuery, INSIDE_NEAR } from '../glimt/world.js';
 import { Bag, STORIES, pickStory } from '../glimt/bag.js';
 import { readKlarhet } from '../glimt/audio.js';
 import { readLuft, withAir, LUFT_MAX, EN, SV } from '../glimt/episod1.js';
@@ -251,6 +251,9 @@ const never = () => new Promise(() => {});
     { type: 'way', id: 5, tags: { bridge: 'yes', highway: 'motorway' }, geometry: [at(-10, -30), at(10, -30)] },
     { type: 'node', id: 6, tags: { natural: 'peak' }, lat: at(0, -200).lat, lon: at(0, -200).lon },
     { type: 'way', id: 7, tags: { waterway: 'river' }, geometry: [at(-300, 50), at(-300, -50)] },
+    // Under the road and a plank walk: no water to see, no bridge to cross.
+    { type: 'way', id: 10, tags: { waterway: 'stream', tunnel: 'culvert' }, geometry: [at(-5, -5), at(5, 5)] },
+    { type: 'way', id: 11, tags: { bridge: 'boardwalk', highway: 'footway' }, geometry: [at(-5, 5), at(5, 5)] },
   ];
   const places = classifyPlaces(elements);
   const kinds = places.map(p => `${p.id}:${p.kind}`).join(' ');
@@ -280,10 +283,24 @@ const never = () => new Promise(() => {});
   check(nearestPlace(both, here(0, 0)).kind === 'water', 'inside water and a wood at once: the water first (PLACE_KINDS order)');
   const q = placesQuery(59.38, 13.5);
   check(/around:250,59\.38000,13\.50000/.test(q) && /out geom\(/.test(q) && !/is_in/.test(q), 'the query asks round the walker for geometry in a box, with no area lookup');
+  const q2 = placesQuery(59.38, 13.5);
+  check(/\[!"tunnel"\]/.test(q2) && /boardwalk/.test(q2), 'the query leaves out culverts and plank walks');
+  // The inside question, beside the places: a wood too big for the box.
+  const isIn = body => decodeURIComponent(body).includes('is_in');
   const asked = [];
   const got = await fetchPlaces(59.38, 13.5, { endpoints: [A, B], timeout: 50,
-    fetchImpl: url => { asked.push(url); return url === A ? never() : answer({ elements }); } });
-  check(asked.length === 2 && got.length === 5, `fetchPlaces: the second server answers when the first hangs (${got.length} places)`);
+    fetchImpl: (url, o) => { asked.push(url); return url === A ? never() : answer(isIn(o.body) ? { elements: [] } : { elements }); } });
+  check(got.length === 5, `fetchPlaces: the second server answers when the first hangs (${got.length} places)`);
+  const big = await fetchPlaces(59.38, 13.5, { endpoints: [B], timeout: 50,
+    fetchImpl: (url, o) => answer(isIn(o.body) ? { elements: [{ type: 'area', id: 3600001, tags: { landuse: 'forest' } }, { type: 'area', id: 3600002, tags: { building: 'yes' } }] } : { elements: [] }) });
+  check(big.length === 1 && big[0].kind === 'woods' && big[0].id === 'area/3600001', `inside a big wood: one place, the wood (${JSON.stringify(big.map(p => p.id))})`);
+  check(placeDistance(big[0], here(0, 0)) === 0 && placeDistance(big[0], here(0, INSIDE_NEAR - 10)) === 0
+    && Math.abs(placeDistance(big[0], here(0, INSIDE_NEAR + 50)) - 50) < 1, 'inside counts within 150 m of where the map said so, and is measured from there beyond');
+  check(nearestPlace(big, here(0, 0)).dist === 0, 'so the nearest place is right here');
+  const slow = await fetchPlaces(59.38, 13.5, { endpoints: [B], timeout: 50,
+    fetchImpl: (url, o) => isIn(o.body) ? Promise.reject(new Error('runtime error: no areas')) : answer({ elements }) });
+  check(slow.length === 5, `a server without areas: the places all the same (${slow.length})`);
+  check(/is_in\(59\.38000,13\.50000\)/.test(insideQuery(59.38, 13.5)), 'the inside query asks where the walker is');
   let err = null;
   try { await fetchPlaces(59.38, 13.5, { endpoints: [A], fetchImpl: () => Promise.resolve({ ok: false, status: 406 }) }); } catch (e) { err = e; }
   check(err && /406/.test(err.message), `no server answers: rejected with each one's error (${err && err.message})`);

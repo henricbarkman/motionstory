@@ -1380,12 +1380,12 @@ def lyssna(browser, base):
         ctx.close()
 
 
-# A lake 150-350 m north of where the sim walk starts: what episode 2's map
+# A lake 300-500 m north of where the sim walk starts: what episode 2's map
 # finds for a listen (world.js, fetchPlaces).
 _M_LON = 111320 * 0.5096
 LAKE_NORTH = {"elements": [{"type": "way", "id": 1, "tags": {"natural": "water"}, "geometry": [
     {"lat": round(59.38 + y / 111320, 6), "lon": round(13.5 + x / _M_LON, 6)}
-    for x, y in ((-100, 150), (100, 150), (100, 350), (-100, 350), (-100, 150))]}]}
+    for x, y in ((-100, 300), (100, 300), (100, 500), (-100, 500), (-100, 300))]}]}
 
 
 def episode2(browser, base):

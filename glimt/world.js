@@ -301,19 +301,20 @@ export function placesQuery(lat, lon, radius = PLACE_REACH) {
   const box = [lat - dLat, lon - dLon, lat + dLat, lon + dLon].map(v => v.toFixed(5)).join(',');
   return `[out:json][timeout:10];(
 nwr["natural"="water"]["water"!~"^(reservoir|basin|wastewater)$"]${a};
-way["waterway"~"^(river|stream|canal)$"]${a};
+way["waterway"~"^(river|stream|canal)$"][!"tunnel"]["covered"!="yes"]${a};
 nwr["natural"="wood"]${a};
 nwr["landuse"="forest"]${a};
-way["bridge"]["bridge"!="no"]["highway"~"^(${WALKER_ROADS})$"]${a};
+way["bridge"]["bridge"!~"^(no|boardwalk)$"]["highway"~"^(${WALKER_ROADS})$"]${a};
 node["natural"~"^(peak|hill)$"]${a};
 );out geom(${box}) 120;`;
 }
 
 const placeKind = t => {
   if (t.natural === 'water' && !/^(reservoir|basin|wastewater)$/.test(t.water || '')) return 'water';
-  if (/^(river|stream|canal)$/.test(t.waterway || '')) return 'water';
+  // A stream in a culvert runs under the road: no water to see.
+  if (/^(river|stream|canal)$/.test(t.waterway || '')) return t.tunnel || t.covered === 'yes' ? null : 'water';
   if (t.natural === 'wood' || t.landuse === 'forest') return 'woods';
-  if (t.bridge && t.bridge !== 'no' && new RegExp(`^(${WALKER_ROADS})$`).test(t.highway || '')) return 'bridge';
+  if (t.bridge && !/^(no|boardwalk)$/.test(t.bridge) && new RegExp(`^(${WALKER_ROADS})$`).test(t.highway || '')) return 'bridge';
   if (t.natural === 'peak' || t.natural === 'hill') return 'hill';
   return null;
 };
@@ -355,6 +356,29 @@ export function classifyPlaces(elements) {
   return out;
 }
 
+// The woods and the water the walker stands inside, by the map's areas
+// (is_in): a wood or a lake too big for the box has no outline near the
+// walker to measure, and `around` finds nothing in its middle. Not every
+// server keeps areas (overpass.openstreetmap.fr does not), so this is asked
+// beside the places and may come back empty.
+export const INSIDE_NEAR = 150;      // m from where the map said inside that still counts as inside
+export function insideQuery(lat, lon) {
+  return `[out:json][timeout:10];is_in(${lat.toFixed(5)},${lon.toFixed(5)})->.a;(
+area.a["natural"="water"]["water"!~"^(reservoir|basin|wastewater)$"];
+area.a["natural"="wood"];
+area.a["landuse"="forest"];
+);out tags 20;`;
+}
+export function classifyInside(elements, lat, lon) {
+  const out = [];
+  for (const el of elements || []) {
+    const kind = placeKind(el.tags || {});
+    if (kind !== 'water' && kind !== 'woods') continue;
+    out.push({ kind, id: `area/${el.id}`, area: true, parts: [], point: null, inside: { lat, lon } });
+  }
+  return out;
+}
+
 // Metres east and north of `o`, near enough on a few hundred metres.
 const local = (o, p) => ({
   x: (p.lon - o.lon) * 111320 * Math.cos(o.lat * Math.PI / 180),
@@ -386,6 +410,10 @@ const crossings = (pts, ux, uy) => {
 // that encloses. Infinity for a place with nothing to measure.
 export function placeDistance(place, here) {
   const o = { lat: here.latitude, lon: here.longitude };
+  if (place.inside) {
+    const p = local(o, place.inside);
+    return Math.max(0, Math.hypot(p.x, p.y) - INSIDE_NEAR);
+  }
   if (place.point) {
     const p = local(o, place.point);
     return Math.hypot(p.x, p.y);
@@ -410,6 +438,7 @@ export function placeDistance(place, here) {
 export function placeNearestPoint(place, here) {
   const o = { lat: here.latitude, lon: here.longitude };
   const back = p => ({ latitude: o.lat + p.y / 111320, longitude: o.lon + p.x / (111320 * Math.cos(o.lat * Math.PI / 180)) });
+  if (place.inside) return { latitude: place.inside.lat, longitude: place.inside.lon };
   if (place.point) return { latitude: place.point.lat, longitude: place.point.lon };
   let best = null;
   for (const part of place.parts) {
@@ -444,22 +473,34 @@ export function nearestPlace(places, here, reach = PLACE_REACH) {
   return best;
 }
 
+const askOverpass = (url, query, fetchImpl, timeout) => withTimeout(fetchImpl(url, {
+  method: 'POST',
+  body: 'data=' + encodeURIComponent(query),
+  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+}).then(res => {
+  if (!res.ok) throw new Error(`overpass ${res.status}`);
+  return res.json();
+}), timeout);
+const INSIDE_GRACE = 3000;           // ms the places wait for the inside answer once they have theirs
+
 // Asks the map for the places near (lat, lon), from the same servers as the
-// landmarks, each in turn. Resolves the classified places; rejects when no
-// server answered, with each one's error.
+// landmarks, each in turn, and beside them which woods or water the walker
+// is inside. Resolves the classified places, the inside ones first; rejects
+// when no server answered the places, with each one's error.
 export async function fetchPlaces(lat, lon, { fetchImpl = fetch, timeout = 20000, endpoints = OVERPASS, radius = PLACE_REACH } = {}) {
+  const inside = (async () => {
+    for (const url of endpoints) {
+      try { return classifyInside((await askOverpass(url, insideQuery(lat, lon), fetchImpl, timeout)).elements, lat, lon); } catch (_) {}
+    }
+    return [];
+  })();
   const errors = [];
   for (const url of endpoints) {
     try {
-      const data = await withTimeout(fetchImpl(url, {
-        method: 'POST',
-        body: 'data=' + encodeURIComponent(placesQuery(lat, lon, radius)),
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      }).then(res => {
-        if (!res.ok) throw new Error(`overpass ${res.status}`);
-        return res.json();
-      }), timeout);
-      return classifyPlaces(data.elements || []);
+      const data = await askOverpass(url, placesQuery(lat, lon, radius), fetchImpl, timeout);
+      const near = classifyPlaces(data.elements || []);
+      const within = await Promise.race([inside, new Promise(r => setTimeout(() => r([]), INSIDE_GRACE))]);
+      return [...within, ...near];
     } catch (err) {
       errors.push(`${new URL(url).hostname}: ${err.message}`);
     }
