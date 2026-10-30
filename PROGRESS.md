@@ -11,6 +11,7 @@
   - Alltid reserv när kartan inte hittar något.
 - Gå fort eller springa: hon gör något stort och behöver mer skydd. "Fort" är relativt spelarens egen takt (promenad = rask gång, löpare = spurt). Spelaren väljer promenad eller löptur i början; det styr bara hur ofta fort-momenten kommer (promenad ca 1 per episod).
 - Övrig variation: gå i takt till musik, riktning och kompass, uppförsbacke.
+- Beslutet väljer KÄRNAN, det stryker inget. Alla mekaniker i `stories/glimt/mekaniker.md` (stanna för ja, frys, knack och surr, vägvalet, kassen, ljus och regn m.fl.) finns kvar som variation. Kassen är redan halva uppdragsmekaniken.
 - Spel eller berättelse: en berättelse där kroppen är handkontrollen.
 
 ## 2026-10-29
