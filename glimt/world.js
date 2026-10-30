@@ -278,6 +278,195 @@ export async function chooseWorld(world, { lat, lon, date = new Date(), log = ()
   return world;
 }
 
+// ---------- the places of episode 2's mission (Hitta, mekaniker.md) ----------
+// The nearest water, woods, bridge or hill near the walker, by its outline:
+// she says warmer or colder until the walker is at its edge, so what counts
+// is the distance to the nearest point of the outline, never its middle
+// (the manuscript: "the phone measures to the nearest point of that outline").
+// Inside a wood, or a lake, is there. Only bridges a walker can be on or
+// under: none for a railway alone, none on a motorway or a trunk road. No
+// reservoirs, basins or wastewater.
+export const PLACE_KINDS = ['water', 'woods', 'bridge', 'hill'];
+export const PLACE_REACH = 250;      // m: an edge this near the walker when she asks
+const PLACE_BOX = 700;               // m each way of the geometry kept around the walker
+const WALKER_ROADS = 'footway|path|pedestrian|cycleway|steps|living_street|residential|service|unclassified|tertiary|secondary|primary|track|bridleway';
+
+// `out geom(box)`: the outlines, clipped to a box round the walker so a lake
+// the size of Vänern does not come down whole; points outside the box come
+// back null and their segments are left out. The box is wider than the reach,
+// so the walker can walk to the far side of a place and still be measured.
+export function placesQuery(lat, lon, radius = PLACE_REACH) {
+  const a = `(around:${radius},${lat.toFixed(5)},${lon.toFixed(5)})`;
+  const dLat = PLACE_BOX / 111320, dLon = PLACE_BOX / (111320 * Math.cos(lat * Math.PI / 180));
+  const box = [lat - dLat, lon - dLon, lat + dLat, lon + dLon].map(v => v.toFixed(5)).join(',');
+  return `[out:json][timeout:10];(
+nwr["natural"="water"]["water"!~"^(reservoir|basin|wastewater)$"]${a};
+way["waterway"~"^(river|stream|canal)$"]${a};
+nwr["natural"="wood"]${a};
+nwr["landuse"="forest"]${a};
+way["bridge"]["bridge"!="no"]["highway"~"^(${WALKER_ROADS})$"]${a};
+node["natural"~"^(peak|hill)$"]${a};
+);out geom(${box}) 120;`;
+}
+
+const placeKind = t => {
+  if (t.natural === 'water' && !/^(reservoir|basin|wastewater)$/.test(t.water || '')) return 'water';
+  if (/^(river|stream|canal)$/.test(t.waterway || '')) return 'water';
+  if (t.natural === 'wood' || t.landuse === 'forest') return 'woods';
+  if (t.bridge && t.bridge !== 'no' && new RegExp(`^(${WALKER_ROADS})$`).test(t.highway || '')) return 'bridge';
+  if (t.natural === 'peak' || t.natural === 'hill') return 'hill';
+  return null;
+};
+
+// One entry per element the map gave: {kind, id, area, parts, point}. `parts`
+// are lists of {lat, lon} with no gaps (a null point splits a list), `area`
+// whether it encloses something (a lake, a wood: inside is there), `point`
+// a node's own place (a hill). An element with nothing usable is left out.
+export function classifyPlaces(elements) {
+  const out = [];
+  const split = geom => {
+    const parts = [];
+    let cur = [];
+    for (const p of geom || []) {
+      if (p && Number.isFinite(p.lat) && Number.isFinite(p.lon)) cur.push({ lat: p.lat, lon: p.lon });
+      else { if (cur.length) parts.push(cur); cur = []; }
+    }
+    if (cur.length) parts.push(cur);
+    return parts;
+  };
+  for (const el of elements || []) {
+    const t = el.tags || {};
+    const kind = placeKind(t);
+    if (!kind) continue;
+    const id = `${el.type}/${el.id}`;
+    if (el.type === 'node') {
+      if (Number.isFinite(el.lat) && Number.isFinite(el.lon)) out.push({ kind, id, area: false, parts: [], point: { lat: el.lat, lon: el.lon } });
+      continue;
+    }
+    let parts = [];
+    if (el.type === 'way') parts = split(el.geometry);
+    else if (el.type === 'relation') for (const m of el.members || []) if (m.type === 'way') parts.push(...split(m.geometry));
+    if (!parts.length) continue;
+    // A way that closes on itself is an area when its kind is one: a lake, a
+    // wood. A river or a bridge is a line, closed or not.
+    const area = (kind === 'water' && !t.waterway) || kind === 'woods';
+    out.push({ kind, id, area, parts, point: null });
+  }
+  return out;
+}
+
+// Metres east and north of `o`, near enough on a few hundred metres.
+const local = (o, p) => ({
+  x: (p.lon - o.lon) * 111320 * Math.cos(o.lat * Math.PI / 180),
+  y: (p.lat - o.lat) * 111320,
+});
+const segDist = (a, b) => {
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const len = dx * dx + dy * dy;
+  const k = len ? Math.max(0, Math.min(1, -(a.x * dx + a.y * dy) / len)) : 0;
+  return Math.hypot(a.x + k * dx, a.y + k * dy);
+};
+// Crossings of a ray from the walker in direction (ux, uy) with the parts'
+// segments. A clipped outline can miss a segment that crosses at the box's
+// edge, so the area test asks four rays and goes by the majority.
+const crossings = (pts, ux, uy) => {
+  let n = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1], b = pts[i];
+    const den = ux * (b.y - a.y) - uy * (b.x - a.x);
+    if (!den) continue;
+    const s = (a.x * (b.y - a.y) - a.y * (b.x - a.x)) / den;      // along the ray
+    const r = (a.x * uy - a.y * ux) / den;                          // along the segment
+    if (s > 0 && r >= 0 && r < 1) n++;
+  }
+  return n;
+};
+
+// Metres from `here` {latitude, longitude} to the place's edge; 0 inside one
+// that encloses. Infinity for a place with nothing to measure.
+export function placeDistance(place, here) {
+  const o = { lat: here.latitude, lon: here.longitude };
+  if (place.point) {
+    const p = local(o, place.point);
+    return Math.hypot(p.x, p.y);
+  }
+  let best = Infinity;
+  const loc = place.parts.map(part => part.map(p => local(o, p)));
+  for (const pts of loc) {
+    if (pts.length === 1) best = Math.min(best, Math.hypot(pts[0].x, pts[0].y));
+    for (let i = 1; i < pts.length; i++) best = Math.min(best, segDist(pts[i - 1], pts[i]));
+  }
+  if (place.area && best > 0) {
+    const rays = [[0, 1], [1, 0], [0, -1], [-1, 0]];
+    const inside = rays.filter(([ux, uy]) => loc.reduce((n, pts) => n + crossings(pts, ux, uy), 0) % 2 === 1).length;
+    if (inside >= 3) return 0;
+  }
+  return best;
+}
+
+// The point of the place's outline nearest `here`, as {latitude, longitude}:
+// where a walker heads for it (the listen's walker steers there). Null for a
+// place with nothing to measure.
+export function placeNearestPoint(place, here) {
+  const o = { lat: here.latitude, lon: here.longitude };
+  const back = p => ({ latitude: o.lat + p.y / 111320, longitude: o.lon + p.x / (111320 * Math.cos(o.lat * Math.PI / 180)) });
+  if (place.point) return { latitude: place.point.lat, longitude: place.point.lon };
+  let best = null;
+  for (const part of place.parts) {
+    const pts = part.map(p => local(o, p));
+    if (pts.length === 1) {
+      const d = Math.hypot(pts[0].x, pts[0].y);
+      if (!best || d < best.d) best = { d, p: pts[0] };
+    }
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1], b = pts[i];
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const len = dx * dx + dy * dy;
+      const k = len ? Math.max(0, Math.min(1, -(a.x * dx + a.y * dy) / len)) : 0;
+      const p = { x: a.x + k * dx, y: a.y + k * dy };
+      const d = Math.hypot(p.x, p.y);
+      if (!best || d < best.d) best = { d, p };
+    }
+  }
+  return best ? back(best.p) : null;
+}
+
+// The nearest place within `reach` of `here`, as {kind, id, dist, place}, or
+// null. Kinds tie on distance in PLACE_KINDS order.
+export function nearestPlace(places, here, reach = PLACE_REACH) {
+  let best = null;
+  for (const place of places || []) {
+    const dist = placeDistance(place, here);
+    if (dist > reach) continue;
+    const first = best && dist === best.dist && PLACE_KINDS.indexOf(place.kind) < PLACE_KINDS.indexOf(best.kind);
+    if (!best || dist < best.dist || first) best = { kind: place.kind, id: place.id, dist, place };
+  }
+  return best;
+}
+
+// Asks the map for the places near (lat, lon), from the same servers as the
+// landmarks, each in turn. Resolves the classified places; rejects when no
+// server answered, with each one's error.
+export async function fetchPlaces(lat, lon, { fetchImpl = fetch, timeout = 20000, endpoints = OVERPASS, radius = PLACE_REACH } = {}) {
+  const errors = [];
+  for (const url of endpoints) {
+    try {
+      const data = await withTimeout(fetchImpl(url, {
+        method: 'POST',
+        body: 'data=' + encodeURIComponent(placesQuery(lat, lon, radius)),
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      }).then(res => {
+        if (!res.ok) throw new Error(`overpass ${res.status}`);
+        return res.json();
+      }), timeout);
+      return classifyPlaces(data.elements || []);
+    } catch (err) {
+      errors.push(`${new URL(url).hostname}: ${err.message}`);
+    }
+  }
+  throw new Error(errors.join('; ') || 'no server to ask');
+}
+
 export function defaultWorld(date = new Date()) {
   // The guesses first, in the order the Swedish chapters have always drawn
   // them (the landmark's pick is the walk's first random number).

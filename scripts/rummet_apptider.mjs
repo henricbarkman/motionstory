@@ -23,7 +23,7 @@ const SPRAK = { SV: 'stories/glimt/episod-1.json', EN: 'stories/glimt/episode-1.
 // same pause before every clip until the desk says otherwise. 0.5 s is about
 // the breath between lines inside episode 1's clips (silences there: median
 // 0.47 s, measured 30/10), on top of each clip's own lead-in and tail.
-const STANDARD = { 'stories/glimt/episode-2.json': 0.5 };
+export const STANDARD = { 'stories/glimt/episode-2.json': 0.5 };
 
 export async function apptider() {
   const app = await import(pathToFileURL(join(REPO, 'glimt', 'episod1.js')).href);
@@ -35,9 +35,15 @@ export async function apptider() {
     const gaps = Object.entries((app[namn] && app[namn].gaps) || {}).filter(([line]) => line in story.lines);
     ut[story.id] = Object.fromEntries(gaps);
   }
+  // An episode whose pauses the desk decides (glimt/pauser.json, written by
+  // regibord_pauser.mjs) plays what was carried over from the desk; until
+  // the first carry, the standard.
+  let carried = {};
+  try { carried = JSON.parse(readFileSync(join(REPO, 'glimt', 'pauser.json'), 'utf8')); } catch { /* not yet */ }
   for (const [fil, sek] of Object.entries(STANDARD)) {
     const story = JSON.parse(readFileSync(join(REPO, fil), 'utf8'));
-    ut[story.id] = Object.fromEntries(Object.keys(story.lines).map((line) => [line, sek]));
+    const app = (carried[story.id] && carried[story.id].fore) || {};
+    ut[story.id] = Object.fromEntries(Object.keys(story.lines).map((line) => [line, app[line] ?? sek]));
   }
   return ut;
 }

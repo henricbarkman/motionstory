@@ -162,7 +162,11 @@ export class Synth {
     });
     return this._track({
       beats,
-      set(o) { Object.assign(state, o); },
+      // `gain` too (episode 2: the beats step back while the song is whole).
+      set(o) {
+        Object.assign(state, o);
+        if (o.gain != null) g.gain.setTargetAtTime(o.gain, ctx.currentTime, 0.3);
+      },
       stop() { stopLoop(); g.gain.setTargetAtTime(0, ctx.currentTime, 0.1); later(() => g.disconnect(), 600); },
     });
   }

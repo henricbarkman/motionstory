@@ -120,6 +120,7 @@ Ett stopp är det tydligaste vandraren kan säga.
 **I berättelsen:** musik växer fram när du går i takt. Används bara i enstaka skarpa lägen: täckningen kräver aldrig takt.
 **Omdöme:** Håller, gående. Henric följde både fortare och lugnare (i takt 92 och 86 % av tiden) och tyckte det var lagom lätt (12/10). Första gången: "himla häftig". *Bara gående.*
 **Tänk på:** en ny takt, 7-8 % från den förra, hittas på ungefär fem sekunder. Låt henne vänta fem till tio sekunder efter ett byte innan hon säger något om den. Följer takten en låt (episod 2, The Way We Are) är låtens tempo målet, och det kan ligga långt över vanlig gång. The Way We Are går i ungefär 135 slag i minuten, men det är inte bekräftat av Henric, och hur stadigt tempot ligger genom låten är inte mätt: hela låten mätt i ett stycke gav 134-136, mätt tjugo sekunder i taget spred det sig från 100 till 171. Börja i vandrarens egen takt, dra upp eller ner ett steg i taget, och stanna där vandraren orkar. Takten joggande är oprövad.
+**I episod 2** (version 56, 30/10, oprövad ute): slagen börjar i din egen stegtakt, mätt över den senaste halvminuten, och dras upp ungefär 7,5 % var tolfte sekund tills de når låtens 135. Går du redan nära 135, springer du, eller läser telefonen ingen stegtakt, börjar de på 135 och raderna om att dra upp tempot sägs inte. Har du gått i takt fyra sekunder (inom en halv minut) kommer låten hel, med sitt första slag på ett av pressarnas; annars kommer den bara i bitar genom bruset. Stannar du under låten drar den sig tillbaka.
 
 ### Tassa
 **Du gör:** går mjukt och tyst i samma fart.
@@ -137,6 +138,7 @@ Ett stopp är det tydligaste vandraren kan säga.
 **Du gör:** ökar farten när hon ber om det, gående eller springande.
 **I berättelsen:** en kort rusning stör Företagets data, så hon hinner öppna en dörr. Episod 3 bygger på tre sådana.
 **Omdöme:** Delvis. Telefonen läste Henrics jogg som fartökning 6/10. Ingen scen med den har gått ute.
+**I episod 2** (version 56, oprövad ute): fortare är sju procent över din egen stegtakt från innan hon bad om det (tolv procent över gps-farten när telefonen inte läser steg), i tolv sekunder inom fyrtio.
 
 ### Flykten
 **Du gör:** kommer undan steg bakom dig som går en tredjedel fortare än du.
@@ -163,12 +165,14 @@ Telefonen i fickan som kanal åt båda hållen. Den enda beröringen mellan vär
 **Du gör:** knackar två gånger på fickan.
 **I berättelsen:** ett svar när hon inte kan prata, eller ett tecken till henne.
 **Omdöme:** Delvis. Stående har fungerat. Gående hördes bara en av tre (9/10), och Henric fick knacka ganska hårt, fast alla tre syns tydligt i sensorn: gränsen var satt efter hårdare steg än hans. Från version 27 sänks gränsen när gången är mjuk, men aldrig under det som steg och en telefon som tas upp ur fickan kan ge. Då hörs åtta av hans nio gående dubbelknack i tre promenader, och inget falskt i tretton. Det mjukaste (9/10 klockan 11:25) hörs fortfarande inte. Ska gås om. *Bara gående,* aldrig under löpning.
+**I episod 2** (version 56, oprövad ute): knack två gånger inom tio sekunder efter hennes Now, i scen 3 och 5.
 **Tänk på:** en stöt mot telefonen kan läsas som knack. Bara lätta följder. Ett av de två knacken ska vara tydligt hårt. Ju mjukare vandraren går, desto lättare knack räcker; den som stampar får knacka hårdare. Testsidan säger samma sak tills Knacket gående har gåtts igen.
 
 ### Hon knackar
 **Du gör:** knackar tillbaka lika många gånger som telefonen surrade.
 **I berättelsen:** först knackar hon, sedan du.
 **Omdöme:** Delvis. Fungerade en kväll av tre försök. Hänger på Surret.
+I episod 2 knackar hon i stället i lurarna, två knack på ett rör (syntat, version 56), så där hänger det inte på Surret.
 
 ## Riktning och plats
 
@@ -184,6 +188,7 @@ Allt här läser gps och ska gås i Chrome.
 **Du gör:** svänger vänster eller höger vid nästa korsning.
 **I berättelsen:** hon följer dina svängar. Dina steg blir hennes ögon.
 **Omdöme:** Håller, gående, i Chrome. Vänster lästes tolv sekunder efter svängen (12/10); höger lästes två gånger förut, men med den gamla, långsamma läsningen. I Firefox är gps:en så gles att svaret kommer ungefär en minut efter svängen. Från version 30 läser telefonens egen vridning svängen i Chrome på Android, i simuleringen ungefär tre sekunder efter den; byggt men inte gånget än. Gps:en finns kvar som reserv och kontroll.
+**I episod 2** (version 56, oprövad ute): hon väntar upp till nittio sekunder på svängen, med väntrepliker efter 20, 45 och 70. En sväng är 55-140 grader, hållen sex sekunder. Läser telefonen ingen färsk gps-kurs under väntan säger hon att hon inte såg vart du gick, i stället för att gissa rakt fram.
 **Tänk på:** hon vet vart du svängde tidigast tio till femton sekunder efter svängen. Låt henne prata om något annat tills svaret kommer.
 
 ### Ljudkompassen
@@ -195,6 +200,7 @@ Allt här läser gps och ska gås i Chrome.
 **Du gör:** går dit du tror, och hon säger varmare eller kallare.
 **I berättelsen:** det som finns på en viss plats letar du upp åt henne.
 **Omdöme:** Osäker. Enda försöket avbröts.
+**I episod 2** (version 56, oprövad ute): kartan frågas när scen 1 börjar, där du är då, efter vatten, skog, bro eller berg inom 250 meter. Avståndet räknas till platsens kant, och inne i en sjö eller skog är det noll. Varmare eller kallare var 25:e sekund; 30 meter från kanten säger hon "Here. Stop here.", och ett stopp där är målet. Ett stopp inom 60 meter ger "Nearly". Finns ingen plats, eller svarar kartan inte, väljer du själv, och ett stopp efter en halv minuts gång räknas. Skiftklockan efter fem minuter avbryter.
 
 ### Platser nära dig
 **Du gör:** ingenting. Telefonen frågar kartan efter vatten, skog, berg, bro eller kyrkogård inom 400 meter (berg 600) när promenaden börjar, och i den engelska episoden igen i början av scen 2, där du är då.
@@ -241,7 +247,7 @@ Det här är glimtarna: vad Vega ser av din värld utan att du gör något.
 
 ### Minnet mellan episoderna
 **I berättelsen:** en episod kan veta vad vandraren gjorde i den förra: om du svarade, om Företaget blev misstänksamt, vilken plats hon såg. I den engelska episoden från version 52 är platsen den hon berättade om, och ingen om hon inte berättade någon.
-**Omdöme:** Oprövad. Episod 1 sparar minnet, men ingen episod har läst det i en promenad än. Minnet ligger i webbläsaren, så det följer inte med till en annan telefon.
+**Omdöme:** Oprövad. Episod 1 sparar minnet, och episod 2 (version 56) läser om du stannade när hon bad om det och sparar sitt eget för episod 3, men ingen har läst det i en promenad än. Minnet ligger i webbläsaren, så det följer inte med till en annan telefon.
 
 ### Kassen
 **Du gör:** ingenting. Det räcker att telefonen läser något i din värld som det finns en historia om.
@@ -253,7 +259,7 @@ Det här är glimtarna: vad Vega ser av din värld utan att du gör något.
 
 **I berättelsen:** hur tydligt hennes röst kommer genom linjen, som en lätt radio: smalare band, lite mättnad och ett svagt sus som bara ligger under hennes repliker. Ett reglage, klarhet, från 0 (hela radion) till 1 (ren röst), med ett värde per episod som kan skrivas över per scen, åt båda hållen. Klarheten är både teknik och relation: linjen blir bättre med tiden, och den speglar hur nära Vega och vandraren är varandra. Den stiger när de kommer närmare och kan gå tillbaka när något går sönder mellan dem, så den behöver inte bara stiga. Kontakten ligger ovanpå: när du stannar blir hon dov precis som förut. Förtexternas låt går inte genom radion.
 
-**Omdöme:** Oprövad. Episod 1 har klarhet 0,45 (17/10). Står ?klarhet=0.6 eller ?klarhet=0,6 i länken provar promenaden en annan nivå; ett värde utanför 0-1 blir 0 eller 1.
+**Omdöme:** Oprövad. Episod 1 har klarhet 0,45 (17/10). Från version 56 kan den också sättas per replik: i episod 2 har scen 3 0,35, men knacket, vägvalet och Fortare 0,45, och "I had no word" och boken 0,55. Står ?klarhet=0.6 eller ?klarhet=0,6 i länken provar promenaden en annan nivå; ett värde utanför 0-1 blir 0 eller 1.
 
 ---
 

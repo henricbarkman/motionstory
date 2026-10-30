@@ -31,6 +31,11 @@
         <label><input type="radio" name="chapter" value="labb1"> Labb 1. Åtta banor, en mekanik i taget</label>
         <label><input type="radio" name="chapter" value="labb2"> Labb 2. Sju banor, en mekanik i taget</label>
       </fieldset>
+      <fieldset class="variant" id="episode-box" hidden>
+        <legend>Episode</legend>
+        <label><input type="radio" name="episode" value="episode1en"> 1. Keep Going</label>
+        <label><input type="radio" name="episode" value="episode2en"> 2. Behind the Presses</label>
+      </fieldset>
       <fieldset class="variant" id="variant-box">
         <legend>Hon är</legend>
         <label><input type="radio" name="variant" value="a"> bunden till dina steg</label>
@@ -93,7 +98,7 @@
 
       <div id="sim" class="sim" hidden>
         <label>Simulerad fart <output id="sim-out">0,0 km/h</output>
-          <input id="sim-speed" type="range" min="0" max="4" step="0.1" value="0">
+          <input id="sim-speed" type="range" min="0" max="4" step="any" value="0">
         </label>
         <div class="sim-row">
           <button id="sim-turn" type="button">Vänd</button>

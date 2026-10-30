@@ -3,30 +3,32 @@
 // ?lyssna (?listen does the same) is an episode heard from a sofa: the
 // phone walks at an ordinary pace by itself, and one button stops and starts
 // it; in English it stops by itself for a yes to "Can you hear me?"
-// (listen.js). A link with no chapter opens the episode in English (also
-// ?kapitel=episode1en; no radio for it, and the page is in English).
+// (listen.js). A link with no chapter opens episode 1 in English (also
+// ?kapitel=episode1en; ?kapitel=episode2en is episode 2, and the English
+// page has a choice between the two).
 // ?kapitel=2 preselects a Swedish chapter, ?kapitel=episod1 the Swedish
 // episode, ?kapitel=labb1 the lab; their start screen has the same choice.
 // ?bana=<id> runs a single lab station (ids in lab.js),
 // ?banor=<id>,<id> some of one lab's stations as a walk of the lab, and
 // ?prov=<id> one of the short test walks (PROV in lab.js).
 
-import { Walk, Waiter, simulatedMagnitude, buzzReading } from './engine.js';
+import { Walk, Waiter, simulatedMagnitude, buzzReading, cadencePace } from './engine.js';
 import { runChapter1 } from './chapter1.js';
 import { runChapter2 } from './chapter2.js';
 import { runEpisode1, EN as EPISODE_EN, withAir, readLuft } from './episod1.js';
+import { runEpisode2 } from './episode2.js';
 import { HerSide, SilentSide } from './herside.js';
 import { runLab, labHelpers, LABS, TITLES, PROV, ratedThisRound, RESUMABLE, chosenStations, knockPattern, buzzWords, realTarget, strayJumpsNote, strayTurns, strayTurnsNote } from './lab.js';
 import { Synth, SilentSynth } from './synth.js';
 import { Mixer, Library, readKlarhet, readBakgrund, brusOf } from './audio.js';
-import { chooseWorld, defaultWorld, fetchLandmarks, nearestByName, orGuess, lookAgain } from './world.js';
+import { chooseWorld, defaultWorld, fetchLandmarks, nearestByName, orGuess, lookAgain, fetchPlaces } from './world.js';
 import { Bag } from './bag.js';
 import { Memory, drawWorld, KEY_NAMES } from './memory.js';
-import { Listener, LISTEN_YES } from './listen.js';
+import { Listener, LISTEN_YES, LISTEN_PLAN } from './listen.js';
 
 // The version the start screen shows, the same number as the service
 // worker's cache. Bump both together.
-const APP_VERSION = 55;
+const APP_VERSION = 56;
 
 // Seconds the credits wait for their song if it is not fetched when they are
 // due. It has had all of scene 0; a song not here by then is not coming.
@@ -155,6 +157,7 @@ const CHAPTERS = {
       air: true,
       // Its scene 3 tells a story from the carrier bag (bag.js).
       bag: true,
+      title: 'Weavers, episode 1',
       subtitle: 'Episode 1. About eleven minutes. Walk or run. She can hear you while you move.',
       listenSubtitle: 'Episode 1. About eleven minutes. Listen without walking.',
       asks: [],
@@ -162,6 +165,30 @@ const CHAPTERS = {
       nowLine: EPISODE_EN.now,
       scenes: {
         s0: 'Start', s1: 'The Loop', s2: 'The Tree', s3: 'The Sky', s4: 'The Bell',
+      },
+    },
+    // Episode 2 in English (30/10), "Behind the Presses" (episode2.js): the
+    // map, her knock, the path choice, Faster and the presses' beat. Her
+    // reserve is episode 1's two takes, borrowed from its folder. Its pauses
+    // are the director's desk's (glimt/pauser.json, scripts/regibord_pauser.mjs).
+    episode2en: {
+      url: '../stories/glimt/episode-2.json',
+      voices: '../audio/glimt/vega/glimt-e2en',
+      side: '../audio/glimt/side',
+      first: 's0-1',
+      run: runEpisode2,
+      episode2: true,
+      borrow: { 'r-hjalp': '../audio/glimt/vega/glimt-e1en', 'r-vilar': '../audio/glimt/vega/glimt-e1en' },
+      // What it remembers for episode 3, apart from episode 1's.
+      memoryKey: 'glimt-episode-2-en',
+      title: 'Weavers, episode 2',
+      subtitle: 'Episode 2. About a quarter of an hour. Walk. She will ask you to stop, knock, turn and walk fast.',
+      listenSubtitle: 'Episode 2. About a quarter of an hour. Listen without walking.',
+      asks: ['knock', 'turn'],
+      // Her stop questions are answered at once, with no now after them.
+      nowLine: null,
+      scenes: {
+        s0: 'Back', s1: 'The Question', s2: 'Outside', s3: 'The Works', s4: 'The Presses', s5: 'The Book',
       },
     },
   } : {}),
@@ -225,7 +252,8 @@ const LANDMARK_KEY = 'glimt-landmark';
 // its own, so a try at the desk does not rewrite the evening that was walked.
 // The English episode keeps its own: the two are not the same evening. A
 // listen keeps its own as well: an evening on the sofa is not one walked.
-const EPISODE_KEY = (EN_PAGE ? 'glimt-episode-1-en' : 'glimt-episod-1') + (SIM ? '-sim' : LISTEN ? '-lyssna' : '');
+const KEY_SUFFIX = SIM ? '-sim' : LISTEN ? '-lyssna' : '';
+const EPISODE_KEY = (EN_PAGE ? 'glimt-episode-1-en' : 'glimt-episod-1') + KEY_SUFFIX;
 // Her world and the last walk's log are the page's own too: the Swedish page
 // reads the same storage keys as before. A listen does not take the last
 // walk's log, which may be waiting to go to Demi.
@@ -271,6 +299,10 @@ let bedBuf = null, riserBuf = null;
 let creditsRaw = null;          // a promise of the credits' bytes, fetched with the chapter
 let walk, waiter, world;
 let listener = null;            // the walker of a listen (listen.js)
+let pausesFile = null;          // glimt/pauser.json, the director's desk's pauses, for episode 2
+let simTarget = null;           // where a listen's walker heads ({latitude, longitude}), episode 2's map
+let simSteer = null;            // the sim's turns, for a listen's plan (startSim)
+let listenSpeed = WALK_PACE;    // a listen's walking pace: the presses' beat sets it
 let memory = null;
 let bag = null;                 // the carrier bag's record (bag.js), in an episode that has one
 // A walk shorter than this is not remembered: opening the app and pressing
@@ -356,6 +388,13 @@ async function preload() {
     if (turn !== preloadTurn) return;
     chapter = loaded;
     lib = new Library(mixer, def.voices);
+    if (def.borrow) lib.borrow(def.borrow);
+    // Episode 2's pauses: the director's desk's, one file for every episode
+    // that has them, so new ones are a new file and no new code.
+    if (def.episode2 && !pausesFile) {
+      pausesFile = await fetch('pauser.json').then(res => res.ok ? res.json() : null).catch(() => null);
+      if (turn !== preloadTurn) return;
+    }
 
     const first = def.lab && !def.prov && ONLY_STATION ? 'labb-intro-en' : def.first;
     const extra = await extraSounds();
@@ -376,7 +415,7 @@ async function preload() {
     if (turn !== preloadTurn) return;
 
     // The rest streams in behind the start button.
-    lib.loadAll(Object.keys(chapter.lines));
+    lib.loadAll([...Object.keys(chapter.lines), ...Object.keys(def.borrow || {})]);
     creditsRaw = creditsUrl ? mixer.fetchBuffer(creditsUrl).catch(() => null) : null;
 
     // Without them the public build is quiet between her lines, and says so
@@ -590,10 +629,10 @@ async function start() {
     if (!def.lab && (def.scenes[id.slice(0, 2)] || !def.side)) $('scene').textContent = def.scenes[id.slice(0, 2)] || id;
     log(`▶ ${id}`);
     const aside = (chapter.asides || []).includes(id);
-    // The line's clarity: the link, else the scene's, else the episode's,
-    // else clean. The lab is always clean.
+    // The line's clarity: the link, else the line's, else the scene's, else
+    // the episode's, else clean. The lab is always clean.
     const klarhet = def.lab ? 1
-      : KLARHET_URL ?? (chapter.klarhetPerScen || {})[id.slice(0, 2)] ?? chapter.klarhet ?? 1;
+      : KLARHET_URL ?? (chapter.klarhetPerRad || {})[id] ?? (chapter.klarhetPerScen || {})[id.slice(0, 2)] ?? chapter.klarhet ?? 1;
     mixer.setKlarhet(klarhet);
     // The hiss under it: the episode's own for this line (brus), else as
     // much as the radio has (brusOf in audio.js). The lab has none.
@@ -748,22 +787,82 @@ async function start() {
       },
       remember(facts) {
         if (finished) return;
+        const key = def.memoryKey ? def.memoryKey + KEY_SUFFIX : EPISODE_KEY;
         // A walk broken off does not overwrite one that was walked to its end.
         try {
-          const old = JSON.parse(localStorage.getItem(EPISODE_KEY) || 'null');
+          const old = JSON.parse(localStorage.getItem(key) || 'null');
           if (old && old.klar && !facts.klar) return;
           // The place she saw: an episode with the bag says which (or none)
           // in `facts`; the Swedish one saves its landmark, guessed or not.
-          localStorage.setItem(EPISODE_KEY, JSON.stringify({
-            landmark: orGuess(world, 'landmark'), ...facts, at: Date.now(), version: APP_VERSION,
+          localStorage.setItem(key, JSON.stringify({
+            ...(def.episode2 ? {} : { landmark: orGuess(world, 'landmark') }), ...facts, at: Date.now(), version: APP_VERSION,
           }));
         } catch (_) {}
-        if (facts.klar) {
+        if (facts.klar && def.episode2) {
+          log(`minne till episod 3: ${Object.entries(facts).filter(([k]) => k !== 'klar').map(([k, v]) => `${k} ${v}`).join(', ')}`);
+        } else if (facts.klar) {
           log(`minne till episod 2: ${facts.svarade ? 'stannade när hon bad om det' : 'stannade aldrig på begäran'}, ` +
             `${facts.misstanke ? 'lampan tändes när skiftet kom' : 'ingen misstanke'}`);
         }
       },
     });
+  }
+
+  if (def.episode2) {
+    // The presses' beat (synth.js), and the knock on her pipe.
+    try { sfx = new Synth(mixer); } catch (err) { sfx = new SilentSynth(); log('ljudeffekter: ' + err.message); }
+    // Episode 1's evening: a listen or a sim reads its own, else the walked one.
+    const readJson = key => { try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch (_) { return null; } };
+    const memory1 = readJson(EPISODE_KEY) || (FAKE ? readJson('glimt-episode-1-en') : null);
+    log(`minne från episod 1: ${memory1 ? `${memory1.svarade ? 'stannade när hon bad om det' : 'stannade aldrig på begäran'}, ` +
+      `${memory1.misstanke ? 'lampan tändes' : 'ingen misstanke'}${memory1.klar ? '' : ' (avbruten)'}` : 'inget, hon tar det som det kommer'}`);
+    const pauses = (pausesFile || {})[chapter.id];
+    if (!pauses) log('pauser: pauser.json gick inte att läsa, inga pauser runt replikerna');
+    Object.assign(ctx, {
+      pauses: pauses || { fore: {}, efter: {} },
+      memory1,
+      // The places near the walker now (world.js, fetchPlaces), or null when
+      // there is no fix or the map does not answer.
+      async findPlaces() {
+        const p = walk.position();
+        if (!p) { log('kartan: ingen position, frågar inte'); return null; }
+        try {
+          const places = await fetchPlaces(p.latitude, p.longitude);
+          if (!finished) log(`kartan: ${places.length} platser (${[...new Set(places.map(x => x.kind))].join(', ') || 'inga'})`);
+          return places;
+        } catch (err) {
+          if (!finished) log('kartan svarade inte: ' + err.message);
+          return null;
+        }
+      },
+      // Where she asks the walker to take her: a listen's walker heads there.
+      setTarget(c) { simTarget = c; },
+      gyroStatus: (sideOn = false) => walk.gyro.status(now(), { side: sideOn }),
+      gyroTurn: opts => walk.gyro.turn(now(), opts),
+      // The presses' beats; a listen's walker walks in time with them.
+      beats(bpm) {
+        const b = sfx.beat({ bpm });
+        if (LISTEN) listenPace(bpm);
+        return {
+          beats: b.beats,
+          set(o) { b.set(o); if (LISTEN && o.bpm) listenPace(o.bpm); },
+          stop() { b.stop(); if (LISTEN) listenPace(null); },
+        };
+      },
+      // The song behind the presses: this copy's credits (ljud.json), or none.
+      song: () => creditsBuf,
+      // The whole song takes the bed's place, as the credits do.
+      playSong(buf, o) {
+        const song = mixer.playSong(buf, o);
+        if (o.share >= 0.5) {
+          mixer.muteBed(true);
+          song.done.finally(() => mixer.muteBed(false));
+        }
+        return song;
+      },
+      audioTime: () => mixer.ctx.currentTime,
+    });
+    if (side) ctx.side.knock = () => side.knock();
   }
 
   async function songUnder(under, word) {
@@ -1402,6 +1501,7 @@ function startSim() {
     walk.motion(t, m);
   }, 20);
   let lat = 59.38, lon = 13.5, heading = 0;
+  simSteer = { turn: rad => { heading += rad; } };
   const speedEl = $('sim-speed');
   const out = $('sim-out');
   speedEl.addEventListener('input', () => { out.textContent = kmh(parseFloat(speedEl.value)); });
@@ -1425,6 +1525,12 @@ function startSim() {
   let first = true;
   simId = setInterval(() => {
     const v = parseFloat(speedEl.value);
+    // A listen's walker heads for where she asked to be taken (episode 2).
+    if (LISTEN && simTarget) {
+      const dy = (simTarget.latitude - lat) * 111320;
+      const dx = (simTarget.longitude - lon) * 111320 * Math.cos(lat * Math.PI / 180);
+      if (Math.hypot(dx, dy) > 3) heading = Math.atan2(dx, dy);
+    }
     const accuracy = $('sim-fog').checked ? 80 : 8;
     lat += (v * Math.cos(heading)) / 111320;
     lon += (v * Math.sin(heading)) / (111320 * Math.cos(lat * Math.PI / 180));
@@ -1449,7 +1555,7 @@ function showListen(def) {
   $('listen-knock').hidden = !asks.includes('knock');
   for (const id of ['listen-left', 'listen-right', 'listen-turn']) $(id).hidden = !asks.includes('turn');
   $('listen-extra').hidden = !asks.length;
-  listener = new Listener(LISTEN_YES[chapterNo] || [], def.nowLine || null);
+  listener = new Listener(LISTEN_YES[chapterNo] || [], def.nowLine || null, LISTEN_PLAN[chapterNo] || {});
   listenWalking(true);
 }
 
@@ -1463,17 +1569,50 @@ function listenAfter(id) {
   } else if (next === 'walk') {
     listenWalking(true);
   }
+  // What else the walker does after this line: knocks, turns, walks fast.
+  for (const a of listener.plan(id)) setTimeout(() => listenDo(a), (a.in || 0) * 1000);
+}
+
+// One thing a listen's walker does by itself (LISTEN_PLAN in listen.js).
+function listenDo(a) {
+  if (!walking()) return;
+  if (a.do === 'knock') {
+    const knock = () => { const m = 9.81 + (walk.state().moving ? 40 : 9); record(now(), m); walk.motion(now(), m); };
+    knock();
+    setTimeout(knock, 300);
+    log('lyssning: knackar två gånger av sig själv');
+  } else if (a.do === 'turn' && simSteer) {
+    simSteer.turn(a.dir === 'left' ? -Math.PI / 2 : Math.PI / 2);
+    log(`lyssning: svänger ${a.dir === 'left' ? 'vänster' : 'höger'} av sig själv`);
+  } else if (a.do === 'faster') {
+    const was = listenSpeed;
+    listenPace(null, was * a.by);
+    log('lyssning: går fort av sig själv');
+    setTimeout(() => { if (walking() && listenSpeed === was * a.by) listenPace(null, was); }, a.for * 1000);
+  } else if (a.do === 'stop') {
+    if ($('listen-btn').dataset.walking !== 'true') return;
+    listener.stop(now());
+    log('lyssning: stannar av sig själv, ja');
+    listenWalking(false, true);
+  }
+}
+
+// A listen's pace: in time with `bpm` (the presses' beats), or `speed` m/s,
+// or the ordinary walk. Takes effect at once while the walker walks.
+function listenPace(bpm, speed = null) {
+  listenSpeed = speed ?? (bpm ? cadencePace(bpm) : WALK_PACE);
+  if ($('listen-btn').dataset.walking === 'true') $('sim-speed').value = String(listenSpeed);
 }
 
 // Walks at WALK_PACE or stands, through the sim's slider; the button names
 // what a tap does next. `itself`: a stop for a yes (listen.js), logged there.
 function listenWalking(on, itself = false) {
-  $('sim-speed').value = String(on ? WALK_PACE : 0);
+  $('sim-speed').value = String(on ? listenSpeed : 0);
   const btn = $('listen-btn');
   btn.textContent = on ? tr('Stanna', 'Stop') : tr('Gå', 'Walk');
   btn.dataset.walking = String(on);
   $('listen-note').textContent = on
-    ? tr('Du går, i vanlig takt.', 'Shape is walking at an ordinary pace.')
+    ? tr('Du går, i vanlig takt.', listenSpeed === WALK_PACE ? 'Shape is walking at an ordinary pace.' : 'Shape is walking at the pace of the story.')
     : itself ? tr('Du stannar för att svara ja, och går när hon säger till.',
       'Shape stops to answer yes, and walks on when she says go.')
     : tr('Du står still, och hon hörs dovt. Tryck Gå när du vill vidare.',
@@ -1780,10 +1919,15 @@ function selectChapter(n) {
   // The round's choice first: the try-out is offered for the stations it gives.
   showResume(def);
   showVibra();
-  document.title = EN_PAGE ? 'Weavers, episode 1' : def.prov ? `Weavers, test: ${def.prov.title}` : def.lab ? `Weavers, labb ${def.lab}`
+  document.title = EN_PAGE ? def.title || 'Weavers' : def.prov ? `Weavers, test: ${def.prov.title}` : def.lab ? `Weavers, labb ${def.lab}`
     : def.side ? 'Weavers, episod 1' : `Weavers, kapitel ${chapterNo}`;
-  // The English page has one episode and nothing to choose.
-  if (EN_PAGE) $('chapter-box').hidden = true;
+  // The English page chooses between its episodes, and nothing else.
+  if (EN_PAGE) {
+    $('chapter-box').hidden = true;
+    $('episode-box').hidden = false;
+    const ep = document.querySelector(`input[name="episode"][value="${chapterNo}"]`);
+    if (ep) ep.checked = true;
+  }
   preload();
 }
 
@@ -1848,7 +1992,7 @@ function englishPage() {
 
   // The phone's last choice ('glimt-chapter') no longer picks the page
   // (v54): a link that names no Swedish chapter is the English episode.
-  let ch = EN_PAGE ? 'episode1en' : params.get('kapitel') || 'episod1';
+  let ch = EN_PAGE ? (CHAPTERS[params.get('kapitel')] ? params.get('kapitel') : 'episode1en') : params.get('kapitel') || 'episod1';
   // A single station belongs to whichever lab has it.
   if (ONLY_STATION) ch = LABS[2].includes(ONLY_STATION) ? 'labb2' : 'labb1';
   if (TEST) ch = 'prov';
@@ -1873,6 +2017,16 @@ function englishPage() {
   }
   document.querySelectorAll('input[name="chapter"]').forEach(el => {
     el.addEventListener('change', () => selectChapter(el.value));
+  });
+  // The English episodes: the address follows the choice, so a reload or
+  // the listen link keeps it.
+  document.querySelectorAll('input[name="episode"]').forEach(el => {
+    el.addEventListener('change', () => {
+      const q = new URLSearchParams(location.search);
+      q.set('kapitel', el.value);
+      history.replaceState(null, '', `?${q.toString().replace(/=(?=&|$)/g, '')}`);
+      selectChapter(el.value);
+    });
   });
 
   try {
