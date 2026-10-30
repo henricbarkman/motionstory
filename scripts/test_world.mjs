@@ -6,7 +6,7 @@
 //   node scripts/test_world.mjs
 
 import { fetchLandmarks, fetchWeather, chooseWorld, defaultWorld, orGuess, landmarksNear, lookAgain, REACH, PEAK_REACH, FIX_FRESH, LANDMARKS,
-  placesQuery, classifyPlaces, placeDistance, placeNearestPoint, nearestPlace, fetchPlaces, insideQuery, INSIDE_NEAR } from '../glimt/world.js';
+  placesQuery, classifyPlaces, classifyElements, overpassQuery, placeDistance, placeNearestPoint, nearestPlace, fetchPlaces, insideQuery, INSIDE_NEAR } from '../glimt/world.js';
 import { Bag, STORIES, pickStory } from '../glimt/bag.js';
 import { readKlarhet } from '../glimt/audio.js';
 import { readLuft, withAir, LUFT_MAX, EN, SV } from '../glimt/episod1.js';
@@ -304,6 +304,18 @@ const never = () => new Promise(() => {});
   let err = null;
   try { await fetchPlaces(59.38, 13.5, { endpoints: [A], fetchImpl: () => Promise.resolve({ ok: false, status: 406 }) }); } catch (e) { err = e; }
   check(err && /406/.test(err.message), `no server answers: rejected with each one's error (${err && err.message})`);
+}
+
+// Episode 1's landmarks (v58): a stream in a culvert, or covered, is no water
+// to see, as in episode 2's places. Until v58 scene 3 could tell the water
+// story about a stream under the road.
+{
+  const names = el => classifyElements([{ type: 'way', id: 1, center: { lat: 59.38, lon: 13.5 }, tags: el }]).map(f => f.name);
+  check(names({ waterway: 'stream' }).join() === 'vatten', 'episode 1: a stream in the open is water');
+  check(names({ waterway: 'stream', tunnel: 'culvert' }).length === 0, 'episode 1: a stream in a culvert is not water');
+  check(names({ waterway: 'river', covered: 'yes' }).length === 0, 'episode 1: a covered river is not water');
+  check(names({ natural: 'water' }).join() === 'vatten', 'episode 1: a lake is water');
+  check(/waterway[^;]*\[!"tunnel"\]\["covered"!="yes"\]/.test(overpassQuery(59.38, 13.5)), 'episode 1: the query leaves out culverts');
 }
 
 if (failures) { console.log(`\n${failures} failed`); process.exit(1); }

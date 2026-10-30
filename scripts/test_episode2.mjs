@@ -154,6 +154,20 @@ const W = {
     never: ['s4-instep', 's4-listen', 's4-pull'],
     facts: { song: 'whole', choice: 'straight' },
   },
+  // Stands at the start, phone in hand, and walks off after 12 s: she waits
+  // for the walk before "There you are" (v58), then says it.
+  'starts-late': {
+    places: PLACES.woods, standFirst: 12, stopHere: 6,
+    expect: ['s0-2', 's0-3'],
+    log: ['she waits for the walker to move before she says she sees them'],
+  },
+  // Stands for 40 s: the phone has not read a walk by then, so she does not
+  // say she sees them, and goes on to "You came back."
+  'stands-at-start': {
+    places: PLACES.woods, standFirst: 40, stopHere: 6,
+    expect: ['s0-3'], never: ['s0-2'],
+    log: ['the phone has not read the walker moving, she does not say she sees them'],
+  },
   runner: {
     places: PLACES.woods, run: 's3-in',
     stopHere: 6, on: { 's5-carry': [{ do: 'run', in: 0.5, for: 30 }] },
@@ -215,7 +229,7 @@ function simulate(name) {
   const songs = [];
   let memory = null;
   let t = 0, x = 0, y = 0, heading = 0, ended = false;
-  const stops = [];         // {from, to}
+  const stops = p.standFirst ? [{ from: 0, to: p.standFirst }] : [];  // {from, to}
   const knocks = [];        // t of each knock sample
   const fasters = [];       // {from, to, by}
   let runUntil = p.run ? Infinity : -Infinity;

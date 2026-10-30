@@ -53,6 +53,7 @@ const MIN = 60;
 const HALF_MINUTE = 30;     // s both still before the earpiece asks (scene 5)
 const RESERVE_MAX = 3;
 const SHORT_WAIT = 2.5 * MIN;
+const SEE_WAIT = 20;        // s scene 0 waits for the walker to move before "There you are"
 const FULL = 0.95;          // the contact scene 1 waits for, as episode 1
 const full = s => s.contact >= FULL * (s.accuracy != null && s.accuracy > 40 ? 0.5 : 1);
 
@@ -258,7 +259,17 @@ export async function runEpisode2(ctx) {
   ctx.hold(true);
   log(`scene 0, a new round; from episode 1: ${mem.svarade ? 'answered' : "didn't answer"}, ${mem.misstanke ? 'suspicion' : 'no suspicion'}${ctx.memory1 ? '' : ' (no memory)'}`);
   await say('s0-1');
-  await say('s0-2');
+  // "There you are. I'd know that shape anywhere." says she sees the walker,
+  // and what the phone can read of that is the walk (v58: until then it was
+  // said about 7 s in, whatever the walker did). So she waits up to SEE_WAIT
+  // for the walker to be read going; to a walker the phone never reads
+  // moving she says "You came back." next, not that she sees them.
+  if (!going(ctx.state())) {
+    log('scene 0: she waits for the walker to move before she says she sees them');
+    await hold(going, { timeout: SEE_WAIT });
+  }
+  if (going(ctx.state())) await say('s0-2');
+  else log('scene 0: the phone has not read the walker moving, she does not say she sees them');
   await say('s0-3');
   if (ctx.world && ctx.world.light === 'dark') await say('s0-dark');
   await say(mem.misstanke ? 's0-susp' : 's0-nosusp');

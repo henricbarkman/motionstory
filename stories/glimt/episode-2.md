@@ -36,7 +36,7 @@ English draft 1, 2026-10-30, written in English from the Swedish draft 5 (`episo
 ---
 
 ## 0. Back
-*Trigger: the start button for a new round, or Shape walking on after episode 1's last line in the same round. The contact begins low and builds, as in episode 1.*
+*Trigger: the start button for a new round, or Shape walking on after episode 1's last line in the same round. The contact begins low and builds, as in episode 1. She says "There you are. I'd know that shape anywhere." only once the phone reads Shape walking: she waits up to 20 s after "There. Yes. There." If it doesn't, she goes on to "You came back."*
 
 > **OM NY RUNDA: a new round**
 >
