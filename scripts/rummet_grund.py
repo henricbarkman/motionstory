@@ -39,12 +39,13 @@ REPO = Path(__file__).resolve().parents[1]
 GA = Path.home() / "generalassistant"
 UT = GA / "data" / "glimt-rummet"
 LIVE = GA / "projects" / "motionstory"
-# 1en is episode 1 in English: its text is episode-1.md, its notes and
-# baseline episod-1en.json (the same documents as rummet/data.js).
-EPISODER = ("1", "2", "3", "1en")
+# 1en and 2en are episodes 1 and 2 in English: their text is episode-1.md and
+# episode-2.md, their notes and baseline episod-1en.json and episod-2en.json
+# (the same documents as rummet/data.js).
+EPISODER = ("1", "2", "3", "1en", "2en")
 # The first commit where each document is Demi's own draft.
-START = {"1": "1e54ffc", "2": "1e54ffc", "3": "1e54ffc", "1en": "2129737", "varld": "f0fd543", "mekaniker": "0ca4994"}
-FIL = {"1": "episod-1.md", "2": "episod-2.md", "3": "episod-3.md", "1en": "episode-1.md", "varld": "varld.md", "mekaniker": "mekaniker.md"}
+START = {"1": "1e54ffc", "2": "1e54ffc", "3": "1e54ffc", "1en": "2129737", "2en": "HEAD", "varld": "f0fd543", "mekaniker": "0ca4994"}
+FIL = {"1": "episod-1.md", "2": "episod-2.md", "3": "episod-3.md", "1en": "episode-1.md", "2en": "episode-2.md", "varld": "varld.md", "mekaniker": "mekaniker.md"}
 OM = "Stycken som är Demis utkast. Skrivs av scripts/rummet_grund.py i motionstory, aldrig av rummet."
 
 READ_PARAS = """
