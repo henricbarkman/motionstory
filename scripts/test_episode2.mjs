@@ -161,6 +161,15 @@ const W = {
     expect: ['s4-pull', 's4-sing'],
     tone: true,
   },
+  // A stop in the knock window lights the lamp: her now again, and the knock then.
+  'knock-after-lamp': {
+    places: PLACES.woods, stopHere: 6,
+    on: { 'x-now': [{ do: 'stop', in: 0.5, for: 8, nth: 1 }, { do: 'knock', in: 1.2, nth: 2 }] },
+    expect: ['x-avvikelse', 's3-yes1'],
+    never: ['s3-no1'],
+    facts: { knock3: true },
+    log: ['the knock window went to the lamp, her now again'],
+  },
   // No GPS from the split to the end of the choice: no heading to read a turn from.
   'gps-gap': {
     places: PLACES.woods, stopHere: 6, gpsOff: ['s3-split', 's3-ours'],
@@ -209,8 +218,11 @@ function simulate(name) {
     if (a.do === 'run') fasters.push({ from: when, to: when + a.for, by: 2.8 / WALK });
   };
   let stoppedHere = false, gpsOff = false;
+  const endedN = {};
   const ended1 = id => {
-    for (const a of (p.on || {})[id] || []) act(a);
+    endedN[id] = (endedN[id] || 0) + 1;
+    // `nth`: only the nth time the line ends.
+    for (const a of (p.on || {})[id] || []) if (!a.nth || a.nth === endedN[id]) act(a);
     // "Stop here": the walker who stops for her does so the first time.
     if (p.stopHere && !stoppedHere && (id === 's2-here' || id === 's2-byyou')) {
       stoppedHere = true;
@@ -349,6 +361,7 @@ for (const name of Object.keys(W)) {
   if (!r.ended) fail(name, `did not end (t ${Math.round(r.t)} s)`);
   for (const id of p.expect || []) if (!ids.includes(id)) fail(name, `${id} not said`);
   for (const id of p.never || []) if (ids.includes(id)) fail(name, `${id} said`);
+  for (const text of p.log || []) if (!r.log.some(l => l.includes(text))) fail(name, `the log never says "${text}"`);
   for (const id of p.once || []) if (ids.filter(i => i === id).length !== 1) fail(name, `${id} said ${ids.filter(i => i === id).length} times, not once`);
   for (const group of p.some || []) if (!group.some(id => ids.includes(id))) fail(name, `none of ${group.join(', ')} said`);
   for (const [k, v] of Object.entries(p.facts || {})) {

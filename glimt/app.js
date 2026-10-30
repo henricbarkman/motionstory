@@ -392,7 +392,8 @@ async function preload() {
     // Episode 2's pauses: the director's desk's, one file for every episode
     // that has them, so new ones are a new file and no new code.
     if (def.episode2 && !pausesFile) {
-      pausesFile = await fetch('pauser.json').then(res => res.ok ? res.json() : null).catch(() => null);
+      const signal = typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined;
+      pausesFile = await fetch('pauser.json', { signal }).then(res => res.ok ? res.json() : null).catch(() => null);
       if (turn !== preloadTurn) return;
     }
 
@@ -816,10 +817,11 @@ async function start() {
     const memory1 = readJson(EPISODE_KEY) || (FAKE ? readJson('glimt-episode-1-en') : null);
     log(`minne från episod 1: ${memory1 ? `${memory1.svarade ? 'stannade när hon bad om det' : 'stannade aldrig på begäran'}, ` +
       `${memory1.misstanke ? 'lampan tändes' : 'ingen misstanke'}${memory1.klar ? '' : ' (avbruten)'}` : 'inget, hon tar det som det kommer'}`);
+    // Without the file: the desk's standard half second before every line.
     const pauses = (pausesFile || {})[chapter.id];
-    if (!pauses) log('pauser: pauser.json gick inte att läsa, inga pauser runt replikerna');
+    if (!pauses) log('pauser: pauser.json gick inte att läsa, en halv sekund före varje replik');
     Object.assign(ctx, {
-      pauses: pauses || { fore: {}, efter: {} },
+      pauses: pauses || { fore: Object.fromEntries(Object.keys(chapter.lines).map(id => [id, 0.5])), efter: {} },
       memory1,
       // The places near the walker now (world.js, fetchPlaces), or null when
       // there is no fix or the map does not answer.
@@ -841,6 +843,7 @@ async function start() {
       gyroTurn: opts => walk.gyro.turn(now(), opts),
       // The presses' beats; a listen's walker walks in time with them.
       beats(bpm) {
+        if (finished) return { beats: [], set() {}, stop() {} };
         const b = sfx.beat({ bpm });
         if (LISTEN) listenPace(bpm);
         return {
@@ -852,7 +855,10 @@ async function start() {
       // The song behind the presses: this copy's credits (ljud.json), or none.
       song: () => creditsBuf,
       // The whole song takes the bed's place, as the credits do.
+      // Not after the walk: a script let out of its waits by Stop must not
+      // start a song nothing would stop.
       playSong(buf, o) {
+        if (finished) return { done: Promise.resolve('ended'), startedAt: 0, rise() {}, setLevel() {}, fade() {} };
         const song = mixer.playSong(buf, o);
         if (o.share >= 0.5) {
           mixer.muteBed(true);
@@ -1570,7 +1576,9 @@ function listenAfter(id) {
     listenWalking(true);
   }
   // What else the walker does after this line: knocks, turns, walks fast.
-  for (const a of listener.plan(id)) setTimeout(() => listenDo(a), (a.in || 0) * 1000);
+  // Counted from after the desk's pause after the line, as the episode does.
+  const after = (((pausesFile || {})[chapter.id] || {}).efter || {})[id] || 0;
+  for (const a of listener.plan(id)) setTimeout(() => listenDo(a), ((a.in || 0) + after) * 1000);
 }
 
 // One thing a listen's walker does by itself (LISTEN_PLAN in listen.js).

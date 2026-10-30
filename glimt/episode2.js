@@ -236,15 +236,17 @@ export async function runEpisode2(ctx) {
   // "She says Now only when the phone reads walking"). Waits up to a minute;
   // a phone that never reads it gets her Now anyway. Returns when the word
   // fell (the window opens there).
+  // Said again when a stop cut it: an answer is timed from a now that was heard.
   async function sayNow() {
-    if (!walking(ctx.state())) {
-      log('she waits for the walker to walk before her now');
-      await hold(walking, { timeout: MIN });
+    for (let i = 0; ; i++) {
+      if (!walking(ctx.state())) {
+        log('she waits for the walker to walk before her now');
+        await hold(walking, { timeout: MIN });
+      }
+      await pause(P.fore['x-now'] ?? 0);
+      const at = now() + (ctx.cue('x-now', 'now') || 0);
+      if (await playLine('x-now') === 'done' || i >= 2) return at;
     }
-    await pause(P.fore['x-now'] ?? 0);
-    const at = now() + (ctx.cue('x-now', 'now') || 0);
-    await playLine('x-now');
-    return at;
   }
 
   // ==== 0. Back ====
@@ -427,9 +429,15 @@ export async function runEpisode2(ctx) {
   side.knock();
   await pause(1.2);
   await say('s3-knock');
-  let nowAt = await sayNow();
   const knockedSince = at => s => Number.isFinite(s.lastDoubleKnockAt) && s.lastDoubleKnockAt >= at - 0.5;
-  const knocked = await hold(knockedSince(nowAt), { by: nowAt + KNOCK_WINDOW });
+  // A stop in the window lights the lamp, and the window is gone by the time
+  // it is out: her now once more, and a new window.
+  let knocked = null, nowAt = null;
+  for (let i = 0; i < 2 && knocked !== 'ok' && knocked !== 'late'; i++) {
+    if (i) log('scene 3: the knock window went to the lamp, her now again');
+    nowAt = await sayNow();
+    knocked = await hold(knockedSince(nowAt), { by: nowAt + KNOCK_WINDOW });
+  }
   facts.knock3 = knocked === 'ok';
   log(`scene 3: ${facts.knock3 ? 'two knocks' : 'no knock'}`);
   if (facts.knock3) { await say('s3-yes1'); await say('s3-yes2'); }
@@ -608,7 +616,7 @@ export async function runEpisode2(ctx) {
       // fifteen, down to almost nothing between.
       const song = ctx.playSong(songBuf, { at: songAt(), share: 0.08 });
       const t0 = now();
-      let next = t0 + 8, upUntil = -Infinity;
+      let next = t0 + 8, upUntil = null;
       await hold(s => {
         if (s.t >= next) { next += 15; upUntil = s.t + 3; song.setLevel(0.3, 1); }
         else if (upUntil !== null && s.t >= upUntil) { upUntil = null; song.setLevel(0.08, 2); }

@@ -403,13 +403,16 @@ export class Mixer {
       },
       // To `to` of the song's level over `seconds` from where it is now
       // (episode 2: the song draws back behind the noise and comes forward).
+      // Before the song has started its level is still `share`: the gain's
+      // value reads 1 until the first scheduled event.
       setLevel(to, seconds = 1) {
         const now = Math.max(c.currentTime, startAt);
+        const from = c.currentTime < startAt ? share : level.gain.value;
         level.gain.cancelScheduledValues(now);
-        level.gain.setValueAtTime(level.gain.value, now);
+        level.gain.setValueAtTime(from, now);
         level.gain.linearRampToValueAtTime(to, now + seconds);
       },
-      // Fades to nothing over `seconds`, then stops; `done` resolves 'faded'.
+      // Fades to nothing over `seconds`, then stops; `done` resolves 'ended'.
       fade(seconds = 3) {
         this.setLevel(0, seconds);
         setTimeout(() => { try { src.stop(); } catch (_) {} }, seconds * 1000 + 100);
