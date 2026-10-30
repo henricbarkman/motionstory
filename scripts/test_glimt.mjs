@@ -922,6 +922,16 @@ const EPISODE_WALKERS = {
     lamps: 0, memory: { svarade: false, misstanke: false },
     en: { not: ['r-hjalp', 's2-4-unmoved'], logs: ['she waits for the walker to move before "You\'re moving"'] },
   },
+  // Stops with her last numbers, every time, and stays a minute: in English
+  // the snäcka asks while she waits for the walk and she starts the count
+  // over, three times (RESERVE_MAX); the fourth time the walker walks on
+  // within the wait and hears the whole line (v58, the rest branch).
+  'stays-at-thirty': {
+    walk: out(), stops: END_STOP,
+    has: ['s2-4'], lamps: 0, memory: { svarade: false, misstanke: false },
+    en: { stops: { 's2-3': ['start', 0, 60], ...END_STOP }, has: ['r-hjalp', 'r-vilar', 's2-4'], not: ['s2-4-unmoved'], loose: true,
+      logs: ['she waits for the walker to move before "You\'re moving"'] },
+  },
 
   // v52, Henric 29/10: "Inte hitta på något. Om hon inte kan se så spara
   // replikerna om landmärket till en gång när hon kan se." In English she
