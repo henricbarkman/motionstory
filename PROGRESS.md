@@ -1,5 +1,18 @@
 # PROGRESS — Motionstory
 
+## Kärnloop och mekaniker (beslut 2026-10-30)
+- Verbet: du går FÖR Vega. Din rörelse är hennes täckmantel: hon rör sig fritt medan du rör dig, och gången döljer det hon gör som hon inte får.
+- Loopen: du går för henne → hon svarar eller kommer närmare → du får veta mer om henne, världen och Shape → du vill ut igen för att hon väntar.
+- Belöning: berättelsen (den håller kvar i en episod) och relationen (den får dig att gå ut igen).
+- Misslyckande: man kan inte förlora, bara MISSA. Berättelsen går vidare annorlunda och stunder kommer inte tillbaka likadant. Aldrig game over.
+- Kärnmekaniker, EN uppdragsmekanik: kartan (OSM) hittar en platstyp i närheten (bro, vatten, skog, öppen plats) → varmare-kallare guidar dit → stanna vid målet så hon kan se eller få information.
+  - Hela inspelade repliker per platstyp, 2-3 varianter, i hennes ord (inte skarvat "I see a" + substantiv).
+  - Generella varmare-kallare-repliker som återanvänds.
+  - Alltid reserv när kartan inte hittar något.
+- Gå fort eller springa: hon gör något stort och behöver mer skydd. "Fort" är relativt spelarens egen takt (promenad = rask gång, löpare = spurt). Spelaren väljer promenad eller löptur i början; det styr bara hur ofta fort-momenten kommer (promenad ca 1 per episod).
+- Övrig variation: gå i takt till musik, riktning och kompass, uppförsbacke.
+- Spel eller berättelse: en berättelse där kroppen är handkontrollen.
+
 ## 2026-10-29
 - Henric (via sessionen 96608ebf, två anteckningar om engelska episod 1 v54): repliken "Go however you like... Your road comes before mine." bryter illusionen, stryk den och lägg ett säkerhetsmeddelande på startskärmen i stället (han sa ja till strykningen). Och när Vega pratar för sig själv låter hon för viskande; hon ska låta som sin vanliga röst, bara lite lägre och inte riktad till Shape. Prover först, inga inspelningar förrän han valt.
 - Demi (jobb j-20261029-230243-c212f9): **Version 55: repliken struken, säkerheten på startskärmen.** Bara engelska.
