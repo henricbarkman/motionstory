@@ -26,6 +26,7 @@ GLIMT_FAIL_FAST=1 stops at the first failed check.
 import functools
 import http.server
 import json
+import urllib.parse
 import os
 import re
 import subprocess
@@ -202,7 +203,9 @@ def open_page(browser, base, ua=CHROME_UA, url="?banor=vagval,kompass,vibration"
         elif r.request.url.startswith(base):
             r.continue_()
         elif overpass is not None and "/api/interpreter" in r.request.url:
-            r.fulfill(status=200, content_type="application/json", body=json.dumps(overpass))
+            # Episode 2 asks which areas the walker is inside beside its places: none here.
+            inside = "is_in" in urllib.parse.unquote_plus(r.request.post_data or "")
+            r.fulfill(status=200, content_type="application/json", body=json.dumps({"elements": []} if inside else overpass))
         else:
             r.abort()
 
