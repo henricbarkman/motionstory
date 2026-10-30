@@ -22,7 +22,7 @@ stryk) only when Henric or Liv asked for it.
     python3 scripts/rummet.py stryk --dok 1 --stycke <id>                                   # only when asked
     python3 scripts/rummet.py lore --titel "Slingan" --text -                               # a new lore page, text from stdin
 
---dok is 1, 2, 3, 1en (episode 1 in English), varld, mekaniker or lore:<id>
+--dok is 1, 2, 3, 1en, 2en (episodes 1 and 2 in English), varld, mekaniker or lore:<id>
 (--episod N still works). A
 paragraph is named by --stycke (its id, from 'rader'), or by --rad (its words,
 or the whole line as it stands in the file) with --scen to narrow it and --n
@@ -51,16 +51,17 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 GA = Path("/home/henric/generalassistant")
 CLI = REPO / "scripts" / "rummet_cli.mjs"
-# The same documents as rummet/data.js: 1en is episode 1 in English, a
-# document of its own whose text is episode-1.md (its notes: episod-1en.json).
-EPISODER = ("1", "2", "3", "1en")
-EPISODFIL = {"1": "episod-1", "2": "episod-2", "3": "episod-3", "1en": "episode-1"}
+# The same documents as rummet/data.js: 1en and 2en are episodes 1 and 2 in
+# English, documents of their own whose text is episode-1.md and episode-2.md
+# (their notes: episod-1en.json, episod-2en.json).
+EPISODER = ("1", "2", "3", "1en", "2en")
+EPISODFIL = {"1": "episod-1", "2": "episod-2", "3": "episod-3", "1en": "episode-1", "2en": "episode-2"}
 DOKUMENT = (*EPISODER, "varld", "mekaniker")
 # Since 2026-10-28 these episodes' text lives in the OnlyOffice document Manus
 # and reaches md only through data/glimt-oo/mirror.py in generalassistant,
 # which refuses an md file changed beside it. Their text is changed in Manus.
-I_MANUS = ("1en", "2", "3")
-DOK_HJALP = "1, 2, 3, 1en (episode 1 in English), varld, mekaniker or lore:<id>"
+I_MANUS = ("1en", "2en", "2", "3")
+DOK_HJALP = "1, 2, 3, 1en, 2en (episodes 1 and 2 in English), varld, mekaniker or lore:<id>"
 NAMN = {"henric": "Henric", "liv": "Liv", "demi": "Demi"}
 GALLER = ("orden", "tempo", "paus", "ljud", "nar")
 TYPER = ("scen", "mekanik", "replik", "regi", "variant", "gren", "anteckning", "stycke", "rubrik", "punkt")
@@ -295,8 +296,8 @@ def kort(s: str | None, n: int = 90) -> str:
 
 
 def doknamn(d: str) -> str:
-    if d == "1en":
-        return "episode 1 (engelska)"
+    if d in ("1en", "2en"):
+        return f"episode {d[:-2]} (engelska)"
     if d in EPISODER:
         return f"episod {d}"
     return {"varld": "världsboken", "mekaniker": "katalogen"}.get(d, f"loresidan {d[5:]}" if d.startswith("lore:") else d)
@@ -372,7 +373,7 @@ def lagg_text(c: argparse.ArgumentParser) -> None:
 def dok_av(a: argparse.Namespace) -> str:
     d = a.dok or a.episod
     if not d:
-        raise Fel("Säg vilket dokument: --dok 1, 2, 3, 1en (episod 1 på engelska), varld, mekaniker eller lore:<id>.")
+        raise Fel("Säg vilket dokument: --dok 1, 2, 3, 1en, 2en (episod 1 och 2 på engelska), varld, mekaniker eller lore:<id>.")
     return d
 
 

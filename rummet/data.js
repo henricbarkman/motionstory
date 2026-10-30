@@ -37,22 +37,22 @@ export class DataFel extends Error {
 
 // The episodes, by document id. 1en is the English version of episode 1
 // (Henric 2026-10-23: Glimt goes out in English), a document of its own next
-// to the Swedish one, with its own file.
-export const EPISODER = ['1', '2', '3', '1en'];
+// to the Swedish one, with its own file; 2en is episode 2 in English (30/10).
+export const EPISODER = ['1', '2', '3', '1en', '2en'];
 // Every document the room edits as text: the episodes, the world book and
 // the mechanics catalogue. Lore pages are documents too, inside lore.json.
 export const DOKUMENT = [...EPISODER, 'varld', 'mekaniker'];
 
 // Each episode's file in stories/glimt/, without .md (the text) or .json (the
 // recordings). The room's notes keep the id: episod-1en.json, see filnamn.
-const EPISODFIL = { 1: 'episod-1', 2: 'episod-2', 3: 'episod-3', '1en': 'episode-1' };
+const EPISODFIL = { 1: 'episod-1', 2: 'episod-2', 3: 'episod-3', '1en': 'episode-1', '2en': 'episode-2' };
 export const episodFil = (n) => {
   if (!EPISODER.includes(n) || !EPISODFIL[n]) throw new DataFel('plats', `Okänt dokument: ${n}`);
   return EPISODFIL[n];
 };
 
 // What the room calls an episode, in a tab, a title or a list.
-export const episodNamn = (n) => (n === '1en' ? 'Episode 1 (engelska)' : `Episod ${n}`);
+export const episodNamn = (n) => (/^\d+en$/.test(String(n)) ? `Episode ${String(n).slice(0, -2)} (engelska)` : `Episod ${n}`);
 
 // The people in the room. Demi is an AI (ai: true), marked as one everywhere.
 // Everyone can change everything; Demi's own rule (in the README, not in the
@@ -103,7 +103,7 @@ function sokvagar(rot) {
 }
 
 // An episode's notes are episod-<id>.json (as in the first version; the
-// English episode 1's are episod-1en.json, whatever its text file is called);
+// English episodes' are episod-1en.json and episod-2en.json, whatever its text file is called);
 // the world book's and the catalogue's are varld.json and mekaniker.json.
 const filnamn = (n) => (EPISODER.includes(n) ? `episod-${n}` : n);
 

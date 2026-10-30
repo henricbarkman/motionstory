@@ -119,7 +119,7 @@ function utanSida(paras) {
 function dokFor(namn) {
   const d = String(namn || '');
   if (DOKUMENT.includes(d) || /^lore:[A-Za-z0-9_-]+$/.test(d)) return d;
-  throw new CliFel('dok', `Okänt dokument: ${namn}. Använd 1, 2, 3, 1en (episod 1 på engelska), varld, mekaniker eller lore:<id>.`);
+  throw new CliFel('dok', `Okänt dokument: ${namn}. Använd 1, 2, 3, 1en, 2en (episod 1 och 2 på engelska), varld, mekaniker eller lore:<id>.`);
 }
 
 const DOKNAMN = (d) => (EPISODER.includes(d) ? episodNamn(d).toLowerCase() : d === 'varld' ? 'världsboken' : d === 'mekaniker' ? 'mekanikkatalogen' : `loresidan ${d.slice(5)}`);

@@ -41,7 +41,7 @@ export const PAUS_MAX = 30;
 export const PAUS_STEG = 0.25;
 // The episodes whose text lives in Manus in OnlyOffice. The Swedish episode 1
 // is not there, so its lines are not rewritten at the desk.
-export const I_MANUS = ['1en', '2', '3'];
+export const I_MANUS = ['1en', '2en', '2', '3'];
 
 export class RegiFel extends Error {
   constructor(kod, text) {

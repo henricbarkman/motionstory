@@ -143,7 +143,9 @@ def telefon(pw, url: str, rot: Path, skarmar: Path | None) -> None:
     page.wait_for_selector(".rad")
     ok(page.locator(".band.prov").count() == 1, "telefon: the sandbox band shows")
     ok(page.locator(".flikar a[aria-current]").inner_text().startswith("Episode 1"), "telefon: Episode 1 EN is the open tab")
-    ok(page.locator(".flikar a").count() == 1, "telefon: only the English episode has a tab, the Swedish ones are hidden")
+    flikar = [page.locator(".flikar a").nth(i).inner_text() for i in range(page.locator(".flikar a").count())]
+    ok([f.split()[:2] for f in flikar] == [["Episode", "1"], ["Episode", "2"]],
+       f"telefon: only the English episodes have tabs, the Swedish ones are hidden ({flikar})")
     ok(page.locator(".marke .namn").inner_text() == "Weavers" and page.title().endswith("regibordet"), "telefon: the name is Weavers")
     n = page.locator(".rad").count()
     ok(n > 50, f"telefon: the episode's lines are rows ({n})")

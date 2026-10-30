@@ -210,11 +210,11 @@ const KAP = JSON.parse(las('stories/glimt/episode-1.json'));
   fel.rader[rad.id].omskrivningar[0].lage = 'fel';
   ok(R.aktuellKropp(rad, R.radNot(fel, rad.id)) === 'Hello, the walker.', 'a refused rewrite gives md\'s words back');
   ok(!R.vantandeOmskrivningar(fel), 'and nothing waits');
-  ok(R.I_MANUS.includes('1en') && !R.I_MANUS.includes('1'), 'the Swedish episode 1 is not in Manus');
+  ok(R.I_MANUS.includes('1en') && R.I_MANUS.includes('2en') && !R.I_MANUS.includes('1'), 'the Swedish episode 1 is not in Manus, both English episodes are');
 }
 
 // --- 7. The live manuscript reads ----------------------------------------------------------------
-for (const [dok, fil] of [['1en', 'episode-1'], ['1', 'episod-1'], ['2', 'episod-2'], ['3', 'episod-3']]) {
+for (const [dok, fil] of [['1en', 'episode-1'], ['2en', 'episode-2'], ['1', 'episod-1'], ['2', 'episod-2'], ['3', 'episod-3']]) {
   const { rader } = R.raderFor(las(`stories/glimt/${fil}.md`), null);
   const talade = rader.filter((r) => r.talad);
   ok(talade.length > 20, `episode ${dok}: ${talade.length} spoken rows`);

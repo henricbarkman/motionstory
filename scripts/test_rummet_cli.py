@@ -238,8 +238,8 @@ def main() -> int:
         ok(r.returncode == 2 and M.read_text(encoding="utf-8") == efter, f"andra: two lines in one paragraph is refused, file untouched: {r.stderr[:160]}")
         r = kor(rot, "andra", "--dok", "1", "--stycke", pid, "--typ", "regi", "--text", "väntar")
         ok(r.returncode == 0 and "> (väntar)\n" in M.read_text(encoding="utf-8"), f"andra --typ: the paragraph changes kind, in the file's own form: {r.stderr[:160]}")
-        for dok in ("1en", "2", "3"):
-            fore_en = (rot / "projects/motionstory/stories/glimt" / ("episode-1.md" if dok == "1en" else f"episod-{dok}.md"))
+        for dok in ("1en", "2en", "2", "3"):
+            fore_en = (rot / "projects/motionstory/stories/glimt" / (f"episode-{dok[:-2]}.md" if dok.endswith("en") else f"episod-{dok}.md"))
             innan = fore_en.read_text(encoding="utf-8") if fore_en.exists() else None
             r = kor(rot, "andra", "--dok", dok, "--stycke", "x", "--text", "Ny text.")
             ok(r.returncode == 2 and "Manus" in r.stderr and (innan is None or fore_en.read_text(encoding="utf-8") == innan),

@@ -39,12 +39,14 @@ const S = {
   skriverOm: null, // the id of the line being rewritten
 };
 
-// The episodes, in the order of the tabs. Only the English episode 1: Glimt
-// is made in English, and the Swedish episodes are hidden from the desk
+// The episodes, in the order of the tabs. Only the English ones: Glimt is
+// made in English, and the Swedish episodes are hidden from the desk
 // (Henric 2026-10-29). Hidden, not gone: their files stay, and #episod-1 etc.
 // still open them.
-const FLIKAR = ['1en'];
-const FLIKNAMN = { '1en': 'Episode 1', 1: 'Episod 1', 2: 'Episod 2', 3: 'Episod 3' };
+const FLIKAR = ['1en', '2en'];
+const FLIKNAMN = { '1en': 'Episode 1', '2en': 'Episode 2', 1: 'Episod 1', 2: 'Episod 2', 3: 'Episod 3' };
+// An English episode: '1en', '2en'.
+const paEngelska = (d) => /^\d+en$/.test(String(d));
 
 // --- Small helpers -------------------------------------------------------------------
 
@@ -418,7 +420,7 @@ function radEl(rad, not, k) {
       onclick: () => { S.oppen = oppen ? null : rad.id; S.skriverOm = null; rita(); },
     },
     rad.etikett ? h('span', { class: 'etikett' }, `[${rad.etikett}] `) : null,
-    h('span', { class: 'replik', lang: S.dok === '1en' ? 'en' : null }, ordFor(R.aktuellKropp(rad, not)))),
+    h('span', { class: 'replik', lang: paEngelska(S.dok) ? 'en' : null }, ordFor(R.aktuellKropp(rad, not)))),
     h('p', { class: 'om' }, meta(rad, not)),
     omskrivningLage(rad, not),
     oppen ? lada(rad, not, k, ladaId) : null);
@@ -472,7 +474,7 @@ function lada(rad, not, k, id) {
     : h('p', { class: 'hjalp' }, 'Episoden har inga röster än. De väljs när den spelas in första gången.');
 
   const regiFalt = h('textarea', {
-    class: 'regitext', rows: '3', id: `regi-${rad.id}`, spellcheck: 'false', disabled: las, lang: S.dok === '1en' ? 'en' : null,
+    class: 'regitext', rows: '3', id: `regi-${rad.id}`, spellcheck: 'false', disabled: las, lang: paEngelska(S.dok) ? 'en' : null,
     onchange: (e) => {
       const v = e.target.value.replace(/\s+/g, ' ').trim();
       sattFalt((x) => R.sattRegi(x, rad.id, v === R.v4Text(kropp) ? null : v, kropp, av()));
@@ -530,7 +532,7 @@ function tagningar(rad, not) {
       h('label', null,
         h('input', { type: 'radio', name: namn, checked: not.vald === t.id, disabled: !kanSkriva(), onchange: () => val(t.id) }),
         h('span', null, `Tagning ${n + 1}. `, h('span', { class: 'dov' }, om)),
-        t.text !== R.regiText(rad, not) ? h('span', { class: 'annan-text', lang: S.dok === '1en' ? 'en' : null }, t.text) : null),
+        t.text !== R.regiText(rad, not) ? h('span', { class: 'annan-text', lang: paEngelska(S.dok) ? 'en' : null }, t.text) : null),
       h('button', { type: 'button', class: 'spela', 'aria-label': `Spela tagning ${n + 1}`, onclick: (e) => spelaBitar([{ url: S.adapter.tagningUrl(t.fil), fran: 0, till: null }], e.currentTarget, `tag:${t.id}`) }, svg(IKON.spela))));
   });
   return h('fieldset', { class: 'tagningar' }, h('legend', { class: 'falt-namn' }, 'Det som spelas'), h('ul', null, poster));
@@ -553,7 +555,7 @@ function skrivOm(rad, kropp) {
         },
       }, 'Skriv om repliken'));
   }
-  const falt = h('textarea', { rows: '3', class: 'nyord', id: `nyord-${rad.id}`, lang: S.dok === '1en' ? 'en' : null });
+  const falt = h('textarea', { rows: '3', class: 'nyord', id: `nyord-${rad.id}`, lang: paEngelska(S.dok) ? 'en' : null });
   falt.value = kropp;
   return h('div', { class: 'skrivom' },
     h('label', { class: 'falt-namn', for: `nyord-${rad.id}` }, 'Nya ord'),
@@ -620,7 +622,7 @@ function valdFlik() {
 function ritaFlikar(dok) {
   $('flikar').replaceChildren(...FLIKAR.map((d) => h('a', {
     href: `#episod-${d}`, 'data-flik': `episod-${d}`, 'aria-current': d === dok ? 'page' : null,
-  }, d === '1en' ? [h('span', { lang: 'en' }, FLIKNAMN[d]), h('span', { class: 'sprak' }, ' EN')] : FLIKNAMN[d])));
+  }, paEngelska(d) ? [h('span', { lang: 'en' }, FLIKNAMN[d]), h('span', { class: 'sprak' }, ' EN')] : FLIKNAMN[d])));
 }
 
 async function visa() {
@@ -631,7 +633,7 @@ async function visa() {
   inne.replaceChildren(h('p', { class: 'laddar' }, 'Läser episoden …'));
   try {
     tillstand(dok, await lasEpisod(dok));
-    document.title = `${FLIKNAMN[dok]}${dok === '1en' ? ' EN' : ''}: regibordet`;
+    document.title = `${FLIKNAMN[dok]}${paEngelska(dok) ? ' EN' : ''}: regibordet`;
     rita();
     if (kanSkriva() && R.vantandeOmskrivningar(S.regi)) S.adapter.tillbaka(dok).catch(() => {});
   } catch (e) {
