@@ -1,8 +1,10 @@
 # Glimt: mekanikerna
 
-> Katalogen över vad vandraren kan göra och vad telefonen kan läsa. Skriven för den som skriver manus. Senast genomgången 2026-10-29. Mätningarna bakom varje omdöme står på plansidan; här står bara det en författare behöver.
+> Katalogen över vad vandraren kan göra och vad telefonen kan läsa. Skriven för den som skriver manus. Senast genomgången 2026-10-30. Mätningarna bakom varje omdöme står på plansidan; här står bara det en författare behöver.
 
 En mekanik är något vandraren gör med kroppen, som telefonen märker, och som Vega kan svara på. Vandraren säger aldrig något: inget ljud går över till henne. Allt vandraren svarar med finns i den här listan.
+
+**Kärnan** (beslut 2026-10-30, PROGRESS): vandraren går för Vega, och gången är hennes täckmantel (Kontakten, Farligt stopp). Sedan tre kluster: uppdraget, där kartan hittar en platstyp, varmare-kallare leder dit och vandraren stannar vid målet (Platser nära dig, Hitta, Ljudkompassen, Vänd om, Gå till platsen hon minns, och Kassen som berättelsens struktur); gå fort eller springa när hon gör något stort (Fortare, Flykten, Spöket); och att svara henne, med stopp nu och knack framöver (Stanna för ja, Kroppsmorse, Knack, Hon knackar). Resten är variation, ingen mekanik är struken. Mekanikavsnittet överst i Manus är ordnat så.
 
 ## Så skriver du med en mekanik
 
