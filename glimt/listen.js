@@ -22,6 +22,27 @@
 // none: its private copy stays on version 40, untouched.
 export const LISTEN_YES = {
   episode1en: ['s0-yes1-b', 's0-no1', 's0-again2'],
+  // Episode 2: the walker stops when she says it is at the place, and walks
+  // on after her "...oh. Go." (Henric 30/10: a listen is the whole episode,
+  // heard from the sofa, the mechanics answered as a walker would).
+  episode2en: ['s2-here', 's2-byyou'],
+};
+
+// Episode 2's listen does what a walker does besides stopping, after the
+// line named, `in` seconds after it ended: knocks twice after her Now (the
+// knock and her question in scene 5), turns left at the corner, walks faster
+// down the lit stretch, and stops at a place of its own choosing when the map
+// had nothing (a stop after half a minute of walking is yes there). In scene
+// 4 it walks in time with the beats (app.js, ctx.beats), so the song comes
+// whole. Nothing of this costs the carrier bag or episode 1's memory: a
+// listen keeps its own (app.js, the -lyssna keys).
+export const LISTEN_PLAN = {
+  episode2en: {
+    'x-now': [{ do: 'knock', in: 1.2 }],
+    's3-choose': [{ do: 'turn', dir: 'left', in: 8 }],
+    's3-fast': [{ do: 'faster', by: 1.3, for: 35, in: 0.5 }],
+    's2-none2': [{ do: 'stop', in: 40 }],
+  },
 };
 
 // s after a stop by itself in which a tap keeps the walker standing. A
@@ -32,9 +53,10 @@ export const LISTEN_YES = {
 export const TAP_HOLD = 3;
 
 export class Listener {
-  constructor(yes = [], now = null) {
+  constructor(yes = [], now = null, plan = {}) {
     this.yes = new Set(yes);
     this.now = now;
+    this.planned = plan;
     this.asked = null;      // the yes question said, waiting for her now
     this.standing = false;  // stopped by itself, to walk on after her next line
     this.stoppedAt = -Infinity;
@@ -55,6 +77,10 @@ export class Listener {
     this.asked = null;
     return null;
   }
+
+  // What else the walker does after line `id` (LISTEN_PLAN): a list of
+  // {do, in, ...}, empty for most lines.
+  plan(id) { return this.planned[id] || []; }
 
   stop(at) {
     this.asked = null;

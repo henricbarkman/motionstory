@@ -225,7 +225,7 @@ export function readLuft(raw) {
 // A stop the walker means. The feet say it two seconds after the last step,
 // so one second more is enough; GPS alone needs longer to be sure.
 const sure = s => s.paceSource === 'steps' ? 1 : 3;
-const stopped = s => !s.moving && s.stillFor >= sure(s);
+export const stopped = s => !s.moving && s.stillFor >= sure(s);
 // How late the phone sees that a stop began: the feet two seconds after the
 // last step, GPS a fix or two after the speed drops. A stop that began
 // before her window closed is her answer even when it shows after it.
@@ -253,7 +253,7 @@ const feetStill = s => s.paceSource === 'steps' && s.t - s.lastStepAt >= FEET_ST
 // began within SENSOR_SETTLE of that is no stop. v39 heard a yes from it in
 // ask(), and the lamp lit for a walker who never stopped (in 11 of 12 short
 // gaps in her exposed stretches; the feasibility review of v40, 24/10).
-const heldStop = s => stopped(s)
+export const heldStop = s => stopped(s)
   && !(s.paceSource === 'steps' && s.t - s.stillFor - s.sensorResetAt < SENSOR_SETTLE);
 // Going again, by the feet: the band says moving, and the last three steps
 // came at a gait's pace, just now. The band wants a second and a half of

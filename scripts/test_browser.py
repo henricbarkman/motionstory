@@ -26,6 +26,7 @@ GLIMT_FAIL_FAST=1 stops at the first failed check.
 import functools
 import http.server
 import json
+import urllib.parse
 import os
 import re
 import subprocess
@@ -174,7 +175,8 @@ def test_sounds():
         subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", f"sine=frequency={hz}:duration={length}",
                         "-af", "volume=0.05", "-c:a", "libopus", "-b:a", "16k", str(out)], check=True)
         body[path] = out.read_bytes()
-    manifest = {"bed": files["bed"][0], "riser": files["riser"][0], "credits": {"glimt-e1": files["song"][0], "glimt-e1en": files["song"][0]}}
+    manifest = {"bed": files["bed"][0], "riser": files["riser"][0],
+                "credits": {"glimt-e1": files["song"][0], "glimt-e1en": files["song"][0], "glimt-e2en": files["song"][0]}}
     return json.dumps(manifest), body
 
 
@@ -201,7 +203,9 @@ def open_page(browser, base, ua=CHROME_UA, url="?banor=vagval,kompass,vibration"
         elif r.request.url.startswith(base):
             r.continue_()
         elif overpass is not None and "/api/interpreter" in r.request.url:
-            r.fulfill(status=200, content_type="application/json", body=json.dumps(overpass))
+            # Episode 2 asks which areas the walker is inside beside its places: none here.
+            inside = "is_in" in urllib.parse.unquote_plus(r.request.post_data or "")
+            r.fulfill(status=200, content_type="application/json", body=json.dumps({"elements": []} if inside else overpass))
         else:
             r.abort()
 
@@ -1379,6 +1383,87 @@ def lyssna(browser, base):
         ctx.close()
 
 
+# A lake 300-500 m north of where the sim walk starts: what episode 2's map
+# finds for a listen (world.js, fetchPlaces).
+_M_LON = 111320 * 0.5096
+LAKE_NORTH = {"elements": [{"type": "way", "id": 1, "tags": {"natural": "water"}, "geometry": [
+    {"lat": round(59.38 + y / 111320, 6), "lon": round(13.5 + x / _M_LON, 6)}
+    for x, y in ((-100, 300), (100, 300), (100, 500), (-100, 500), (-100, 300))]}]}
+
+
+def episode2(browser, base):
+    # The English start screen chooses between the episodes, and the address follows.
+    ctx, page, errors = open_page(browser, base, url="", ready="Start walking")
+    s = page.evaluate("""() => ({ box: !document.getElementById('episode-box').hidden,
+      checked: document.querySelector('input[name="episode"]:checked')?.value, doc: document.title })""")
+    check(s == {"box": True, "checked": "episode1en", "doc": "Weavers, episode 1"}, f"episode2, start: the English page offers both episodes, episode 1 chosen ({s})")
+    page.check('input[name="episode"][value="episode2en"]')
+    page.wait_for_function("document.getElementById('start-btn').textContent === 'Start walking' && document.title === 'Weavers, episode 2'", timeout=30000)
+    s = page.evaluate("""() => ({ q: location.search, sub: document.getElementById('subtitle').textContent,
+      listen: document.getElementById('listen-link').getAttribute('href') })""")
+    check("kapitel=episode2en" in s["q"] and s["sub"].startswith("Episode 2.") and "kapitel=episode2en" in s["listen"] and "lyssna" in s["listen"],
+          f"episode2, start: choosing episode 2 puts it in the address and the listen link ({s})")
+    check(not errors, f"episode2, start: no page errors ({errors[:3]})")
+    ctx.close()
+
+    # Two listens side by side, nobody touching them (the plan in listen.js
+    # knocks, turns and walks fast): one where the map finds a lake and the
+    # song is there, one where the map never answers and there is no song.
+    runs = {}
+    seed = "localStorage.setItem('glimt-episode-1-en-lyssna', JSON.stringify({ svarade: true, misstanke: false, klar: true }));"
+    for name, kw in (("lake", {"overpass": LAKE_NORTH, "sounds": True}), ("nothing", {})):
+        c, pg, errs = open_page(browser, base, url="?kapitel=episode2en&lyssna", init=seed if name == "lake" else "", motion=False,
+                                ready="Start listening", **kw)
+        if name == "lake":
+            t = pg.evaluate("({ doc: document.title, sub: document.getElementById('subtitle').textContent })")
+            check(t["doc"] == "Weavers, episode 2" and t["sub"].startswith("Episode 2. About a quarter of an hour. Listen"),
+                  f"episode2, listen: its own title and subtitle ({t})")
+        pg.click("#start-btn")
+        runs[name] = (c, pg, errs)
+    for name, (c, pg, errs) in runs.items():
+        try:
+            pg.wait_for_function("!document.getElementById('done').hidden", timeout=1500000)
+        except PlaywrightTimeout:
+            check(False, f"episode2 {name}: never reached the end screen ({walk_log(pg)[-4:]})")
+            c.close()
+            continue
+        log = pg.evaluate("document.getElementById('final-log').textContent.split('\\n')")
+        heard = [line.split("▶ ", 1)[1].split(" ")[0] for line in log if "▶ " in line]
+        check(any(f"Behind the Presses (episode2en), version {APP_VERSION}" in line for line in log), f"episode2 {name}: the log names episode 2 ({log[0]!r})")
+        want = {
+            "lake": ["s0-1", "s1-1", "s2-1", "s2-water", "s2-take", "s2-stop-ans", "s2-here", "s2-oh", "s2-held", "s2-saw-water", "s2-going",
+                     "s2-bell", "s3-1", "s3-knock", "s3-yes1", "s3-choose", "s3-left", "s3-followed", "s3-fast", "s3-errand",
+                     "s4-1", "s4-intime", "s4-instep", "s4-sing", "s4-nod", "s5-1", "s5-ask", "s5-two", "s5-noword", "s5-home"],
+            "nothing": ["s2-none1", "s2-none2", "s2-oh", "s2-held", "s2-going", "s3-yes1", "s3-left", "s3-errand", "s4-hum", "s5-two", "s5-home"],
+        }[name]
+        never = {"lake": ["s2-stop", "s2-none1", "s2-bell-first", "s3-no1", "s3-lost", "s4-hum"],
+                 "nothing": ["s2-take", "s2-bell-first", "s4-sing"]}[name]
+        missing = [x for x in want if x not in heard]
+        extra = [x for x in never if x in heard]
+        check(not missing and not extra, f"episode2 {name}: the lines of its branches ({'missing ' + ', '.join(missing) if missing else len(heard)}{', and ' + ', '.join(extra) if extra else ''})")
+        scenes = [line.split("  ", 1)[1] for line in log if re.search(r"  scene \d$", line)]
+        check(scenes == ["scene 1", "scene 2", "scene 3", "scene 4"] or scenes[-4:] == ["scene 1", "scene 2", "scene 3", "scene 4"],
+              f"episode2 {name}: the scenes in order ({scenes})")
+        memory = pg.evaluate("[localStorage.getItem('glimt-episode-2-en-lyssna'), localStorage.getItem('glimt-episode-2-en')]")
+        m = json.loads(memory[0] or "null")
+        check(m is not None and m.get("klar") is True and memory[1] is None,
+              f"episode2 {name}: what episode 3 learns goes under the listen's own key ({m}, walked key {memory[1]})")
+        if name == "lake":
+            check(m and m.get("place") == "water" and m.get("saw") == "water" and m.get("knock3") is True and m.get("choice") == "left"
+                  and m.get("faster") is True and m.get("song") == "whole" and m.get("knock5") == "knock", f"episode2 lake: it remembers the walk ({m})")
+            check(any("minne från episod 1: stannade när hon bad om det" in line for line in log), "episode2 lake: it read episode 1's evening")
+            check(any("scene 4: the beats from" in line for line in log) and any("lyssning: knackar två gånger av sig själv" in line for line in log)
+                  and any("lyssning: svänger vänster av sig själv" in line for line in log), "episode2 lake: beats, and the listen knocks and turns by itself")
+        else:
+            check(m and m.get("place") is None and m.get("song") == "no song here" and any("kartan svarade inte" in line for line in log),
+                  f"episode2 nothing: no map, no song, and the log says so ({m})")
+        bad = [x for x in log if "replik saknas" in x or "nådde aldrig slutet" in x or "fel:" in x or "pauser:" in x]
+        errs = [e for e in errs if "/api/interpreter" not in e]
+        check(not bad and not errs, f"episode2 {name}: no line missing, pauses read, no page errors ({bad[:2]}, {errs[:3]})")
+        shot(pg, f"episode2-{name}-end")
+        c.close()
+
+
 def wait_moving(page, timeout=15000):
     try:
         page.wait_for_function("window.glimt && window.glimt.walk.state().moving", timeout=timeout)
@@ -1406,6 +1491,7 @@ SCENARIOS = {
     "episod": episod,
     "episode": episode,
     "lyssna": lyssna,
+    "episode2": episode2,
 }
 
 

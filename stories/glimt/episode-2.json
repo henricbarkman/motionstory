@@ -43,6 +43,20 @@
     "s5-rustle"
   ],
   "klarhet": 0.45,
+  "klarhetPerScen": {
+    "s3": 0.35
+  },
+  "klarhetPerRad": {
+    "s3-knock": 0.45,
+    "s3-choose": 0.45,
+    "s3-fast": 0.45,
+    "s5-noword": 0.55,
+    "s5-book": 0.55
+  },
+  "credits": {
+    "file": "presses.opus",
+    "seconds": 238.22
+  },
   "bakgrund": -12,
   "lines": {
     "s0-1": "Static. Just static. [pause] There. Yes. There.",

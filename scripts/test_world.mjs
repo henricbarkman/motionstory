@@ -5,7 +5,8 @@
 //
 //   node scripts/test_world.mjs
 
-import { fetchLandmarks, fetchWeather, chooseWorld, defaultWorld, orGuess, landmarksNear, lookAgain, REACH, PEAK_REACH, FIX_FRESH, LANDMARKS } from '../glimt/world.js';
+import { fetchLandmarks, fetchWeather, chooseWorld, defaultWorld, orGuess, landmarksNear, lookAgain, REACH, PEAK_REACH, FIX_FRESH, LANDMARKS,
+  placesQuery, classifyPlaces, placeDistance, placeNearestPoint, nearestPlace, fetchPlaces, insideQuery, INSIDE_NEAR } from '../glimt/world.js';
 import { Bag, STORIES, pickStory } from '../glimt/bag.js';
 import { readKlarhet } from '../glimt/audio.js';
 import { readLuft, withAir, LUFT_MAX, EN, SV } from '../glimt/episod1.js';
@@ -232,6 +233,77 @@ const never = () => new Promise(() => {});
   check(a.words === EN.words && a.at === EN.at && a.now === EN.now && a.luft === 2, 'and nothing else changes');
   check(JSON.stringify(EN) === before, 'the episode itself is left as it was');
   check(Object.keys(SV.gaps).length === 0, 'the Swedish episode has no breaths of its own, as in v40');
+}
+
+// Episode 2's places (Hitta): what the map's answer becomes, and how far
+// the walker is from each place's edge.
+{
+  const LAT = 59.38, LON = 13.5;
+  const M_LON = 111320 * Math.cos(LAT * Math.PI / 180);
+  const at = (x, y) => ({ lat: LAT + y / 111320, lon: LON + x / M_LON });
+  const here = (x, y) => { const p = at(x, y); return { latitude: p.lat, longitude: p.lon }; };
+  const square = (x, y, size) => [at(x, y), at(x + size, y), at(x + size, y + size), at(x, y + size), at(x, y)];
+  const elements = [
+    { type: 'way', id: 1, tags: { natural: 'water' }, geometry: square(-50, 100, 100) },
+    { type: 'way', id: 2, tags: { natural: 'water', water: 'wastewater' }, geometry: square(0, 0, 10) },
+    { type: 'way', id: 3, tags: { landuse: 'forest' }, geometry: [...square(200, 0, 100).slice(0, 2), null, ...square(200, 0, 100).slice(2)] },
+    { type: 'way', id: 4, tags: { bridge: 'yes', highway: 'footway' }, geometry: [at(-10, -60), at(10, -60)] },
+    { type: 'way', id: 5, tags: { bridge: 'yes', highway: 'motorway' }, geometry: [at(-10, -30), at(10, -30)] },
+    { type: 'node', id: 6, tags: { natural: 'peak' }, lat: at(0, -200).lat, lon: at(0, -200).lon },
+    { type: 'way', id: 7, tags: { waterway: 'river' }, geometry: [at(-300, 50), at(-300, -50)] },
+    // Under the road and a plank walk: no water to see, no bridge to cross.
+    { type: 'way', id: 10, tags: { waterway: 'stream', tunnel: 'culvert' }, geometry: [at(-5, -5), at(5, 5)] },
+    { type: 'way', id: 11, tags: { bridge: 'boardwalk', highway: 'footway' }, geometry: [at(-5, 5), at(5, 5)] },
+  ];
+  const places = classifyPlaces(elements);
+  const kinds = places.map(p => `${p.id}:${p.kind}`).join(' ');
+  check(kinds === 'way/1:water way/3:woods way/4:bridge node/6:hill way/7:water',
+    `the map's answer: water, woods, a footbridge, a hill, a river; no wastewater, no motorway bridge (${kinds})`);
+  const woods = places.find(p => p.id === 'way/3');
+  check(woods.parts.length === 2 && woods.area, 'a null point (outside the box) splits the outline in two parts');
+  const lake = places.find(p => p.id === 'way/1');
+  check(Math.abs(placeDistance(lake, here(0, 0)) - 100) < 1, `100 m south of a lake: ${placeDistance(lake, here(0, 0)).toFixed(1)} m`);
+  check(placeDistance(lake, here(0, 150)) === 0, 'inside the lake: 0');
+  check(placeDistance(woods, here(250, 50)) === 0, 'inside a wood whose outline has a gap: 0 all the same');
+  check(Math.abs(placeDistance(woods, here(150, 50)) - 50) < 1, `50 m west of the wood: ${placeDistance(woods, here(150, 50)).toFixed(1)} m`);
+  const river = places.find(p => p.id === 'way/7');
+  check(!river.area && Math.abs(placeDistance(river, here(-250, 0)) - 50) < 1, 'a river is a line: 50 m from it');
+  const hill = places.find(p => p.kind === 'hill');
+  check(Math.abs(placeDistance(hill, here(0, 0)) - 200) < 1, 'a hill is its point');
+  const pt = placeNearestPoint(lake, here(0, 0));
+  check(Math.abs(pt.latitude - at(0, 100).lat) < 1e-6 && Math.abs(pt.longitude - LON) < 1e-6, 'the nearest point of the lake is straight north on its shore');
+  const n = nearestPlace(places, here(0, 0));
+  check(n && n.kind === 'bridge' && Math.abs(n.dist - 60) < 1, `the nearest within reach: the footbridge at 60 m (${n && n.kind} ${n && n.dist.toFixed(0)})`);
+  check(nearestPlace(places, here(0, 0), 50) === null, 'nothing within 50 m');
+  check(nearestPlace([], here(0, 0)) === null && nearestPlace(null, here(0, 0)) === null, 'no places, no place');
+  const both = classifyPlaces([
+    { type: 'way', id: 8, tags: { landuse: 'forest' }, geometry: square(-100, -100, 200) },
+    { type: 'way', id: 9, tags: { natural: 'water' }, geometry: square(-100, -100, 200) },
+  ]);
+  check(nearestPlace(both, here(0, 0)).kind === 'water', 'inside water and a wood at once: the water first (PLACE_KINDS order)');
+  const q = placesQuery(59.38, 13.5);
+  check(/around:250,59\.38000,13\.50000/.test(q) && /out geom\(/.test(q) && !/is_in/.test(q), 'the query asks round the walker for geometry in a box, with no area lookup');
+  const q2 = placesQuery(59.38, 13.5);
+  check(/\[!"tunnel"\]/.test(q2) && /boardwalk/.test(q2), 'the query leaves out culverts and plank walks');
+  // The inside question, beside the places: a wood too big for the box.
+  const isIn = body => decodeURIComponent(body).includes('is_in');
+  const asked = [];
+  const got = await fetchPlaces(59.38, 13.5, { endpoints: [A, B], timeout: 50,
+    fetchImpl: (url, o) => { asked.push(url); return url === A ? never() : answer(isIn(o.body) ? { elements: [] } : { elements }); } });
+  check(got.length === 5, `fetchPlaces: the second server answers when the first hangs (${got.length} places)`);
+  const big = await fetchPlaces(59.38, 13.5, { endpoints: [B], timeout: 50,
+    fetchImpl: (url, o) => answer(isIn(o.body) ? { elements: [{ type: 'area', id: 3600001, tags: { landuse: 'forest' } }, { type: 'area', id: 3600002, tags: { building: 'yes' } }] } : { elements: [] }) });
+  check(big.length === 1 && big[0].kind === 'woods' && big[0].id === 'area/3600001', `inside a big wood: one place, the wood (${JSON.stringify(big.map(p => p.id))})`);
+  check(placeDistance(big[0], here(0, 0)) === 0 && placeDistance(big[0], here(0, INSIDE_NEAR - 10)) === 0
+    && Math.abs(placeDistance(big[0], here(0, INSIDE_NEAR + 50)) - 50) < 1, 'inside counts within 150 m of where the map said so, and is measured from there beyond');
+  check(nearestPlace(big, here(0, 0)).dist === 0, 'so the nearest place is right here');
+  const slow = await fetchPlaces(59.38, 13.5, { endpoints: [B], timeout: 50,
+    fetchImpl: (url, o) => isIn(o.body) ? Promise.reject(new Error('runtime error: no areas')) : answer({ elements }) });
+  check(slow.length === 5, `a server without areas: the places all the same (${slow.length})`);
+  check(/is_in\(59\.38000,13\.50000\)/.test(insideQuery(59.38, 13.5)), 'the inside query asks where the walker is');
+  let err = null;
+  try { await fetchPlaces(59.38, 13.5, { endpoints: [A], fetchImpl: () => Promise.resolve({ ok: false, status: 406 }) }); } catch (e) { err = e; }
+  check(err && /406/.test(err.message), `no server answers: rejected with each one's error (${err && err.message})`);
 }
 
 if (failures) { console.log(`\n${failures} failed`); process.exit(1); }

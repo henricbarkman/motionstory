@@ -392,6 +392,57 @@ export class HerSide {
     return (strikes - 1) * gap + 3.6;
   }
 
+  // --- her knock on the pipe (episode 2) -----------------------------------
+
+  // Two quick knocks, close together, the second one hard: metal on metal,
+  // hollow, a pipe (the manuscript, scene 3). A pipe rings inharmonically,
+  // so each knock is a click of noise through a narrow band and three sine
+  // partials at a free bar's ratios, gone in a third of a second. Beside the
+  // bus, like the bell: heard while the walker walks. Returns its seconds.
+  knock({ gap = 0.17 } = {}) {
+    if (this.closed) return 0;
+    const c = this.ctx;
+    const first = c.currentTime + 0.05;
+    const f0 = 540;
+    const partials = [[1, 0.22, 0.32], [2.76, 0.12, 0.2], [5.4, 0.06, 0.12]];
+    [[first, 0.55], [first + gap, 1]].forEach(([when, hard]) => {
+      const click = c.createBufferSource();
+      const len = Math.floor(c.sampleRate * 0.03);
+      const buf = c.createBuffer(1, len, c.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+      click.buffer = buf;
+      const band = c.createBiquadFilter();
+      band.type = 'bandpass';
+      band.frequency.value = 1400;
+      band.Q.value = 6;
+      const cg = c.createGain();
+      cg.gain.value = 0.5 * hard;
+      click.connect(band);
+      band.connect(cg);
+      cg.connect(this.fixed);
+      click.onended = () => this.sources.delete(click);
+      click.start(when);
+      this.sources.add(click);
+      for (const [ratio, level, decay] of partials) {
+        const osc = c.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = f0 * ratio;
+        const g = c.createGain();
+        g.gain.setValueAtTime(0.0001, when);
+        g.gain.linearRampToValueAtTime(level * hard, when + 0.003);
+        g.gain.exponentialRampToValueAtTime(0.0001, when + decay);
+        osc.connect(g);
+        g.connect(this.fixed);
+        osc.onended = () => this.sources.delete(osc);
+        osc.start(when);
+        osc.stop(when + decay + 0.05);
+        this.sources.add(osc);
+      }
+    });
+    return gap + 0.4;
+  }
+
   // --- the breath ----------------------------------------------------------
 
   // A second of breath under the hum, on the bus: noise through a band, in
@@ -541,6 +592,7 @@ export class SilentSide {
   other() {}
   tone() {}
   bell() { return 0; }
+  knock() { return 0; }
   breath() {}
   say() { return Promise.resolve('silent'); }
   fade() {}

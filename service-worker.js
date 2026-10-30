@@ -1,6 +1,6 @@
 // Bump CACHE whenever audio or app files change, otherwise an installed PWA
 // keeps serving the old files forever.
-const CACHE = 'motionstory-v55';
+const CACHE = 'motionstory-v56';
 // The private copies sit side by side on one origin (the portal) and share
 // its CacheStorage. Each worker keeps its files under its own scope and
 // clears only its own older caches, so opening one copy never empties
@@ -58,6 +58,7 @@ const ASSETS = [
   './glimt/chapter1.js',
   './glimt/chapter2.js',
   './glimt/episod1.js',
+  './glimt/episode2.js',
   './glimt/herside.js',
   './glimt/audio.js',
   './glimt/world.js',
@@ -70,13 +71,15 @@ const ASSETS = [
   './stories/glimt/kapitel-2.json',
   './stories/glimt/episod-1.json',
   './stories/glimt/episode-1.json',
+  './stories/glimt/episode-2.json',
+  './glimt/pauser.json',
   './stories/glimt/labb.json',
   './glimt/ljud.json',
 ];
-// The English episode (episode-1.json) is left out, though it is the
-// standard page since v54: the English page fetches all its lines when it
-// opens, and the fetch handler keeps them then, so precaching its 11 MB of
-// voices too would only download them twice.
+// The English episodes (episode-1.json, episode-2.json) are left out, though
+// they are the standard page since v54: the English page fetches all of an
+// episode's lines when it opens, and the fetch handler keeps them then, so
+// precaching their voices too would only download them twice.
 const CHAPTER_FILES = ['./stories/glimt/kapitel-1.json', './stories/glimt/kapitel-2.json',
   './stories/glimt/episod-1.json', './stories/glimt/labb.json'];
 

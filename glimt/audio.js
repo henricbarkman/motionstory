@@ -401,6 +401,22 @@ export class Mixer {
         level.gain.setValueAtTime(share, now);
         level.gain.linearRampToValueAtTime(1, now + seconds);
       },
+      // To `to` of the song's level over `seconds` from where it is now
+      // (episode 2: the song draws back behind the noise and comes forward).
+      // Before the song has started its level is still `share`: the gain's
+      // value reads 1 until the first scheduled event.
+      setLevel(to, seconds = 1) {
+        const now = Math.max(c.currentTime, startAt);
+        const from = c.currentTime < startAt ? share : level.gain.value;
+        level.gain.cancelScheduledValues(now);
+        level.gain.setValueAtTime(from, now);
+        level.gain.linearRampToValueAtTime(to, now + seconds);
+      },
+      // Fades to nothing over `seconds`, then stops; `done` resolves 'ended'.
+      fade(seconds = 3) {
+        this.setLevel(0, seconds);
+        setTimeout(() => { try { src.stop(); } catch (_) {} }, seconds * 1000 + 100);
+      },
     };
   }
 
@@ -493,10 +509,15 @@ export class Library {
     this.missing = new Set();
   }
 
+  // Lines this chapter takes from another's folder, {id: folder}: episode 2's
+  // reserve is episode 1's, the same two takes.
+  borrow(map) { this.borrowed = { ...(this.borrowed || {}), ...map }; }
+
   load(id) {
     if (this.raw.has(id)) return Promise.resolve(this.raw.get(id));
     if (!this.loading.has(id)) {
-      const p = this.mixer.fetchBuffer(`${this.baseUrl}/${id}.mp3`).then(buf => {
+      const base = (this.borrowed || {})[id] || this.baseUrl;
+      const p = this.mixer.fetchBuffer(`${base}/${id}.mp3`).then(buf => {
         if (buf) this.raw.set(id, buf); else this.missing.add(id);
         return buf;
       }).catch(() => { this.missing.add(id); return null; });
