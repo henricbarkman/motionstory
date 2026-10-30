@@ -110,7 +110,7 @@ If the walker was already standing:
 >
 > (The Code starts here, faint, under her last words.)
 >
-> (to herself, almost a whisper) You hear me.
+> (to herself) You hear me.
 >
 > **No, the walker keeps going:**
 > No. No, of course not. You're steps, not ears. (quietly) I'll talk anyway. Never stopped me before.
@@ -122,7 +122,7 @@ If the walker was already standing:
 > (The credits: a whole HELD song with vocals, The Code, like the intro to a game. It begins faint under her last words and grows to full volume when she has finished speaking; on 23/10 it began 0.3 s after her last word, at full volume. Vega is silent while it plays.)
 
 ## 1. The Loop
-*Trigger: after the credits, when the contact is full. Stops are harmless here, she is walking her round as usual.*
+*Trigger: after the credits, when the contact is full. Stops are harmless here, she is walking her round as usual. If the phone hasn't read Shape walking with the line clear, she doesn't say how Shape moves: the scene starts on "I'm walking.", without "too", since "too" would say she has seen Shape walk.*
 
 > There. You're clear now.
 >
@@ -135,7 +135,7 @@ If the walker was already standing:
 >
 > (pause about 1.5 s; was 0 s on 23/10)
 >
-> (to herself) Ask something real this time. ...Come on.
+> Ask something real this time. This is weird though. But it is real. I think. Okay, come on. Get it together Vega.
 >
 > (pause about 1 s; was 0 s on 23/10)
 >
@@ -261,7 +261,7 @@ If the walker stays standing about ten seconds more:
 >
 > (to herself, getting up fast) Up. Up, up.
 >
-> (hurried, to you) In a minute the whole shift comes around the corner, and I'm sitting under a tree. Go now, if you can. Don't stop. Not now.
+> Okay, in a minute the whole shift comes around the corner, and I'm sitting under a tree. Go now, and go fast. Don't stop. Not now.
 >
 > (far away, many steps: the shift)
 >
@@ -291,7 +291,7 @@ If the walker stays standing about ten seconds more:
 >
 > So you're Shape. That's what I've been calling you in my head. (pause) It'll do.
 >
-> I'm Vega. In case you were wondering.
+> I'm Vega.
 >
 > **The walker has never stopped when asked:**
 > I don't know what you are. A glitch in their numbers, maybe. Or someone out there who's got no idea what they did tonight.

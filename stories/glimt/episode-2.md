@@ -98,7 +98,7 @@ English draft 1, 2026-10-30, written in English from the Swedish draft 5 (`episo
 >
 > **OM INGET: the map has nothing near Shape**
 >
-> I can't make anything out near you. Just you, moving.
+> I can't make anything out near you. Just you.
 >
 > (pause) Then take me somewhere. Anywhere you like out there. When we're there, stop. I know, I'll lose you. Stop anyway. I want to try something.
 >
@@ -112,7 +112,7 @@ English draft 1, 2026-10-30, written in English from the Swedish draft 5 (`episo
 >
 > [woods] There are woods near you. At the edge.
 >
-> [bridge] There's a bridge near you. Far off, at the edge.
+> [bridge] There's a bridge near you. At the edge.
 >
 > [hill] There's a hill near you. At the edge.
 >
@@ -217,7 +217,7 @@ If Shape stands longer than about five seconds:
 >
 > (Two quick knocks, close together, the second one hard. Metal on metal, hollow. A pipe.)
 >
-> (straight to you) When I say now, knock twice on the pocket where your phone is. Quick, one of them hard. And keep walking.
+> (straight to you) You must have some kind of communication device on you, right? (pause) When I say now, knock twice on it. Quick, one of them hard. And keep walking.
 >
 > (pause) Now.
 >

@@ -35,8 +35,16 @@ export const SONG_RISE = 3;
 const VOICE_CEIL_HZ = 18000;
 // A line she says to herself (Henric 2026-10-16: lower, turned away from the
 // line): never clearer than this contact, and at this share of the level.
-const ASIDE_CONTACT = 0.7;
-const ASIDE_GAIN = 0.7;
+// Henric 30/10 chose "9 dB lower and duller" on the proof page: at full
+// contact a lowpass at 3.8 kHz and 0.355 of the level (-9.0 dB). Was 0.7 and
+// 0.7, 4.7 dB lower and 5.3 kHz.
+const ASIDE_CONTACT = 0.62;
+const ASIDE_GAIN = 0.451;
+// The aside's level is set as its line starts, not glided to with the
+// contact's 0.4 s: a short one ("Up. Up, up.", 1.8 s) was most of a second
+// louder than Henric chose (the review of v57). A time constant this short
+// is there by the end of the take's lead silence.
+const ASIDE_ONSET = 0.03;
 // The radio at klarhet 0. Each part eases to nothing on the way to 1:
 // the band's edges on a log scale, the drive in proportion.
 const RADIO_LOW_HZ = 700;      // highpass at full radio (20 Hz when clean)
@@ -340,8 +348,8 @@ export class Mixer {
       level.connect(song ? this.songGain : this.radioIn);
       this.route = song ? 'song' : 'radio';   // what the last sound was sent through, for the tests
       if (clear) { this.clear = true; this.applyContact(); }
-      if (aside) { this.aside = true; this.applyContact(); }
       const startAt = at === null ? this.ctx.currentTime : at;
+      if (aside) { this.aside = true; this.applyContact(ASIDE_ONSET, startAt); }
       if (radio) this.hiss(true, startAt);
       const lead = Math.max(0, startAt - this.ctx.currentTime);
       let done = false;
@@ -350,7 +358,7 @@ export class Mixer {
         done = true;
         clearTimeout(watchdog);
         if (clear) { this.clear = false; this.applyContact(); }
-        if (aside) { this.aside = false; this.applyContact(); }
+        if (aside) { this.aside = false; this.applyContact(ASIDE_ONSET); }
         if (radio) this.hiss(false);
         if (this.currentVoice === src) this.currentVoice = null;
         resolve(why);
@@ -460,14 +468,16 @@ export class Mixer {
     this.applyContact();
   }
 
-  applyContact() {
+  // `tau`: how fast it gets there (the contact glides; an aside starts at
+  // its level). `at`: from when, for a line that starts later.
+  applyContact(tau = 0.4, at = null) {
     let c = this.clear ? 1 : this.contact;
     if (this.aside) c = Math.min(c, ASIDE_CONTACT);
     const freq = VOICE_FLOOR_HZ * Math.pow(VOICE_CEIL_HZ / VOICE_FLOOR_HZ, c);
     const gain = (0.25 + 0.75 * Math.pow(c, 0.7)) * (this.aside ? ASIDE_GAIN : 1);
-    const now = this.ctx.currentTime;
-    this.voiceFilter.frequency.setTargetAtTime(freq, now, 0.4);
-    this.voiceGain.gain.setTargetAtTime(gain, now, 0.4);
+    const now = Math.max(this.ctx.currentTime, at ?? 0);
+    this.voiceFilter.frequency.setTargetAtTime(freq, now, tau);
+    this.voiceGain.gain.setTargetAtTime(gain, now, tau);
   }
 
   fadeOut(seconds = 4) {

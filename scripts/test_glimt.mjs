@@ -684,12 +684,16 @@ const EPISODE_WALKERS = {
     // the stop while the walker still stands, and the go line comes. So a
     // stop this short is a coin toss on a phone too. On Paula's English
     // takes (v41) it rounded under and heard a no; on Jessica's (v45) it
-    // rounds over, as in Swedish.
+    // rounds over, as in Swedish. A re-recording that moves a clip flips it
+    // (v57's asides, s0-1 1.75 s longer, made the first question a no), so in
+    // English the first question is left to the coin: either branch, and
+    // what does not hang on it is still required.
     has: ['s0-yes1-a', 's0-yes2', 's1-q2-yes', 's4-yes'], not: ['s0-no1', 's0-no2', 's1-q2-no', 's0-go1', 's0-go2', 's1-go'],
     // The yes comes with the step that ends the gap: going again, so her go
     // line is not said at all.
     skipped: ['s0-go1', 's0-go2', 's1-go'],
     lamps: 0, memory: { svarade: true, misstanke: false },
+    en: { has: ['s1-q2-yes', 's4-yes'], not: ['s1-q2-no', 's1-go'], skipped: ['s1-go'] },
   },
   // A hesitation, not a stop: under a second standing, a gap shorter than
   // FEET_STOP. That is still a no, five seconds and a step after the line.
@@ -993,7 +997,7 @@ const EPISODE_WALKERS = {
     walk: out(), stops: { 's0-no2': ['end', 0, E_CREDITS + 200], ...END_STOP },
     has: ['s1-walk', 's1-2'],
     lamps: 0, memory: { svarade: false, misstanke: false },
-    en: { has: ['s1-2'], not: ['s1-walk', 's1-run'], logs: ['scene 1: the phone has not read the walker moving'] },
+    en: { has: ['s1-2-alone'], not: ['s1-walk', 's1-run', 's1-2'], logs: ['scene 1: the phone has not read the walker moving'] },
   },
 };
 
@@ -1443,6 +1447,16 @@ function episodeProblems(name, run) {
     const i = said.findIndex(x => x.id === 's3-1');
     if (i >= 0 && (!said[i + 1] || said[i + 1].id === 's4-1')) problems.push('s3-1 with nothing she sees after it');
   }
+  // "I'm walking too" only after she has said how the walker moves (v57):
+  // in English scene 1 has s1-2 after s1-walk or s1-run, else s1-2-alone.
+  if (E_OPTS.seen) {
+    const said = played.filter(x => !x.side && x.id !== 'r-vilar').map(x => x.id);
+    const i = said.findIndex(id => id === 's1-2' || id === 's1-2-alone');
+    if (i >= 0) {
+      const how = ['s1-walk', 's1-run'].includes(said[i - 1]);
+      if (how !== (said[i] === 's1-2')) problems.push(`${said[i]} after ${said[i - 1] || 'nothing'}`);
+    }
+  }
   // Scene 3 ends on this line: the next of hers is scene 4's.
   if (p.endsOn) {
     const said = played.filter(x => !x.side);
@@ -1700,9 +1714,13 @@ const AIR_FACTORS = [0, 0.5, 2, 3];
 
 // From "off the gravel" to the lamp or scene 3, whichever is first: where a
 // stop of the walker's lights the lamp. After it has lit there is no more to.
+// When she asks for a stop it ends there: from her ask to the lamp is the
+// walker's answer and how soon the feet show it, which moves with the step's
+// phase by most of a second (v57: 12.25 s at luft 1, 13.0 at 2, the same
+// pauses), not her air.
 function exposedFor(run) {
   const from = run.said.find(x => x.msg === 'scene 2: off the gravel');
-  const to = run.said.find(x => x.msg.startsWith('scene 2: lamp') || x.msg.startsWith('scene 3: '));
+  const to = run.said.find(x => x.msg.startsWith('scene 2: lamp') || x.msg === 'scene 2: she asks' || x.msg.startsWith('scene 3: '));
   return from && to ? to.t - from.t : null;
 }
 
