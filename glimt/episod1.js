@@ -123,6 +123,7 @@ export const SV = {
   words: { see: 'ser', hear: 'hör', are: 'är', thirty: 'trettio', stop: 'stanna', lastStop: 'stanna' },
   now: null,
   seen: false,
+  alone: null,
   bag: null,
   skyLast: 's3-2',
   countBreath: COUNT_BREATH,
@@ -180,6 +181,8 @@ export const EN = {
   words: { see: 'see', hear: 'hear', are: 'are', thirty: 'thirty', stop: 'stop', lastStop: 'last:stop', now: 'now' },
   now: 'x-now',
   seen: true,
+  // s1-2 without "too", for a walker the phone has not read walking (v57).
+  alone: 's1-2-alone',
   bag: STORIES,
   skyLast: null,
   countBreath: 0,
@@ -591,10 +594,13 @@ export async function runEpisode1(ctx, E = SV) {
   // "There. You're clear now. You're walking." claims two readings, so with
   // E.seen it is said only when the wait found both; scene 1 then opens on
   // s1-2. A walker standing when it timed out heard "You're walking" until v52.
-  if (clear || !E.seen) await ctx.play(ctx.state().band === 'run' ? 's1-run' : 's1-walk');
+  const saidHow = clear || !E.seen;
+  if (saidHow) await ctx.play(ctx.state().band === 'run' ? 's1-run' : 's1-walk');
   else ctx.log('scene 1: the phone has not read the walker moving with the line clear, she does not say how they move');
   await breath('s1-2');
-  await ctx.play('s1-2');
+  // "I'm walking too" says she has seen the walker walk, so without the
+  // reading it is the same line without "too" (v57, E.alone).
+  await ctx.play(!saidHow && E.alone ? E.alone : 's1-2');
   await breath('s1-self');
   await ctx.play('s1-self');
   await breath('s1-q2');

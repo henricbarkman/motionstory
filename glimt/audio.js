@@ -35,8 +35,11 @@ export const SONG_RISE = 3;
 const VOICE_CEIL_HZ = 18000;
 // A line she says to herself (Henric 2026-10-16: lower, turned away from the
 // line): never clearer than this contact, and at this share of the level.
-const ASIDE_CONTACT = 0.7;
-const ASIDE_GAIN = 0.7;
+// Henric 30/10 chose "9 dB lower and duller" on the proof page: at full
+// contact a lowpass at 3.8 kHz and 0.355 of the level (-9.0 dB). Was 0.7 and
+// 0.7, 4.7 dB lower and 5.3 kHz.
+const ASIDE_CONTACT = 0.62;
+const ASIDE_GAIN = 0.451;
 // The radio at klarhet 0. Each part eases to nothing on the way to 1:
 // the band's edges on a log scale, the drive in proportion.
 const RADIO_LOW_HZ = 700;      // highpass at full radio (20 Hz when clean)
