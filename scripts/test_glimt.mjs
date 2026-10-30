@@ -684,15 +684,16 @@ const EPISODE_WALKERS = {
     // the stop while the walker still stands, and the go line comes. So a
     // stop this short is a coin toss on a phone too. On Paula's English
     // takes (v41) it rounded under and heard a no; on Jessica's (v45) it
-    // rounds over, as in Swedish. With the asides of v57 ([to herself], s0-1
-    // 1.75 s longer) the first question rounds under again in English: a no
-    // there, the yes at "Are you alone?".
+    // rounds over, as in Swedish. A re-recording that moves a clip flips it
+    // (v57's asides, s0-1 1.75 s longer, made the first question a no), so in
+    // English the first question is left to the coin: either branch, and
+    // what does not hang on it is still required.
     has: ['s0-yes1-a', 's0-yes2', 's1-q2-yes', 's4-yes'], not: ['s0-no1', 's0-no2', 's1-q2-no', 's0-go1', 's0-go2', 's1-go'],
     // The yes comes with the step that ends the gap: going again, so her go
     // line is not said at all.
     skipped: ['s0-go1', 's0-go2', 's1-go'],
     lamps: 0, memory: { svarade: true, misstanke: false },
-    en: { has: ['s0-no1', 's0-no2', 's1-q2-yes', 's4-yes'], not: ['s0-yes1-a', 's0-yes2', 's1-q2-no', 's1-go'], skipped: ['s1-go'] },
+    en: { has: ['s1-q2-yes', 's4-yes'], not: ['s1-q2-no', 's1-go'], skipped: ['s1-go'] },
   },
   // A hesitation, not a stop: under a second standing, a gap shorter than
   // FEET_STOP. That is still a no, five seconds and a step after the line.

@@ -245,5 +245,35 @@ for (const [lang, EPISODE] of [['sv', EPISODE_SV], ['en', JSON.parse(readFileSyn
   check(!strays.length, `pauses only on go lines${strays.length ? ` (also ${strays.join(', ')})` : ''}`);
 }
 
+// ---------- a line to herself (v57) ----------
+// Henric chose "9 dB lower and duller" on the proof page (30/10): at full
+// contact the aside is 0.355 of the level with the lowpass at 3.8 kHz, and it
+// is there from the line's first word, not glided to over a second.
+{
+  globalThis.window = globalThis.window || {};
+  const clock = makeClock();
+  const audio = new FakeAudioContext(clock);
+  const mixer = new Mixer(audio);
+  clock.advance(2, () => audio.update());
+  const calls = [];
+  for (const [name, param] of [['gain', mixer.voiceGain.gain], ['freq', mixer.voiceFilter.frequency]]) {
+    const f = param.setTargetAtTime.bind(param);
+    param.setTargetAtTime = (v, t, c) => { calls.push({ name, v, t, c }); return f(v, t, c); };
+  }
+  const buffer = audio.createBuffer(1, audio.sampleRate * 2, audio.sampleRate);
+  mixer.playVoice(buffer, { aside: true, at: 2.5 });
+  const gain = calls.find(x => x.name === 'gain'), freq = calls.find(x => x.name === 'freq');
+  check(gain && Math.abs(20 * Math.log10(gain.v) + 9) < 0.1, `an aside at full contact is 9 dB lower (${gain && (20 * Math.log10(gain.v)).toFixed(2)} dB)`);
+  check(freq && Math.abs(freq.v - 3800) < 25, `and duller: lowpass ${freq && Math.round(freq.v)} Hz, wanted 3800`);
+  // Within a tenth of a second of the line's start it is at its level: a
+  // time constant of at most 0.035 s (95 % in three of them), from its start.
+  check(gain && gain.c <= 0.035 && freq.c <= 0.035, `it is at its level from the first word (time constant ${gain && gain.c} s)`);
+  check(gain && Math.abs(gain.t - 2.5) < 1e-9, `from the line's start, not before it (${gain && gain.t})`);
+  calls.length = 0;
+  clock.advance(5, () => audio.update());
+  const back = calls.find(x => x.name === 'gain');
+  check(back && Math.abs(back.v - 1) < 1e-9 && back.c <= 0.035, 'after it the level is back, as fast');
+}
+
 console.log(failures ? `\n${failures} failed` : '\nall ok');
 process.exit(failures ? 1 : 0);
