@@ -44,7 +44,7 @@ LIVE = GA / "projects" / "motionstory"
 # (the same documents as rummet/data.js).
 EPISODER = ("1", "2", "3", "1en", "2en")
 # The first commit where each document is Demi's own draft.
-START = {"1": "1e54ffc", "2": "1e54ffc", "3": "1e54ffc", "1en": "2129737", "2en": "HEAD", "varld": "f0fd543", "mekaniker": "0ca4994"}
+START = {"1": "1e54ffc", "2": "1e54ffc", "3": "1e54ffc", "1en": "2129737", "2en": "e44b1cb", "varld": "f0fd543", "mekaniker": "0ca4994"}
 FIL = {"1": "episod-1.md", "2": "episod-2.md", "3": "episod-3.md", "1en": "episode-1.md", "2en": "episode-2.md", "varld": "varld.md", "mekaniker": "mekaniker.md"}
 OM = "Stycken som är Demis utkast. Skrivs av scripts/rummet_grund.py i motionstory, aldrig av rummet."
 
