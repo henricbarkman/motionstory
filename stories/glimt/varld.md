@@ -170,11 +170,13 @@ Vega skyller aldrig på vandraren. Hon blir rädd, arg på Företaget eller tyst
 
 **Beslut 19/10:** mellan fantasy och sci-fi. Ingen riktig magi, allt kan ha en vetenskaplig förklaring. Stilen är inte helt cyberpunk.
 
-*Förslag:* Vegas humor får plats. Det torra skämtet när det är som värst är hennes, och det får komma oftare än i en ren skräckberättelse.
+*Förslag:* Vegas humor får plats. Det torra skämtet när det är som värst är hennes, och det får komma oftare än i en ren skräckberättelse. Humorn är deadpan och mörk, aldrig glättig (beslut 31/10, under Vega).
 
 *Förslag:* överkonsumtionen syns i platsen, det vandraren ser nu och Vega beskriver som borta. Maktkoncentrationen hörs i rösten: vem som äger luften, vem som läser hennes steg. Ingen av dem sägs rakt ut.
 
 ## Vega
+
+**Beslut 31/10:** "Vega är aldrig glättig. Hon har humor, men mer deadpan då. Och mörk humor." Inga glädjeutrop, inga utropstecken av glädje, inget peppigt beröm av Shape, inget gulligt eller muntert. Skrattar hon är det kort och åt något mörkt. Värme får finnas, men underspelad: lågt, kort, gärna med något torrt bredvid. Rädsla och brådska är inte glättighet. Det gäller också hur rösten säger raden, så inga taggar som `[laughs]`, `[chuckles]` eller `[amazed]` på en rad som inte bär dem.
 
 *Förslag 13/9, står kvar:* hennes personlighet är dagbokens "I" (`projects/held/universe/stories/here-diary.md`). Ensam så länge att en främlings steg blir en relation, försiktig av nödvändighet, läser hellre än pratar, modig en mening i taget, torr humor som skydd när det är som värst. Hon vill gå ut, och i dagboken (rad 16) är "going outside" frasen för den som tänker bortom. Det passar arbetaren på väg att bli rebell.
 
