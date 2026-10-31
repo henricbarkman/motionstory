@@ -289,9 +289,9 @@ If Shape stays standing after her go, as in episodes 1 and 2: "I can't see you w
 >
 > (The hatch, metal. Something slides in. The hatch shuts as the bell cuts off.)
 >
-> (out of breath) In. It's in!
+> (out of breath) In. (pause) It's in.
 >
-> (laughs, still out of breath) I haven't run since I was little. (pause) I ran. (dry) I sounded like a bag of screws.
+> (still out of breath, flat) I haven't run since I was little. (pause) Now I know why. (dry) I sound like a bag of screws.
 >
 > Fast steps, you've got an errand. (pause) For once it's true.
 >
@@ -372,7 +372,7 @@ If Shape stays standing after her go, as in episodes 1 and 2: "I can't see you w
 >
 > (The grey door. Gravel. The hum of the loop.)
 >
-> [in time] Gravel. I've never been so happy to see gravel.
+> [in time] Gravel. (dry) First time in four years I've been glad to see it.
 >
 > [late] Gravel. (pause) My round again.
 >
