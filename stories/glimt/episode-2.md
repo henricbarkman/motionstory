@@ -170,7 +170,7 @@ If Shape stands longer than about five seconds:
 >
 > [water] I saw it. Real water. (pause) It isn't in a pipe.
 >
-> [woods] I saw them. Trees, lots of them, and no two the same. (pause) Ours are all the same tree.
+> [woods] I saw them. Trees, and no two the same. (pause) Ours are all the same tree.
 >
 > [bridge] I saw it. It's a real one. It's for crossing, you can tell. (pause) Ours is for looking at.
 >
