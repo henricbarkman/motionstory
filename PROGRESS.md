@@ -14,6 +14,17 @@
 - Beslutet väljer KÄRNAN, det stryker inget. Alla mekaniker i `stories/glimt/mekaniker.md` (stanna för ja, frys, knack och surr, vägvalet, kassen, ljus och regn m.fl.) finns kvar som variation. Kassen är redan halva uppdragsmekaniken.
 - Spel eller berättelse: en berättelse där kroppen är handkontrollen.
 
+## 2026-10-31
+- Demi (jobb j-20261030-233046-8f9f97, v58): **Hon säger bara det telefonen läst: tre ställen ur v57-granskningen.**
+  - **Episod 2, s0-2** ("There you are. I'd know that shape anywhere."): sägs först när telefonen läser att Shape går, väntar högst 20 s efter s0-1 (`SEE_WAIT`); annars direkt till "You came back." Repliken orörd.
+  - **Episod 1, s2-4** ("You're moving"): efter sista siffrorna väntar hon på läst gång, på gruset där ett stopp inte kostar något. Står Shape en halv minut frågar snäckan och hon räknar om, som förut. En telefon som inte läser något alls får `s2-4-unmoved`: "They're not asking, and they think it's me." klippt ur samma tagning (ingen ny inspelning). s4-back utan "I can tell, you're going straight now." och s4-onward utan "Straight out." (telefonen läser bara avståndet till starten), båda klippta ur sina tagningar. Scribe ordagrant på alla tre.
+  - **Kartan i episod 1** räknar inte längre bäckar i kulvert eller täckta vattendrag som vatten (`overpassQuery`, `classifyElements`), samma filter som episod 2. Gäller de svenska kapitlen på Pages också; den svenska privata kopian står kvar på v40.
+  - **Manus v19:** s4-back och s4-onward kortade, en mening i scen 2:s trigger i episod 1 och scen 0:s trigger i episod 2; kommentarer av Demi med de gamla orden. Speglat till md (spegelns tillstånd i generalassistant b687d192).
+  - **Tester:** nya vandrare `still-at-thirty`, `stays-at-thirty` och `blind` på engelska (`test_glimt.mjs`), `starts-late` och `stands-at-start` (`test_episode2.mjs`), kulvertarna i `test_world.mjs`; varje grind mutationsprövad. Hela `test_glimt`, nodsviterna, regibordets, apptider och pauser gröna, webbläsarsviten 371 av 371. Kodgranskning: inget fel, ett test för snäckans gren tillagt.
+  - **Krediter:** 30 (Scribe), 52 144 → 52 114. Ingen ny tagning.
+  - **Ute 31/10:** PR #73 (a94d47c). Pages svarar `APP_VERSION = 58`, `motionstory-v58`, s2-4-unmoved 200. Privata engelska `glimt-episode1-en` (`motionstory-v58-privat-9d5a2c09`) och `glimt-episode2-en` (`motionstory-v58-privat-03695c61`), låtarna kvar; öppnade ur sina mappar i Chromium som telefonens Chrome: engelska, inga sidfel, workern håller 74 och 133 repliker, de nya klippen med. Regibordet omdeployat.
+- → Nästa: som 30/10 (gå båda och lyssna efter självpratet). Kvar ur granskningen: s4-never-yes-2 och s4-never-no säger fortfarande "I'm Vega. In case you were wondering."; den blinda telefonen väntar 2,5 min tyst på gruset innan s2-4-unmoved.
+
 ## 2026-10-30
 - Henric (30/10 21:01, sessionen 96608ebf): självpratet med taggen [to herself] (variant A på provsidan) och mixen "9 dB lägre och dovare"; Vega kan inte veta att Shape har en telefon, hon säger något i stil med "You must have some kind of communication device on you, right?" och knackinstruktionen utan phone; rymden avslöjas inte än; episod 2 får bli lite längre.
 - Demi (jobb j-20261030-220241-827cd6, v57): **Självpratet omspelat och sänkt, knackrepliken, "I'm walking." utan "too".**
