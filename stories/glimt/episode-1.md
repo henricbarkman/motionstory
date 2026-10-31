@@ -249,8 +249,9 @@ If the walker stays standing about ten seconds more:
 > And there's something near you.
 >
 > [bridge] A bridge. It's blurry, like a pencil line. (pause) We've got a bridge here too. It goes over nothing. (pause) Someone drew the bridge and forgot the river.
-> [water] Water. It's glinting. (pause) We've got water here too. Sounds like water, anyway. I have found the speaker.
-> [woods] Woods. Thick ones. (pause) We've got woods here too, right at the back. Flat as a painting, but they rustle. They got that bit right.
+> [water] Water. (pause) We've got water here too. Sounds like water, anyway. I have found the speaker.
+>
+> [woods] Woods. (pause) We've got woods here too, right at the back. Flat as a painting, but they rustle. They got that bit right.
 > [hill] A hill. (pause) We've got a hill here too. You're not allowed up it. I don't think it'd hold.
 > [graveyard] A graveyard. (pause) We've got a graveyard here too. No graves. Someone must have thought it looked nice.
 
