@@ -910,7 +910,10 @@ const EPISODE_WALKERS = {
     walk: t => ({ ...out()(t), accuracy: 200, doppler: false }), stops: {},
     has: ['s2-count-stop', 's2-3', 's4-all'], skips: ['scene 2: she counts'], loose: true, limit: 60 * 60,
     // In English she cannot say "You're moving" to it (v58): the line without.
+    // Nor does it stand 2.5 min in silence on the gravel, twice (v60, Henric
+    // 31/10): after "go" and before the line, at most GRAVEL_WAIT and a breath.
     en: { has: ['s2-count-stop', 's2-3', 's2-4-unmoved', 's4-all'], not: ['s2-4'],
+      silence: [['s2-count-stop', 's2-3', 60], ['s2-3', 's2-4-unmoved', 40]],
       logs: ['scene 2: the phone has not read the walker moving'] },
   },
   // Stops with her last numbers and stands a while after them: in English
@@ -1357,6 +1360,14 @@ function episodeProblems(name, run) {
 
   for (const id of p.has || []) if (!count(id)) problems.push(`${id} never heard`);
   for (const id of p.not || []) if (count(id)) problems.push(`${id} heard`);
+  // `silence`: [from, to, s]: from the end of the last `from` to the next `to`
+  // she is quiet at most s seconds (v60, the gravel).
+  for (const [from, to, most] of p.silence || []) {
+    const i = played.map(x => x.id).lastIndexOf(from);
+    const next = i < 0 ? null : played.slice(i + 1).find(x => x.id === to);
+    const quiet = next ? next.t - played[i].t - E_SECONDS[from] : null;
+    if (quiet === null || quiet > most) problems.push(`${to} came ${quiet === null ? 'never' : quiet.toFixed(1) + ' s'} after ${from}, wanted at most ${most} s`);
+  }
   if (p.loose) return problems;
   for (const id of p.twice || []) if (count(id) !== 2) problems.push(`${id} heard ${count(id)} times, wanted 2`);
   // Said once, unless the walker's profile says a line comes again. Her

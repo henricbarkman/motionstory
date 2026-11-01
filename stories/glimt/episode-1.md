@@ -304,7 +304,7 @@ If the walker stays standing about ten seconds more:
 >
 > *Yes:* (muffled) ...there. (back, laughing) All night! You've heard me all night. And I've been going on about plastic trees.
 >
-> I've seen you before, you know. Out at the edge, lots of times. Just a shape. So you're Shape. It'll do. I'm Vega. In case you were wondering.
+> I've seen you before, you know. Out at the edge, lots of times. Just a shape. So you're Shape. It'll do. I'm Vega.
 >
 > *No:* No. Okay. Then you're steps. (pause) I've been hiding in them all night, so I'm not complaining.
 >

@@ -66,6 +66,15 @@ const HALF_MINUTE = 30;     // s without steps before the snäcka asks
 const COUNT_BREATH = 0.8;   // s between the count under her breath and its last numbers (Swedish)
 const RESERVE_MAX = 3;      // times it asks in one walk, then it lets her be
 const SHORT_WAIT = 2.5 * MIN; // s a scene waits for a walker who is not walking
+// On the gravel in scene 2, the wait for a walk from a phone that reads
+// nothing (v60, Henric 31/10: such a phone stood 2.5 min in silence there,
+// twice). Nothing: no motion sensor answering and no GPS fix good enough for
+// a speed (Gps.push ignores fixes over 150 m). A phone that reads the walker
+// standing still waits SHORT_WAIT for them. Longer than HALF_MINUTE, so the
+// snäcka still asks first while it may.
+const GRAVEL_WAIT = 35;
+const readsNothing = s => s.paceSource !== 'steps' && (!s.gpsSeen || (s.accuracy !== null && s.accuracy > 150));
+const gravelWait = s => readsNothing(s) ? GRAVEL_WAIT : SHORT_WAIT;
 const LONG_WAIT = 10 * MIN;   // the same, when the feet say the walker stands
 const PATIENCE = 30;        // s a walker who stood before she asked gets to walk first
 const FULL = 0.95;          // the contact scene 1 waits for after the credits
@@ -666,7 +675,7 @@ export async function runEpisode1(ctx, E = SV) {
       ctx.log('scene 2: the walker stops while she counts');
       if (await line('s2-count-stop', { go: true }) === 'rest') continue;
       // A phone that never sees the walker walk again does not keep her waiting.
-      if (await hold(walking, { by: lastAt + SHORT_WAIT }) === 'rest') continue;
+      if (await hold(walking, { by: lastAt + gravelWait(ctx.state()) }) === 'rest') continue;
     }
     // A count heard to its end at the last numbers' time goes straight on to
     // them: a wait ends at the app's next tick, up to a quarter second late,
@@ -687,7 +696,7 @@ export async function runEpisode1(ctx, E = SV) {
     // "You're moving" (E.unmoved).
     if (E.unmoved && !going(ctx.state())) {
       ctx.log('scene 2: she waits for the walker to move before "You\'re moving"');
-      const w = await hold(going, { timeout: SHORT_WAIT });
+      const w = await hold(going, { timeout: gravelWait(ctx.state()) });
       if (w === 'rest') continue;
       moved = w === 'ok';
     }
