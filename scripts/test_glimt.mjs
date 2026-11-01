@@ -913,7 +913,7 @@ const EPISODE_WALKERS = {
     // Nor does it stand 2.5 min in silence on the gravel, twice (v60, Henric
     // 31/10): after "go" and before the line, at most GRAVEL_WAIT and a breath.
     en: { has: ['s2-count-stop', 's2-3', 's2-4-unmoved', 's4-all'], not: ['s2-4'],
-      silence: [['s2-count-stop', 's2-3', 60], ['s2-3', 's2-4-unmoved', 40]],
+      silence: [['s2-count-stop', 's2-3', 50], ['s2-3', 's2-4-unmoved', 40]],
       logs: ['scene 2: the phone has not read the walker moving'] },
   },
   // Stops with her last numbers and stands a while after them: in English
