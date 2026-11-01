@@ -45,7 +45,9 @@ def generate(api_key: str, prompt: str, seconds: float) -> bytes:
     resp = requests.post(
         "https://api.elevenlabs.io/v1/sound-generation",
         headers={"xi-api-key": api_key, "Content-Type": "application/json"},
-        json={"text": prompt, "duration_seconds": seconds, "prompt_influence": 0.6},
+        # Pinned: v2 was deprecated 2026-11-01 and is retired 2027-02-01.
+        json={"text": prompt, "model_id": "eleven_text_to_sound_v3",
+              "duration_seconds": seconds, "prompt_influence": 0.6},
         timeout=300,
     )
     if not resp.ok:
