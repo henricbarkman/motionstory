@@ -35,11 +35,13 @@ export const SONG_RISE = 3;
 const VOICE_CEIL_HZ = 18000;
 // A line she says to herself (Henric 2026-10-16: lower, turned away from the
 // line): never clearer than this contact, and at this share of the level.
-// Henric 30/10 chose "9 dB lower and duller" on the proof page: at full
-// contact a lowpass at 3.8 kHz and 0.355 of the level (-9.0 dB). Was 0.7 and
-// 0.7, 4.7 dB lower and 5.3 kHz.
+// Henric 31/10 chose 7 dB lower on the proof page glimt-sjalvprat-niva: at
+// full contact a lowpass at 3.8 kHz and 0.447 of the level (-7.0 dB), so
+// ASIDE_GAIN = 10^(-7/20) / (0.25 + 0.75 * 0.62^0.7) = 0.447 / 0.7868.
+// Was 9 dB since v57 (0.451, too low outside, Henric 30/10); before that 0.7
+// and 0.7, 4.7 dB lower and 5.3 kHz.
 const ASIDE_CONTACT = 0.62;
-const ASIDE_GAIN = 0.451;
+const ASIDE_GAIN = 0.568;
 // The aside's level is set as its line starts, not glided to with the
 // contact's 0.4 s: a short one ("Up. Up, up.", 1.8 s) was most of a second
 // louder than Henric chose (the review of v57). A time constant this short

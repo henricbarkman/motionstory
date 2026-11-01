@@ -246,8 +246,9 @@ for (const [lang, EPISODE] of [['sv', EPISODE_SV], ['en', JSON.parse(readFileSyn
 }
 
 // ---------- a line to herself (v57) ----------
-// Henric chose "9 dB lower and duller" on the proof page (30/10): at full
-// contact the aside is 0.355 of the level with the lowpass at 3.8 kHz, and it
+// Henric chose "duller" on the proof page (30/10) and 7 dB lower on the
+// level proof page (31/10, v60; 9 dB in v57-v59): at full contact the aside
+// is 0.447 of the level with the lowpass at 3.8 kHz, and it
 // is there from the line's first word, not glided to over a second.
 {
   globalThis.window = globalThis.window || {};
@@ -263,7 +264,7 @@ for (const [lang, EPISODE] of [['sv', EPISODE_SV], ['en', JSON.parse(readFileSyn
   const buffer = audio.createBuffer(1, audio.sampleRate * 2, audio.sampleRate);
   mixer.playVoice(buffer, { aside: true, at: 2.5 });
   const gain = calls.find(x => x.name === 'gain'), freq = calls.find(x => x.name === 'freq');
-  check(gain && Math.abs(20 * Math.log10(gain.v) + 9) < 0.1, `an aside at full contact is 9 dB lower (${gain && (20 * Math.log10(gain.v)).toFixed(2)} dB)`);
+  check(gain && Math.abs(20 * Math.log10(gain.v) + 7) < 0.1, `an aside at full contact is 7 dB lower (${gain && (20 * Math.log10(gain.v)).toFixed(2)} dB)`);
   check(freq && Math.abs(freq.v - 3800) < 25, `and duller: lowpass ${freq && Math.round(freq.v)} Hz, wanted 3800`);
   // Within a tenth of a second of the line's start it is at its level: a
   // time constant of at most 0.035 s (95 % in three of them), from its start.
