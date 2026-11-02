@@ -36,7 +36,7 @@ English draft 1, 2026-10-30, written in English from the Swedish draft 5 (`episo
 ---
 
 ## 0. Back
-*Trigger: the start button for a new round, or Shape walking on after episode 1's last line in the same round. The contact begins low and builds, as in episode 1. She says "There you are. I'd know that shape anywhere." only once the phone reads Shape walking: she waits up to 20 s after "There. Yes. There." If it doesn't, she goes on to "You came back."*
+*Trigger: the start button for a new round, or Shape walking on after episode 1's last line in the same round. The contact begins low and builds, as in episode 1. She says "There you are. Still just a shape." only once the phone reads Shape walking: she waits up to 20 s after "There. Yes. There." If it doesn't, she goes on to "You came back."*
 
 > **OM NY RUNDA: a new round**
 >
@@ -44,7 +44,7 @@ English draft 1, 2026-10-30, written in English from the Swedish draft 5 (`episo
 >
 > (to herself) Static. Just static. (pause) There. Yes. There.
 >
-> (straight to you) There you are. I'd know that shape anywhere.
+> (straight to you) There you are. (dry) Still just a shape.
 >
 > You came back. I said I'd manage, and I did. (dry) It wasn't as much fun.
 >
@@ -128,7 +128,7 @@ While Shape walks there, she says one of these at a time as the distance shrinks
 >
 > Warmer. Keep going.
 >
-> That's it. Keep going that way.
+> (flat) That way. Keep going.
 >
 > Colder.
 >
@@ -231,7 +231,7 @@ If Shape stands longer than about five seconds:
 >
 > ...there. I saw it. Two jolts in you, like a hiccup.
 >
-> (laughs softly) Then that's how we do it. Two knocks is yes.
+> (flat) Then that's how we do it. (pause) Two knocks is yes.
 >
 > **NEJ: no knock heard**
 >
@@ -385,7 +385,7 @@ If Shape stops behind the presses without her asking, the same as in the works: 
 ## 5. The Book
 *Trigger: after scene 4. The presses go at their usual tempo, no song, and no beat is needed any more. She stands still among the workers, so a stop is harmless here. Clarity 0.45, and 0.55 from "I had no word" to "There's probably one in the book", the clearest yet: here it is the two of them that clears the line, not the technology. After the last line: if Shape walks on, episode 3 starts straight after with its own opening. If Shape stops, her voice fades, and episode 3 starts with a new round next time.*
 
-> She's taking something out of her overalls. A book. (amazed) It's paper. I haven't held paper since I was little.
+> She's taking something out of her overalls. A book. (flat) Paper. The last time I held paper I was little, and someone took it off me.
 >
 > A dictionary. Old. It smells like a cellar. Someone's put little dots under letters, here and there. You'd have to know where to start.
 >
