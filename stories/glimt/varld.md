@@ -178,6 +178,8 @@ Vega skyller aldrig på vandraren. Hon blir rädd, arg på Företaget eller tyst
 
 **Beslut 31/10:** "Vega är aldrig glättig. Hon har humor, men mer deadpan då. Och mörk humor." Inga glädjeutrop, inga utropstecken av glädje, inget peppigt beröm av Shape, inget gulligt eller muntert. Skrattar hon är det kort och åt något mörkt. Värme får finnas, men underspelad: lågt, kort, gärna med något torrt bredvid. Rädsla och brådska är inte glättighet. Det gäller också hur rösten säger raden, så inga taggar som `[laughs]`, `[chuckles]` eller `[amazed]` på en rad som inte bär dem.
 
+**Beslut 1/11:** inga taggar som `[quietly]`, `[softly]` eller `[hushed]` på Vega. De gav viskning i proverna, och viskning vill vi inte ha (Henric: "Det var inte bra"). Låg och torr görs med `[flat]` eller `[dry]` och full röst; nivån sköter mixen. `[to herself]` ensamt viskade också, så självpratet skrivs `[to herself, in full voice]`. Viskning bara där scenen ber om den (räkningen på gruset), och då med `[whispers]` uttryckligen.
+
 *Förslag 13/9, står kvar:* hennes personlighet är dagbokens "I" (`projects/held/universe/stories/here-diary.md`). Ensam så länge att en främlings steg blir en relation, försiktig av nödvändighet, läser hellre än pratar, modig en mening i taget, torr humor som skydd när det är som värst. Hon vill gå ut, och i dagboken (rad 16) är "going outside" frasen för den som tänker bortom. Det passar arbetaren på väg att bli rebell.
 
 **Henric 19/10:** om Vega är född i kopian väntar vi med att bestämma. Hon vill gå ut, men vad det betyder vet vi inte än.

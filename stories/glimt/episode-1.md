@@ -155,7 +155,7 @@ If the walker was already standing:
 >
 > **Yes, the walker stops:**
 > (the walker stays standing, clearly) There. Got it. Now go.
-> Me too. Even with forty of us on the loop. (short laugh) It's not the same.
+> Me too. Even with forty of us on the loop. (pause) It's not the same.
 >
 > **No, the walker keeps going:**
 > No? (pause) So you've got someone besides me. (dry) I'll have to share.
@@ -237,14 +237,15 @@ If the walker stays standing about ten seconds more:
 > I'm sitting down now. Under the plastic tree. And when I sit still, I see more of you. Not you, you're still just a shape. What's around you.
 >
 > [dark] It's dark where you are. Here it's always evening, but never dark. They say it's calming.
-> [light] It's light where you are. It's so bright at the edges. Here it's always evening. They say it's calming.
+> [light] It's light where you are. Bright, at the edges. Here it's always evening. They say it's calming.
 >
 > [dark] And above you it just goes on. All the way up.
 >
-> [light] Your sky's lit all the way up. We've got a lamp called Daylight. It does its best.
+> [light] Your sky's lit all the way up. We've got a lamp called Daylight. (flat) It's on a timer.
 >
 > [rain] And it's raining where you are. It's like static over everything. Here we drink the same water over and over. Where you are it's just falling. Straight down. All of it.
-> [dry] And it's dry where you are. It never rains here. That would be a waste.
+>
+> [dry] And it's dry where you are. It never rains here. (flat) Someone would have to pay for it.
 >
 > And there's something near you.
 >
@@ -270,7 +271,7 @@ If the walker stays standing about ten seconds more:
 >
 > **The walker keeps going all the way:**
 > [the lamp did not come on at the tree] (a long breath out) On the gravel. A worker on her round, that's all they see. (deadpan) I've stood like a post, patted a tree and sat on the ground. And nobody saw a thing.
-> [the lamp came on at the tree] (a long breath out) On the gravel. A worker on her round, that's all they see. (deadpan) I've stood like a post, patted a tree and sat on the ground. The lamp caught one out of three. Not bad, for a first time.
+> [the lamp came on at the tree] (a long breath out) On the gravel. A worker on her round, that's all they see. (deadpan) I've stood like a post, patted a tree and sat on the ground. The lamp caught one out of three. (dry) They only need one.
 >
 > **The walker stops:**
 > (her voice sinks away. The tone. The flat voice: "Deviation. Steps off route.")
@@ -302,7 +303,9 @@ If the walker stays standing about ten seconds more:
 >
 > (waits)
 >
-> *Yes:* (muffled) ...there. (back, laughing) All night! You've heard me all night. And I've been going on about plastic trees.
+> **JA: Shape stops**
+>
+> (muffled) ...there. (back, flat) All night. You've heard me all night. (pause) And I've been going on about plastic trees.
 >
 > I've seen you before, you know. Out at the edge, lots of times. Just a shape. So you're Shape. It'll do. I'm Vega.
 >
